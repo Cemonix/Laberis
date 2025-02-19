@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "eWhghitQ3WU=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\cemonix\\Desktop\\Everything\\Programming\\WebDev\\Laberis\\server\\core.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\cemonix\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.2\\microsoft.aspnetcore.openapi.9.0.2.nupkg.sha512",
+    "C:\\Users\\cemonix\\.nuget\\packages\\microsoft.openapi\\1.6.17\\microsoft.openapi.1.6.17.nupkg.sha512"
+  ],
+  "logs": []
+}
