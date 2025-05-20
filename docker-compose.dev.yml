@@ -1,0 +1,45 @@
+services:
+  ####################
+  # PostgreSQL Database
+  ####################
+  postgres:
+    image: postgres:latest
+    container_name: laberis_postgres_db_dev
+    env_file:
+      - .env.dev
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ####################
+  # MinIO Object Storage
+  ####################
+  minio:
+    image: minio/minio:latest
+    container_name: laberis_minio_dev
+    env_file:
+      - .env.dev
+    volumes:
+      - minio_data_dev:/data
+    ports:
+      - "9000:9000" # API
+      - "9001:9001" # Console UI
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data_dev:
+    driver: local
+  minio_data_dev:
+    driver: local
