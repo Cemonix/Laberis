@@ -198,7 +198,7 @@ public class Program
 
         app.UseHttpsRedirection();
 
-        app.UseCors("AllowSpecificOrign");
+        app.UseCors("AllowSpecificOrigin");
 
         app.UseAuthentication();
         app.UseAuthorization();
