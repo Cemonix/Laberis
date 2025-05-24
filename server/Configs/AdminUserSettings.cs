@@ -17,6 +17,9 @@ public class AdminUserSettings
     [Required(ErrorMessage = "Admin password is required.")]
     public string Password { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "Admin role is required.")]
+    public string Role { get; set; } = string.Empty;
+
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
 }
