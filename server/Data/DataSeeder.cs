@@ -22,7 +22,7 @@ public class DataSeeder
         logger.LogInformation("Initializing database with seed data...");
 
         // Define Admin Role
-        string adminRoleName = "Admin";
+        string adminRoleName = adminUserSettings.Role;
         if (!await roleManager.RoleExistsAsync(adminRoleName))
         {
             await roleManager.CreateAsync(new IdentityRole(adminRoleName));
