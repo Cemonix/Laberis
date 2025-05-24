@@ -7,18 +7,48 @@ using server;
 using server.Data;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using server.Configs;
+using server.Models;
 
 namespace server;
 
 public class Program
 {
-    public static void Main(string[] args)
+    public async static Task Main(string[] args)
     {
+        var logger = new LoggerFactory()
+            .CreateLogger<Program>();
+
+#if DEBUG
+        string envFilePath = "../.env";
+        if (!File.Exists(envFilePath))
+        {
+            logger.LogError("No .env file found. Ensure environment variables are set correctly.");
+            Environment.Exit(1);
+        }
+        DotNetEnv.Env.Load(envFilePath);
+#endif
+
         var builder = WebApplication.CreateBuilder(args);
         var configuration = builder.Configuration;
 
-        builder.Services.AddControllers();
-        builder.Services.AddOpenApi();
+        // Configure and validate WebApp settings
+        builder.Services.AddOptions<WebAppSettings>()
+            .Bind(configuration.GetSection(WebAppSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // Configure and validate JWT settings
+        builder.Services.AddOptions<JwtSettings>()
+            .Bind(configuration.GetSection(JwtSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // Configure and validate Admin User settings
+        builder.Services.AddOptions<AdminUserSettings>()
+            .Bind(configuration.GetSection(AdminUserSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
 
@@ -30,7 +60,7 @@ public class Program
             options.UseNpgsql(connectionString)
         );
 
-        builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+        builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
         {
             // Password settings
             options.Password.RequireDigit = true;
@@ -51,14 +81,11 @@ public class Program
         .AddEntityFrameworkStores<IdentityDbContext>()
         .AddDefaultTokenProviders();
 
-        var jwtSecret = builder.Configuration["JWT:Secret"];
-        if (string.IsNullOrEmpty(jwtSecret))
+        var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>();
+        if (jwtSettings == null)
         {
-            // TODO: Properly handle the error - log
-            Console.Error.WriteLine("CRITICAL ERROR: JWT:Secret is not configured in appsettings.json or environment variables.");
-            Console.Error.WriteLine("Application cannot start without a valid JWT secret for token signing.");
-
-            throw new InvalidOperationException("JWT:Secret is not configured. Application cannot start.");
+            logger.LogError("JWT settings are not configured properly.");
+            Environment.Exit(1);
         }
 
         // JWT Authentication
@@ -66,17 +93,17 @@ public class Program
         .AddJwtBearer(options =>
         {
             options.SaveToken = true;
-            options.Authority = configuration["JWT:Authority"];
-            options.Audience = configuration["JWT:Audience"];
+            options.Authority = jwtSettings.Authority;
+            options.Audience = jwtSettings.ValidAudience;
             options.RequireHttpsMetadata = builder.Environment.IsProduction();
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
                 ValidateAudience = true,
                 ValidateIssuerSigningKey = true,
-                ValidAudience = configuration.GetSection("JWT:ValidAudience").Get<string>(),
-                ValidIssuer = configuration.GetSection("JWT:ValidIssuer").Get<string>(),
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+                ValidAudience = jwtSettings.ValidAudience,
+                ValidIssuer = jwtSettings.ValidIssuer,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret))
             };
         });
 
@@ -118,19 +145,41 @@ public class Program
             });
         });
 
+        var webAppSettings = configuration.GetSection(WebAppSettings.SectionName).Get<WebAppSettings>();
+        if (webAppSettings == null)
+        {
+            logger.LogError("WebApp settings are not configured properly.");
+            Environment.Exit(1);
+        }
+
         // Configure CORS
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowSpecificOrigin", corsPolicyBuilder =>
             {
-                corsPolicyBuilder.WithOrigins(configuration["WebApp:ClientUrl"] ?? "http://localhost:3000")
+                corsPolicyBuilder.WithOrigins(webAppSettings.ClientUrl)
                     .AllowAnyHeader()
                     .AllowAnyMethod()
                     .AllowCredentials();
             });
         });
 
+
         var app = builder.Build();
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            try
+            {
+                await DataSeeder.InitializeAsync(services);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occurred during database seeding.");
+                Environment.Exit(1);
+            }
+        }
 
         if (app.Environment.IsDevelopment())
         {
@@ -149,13 +198,10 @@ public class Program
 
         app.UseHttpsRedirection();
 
-        app.UseCors("AllowSpecificOrigin");
-
-        app.UseAuthentication();
+        app.UseCors("AllowSpecificOrign");
 
         app.UseAuthentication();
         app.UseAuthorization();
-
         app.MapControllers();
 
         app.Run();
