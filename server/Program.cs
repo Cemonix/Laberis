@@ -56,7 +56,7 @@ public class Program
             options.UseNpgsql(connectionString)
         );
 
-        builder.Services.AddDbContext<AppDbContext>(options =>
+        builder.Services.AddDbContext<LaberisDbContext>(options =>
             options.UseNpgsql(connectionString)
         );
 
