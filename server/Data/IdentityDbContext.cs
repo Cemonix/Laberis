@@ -9,8 +9,7 @@ public class IdentityDbContext : IdentityDbContext<ApplicationUser>
 {   
     public const string IdentitySchema = "identity";
 
-    public IdentityDbContext(DbContextOptions<IdentityDbContext> options)
-           : base(options)
+    public IdentityDbContext(DbContextOptions<IdentityDbContext> options) : base(options)
     {
     }
 
