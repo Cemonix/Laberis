@@ -37,7 +37,6 @@ public class DataSourceConfiguration : IEntityTypeConfiguration<DataSource>
         entity.Property(ds => ds.Status)
             .HasColumnName("status")
             .IsRequired()
-            .HasDefaultValue(DataSourceStatus.ACTIVE)
             .HasColumnType("data_source_status_enum");
 
         entity.Property(ds => ds.IsDefault)
