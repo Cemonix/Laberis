@@ -1,10 +1,11 @@
+using Microsoft.AspNetCore.Identity;
+
 namespace server.Models.Domain;
 
 public record class Task
 {
     public int TaskId { get; init; }
     public int Priority { get; init; }
-    public string? Status { get; init; } // TODO: Decide if needed
     public DateTime? DueDate { get; init; }
     public string? Metadata { get; init; } // TODO: For JSONB, store as string for now
     public DateTime? CompletedAt { get; init; }
@@ -26,8 +27,8 @@ public record class Task
     public virtual Project Project { get; init; } = null!;
     public virtual Workflow Workflow { get; init; } = null!;
     public virtual WorkflowStage CurrentWorkflowStage { get; init; } = null!;
-    public virtual ApplicationUser? AssignedToUser { get; init; }
-    public virtual ApplicationUser? LastWorkedOnByUser { get; init; }
+    public virtual IdentityUser? AssignedToUser { get; init; }
+    public virtual IdentityUser? LastWorkedOnByUser { get; init; }
 
     public virtual ICollection<Annotation> Annotations { get; init; } = [];
     public virtual ICollection<TaskEvent> TaskEvents { get; init; } = [];

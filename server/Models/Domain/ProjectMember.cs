@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using server.Models.Domain.Enums;
 
 namespace server.Models.Domain;
@@ -5,7 +6,7 @@ namespace server.Models.Domain;
 public record class ProjectMember
 {
     public int ProjectMemberId { get; init; }
-    public ProjectRole Role { get; init; }
+    public ProjectRole Role { get; init; } = ProjectRole.VIEWER;
     public DateTime InvitedAt { get; init; }
     public DateTime? JoinedAt { get; init; }
 
@@ -18,5 +19,5 @@ public record class ProjectMember
 
     // Navigation Properties
     public virtual Project Project { get; init; } = null!;
-    public virtual ApplicationUser User { get; init; } = null!;
+    public virtual IdentityUser User { get; init; } = null!;
 }

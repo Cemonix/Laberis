@@ -7,7 +7,7 @@ public record class DataSource
     public int DataSourceId { get; init; }
     public string Name { get; init; } = string.Empty;
     public string? Description { get; init; }
-    public DataSourceType SourceType { get; init; }
+    public DataSourceType SourceType { get; init; } = DataSourceType.OTHER;
     public string? ConnectionDetails { get; init; } // TODO: Store as JSON string; map to complex type later if needed
     public DataSourceStatus Status { get; init; }
     public bool IsDefault { get; init; }
