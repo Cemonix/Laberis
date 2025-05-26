@@ -15,7 +15,6 @@ public class TaskConfiguration : IEntityTypeConfiguration<Task>
         entity.Property(t => t.TaskId).HasColumnName("task_id").ValueGeneratedOnAdd();
 
         entity.Property(t => t.Priority).HasColumnName("priority").IsRequired().HasDefaultValue(0);
-        entity.Property(t => t.Status).HasColumnName("status").HasMaxLength(50).IsRequired(false).HasDefaultValue("OPEN");
         entity.Property(t => t.DueDate).HasColumnName("due_date").IsRequired(false);
         entity.Property(t => t.Metadata).HasColumnName("metadata").HasColumnType("jsonb").IsRequired(false);
         entity.Property(t => t.CompletedAt).HasColumnName("completed_at").IsRequired(false);
@@ -39,9 +38,12 @@ public class TaskConfiguration : IEntityTypeConfiguration<Task>
         entity.Property(t => t.AssignedToUserId).HasColumnName("assigned_to_user_id").IsRequired(false);
         entity.Property(t => t.LastWorkedOnByUserId).HasColumnName("last_worked_on_by_user_id").IsRequired(false);
 
+        // Soft delete filter
+        entity.HasQueryFilter(t => t.ArchivedAt == null);
+
         // Relationships for Task
         entity.HasOne(t => t.Asset)
-            .WithMany()
+            .WithMany(a => a.Tasks)
             .HasForeignKey(t => t.AssetId)
             .OnDelete(DeleteBehavior.Cascade);
 

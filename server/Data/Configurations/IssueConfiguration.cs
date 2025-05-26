@@ -22,7 +22,6 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
         entity.Property(i => i.Status)
             .HasColumnName("status")
             .IsRequired()
-            .HasDefaultValue(IssueStatus.OPEN)
             .HasColumnType("issue_status_enum");
 
         entity.Property(i => i.Priority).HasColumnName("priority").IsRequired().HasDefaultValue(0);
@@ -34,6 +33,7 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
 
         entity.Property(i => i.ResolutionDetails).HasColumnName("resolution_details").IsRequired(false);
         entity.Property(i => i.ResolvedAt).HasColumnName("resolved_at").IsRequired(false);
+        entity.Property(i => i.DeletedAt).HasColumnName("deleted_at").IsRequired(false);
 
         entity.Property(i => i.CreatedAt)
             .HasColumnName("created_at")
@@ -52,6 +52,9 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
         entity.Property(i => i.ReportedByUserId).HasColumnName("reported_by_user_id").IsRequired();
         entity.Property(i => i.AssignedToUserId).HasColumnName("assigned_to_user_id").IsRequired(false);
 
+        // Soft delete filter
+        entity.HasQueryFilter(i => i.DeletedAt == null);
+        
         // Relationships
         entity.HasOne(i => i.Task)
             .WithMany(t => t.Issues)
@@ -60,12 +63,12 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
             .IsRequired(false);
 
         entity.HasOne(i => i.Asset)
-            .WithMany()
+            .WithMany(a => a.Issues)
             .HasForeignKey(i => i.AssetId)
             .OnDelete(DeleteBehavior.Cascade);
 
         entity.HasOne(i => i.Annotation)
-            .WithMany()
+            .WithMany(a => a.Issues)
             .HasForeignKey(i => i.AnnotationId)
             .OnDelete(DeleteBehavior.SetNull)
             .IsRequired(false);

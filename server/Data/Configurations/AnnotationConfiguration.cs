@@ -29,6 +29,7 @@ public class AnnotationConfiguration : IEntityTypeConfiguration<Annotation>
         entity.Property(ann => ann.IsGroundTruth).HasColumnName("is_ground_truth").IsRequired().HasDefaultValue(false);
         entity.Property(ann => ann.Version).HasColumnName("version").IsRequired().HasDefaultValue(1);
         entity.Property(ann => ann.Notes).HasColumnName("notes").IsRequired(false);
+        entity.Property(ann => ann.DeletedAt).HasColumnName("deleted_at").IsRequired(false);
 
         entity.Property(ann => ann.CreatedAt)
             .HasColumnName("created_at")
@@ -47,6 +48,9 @@ public class AnnotationConfiguration : IEntityTypeConfiguration<Annotation>
         entity.Property(ann => ann.AnnotatorUserId).HasColumnName("annotator_user_id").IsRequired();
         entity.Property(ann => ann.ParentAnnotationId).HasColumnName("parent_annotation_id").IsRequired(false);
 
+        // Soft delete filter
+        entity.HasQueryFilter(ann => ann.DeletedAt == null);
+
         // Relationships
         entity.HasOne(ann => ann.Task)
             .WithMany(t => t.Annotations)
@@ -59,7 +63,7 @@ public class AnnotationConfiguration : IEntityTypeConfiguration<Annotation>
             .OnDelete(DeleteBehavior.Cascade);
 
         entity.HasOne(ann => ann.Label)
-            .WithMany()
+            .WithMany(l => l.Annotations)
             .HasForeignKey(ann => ann.LabelId)
             .OnDelete(DeleteBehavior.Restrict);
 

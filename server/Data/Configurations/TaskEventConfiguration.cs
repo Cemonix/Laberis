@@ -35,6 +35,9 @@ public class TaskEventConfiguration : IEntityTypeConfiguration<TaskEvent>
         entity.Property(te => te.FromWorkflowStageId).HasColumnName("from_workflow_stage_id").IsRequired(false);
         entity.Property(te => te.ToWorkflowStageId).HasColumnName("to_workflow_stage_id").IsRequired(false);
 
+        // Filter for soft-deleted tasks
+        entity.HasQueryFilter(te => te.Task != null && te.Task.ArchivedAt == null);
+
         // Relationships
         entity.HasOne(te => te.Task)
             .WithMany(t => t.TaskEvents)
