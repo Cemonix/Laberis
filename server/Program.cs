@@ -52,15 +52,11 @@ public class Program
 
         var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
 
-        builder.Services.AddDbContext<IdentityDbContext>(options =>
-            options.UseNpgsql(connectionString)
-        );
-
         builder.Services.AddDbContext<LaberisDbContext>(options =>
             options.UseNpgsql(connectionString)
         );
 
-        builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+        builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
         {
             // Password settings
             options.Password.RequireDigit = true;
@@ -78,7 +74,7 @@ public class Program
             // User settings
             options.User.RequireUniqueEmail = true;
         })
-        .AddEntityFrameworkStores<IdentityDbContext>()
+        .AddEntityFrameworkStores<LaberisDbContext>()
         .AddDefaultTokenProviders();
 
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>();
