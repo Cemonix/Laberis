@@ -1,4 +1,5 @@
 using System;
+using Microsoft.AspNetCore.Identity;
 using server.Models.Domain.Enums;
 
 namespace server.Models.Domain;
@@ -6,10 +7,10 @@ namespace server.Models.Domain;
 public record class Project
 {
     public int ProjectId { get; init; }
-    public string Name { get; init; }
+    public string Name { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
-    public ProjectType ProjectType { get; init; }
-    public ProjectStatus Status { get; init; }
+    public ProjectType ProjectType { get; init; } = ProjectType.OTHER;
+    public ProjectStatus Status { get; init; } = ProjectStatus.ACTIVE;
 
     public string? OwnerId { get; init; }
     public string? AnnotationGuidelinesUrl { get; init; }
@@ -17,7 +18,7 @@ public record class Project
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
 
-    public virtual ApplicationUser? Owner { get; init; }
+    public virtual IdentityUser? Owner { get; init; }
 
     public virtual ICollection<LabelScheme> LabelSchemes { get; init; } = [];
     public virtual ICollection<DataSource> DataSources { get; init; } = [];

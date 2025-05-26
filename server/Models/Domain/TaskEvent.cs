@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using server.Models.Domain.Enums;
 
 namespace server.Models.Domain;
@@ -16,8 +17,8 @@ public record class TaskEvent
     public int? ToWorkflowStageId { get; init; }
 
     // Navigation Properties
-    public virtual Task Task { get; init; } = null!;
-    public virtual ApplicationUser? User { get; init; }
+    public virtual Task? Task { get; init; }
+    public virtual IdentityUser? User { get; init; }
     public virtual WorkflowStage? FromWorkflowStage { get; init; }
     public virtual WorkflowStage? ToWorkflowStage { get; init; }
 }

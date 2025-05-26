@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using server.Models.Domain.Enums;
 
 namespace server.Models.Domain;
@@ -15,6 +16,7 @@ public record class Annotation
 
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
+    public DateTime? DeletedAt { get; init; }
 
     // Foreign Keys
     public int TaskId { get; init; }
@@ -27,7 +29,7 @@ public record class Annotation
     public virtual Task Task { get; init; } = null!;
     public virtual Asset Asset { get; init; } = null!;
     public virtual Label Label { get; init; } = null!;
-    public virtual ApplicationUser AnnotatorUser { get; init; } = null!;
+    public virtual IdentityUser AnnotatorUser { get; init; } = null!;
     public virtual Annotation? ParentAnnotation { get; init; }
     public virtual ICollection<Annotation> ChildAnnotations { get; init; } = [];
     public virtual ICollection<Issue> Issues { get; init; } = [];
