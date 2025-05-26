@@ -9,6 +9,10 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using server.Configs;
 using server.Models;
+using server.Repositories;
+using server.Repositories.Interfaces;
+using server.Services.Interfaces;
+using server.Services;
 
 namespace server;
 
@@ -76,6 +80,9 @@ public class Program
         })
         .AddEntityFrameworkStores<LaberisDbContext>()
         .AddDefaultTokenProviders();
+
+        builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+        builder.Services.AddScoped<IProjectService, ProjectService>();
 
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>();
         if (jwtSettings == null)
@@ -159,7 +166,6 @@ public class Program
                     .AllowCredentials();
             });
         });
-
 
         var app = builder.Build();
 
