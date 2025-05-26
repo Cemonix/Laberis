@@ -25,7 +25,7 @@ public class ProjectService : IProjectService
         var projects = await _projectRepository.GetAllAsync(
             filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize
         );
-        _logger.LogInformation("Fetched {projects.Count()} projects.", projects.Count());
+        _logger.LogInformation("Fetched {Count} projects.", projects.Count());
         if (projects == null || !projects.Any())
         {
             _logger.LogWarning("No projects found.");
