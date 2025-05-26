@@ -1,13 +1,18 @@
 using System;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using server.Models;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
 using Task = server.Models.Domain.Task;
 
 namespace server.Data;
 
-public class LaberisDbContext : DbContext
+public class LaberisDbContext : IdentityDbContext<IdentityUser>
 {
+    public const string IdentitySchema = "identity";
+
     public DbSet<Project> Projects { get; set; }
     public DbSet<ProjectMember> ProjectMembers { get; set; }
     public DbSet<DataSource> DataSources { get; set; }
@@ -54,5 +59,35 @@ public class LaberisDbContext : DbContext
         modelBuilder.ApplyConfiguration(new Configurations.TaskEventConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.AnnotationConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.IssueConfiguration());
+
+        // Identity schema configuration
+        modelBuilder.Entity<IdentityUser>(entity =>
+        {
+            entity.ToTable("AspNetUsers", IdentitySchema);
+        });
+        modelBuilder.Entity<IdentityRole>(entity =>
+        {
+            entity.ToTable("AspNetRoles", IdentitySchema);
+        });
+        modelBuilder.Entity<IdentityUserRole<string>>(entity =>
+        {
+            entity.ToTable("AspNetUserRoles", IdentitySchema);
+        });
+        modelBuilder.Entity<IdentityUserClaim<string>>(entity =>
+        {
+            entity.ToTable("AspNetUserClaims", IdentitySchema);
+        });
+        modelBuilder.Entity<IdentityUserLogin<string>>(entity =>
+        {
+            entity.ToTable("AspNetUserLogins", IdentitySchema);
+        });
+        modelBuilder.Entity<IdentityRoleClaim<string>>(entity =>
+        {
+            entity.ToTable("AspNetRoleClaims", IdentitySchema);
+        });
+        modelBuilder.Entity<IdentityUserToken<string>>(entity =>
+        {
+            entity.ToTable("AspNetUserTokens", IdentitySchema);
+        });
     }
 }
