@@ -12,11 +12,11 @@ public class DataSeeder
     {
         var logger = serviceProvider.GetRequiredService<ILogger<DataSeeder>>();
         var adminUserSettings = serviceProvider.GetRequiredService<IOptions<AdminUserSettings>>().Value;
-        var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var userManager = serviceProvider.GetRequiredService<UserManager<IdentityUser>>();
         var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
         // Ensure the database is created.
-        var dbContext = serviceProvider.GetRequiredService<IdentityDbContext>();
+        var dbContext = serviceProvider.GetRequiredService<LaberisDbContext>();
         await dbContext.Database.EnsureCreatedAsync();
 
         logger.LogInformation("Initializing database with seed data...");
@@ -30,12 +30,10 @@ public class DataSeeder
         }
 
         // Define Admin User
-        var adminUserToCreate = new ApplicationUser
+        var adminUserToCreate = new IdentityUser
         {
             UserName = adminUserSettings.Username,
             Email = adminUserSettings.Email,
-            FirstName = adminUserSettings.FirstName,
-            LastName = adminUserSettings.LastName,
             EmailConfirmed = true
         };
 
