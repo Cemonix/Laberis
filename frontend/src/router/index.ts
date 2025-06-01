@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
-import HomePage from '../views/HomePage.vue';
-import AnnotationWorkspace from '../views/AnnotationWorkspace.vue';
-import DefaultLayout from '../layouts/DefaultLayout.vue';
-import WorkspaceLayout from '../layouts/WorkspaceLayout.vue';
+import HomePage from '@/views/HomePage.vue';
+import AnnotationWorkspace from '@/views/AnnotationWorkspace.vue';
+import DefaultLayout from '@/layouts/DefaultLayout.vue';
+import WorkspaceLayout from '@/layouts/WorkspaceLayout.vue';
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -30,7 +30,7 @@ const routes: Array<RouteRecordRaw> = [
     {
         path: '/projects',
         name: 'ProjectList',
-        // TODO: component: () => import('../views/ProjectListPage.vue'), // Create this later
+        // TODO: component: () => import('@/views/ProjectListPage.vue'), // Create this later
         component: { template: '<div>Project List Page - Uses Default Layout</div>' }, // Placeholder
         meta: {
             layout: DefaultLayout,
