@@ -1,6 +1,7 @@
 <template>
 	<div class="home-container">
 		<h1>Welcome to Laberis</h1>
+		<p>This is the home page of your application.</p>
 	</div>
 </template>
 
@@ -9,13 +10,12 @@
 
 <style lang="scss" scoped>
 @use "@/styles/variables.scss" as vars;
+@use '@/styles/mixins' as mixins;
 
 .home-container {
-	display: flex;
-	justify-content: center;
-	align-items: start;
-	background-color: vars.$background_color;
+	@include mixins.flex-center($direction: column, $gap: vars.$padding-medium);
 	width: 100%;
+	background-color: vars.$background_color;
 	padding: vars.$padding-medium;
 
 	h1 {
