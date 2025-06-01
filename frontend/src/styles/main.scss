@@ -7,8 +7,9 @@
 }
 
 body {
-  font-family: vars.$font_family;
-  font-size: vars.$font_size;
+  font-family: vars.$body_font_family;
+  font-weight: vars.$body_font_weight;
+  font-size: vars.$font_size_medium;
   background-color: vars.$background_color;
   color: vars.$text_color;
 }
