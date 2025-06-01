@@ -1,0 +1,55 @@
+$font_size: 16px;
+$font_family: 'Roboto', sans-serif;
+$background_color: #f1f1f1;
+$text_color: #333;
+
+// Brand & UI Colors
+$primary-blue: #007bff;
+$primary-blue-hover: #0056b3;
+$primary-link-hover-color: #00aaff;
+$laberis-brand-text: white;
+
+// Greys & Neutrals
+$light-grey-bg: #f9f9f9;
+$medium-grey-border: #ccc;
+$dark-grey-nav-bg: #333;
+$footer-bg: #f8f9fa;
+$footer-border: #e7e7e7;
+$disabled-item-text: #aaa;
+$dropdown-list-bg: #f9f9f9;
+$dropdown-border: #ddd;
+$dropdown-item-hover: #e9ecef;
+
+// Workspace Specific Colors
+$workspace-layout-bg: #2c3e50;
+$workspace-layout-text: #ecf0f1;
+
+$workspace-container-bg: #34495e;
+$workspace-container-text: white;
+
+$workspace-top-bar-bg: #2c3e50;
+$workspace-panel-bg: #3b597a;
+$workspace-border-color: #4a6fa5;
+
+$canvas-wrapper-bg: #283747;
+$canvas-error-text: #ff6b6b;
+$canvas-info-text: #777;
+
+// Overlays
+$overlay-bg: rgba(0, 0, 0, 0.7);
+$overlay-text-color: white;
+$error-overlay-text-color: #ffc0cb;
+
+// General Spacing
+$padding-small: 0.5rem;
+$padding-medium: 1rem;
+$padding-large: 1.5rem;
+
+// Borders
+$border-radius-standard: 5px;
+$border-radius-input: 4px;
+
+// Transitions
+$transition-fast: 0.15s ease-in-out;
+$transition-normal: 0.2s ease-in-out;
+$transition-long: 0.3s ease;
