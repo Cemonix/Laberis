@@ -7,18 +7,20 @@
 <script setup lang="ts">
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use "@/styles/variables.scss" as vars;
+
 .home-container {
 	display: flex;
 	justify-content: center;
 	align-items: start;
-	background-color: #f0f0f0;
+	background-color: vars.$background_color;
 	width: 100%;
-	padding: 1rem;
-}
+	padding: vars.$padding-medium;
 
-h1 {
-	text-align: center;
-	color: #333;
+	h1 {
+		text-align: center;
+		color: vars.$text_color;
+	}
 }
 </style>

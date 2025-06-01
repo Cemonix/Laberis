@@ -7,13 +7,15 @@
 
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use "@/styles/variables.scss" as vars;
+
 .workspace-layout {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background-color: #2c3e50;
-  color: #ecf0f1;
+  background-color: vars.$workspace-layout-bg;
+  color: vars.$workspace-layout-text;
   display: flex;
   flex-direction: column;
 }
