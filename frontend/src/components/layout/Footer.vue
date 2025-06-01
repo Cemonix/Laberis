@@ -6,12 +6,14 @@
 
 <script setup lang="ts"></script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use "@/styles/variables.scss" as vars;
+
 .footer {
     text-align: center;
-    padding: 0.5rem;
-    background-color: #f8f9fa;
-    border-top: 1px solid #e7e7e7;
+    padding: vars.$padding-small;
+    background-color: vars.$footer-bg;
+    border-top: 1px solid vars.$footer-border;
     width: 100%;
 }
 </style>
