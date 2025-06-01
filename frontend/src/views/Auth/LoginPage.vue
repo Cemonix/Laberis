@@ -28,7 +28,9 @@ const handleLogin = () => {
 };
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+@use "@/styles/variables.scss" as vars;
+
 .login-container {
     display: flex;
     justify-content: center;
@@ -38,51 +40,51 @@ const handleLogin = () => {
 
 .login-box {
     min-width: 400px;
-    padding: 2rem;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-}
+    padding: vars.$padding-large;
+    border: 1px solid vars.$medium-grey-border;
+    border-radius: vars.$border-radius-standard;
+    background-color: vars.$light-grey-bg;
 
-.login-container h1 {
-    text-align: center;
-    margin-bottom: 1.5rem;
-    color: #333;
+    h1 {
+        text-align: center;
+        margin-bottom: vars.$padding-large;
+        color: vars.$text_color;
+    }
 }
 
 .form-group {
-    margin-bottom: 1rem;
-}
+    margin-bottom: vars.$padding-medium;
 
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-}
+    label {
+        display: block;
+        margin-bottom: vars.$padding-small;
+    }
 
-.form-group input {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    input {
+        width: 100%;
+        padding: vars.$padding-small;
+        border: 1px solid vars.$medium-grey-border;
+        border-radius: vars.$border-radius-input;
+    }
 }
 
 button {
     width: 100%;
     padding: 0.75rem;
-    background-color: #007bff;
+    background-color: vars.$primary-blue;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: vars.$border-radius-input;
     cursor: pointer;
     font-size: 1rem;
-}
 
-button:hover {
-    background-color: #0056b3;
-}
+    &:hover {
+        background-color: vars.$primary-blue-hover;
+    }
 
-button:focus {
-    outline: 2px solid #0056b3;
-    outline-offset: 2px;
+    &:focus {
+        outline: 2px solid vars.$primary-blue-hover;
+        outline-offset: 2px;
+    }
 }
 </style>
