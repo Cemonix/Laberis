@@ -7,7 +7,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import DefaultLayout from './layouts/DefaultLayout.vue';
+// import DefaultLayout from './layouts/DefaultLayout.vue';
+import DefaultLayout from '@/layouts/DefaultLayout.vue';
 
 const route = useRoute();
 
@@ -20,7 +21,7 @@ const layout = computed(() => {
 });
 </script>
 
-<style>
+<style lang="scss">
 #app {
     display: flex;
     flex-direction: column;
