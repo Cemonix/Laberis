@@ -1,7 +1,18 @@
-$font_size: 16px;
-$font_family: 'Roboto', sans-serif;
 $background_color: #f1f1f1;
 $text_color: #333;
+
+// Typography
+$heading_font_family: 'Montserrat', sans-serif;
+$heading_font_weight: 700;
+$body_font_family: 'Roboto', sans-serif;
+$body_font_weight: 400;
+
+// Font Sizes
+$font_size_small: 0.875rem; // 14px
+$font_size_medium: 1rem; // 16px
+$font_size_large: 1.25rem; // 20px
+$font_size_xlarge: 1.5rem; // 24px
+$font_size_xxlarge: 2rem; // 32px
 
 // Brand & UI Colors
 $primary-blue: #007bff;
@@ -48,6 +59,14 @@ $padding-large: 1.5rem;
 // Borders
 $border-radius-standard: 5px;
 $border-radius-input: 4px;
+
+// Buttons
+$button-primary-bg: $primary-blue;
+$button-primary-text: white;
+$button-secondary-bg: #6c757d;
+$button-secondary-text: white;
+$button-primary-hover-bg: $primary-blue-hover;
+$button-secondary-hover-bg: #5a6268;
 
 // Transitions
 $transition-fast: 0.15s ease-in-out;
