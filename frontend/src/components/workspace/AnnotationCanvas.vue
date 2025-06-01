@@ -8,13 +8,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
+import { useWorkspaceStore } from '@/stores/workspaceStore';
 
-// TODO: Move to a separate types file
 interface Props {
     imageUrl: string | null;
 }
 
 const props = defineProps<Props>();
+const workspaceStore = useWorkspaceStore();
 
 const wrapperRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -37,6 +38,7 @@ const setCanvasDimensions = () => {
     if (availableWidth === 0 || availableHeight === 0) {
         canvas.width = 0;
         canvas.height = 0;
+        workspaceStore.setCanvasDisplayDimensions({ width: 0, height: 0 });
         return;
     }
 
@@ -66,6 +68,8 @@ const setCanvasDimensions = () => {
 
     canvas.width = targetCanvasWidth;
     canvas.height = targetCanvasHeight;
+
+    workspaceStore.setCanvasDisplayDimensions({ width: canvas.width, height: canvas.height });
 };
 
 const loadImage = async (url: string | null) => {
@@ -75,6 +79,7 @@ const loadImage = async (url: string | null) => {
 
     if (!url) {
         isLoading.value = false;
+        workspaceStore.setCanvasDisplayDimensions({ width: 0, height: 0 });
         nextTick(() => setCanvasDimensions());
         return;
     }
@@ -102,6 +107,10 @@ const loadImage = async (url: string | null) => {
     img.onload = () => {
         imageInstance.value = img;
         isLoading.value = false;
+        workspaceStore.setImageNaturalDimensions({
+            width: img.naturalWidth,
+            height: img.naturalHeight
+        });
         nextTick(() => {
             setCanvasDimensions();
             draw();
@@ -113,6 +122,7 @@ const loadImage = async (url: string | null) => {
         imageInstance.value = null;
         isLoading.value = false;
         errorLoadingImage.value = true;
+        workspaceStore.setImageNaturalDimensions({ width: 0, height: 0 });
         nextTick(() => {
             setCanvasDimensions();
         });
