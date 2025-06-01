@@ -1,14 +1,22 @@
 <template>
     <div class="annotation-workspace-container">
         <div class="workspace-top-bar">
-            <a href="/home">Home</a>
-            Annotation Workspace Top Bar (e.g., Undo, Redo, Asset:
-            {{ assetId }})
+            <div class="workspace-top-bar-left">
+                <a href="/home">Home</a>
+            </div>
+            <div class="workspace-top-bar-center">
+                <button>Previous</button>
+                <span>122 / 150</span>
+                <button>Next</button>
+            </div>
+            <div class="workspace-top-bar-right">
+                <span>{{ displayedTime }}</span>
+            </div>
         </div>
         <div class="workspace-main-area">
             <div class="workspace-tools-left">Left Tools Panel</div>
             <div class="workspace-canvas-area">
-                <AnnotationCanvas :image-url="currentImageUrl" />
+                <AnnotationCanvas :image-url="imageUrlFromStore" />
             </div>
             <div class="workspace-annotations-right">
                 Right Annotations/Issues Panel
@@ -18,8 +26,11 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, onMounted, ref } from "vue";
+import { onMounted, computed, ref } from "vue";
 import AnnotationCanvas from "@/components/workspace/AnnotationCanvas.vue";
+import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { Timer } from '@/utils/timer';
+import { onUnmounted } from "vue";
 
 const props = defineProps({
     projectId: {
@@ -32,16 +43,24 @@ const props = defineProps({
     },
 });
 
-// Temporary image URL for testing
-// Replace with a direct link to an image that allows CORS if needed
-const currentImageUrl = ref<string | null>(null);
+const workspaceStore = useWorkspaceStore();
 
-onMounted(() => {
-    console.log("Annotation Workspace Mounted");
-    console.log("Project ID:", props.projectId);
-    console.log("Asset ID:", props.assetId);
+const imageUrlFromStore = computed(() => workspaceStore.currentImageUrl);
 
-    currentImageUrl.value = `https://picsum.photos/seed/${props.assetId}/800/600`;
+const labelingTimer = new Timer();
+const displayedTime = ref<string>("00:00:00");
+let timerInterval: number | null = null;
+
+onMounted(async () => {
+    console.log("[WorkspaceView] Mounted. Project ID:", props.projectId, "Asset ID:", props.assetId);
+    await workspaceStore.loadAsset(props.projectId, props.assetId);
+    console.log("[WorkspaceView] loadAsset action dispatched. Image URL from store should be updated now.");
+
+    // Start the timer
+    labelingTimer.start();
+    timerInterval = window.setInterval(() => {
+        displayedTime.value = labelingTimer.getFormattedElapsedTime();
+    }, 1000);
 
     // TODO: Later, this will be driven by the Pinia store (Step 3.4.1)
     // Example:
@@ -50,14 +69,22 @@ onMounted(() => {
     // workspaceStore.loadAsset(props.projectId, props.assetId);
     // currentImageUrl.value = computed(() => workspaceStore.currentImageUrl);
 });
+
+onUnmounted(() => {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    labelingTimer.stop();
+});
 </script>
 
 <style lang="scss" scoped>
 @use "@/styles/variables.scss" as vars;
+@use '@/styles/mixins' as mixins;
 
 .annotation-workspace-container {
-    display: flex;
-    flex-direction: column;
+    @include mixins.flex-column();
     height: 100%;
     width: 100%;
     background-color: vars.$workspace-container-bg;
@@ -65,18 +92,70 @@ onMounted(() => {
 }
 
 .workspace-top-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas: "home main timer"; // TODO: Areas are not decided yet
+    grid-gap: vars.$padding-small;
     background-color: vars.$workspace-top-bar-bg;
     padding: vars.$padding-small;
     text-align: center;
     border-bottom: 1px solid vars.$workspace-border-color;
-    flex-shrink: 0;
 
-    a {
-        color: vars.$workspace-container-text;
-        margin-right: vars.$padding-medium;
-        &:hover {
-            text-decoration: underline;
+    .workspace-top-bar-left {
+        grid-area: home;
+        @include mixins.flex-start-center();
+
+        a {
+            color: vars.$laberis-brand-text;
+            text-decoration: none;
+            padding: vars.$padding-small 0;
+            position: relative;
+            transition: color vars.$transition-normal;
+
+            &::after {
+                content: "";
+                position: absolute;
+                width: 0;
+                height: 2px;
+                bottom: 0;
+                left: 50%;
+                background-color: vars.$primary-blue;
+                transition: width vars.$transition-long, left vars.$transition-long;
+            }
+
+            &:hover,
+            &.router-link-exact-active {
+                color: vars.$primary-link-hover-color;
+            }
+
+            &:hover::after,
+            &.router-link-exact-active::after {
+                width: 100%;
+                left: 0;
+            }
         }
+    }
+    .workspace-top-bar-center {
+        grid-area: main;
+        @include mixins.flex-center();
+        gap: vars.$padding-small;
+
+        button {
+            border: none;
+            border-radius: vars.$border-radius-standard;
+            color: vars.$button-primary-text;
+            background-color: vars.$button-primary-bg;
+            padding: vars.$padding-small;
+            cursor: pointer;
+            &:hover {
+                background-color: vars.$button-primary-hover-bg;
+            }
+        }
+    }
+    .workspace-top-bar-right {
+        grid-area: timer;
+        @include mixins.flex-end-center();
+        font-size: vars.$font-size-medium;
     }
 }
 
@@ -105,7 +184,7 @@ onMounted(() => {
 }
 
 .workspace-annotations-right {
-    width: 250px;
+    width: 200px;
     background-color: vars.$workspace-panel-bg;
     padding: vars.$padding-small;
     border-left: 1px solid vars.$workspace-border-color;
