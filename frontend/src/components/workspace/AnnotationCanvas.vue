@@ -1,14 +1,23 @@
 <template>
     <div class="annotation-canvas-wrapper" ref="wrapperRef">
-        <canvas ref="canvasRef" class="main-canvas"></canvas>
+        <canvas 
+            ref="canvasRef" 
+            class="main-canvas"
+            @mousedown="handleMouseDown"
+            @mousemove="handleMouseMove"
+            @mouseup="handleMouseUp"
+            @mouseleave="handleMouseLeave"
+            @wheel="handleWheel"
+        ></canvas>
         <div v-if="isLoading" class="loading-overlay">Loading Image...</div>
         <div v-if="errorLoadingImage" class="error-overlay">Error loading image.</div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import type { Point } from "@/types/common/point";
 
 interface Props {
     imageUrl: string | null;
@@ -22,6 +31,11 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 const imageInstance = ref<HTMLImageElement | null>(null);
 const isLoading = ref<boolean>(false);
 const errorLoadingImage = ref<boolean>(false);
+const isPanning = ref(false);
+const lastPanMousePosition = ref<Point | null>(null);
+
+const viewOffset = computed(() => workspaceStore.viewOffset);
+const zoomLevel = computed(() => workspaceStore.zoomLevel);
 
 let ctx: CanvasRenderingContext2D | null = null;
 let resizeObserver: ResizeObserver | null = null;
@@ -77,10 +91,16 @@ const loadImage = async (url: string | null) => {
     imageInstance.value = null;
     errorLoadingImage.value = false;
 
+    workspaceStore.setViewOffset({ x: 0, y: 0 });
+    workspaceStore.setZoomLevel(1);
+
     if (!url) {
         isLoading.value = false;
         workspaceStore.setCanvasDisplayDimensions({ width: 0, height: 0 });
-        nextTick(() => setCanvasDimensions());
+        nextTick(() => {
+            setCanvasDimensions();
+            draw();
+        });
         return;
     }
 
@@ -111,10 +131,11 @@ const loadImage = async (url: string | null) => {
             width: img.naturalWidth,
             height: img.naturalHeight
         });
-        nextTick(() => {
-            setCanvasDimensions();
-            draw();
-        });
+        centerAndFitImage();
+        // nextTick(() => {
+        //     setCanvasDimensions();
+        //     draw();
+        // });
     };
 
     img.onerror = () => {
@@ -136,7 +157,11 @@ const draw = () => {
         return;
     }
     const canvas = canvasRef.value;
+    ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.translate(viewOffset.value.x, viewOffset.value.y);
+    ctx.scale(zoomLevel.value, zoomLevel.value);
 
     if (
         imageInstance.value &&
@@ -144,10 +169,9 @@ const draw = () => {
         imageInstance.value.naturalHeight > 0
     ) {
         const img = imageInstance.value;
-        ctx.drawImage(
-            img, 0, 0, img.naturalWidth, img.naturalHeight, 0, 0, canvas.width, canvas.height
-        );
+        ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
     } else if (errorLoadingImage.value) {
+        ctx.save();
         if (canvas.width > 0 && canvas.height > 0) {
             ctx.fillStyle = "#ff6b6b";
             ctx.font = "16px Arial";
@@ -160,6 +184,7 @@ const draw = () => {
             );
         }
     } else if (!isLoading.value && !props.imageUrl) {
+        ctx.save();
         if (canvas.width > 0 && canvas.height > 0) {
             ctx.fillStyle = "#555";
             ctx.font = "16px Arial";
@@ -171,6 +196,113 @@ const draw = () => {
                 canvas.height / 2
             );
         }
+    }
+    ctx.restore();
+};
+
+const centerAndFitImage = () => {
+    if (!canvasRef.value || !imageInstance.value || !workspaceStore.imageNaturalDimensions) {
+        workspaceStore.setViewOffset({ x: 0, y: 0 });
+        workspaceStore.setZoomLevel(1.0);
+        nextTick(draw);
+        return;
+    }
+
+    const canvas = canvasRef.value;
+    const { width: imgWidth, height: imgHeight } = workspaceStore.imageNaturalDimensions;
+
+    if (imgWidth === 0 || imgHeight === 0 || canvas.width === 0 || canvas.height === 0) {
+        workspaceStore.setViewOffset({ x: 0, y: 0 });
+        workspaceStore.setZoomLevel(1.0);
+        nextTick(draw);
+        return;
+    }
+    
+    // Calculate scale to fit image within canvas
+    const scaleX = canvas.width / imgWidth;
+    const scaleY = canvas.height / imgHeight;
+    const newZoom = Math.min(scaleX, scaleY);
+
+    // Calculate offset to center the image
+    const newOffsetX = (canvas.width - imgWidth * newZoom) / 2;
+    const newOffsetY = (canvas.height - imgHeight * newZoom) / 2;
+
+    workspaceStore.setZoomLevel(newZoom);
+    workspaceStore.setViewOffset({ x: newOffsetX, y: newOffsetY });
+};
+
+const handleMouseDown = (event: MouseEvent) => {
+    // TODO: For now, always allow panning. Later, this will check `activeTool`.
+    // if (workspaceStore.activeTool !== 'cursor') return;
+
+    if (event.button !== 0) return;
+    isPanning.value = true;
+    lastPanMousePosition.value = { x: event.offsetX, y: event.offsetY };
+    canvasRef.value?.style.setProperty('cursor', 'grabbing');
+    event.preventDefault();
+};
+
+const handleMouseMove = (event: MouseEvent) => {
+    if (!isPanning.value || !lastPanMousePosition.value) return;
+
+    const dx = event.offsetX - lastPanMousePosition.value.x;
+    const dy = event.offsetY - lastPanMousePosition.value.y;
+
+    workspaceStore.setViewOffset({
+        x: viewOffset.value.x + dx,
+        y: viewOffset.value.y + dy,
+    });
+
+    lastPanMousePosition.value = { x: event.offsetX, y: event.offsetY };
+};
+
+const handleMouseUp = () => {
+    if (isPanning.value) {
+        isPanning.value = false;
+        // Change cursor based on active tool, default to 'grab' or 'default'
+        canvasRef.value?.style.setProperty('cursor', 'grab'); 
+    }
+};
+
+const handleMouseLeave = () => {
+    if (isPanning.value) {
+       handleMouseUp(); // Treat leaving the canvas as mouse up for panning
+    }
+};
+
+const handleWheel = (event: WheelEvent) => {
+    event.preventDefault();
+
+    if (!canvasRef.value) return;
+
+    const { zoomSensitivity } = workspaceStore.getZoomConfig;
+    const delta = event.deltaY * -1; // Invert for natural zoom
+    const zoomFactor = Math.exp(delta * zoomSensitivity);
+    
+    const newZoomLevel = zoomLevel.value * zoomFactor;
+
+    // Calculate mouse position relative to the canvas
+    const mouseX = event.offsetX;
+    const mouseY = event.offsetY;
+
+    // Calculate image point under mouse before zoom
+    const imagePointX = (mouseX - viewOffset.value.x) / zoomLevel.value;
+    const imagePointY = (mouseY - viewOffset.value.y) / zoomLevel.value;
+
+    // Update zoom level first (this will be clamped in the store action)
+    workspaceStore.setZoomLevel(newZoomLevel);
+    const actualNewZoomLevel = workspaceStore.zoomLevel; // Get potentially clamped value
+
+    // Calculate new viewOffset to keep imagePoint under the mouse
+    const newViewOffsetX = mouseX - imagePointX * actualNewZoomLevel;
+    const newViewOffsetY = mouseY - imagePointY * actualNewZoomLevel;
+    
+    workspaceStore.setViewOffset({ x: newViewOffsetX, y: newViewOffsetY });
+};
+
+const handleEscapeKey = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+        centerAndFitImage();
     }
 };
 
@@ -186,14 +318,18 @@ onMounted(() => {
 
         resizeObserver = new ResizeObserver(() => {
             setCanvasDimensions();
-            draw();
+            centerAndFitImage();
         });
         resizeObserver.observe(wrapperRef.value);
 
         if (props.imageUrl) {
             loadImage(props.imageUrl);
-            draw();
         }
+        else {
+            centerAndFitImage();
+        }
+        canvasRef.value?.style.setProperty('cursor', 'grab');
+        window.addEventListener('keydown', handleEscapeKey);
     } else {
         console.error("Canvas ref or wrapper ref not available on mount.");
     }
@@ -213,6 +349,28 @@ watch(
         loadImage(newUrl);
     }
 );
+
+watch([viewOffset, zoomLevel], () => {
+    nextTick(draw);
+});
+
+watch(() => workspaceStore.imageNaturalDimensions, (newDim) => {
+    if(newDim && newDim.width > 0 && newDim.height > 0 && imageInstance.value) {
+        // This implies an image has just loaded or reloaded its dimensions
+        // If canvas is already sized, we might want to ensure it's centered.
+        // loadImage -> centerAndFitImage should handle this.
+        // This watcher might be redundant if loadImage flow is robust.
+        // For safety, or if dimensions could change independently:
+        centerAndFitImage();
+    }
+}, { deep: true });
+
+watch(() => workspaceStore.canvasDisplayDimensions, () => {
+    // If canvas display dimensions change (e.g. from store, though usually driven by wrapperRef resize)
+    // it might be necessary to redraw or even re-fit.
+    // ResizeObserver handles wrapper changes. This is more for programmatic changes.
+    nextTick(draw);
+}, {deep: true});
 </script>
 
 <style lang="scss" scoped>
@@ -231,8 +389,6 @@ watch(
 
 .main-canvas {
     display: block;
-    max-width: 100%;
-    max-height: 100%;
 }
 
 %overlay-base {
@@ -246,6 +402,7 @@ watch(
     justify-content: center;
     font-size: 1.2em;
     z-index: 10;
+    pointer-events: none; // Allow interaction with canvas below
 }
 
 .loading-overlay,
