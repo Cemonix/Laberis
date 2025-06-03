@@ -162,7 +162,8 @@ const draw = () => {
 
     ctx.translate(viewOffset.value.x, viewOffset.value.y);
     ctx.scale(zoomLevel.value, zoomLevel.value);
-
+    
+    // TODO: Refactor to use a more robust image loading and drawing mechanism
     if (
         imageInstance.value &&
         imageInstance.value.naturalWidth > 0 &&
@@ -171,6 +172,7 @@ const draw = () => {
         const img = imageInstance.value;
         ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
     } else if (errorLoadingImage.value) {
+        ctx.restore();
         ctx.save();
         if (canvas.width > 0 && canvas.height > 0) {
             ctx.fillStyle = "#ff6b6b";
@@ -184,6 +186,7 @@ const draw = () => {
             );
         }
     } else if (!isLoading.value && !props.imageUrl) {
+        ctx.restore();
         ctx.save();
         if (canvas.width > 0 && canvas.height > 0) {
             ctx.fillStyle = "#555";
