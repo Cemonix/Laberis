@@ -1,10 +1,11 @@
 export class Timer {
+    public isRunning: boolean = false;
+    public isPaused: boolean = false;
+    
     private startTime: number | null = null;
     private stopTime: number | null = null;
     private pausedTime: number = 0; // Accumulates total paused duration for the current timing session
     private pauseStartTime: number | null = null; // Timestamp when pause began
-    private isRunning: boolean = false;
-    private isPaused: boolean = false;
 
     constructor() {}
 
