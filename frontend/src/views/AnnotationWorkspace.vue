@@ -10,6 +10,7 @@
                 <button>Next</button>
             </div>
             <div class="workspace-top-bar-right">
+                <span class="zoom-display">Zoom: {{ zoomPercentageDisplay }}</span>
                 <span>{{ displayedTime }}</span>
             </div>
         </div>
@@ -26,11 +27,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, ref } from "vue";
+import { onMounted, onUnmounted, computed } from "vue";
 import AnnotationCanvas from "@/components/workspace/AnnotationCanvas.vue";
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import { Timer } from '@/utils/timer';
-import { onUnmounted } from "vue";
 
 const props = defineProps({
     projectId: {
@@ -46,21 +45,16 @@ const props = defineProps({
 const workspaceStore = useWorkspaceStore();
 
 const imageUrlFromStore = computed(() => workspaceStore.currentImageUrl);
-
-const labelingTimer = new Timer();
-const displayedTime = ref<string>("00:00:00");
-let timerInterval: number | null = null;
+const displayedTime = computed(() => workspaceStore.elapsedTimeDisplay);
+const zoomPercentageDisplay = computed(() => {
+    const zoomLevel = workspaceStore.zoomLevel;
+    return `${(zoomLevel * 100).toFixed(0)}%`;
+});
 
 onMounted(async () => {
     console.log("[WorkspaceView] Mounted. Project ID:", props.projectId, "Asset ID:", props.assetId);
     await workspaceStore.loadAsset(props.projectId, props.assetId);
     console.log("[WorkspaceView] loadAsset action dispatched. Image URL from store should be updated now.");
-
-    // Start the timer
-    labelingTimer.start();
-    timerInterval = window.setInterval(() => {
-        displayedTime.value = labelingTimer.getFormattedElapsedTime();
-    }, 1000);
 
     // TODO: Later, this will be driven by the Pinia store (Step 3.4.1)
     // Example:
@@ -71,11 +65,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-    }
-    labelingTimer.stop();
+    workspaceStore.cleanupTimer();
 });
 </script>
 
@@ -93,16 +83,16 @@ onUnmounted(() => {
 
 .workspace-top-bar {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-areas: "home main timer"; // TODO: Areas are not decided yet
+    grid-template-columns: 1fr auto 1fr;
     grid-gap: vars.$padding-small;
+    align-items: center;
     background-color: vars.$workspace-top-bar-bg;
-    padding: vars.$padding-small;
+    padding: vars.$padding-small vars.$padding-medium;
     text-align: center;
     border-bottom: 1px solid vars.$workspace-border-color;
 
     .workspace-top-bar-left {
-        grid-area: home;
+        justify-self: start;
         @include mixins.flex-start-center();
 
         a {
@@ -136,7 +126,7 @@ onUnmounted(() => {
         }
     }
     .workspace-top-bar-center {
-        grid-area: main;
+        justify-self: center;
         @include mixins.flex-center();
         gap: vars.$padding-small;
 
@@ -153,9 +143,13 @@ onUnmounted(() => {
         }
     }
     .workspace-top-bar-right {
-        grid-area: timer;
+        justify-self: end;
         @include mixins.flex-end-center();
         font-size: vars.$font-size-medium;
+
+        .zoom-display {
+            margin-right: vars.$padding-small;
+        }
     }
 }
 
