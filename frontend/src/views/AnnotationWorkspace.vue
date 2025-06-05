@@ -15,7 +15,9 @@
             </div>
         </div>
         <div class="workspace-main-area">
-            <div class="workspace-tools-left">Left Tools Panel</div>
+            <div class="workspace-tools-left">
+                <ToolsLeftPanel />
+            </div>
             <div class="workspace-canvas-area">
                 <AnnotationCanvas :image-url="imageUrlFromStore" />
             </div>
@@ -30,6 +32,7 @@
 import { onMounted, onUnmounted, computed } from "vue";
 import AnnotationCanvas from "@/components/workspace/AnnotationCanvas.vue";
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import ToolsLeftPanel from "@/components/workspace/ToolsLeftPanel.vue";
 
 const props = defineProps({
     projectId: {
@@ -160,7 +163,8 @@ onUnmounted(() => {
 }
 
 .workspace-tools-left {
-    width: 200px;
+    width: auto;
+    min-width: 60px;
     background-color: vars.$workspace-panel-bg;
     padding: vars.$padding-small;
     border-right: 1px solid vars.$workspace-border-color;
