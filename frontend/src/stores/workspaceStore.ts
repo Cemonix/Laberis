@@ -1,13 +1,29 @@
 import { defineStore } from "pinia";
+import { faArrowPointer, faDotCircle, faMinus, faSquare, faDrawPolygon } from '@fortawesome/free-solid-svg-icons';
 import type { ImageDimensions } from "@/types/image/imageDimensions";
 import type { WorkspaceState } from "@/types/workspace/workspaceState";
 import { Timer } from "@/utils/timer";
 import type { Point } from "@/types/common/point";
 import { ToolName, type Tool } from "@/types/workspace/tools";
+import type { Annotation } from '@/types/workspace/annotation';
+import type { Label, LabelScheme } from '@/types/workspace/labelScheme';
+
+// TODO: Replace with actual API calls or more sophisticated logic
+const SAMPLE_LABEL_SCHEME: LabelScheme = {
+    labelSchemeId: 1,
+    name: "Default Scheme",
+    projectId: 1,
+    labels: [
+        { labelId: 1, name: "Person", color: "#FF0000", labelSchemeId: 1, description: "A human being" },
+        { labelId: 2, name: "Car", color: "#00FF00", labelSchemeId: 1, description: "A vehicle" },
+        { labelId: 3, name: "Tree", color: "#0000FF", labelSchemeId: 1, description: "A woody plant" },
+    ],
+};
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 10.0;
 const ZOOM_SENSITIVITY = 0.005;
+
 
 export const useWorkspaceStore = defineStore("workspace", {
     state: (): WorkspaceState => ({
@@ -23,8 +39,16 @@ export const useWorkspaceStore = defineStore("workspace", {
         zoomLevel: 1.0,
         activeTool: ToolName.CURSOR,
         availableTools: [
-            { id: ToolName.CURSOR, name: 'Cursor', icon: 'fa-regular fa-arrow-pointer' },
+            { id: ToolName.CURSOR, name: 'Cursor', iconDefinition: faArrowPointer },
+            { id: ToolName.POINT, name: 'Point', iconDefinition: faDotCircle },
+            { id: ToolName.LINE, name: 'Line', iconDefinition: faMinus },
+            { id: ToolName.BOUNDING_BOX, name: 'Bounding Box', iconDefinition: faSquare },
+            { id: ToolName.POLYGON, name: 'Polygon', iconDefinition: faDrawPolygon },
         ],
+        annotations: [] as Annotation[],
+        currentLabelId: null as number | null,
+        currentLabelScheme: SAMPLE_LABEL_SCHEME as LabelScheme | null,
+        currentTaskId: null as number | null,
     }),
 
     getters: {
@@ -44,7 +68,24 @@ export const useWorkspaceStore = defineStore("workspace", {
         }),
         getActiveToolDetails(): Tool | undefined {
             return this.availableTools.find(tool => tool.id === this.activeTool);
-        }
+        },
+        getAnnotations(state): Annotation[] {
+            return state.annotations;
+        },
+        getSelectedLabelId(state): number | null {
+            return state.currentLabelId;
+        },
+        getCurrentLabelScheme(state): LabelScheme | null {
+            return state.currentLabelScheme;
+        },
+        getLabelById(state): (labelId: number) => Label | undefined {
+            return (labelId: number) => {
+                if (!state.currentLabelScheme) {
+                    return undefined;
+                }
+                return state.currentLabelScheme.labels.find(label => label.labelId === labelId);
+            };
+        },
     },
 
     actions: {
@@ -59,7 +100,8 @@ export const useWorkspaceStore = defineStore("workspace", {
             );
 
             this.imageNaturalDimensions = null;
-            // this.annotations = []; // Clear annotations for the new asset
+            this.annotations = [];
+            this.currentLabelId = null;
 
             this.startTimer();
             this.resetZoomAndView();
@@ -74,6 +116,69 @@ export const useWorkspaceStore = defineStore("workspace", {
         setCanvasDisplayDimensions(dimensions: ImageDimensions) {
             this.canvasDisplayDimensions = dimensions;
             console.log("[Store] Set canvas display dimensions:", dimensions);
+        },
+
+        setAnnotations(annotations: Annotation[]) {
+            this.annotations = annotations;
+        },
+
+        /**
+         * Adds a new annotation to the current list.
+         * Later, this will also handle POSTing to the backend.
+         */
+        addAnnotation(annotation: Annotation) {
+            this.annotations.push(annotation);
+            // TODO: API call to persist the annotation to the backend
+            // try {
+            //   const savedAnnotation = await api.saveAnnotation(this.currentProjectId, this.currentAssetId, this.currentTaskId, annotation);
+            //   // Optionally update the annotation in the store with data from backend (e.g., annotationId)
+            //   const index = this.annotations.findIndex(a => a.clientId === savedAnnotation.clientId);
+            //   if (index !== -1) {
+            //     this.annotations[index] = savedAnnotation;
+            //   }
+            // } catch (error) {
+            //   console.error("Failed to save annotation:", error);
+            //   // Optionally remove the annotation from local store or mark as unsaved
+            // }
+        },
+
+        /**
+         * Sets the currently selected label ID.
+         */
+        setCurrentLabelId(labelId: number | null) {
+            this.currentLabelId = labelId;
+            if (labelId !== null) {
+                const label = this.getLabelById(labelId); // Using the getter within an action
+                console.log(`[Store] Selected Label ID: ${labelId} (${label?.name || 'Unknown'})`);
+            } else {
+                console.log("[Store] Label selection cleared.");
+            }
+        },
+
+        /**
+         * Sets the label scheme for the current context.
+         * @param scheme The label scheme to set, or null to clear it.
+         */
+        setCurrentLabelScheme(scheme: LabelScheme | null) {
+            this.currentLabelScheme = scheme;
+            if (scheme) {
+                console.log("[Store] Label Scheme set:", scheme.name);
+            } else {
+                console.log("[Store] Label Scheme cleared.");
+            }
+        },
+
+        /**
+         * Sets the current task ID.
+         * @param taskId The ID of the current task.
+         */
+        setCurrentTaskId(taskId: number | null) {
+            this.currentTaskId = taskId;
+            if (taskId !== null) {
+                console.log("[Store] Current Task ID set:", taskId);
+            } else {
+                console.log("[Store] Current Task ID cleared.");
+            }
         },
 
         startTimer() {
