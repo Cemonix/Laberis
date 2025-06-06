@@ -30,9 +30,9 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, computed } from "vue";
-import AnnotationCanvas from "@/components/workspace/AnnotationCanvas.vue";
+import AnnotationCanvas from "@/components/annotationWorkspace/AnnotationCanvas.vue";
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import ToolsLeftPanel from "@/components/workspace/ToolsLeftPanel.vue";
+import ToolsLeftPanel from "@/components/annotationWorkspace/ToolsLeftPanel.vue";
 
 const props = defineProps({
     projectId: {
