@@ -11,8 +11,8 @@
 </template>
 
 <script setup lang="ts">
-import Navbar from '@/components/layout/Navbar.vue';
-import Footer from '@/components/layout/Footer.vue';
+import Navbar from '@/layouts/Navbar.vue';
+import Footer from '@/layouts/Footer.vue';
 </script>
 
 <style lang="scss" scoped>
