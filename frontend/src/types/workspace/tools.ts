@@ -4,8 +4,9 @@ export enum ToolName {
     CURSOR = 'cursor',
     POINT = 'point',
     LINE = 'line',
-    BOUNDING_BOX = 'bbox',
+    POLYLINE = 'polyline',
     POLYGON = 'polygon',
+    BOUNDING_BOX = 'bbox',
 }
 
 export interface Tool {
