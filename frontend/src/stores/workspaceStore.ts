@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { faArrowPointer, faDotCircle, faMinus, faSquare, faDrawPolygon } from '@fortawesome/free-solid-svg-icons';
+import { faArrowPointer, faDotCircle, faMinus, faWaveSquare, faSquare, faDrawPolygon } from '@fortawesome/free-solid-svg-icons';
 import type { ImageDimensions } from "@/types/image/imageDimensions";
 import type { WorkspaceState } from "@/types/workspace/workspaceState";
 import { Timer } from "@/utils/timer";
@@ -7,6 +7,7 @@ import type { Point } from "@/types/common/point";
 import { ToolName, type Tool } from "@/types/workspace/tools";
 import type { Annotation } from '@/types/workspace/annotation';
 import type { Label, LabelScheme } from '@/types/workspace/labelScheme';
+import { fetchAnnotations, saveAnnotation } from '@/services/api/annotationService';
 
 // TODO: Replace with actual API calls or more sophisticated logic
 const SAMPLE_LABEL_SCHEME: LabelScheme = {
@@ -41,8 +42,9 @@ export const useWorkspaceStore = defineStore("workspace", {
         availableTools: [
             { id: ToolName.CURSOR, name: 'Cursor', iconDefinition: faArrowPointer },
             { id: ToolName.POINT, name: 'Point', iconDefinition: faDotCircle },
-            { id: ToolName.LINE, name: 'Line', iconDefinition: faMinus },
             { id: ToolName.BOUNDING_BOX, name: 'Bounding Box', iconDefinition: faSquare },
+            { id: ToolName.LINE, name: 'Line', iconDefinition: faMinus },
+            { id: ToolName.POLYLINE, name: 'Polyline', iconDefinition: faWaveSquare },
             { id: ToolName.POLYGON, name: 'Polygon', iconDefinition: faDrawPolygon },
         ],
         annotations: [] as Annotation[],
@@ -103,6 +105,14 @@ export const useWorkspaceStore = defineStore("workspace", {
             this.annotations = [];
             this.currentLabelId = null;
 
+            try {
+                const fetchedAnnotations = await fetchAnnotations(assetId);
+                this.setAnnotations(fetchedAnnotations);
+            } catch (error) {
+                console.error("Failed to fetch annotations:", error);
+                this.setAnnotations([]); // Clear annotations on error
+            }
+
             this.startTimer();
             this.resetZoomAndView();
             this.setActiveTool(ToolName.CURSOR);
@@ -126,20 +136,25 @@ export const useWorkspaceStore = defineStore("workspace", {
          * Adds a new annotation to the current list.
          * Later, this will also handle POSTing to the backend.
          */
-        addAnnotation(annotation: Annotation) {
+        async addAnnotation(annotation: Annotation) {
             this.annotations.push(annotation);
-            // TODO: API call to persist the annotation to the backend
-            // try {
-            //   const savedAnnotation = await api.saveAnnotation(this.currentProjectId, this.currentAssetId, this.currentTaskId, annotation);
-            //   // Optionally update the annotation in the store with data from backend (e.g., annotationId)
-            //   const index = this.annotations.findIndex(a => a.clientId === savedAnnotation.clientId);
-            //   if (index !== -1) {
-            //     this.annotations[index] = savedAnnotation;
-            //   }
-            // } catch (error) {
-            //   console.error("Failed to save annotation:", error);
-            //   // Optionally remove the annotation from local store or mark as unsaved
-            // }
+
+            try {
+                const savedAnnotation = await saveAnnotation(annotation);
+
+                const index = this.annotations.findIndex(a => a.clientId === savedAnnotation.clientId);
+                if (index !== -1) {
+                    this.annotations[index] = savedAnnotation;
+                }
+
+            } catch (error) {
+                console.error("Failed to save annotation:", error);
+
+                this.annotations = this.annotations.filter(a => a.clientId !== annotation.clientId);
+
+                // TODO: Show a user-friendly error notification
+                alert("Could not save annotation. Please try again.");
+            }
         },
 
         /**
