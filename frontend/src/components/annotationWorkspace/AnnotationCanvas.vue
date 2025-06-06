@@ -20,17 +20,17 @@ import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from "vue"
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import type { Point } from "@/types/common/point";
 import { ToolName } from "@/types/workspace/tools";
-import { v4 as uuidv4 } from 'uuid';
-import type { Annotation, PointAnnotationData } from '@/types/workspace/annotation';
-import { drawPoint, drawBoundingBox } from '@/utils/canvasDrawer';
+import { drawPoint, drawBoundingBox } from '@/core/annotationWorkspace/annotationDrawer';
+import { AnnotationManager } from "@/core/annotationWorkspace/annotationManager";
 
 interface Props {
     imageUrl: string | null;
 }
-// FIXME: There is a bug when scaling window - escape key does not scale image to fit
+
 const props = defineProps<Props>();
 const workspaceStore = useWorkspaceStore();
 
+const annotationManager = new AnnotationManager(workspaceStore);
 
 const wrapperRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -39,17 +39,13 @@ const isLoading = ref<boolean>(false);
 const errorLoadingImage = ref<boolean>(false);
 const isPanning = ref(false);
 const lastPanMousePosition = ref<Point | null>(null);
+let ctx: CanvasRenderingContext2D | null = null;
+let resizeObserver: ResizeObserver | null = null;
 
 const viewOffset = computed(() => workspaceStore.viewOffset);
 const zoomLevel = computed(() => workspaceStore.zoomLevel);
 const activeTool = computed(() => workspaceStore.activeTool);
-const selectedLabelId = computed(() => workspaceStore.getSelectedLabelId);
 const annotationsToRender = computed(() => workspaceStore.getAnnotations);
-const currentAssetId = computed(() => workspaceStore.currentAssetId);
-const currentTaskId = computed(() => workspaceStore.currentTaskId);   
-
-let ctx: CanvasRenderingContext2D | null = null;
-let resizeObserver: ResizeObserver | null = null;
 
 const canvasCursorStyle = computed(() => {
     switch (activeTool.value) {
@@ -225,32 +221,36 @@ const draw = () => {
         }
     }
     
-    drawAnnotations(ctx);
+    drawSavedAnnotations(ctx);
+    annotationManager.draw(ctx);
 
     ctx.restore();
 };
 
-const drawAnnotations = (context: CanvasRenderingContext2D) => {
-    if (annotationsToRender.value && annotationsToRender.value.length > 0) {
-        annotationsToRender.value.forEach(annotation => {
-            if (annotation.annotationType === 'point' && annotation.coordinates.type === 'point') {
-                const imageCoordX = annotation.coordinates.x;
-                const imageCoordY = annotation.coordinates.y;
+const drawSavedAnnotations = (context: CanvasRenderingContext2D) => {
+    if (!annotationsToRender.value) return;
 
-                const label = workspaceStore.getLabelById(annotation.labelId);
-                const pointColor = label?.color || 'magenta';
-                const pointRadius = 4 / zoomLevel.value;
-                const lineWidth = 1 / zoomLevel.value;
+    annotationsToRender.value.forEach(annotation => {
+        if (annotation.annotationType === 'point' && annotation.coordinates.type === 'point') {
+            const imageCoordX = annotation.coordinates.point.x;
+            const imageCoordY = annotation.coordinates.point.y;
 
-                drawPoint(context, imageCoordX, imageCoordY, pointColor, pointRadius, lineWidth);
-            }
-            else if (annotation.annotationType === 'bounding_box' && annotation.coordinates.type === 'bounding_box') {
-                const { x, y, width, height } = annotation.coordinates;
-                const label = workspaceStore.getLabelById(annotation.labelId);
-                drawBoundingBox(context, x, y, width, height, label?.color || 'blue');
-            }
-        });
-    }
+            const label = workspaceStore.getLabelById(annotation.labelId);
+            const pointColor = label?.color || 'magenta';
+            const pointRadius = 4 / zoomLevel.value;
+            const lineWidth = 1 / zoomLevel.value;
+
+            drawPoint(context, imageCoordX, imageCoordY, pointColor, pointRadius, lineWidth);
+        }
+        else if (annotation.annotationType === 'bounding_box' && annotation.coordinates.type === 'bounding_box') {
+            const label = workspaceStore.getLabelById(annotation.labelId);
+            const { topLeft, bottomRight } = annotation.coordinates;
+            const width = bottomRight.x - topLeft.x;
+            const height = bottomRight.y - topLeft.y;
+            drawBoundingBox(context, topLeft.x, topLeft.y, width, height, label?.color || 'blue');
+        }
+    });
+    
 };
 
 const centerAndFitImage = () => {
@@ -287,64 +287,12 @@ const centerAndFitImage = () => {
 const handleMouseDown = (event: MouseEvent) => {
     // --- Only allow panning if CURSOR tool is active ---
     if (activeTool.value === ToolName.CURSOR) {
+        event.preventDefault();
         if (event.button !== 0) return;
         isPanning.value = true;
         lastPanMousePosition.value = { x: event.offsetX, y: event.offsetY };
-        event.preventDefault();
-    } 
-    if (activeTool.value === ToolName.POINT) {
-        event.preventDefault();
-
-        if (selectedLabelId.value === null) {
-            // TODO: Implement a more user-friendly notification system
-            alert("Please select a label first to create a point annotation.");
-            return;
-        }
-        if (currentAssetId.value === null) {
-            console.error("Cannot create point: Asset ID is missing.");
-            alert("Error: Asset information is missing.");
-            return;
-        }
-        // TODO: Uncomment when task management is implemented
-        // if (currentTaskId.value === null) {
-        //     console.error("Cannot create point: Task ID is missing.");
-        //     alert("Error: Task information is missing.");
-        //     return;
-        // }
-
-        const canvasX = event.offsetX;
-        const canvasY = event.offsetY;
-
-
-        const imageX = (canvasX - viewOffset.value.x) / zoomLevel.value;
-        const imageY = (canvasY - viewOffset.value.y) / zoomLevel.value;
-
-        const pointCoordinates: PointAnnotationData = {
-            type: 'point',
-            x: imageX,
-            y: imageY
-        };
-
-        const newAnnotation: Annotation = {
-            clientId: uuidv4(), // TODO: Generate a temporary client-side ID
-            annotationType: 'point',
-            labelId: selectedLabelId.value,
-            coordinates: pointCoordinates,
-            assetId: Number(currentAssetId.value),
-            taskId: Number(currentTaskId.value)
-        };
-
-        workspaceStore.addAnnotation(newAnnotation);
-        draw(); // Redraw canvas to show new annotation
-    }
-    else if (activeTool.value === ToolName.LINE) {
-        // Logic for line tool mousedown
-    }
-    else if (activeTool.value === ToolName.BOUNDING_BOX) {
-        // Logic for bounding box tool mousedown
-    }
-    else if (activeTool.value === ToolName.POLYGON) {
-        // Logic for polygon tool mousedown
+    } else {
+        annotationManager.onMouseDown(event);
     }
 };
 
@@ -359,18 +307,24 @@ const handleMouseMove = (event: MouseEvent) => {
             y: viewOffset.value.y + dy,
         });
         lastPanMousePosition.value = { x: event.offsetX, y: event.offsetY };
+    } else {
+        annotationManager.onMouseMove(event);
     }
 };
 
-const handleMouseUp = () => {
+const handleMouseUp = (event: MouseEvent) => {
     if (isPanning.value && activeTool.value === ToolName.CURSOR) {
         isPanning.value = false;
+    } else {
+        annotationManager.onMouseUp(event);
     }
 };
 
-const handleMouseLeave = () => {
+const handleMouseLeave = (event: MouseEvent) => {
     if (isPanning.value && activeTool.value === ToolName.CURSOR) {
-       handleMouseUp(); // Treat leaving the canvas as mouse up for panning
+       isPanning.value = false;
+    } else {
+       annotationManager.onMouseLeave(event);
     }
 };
 
@@ -406,6 +360,7 @@ const handleWheel = (event: WheelEvent) => {
 
 const handleEscapeKey = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
+        setCanvasDimensions();
         centerAndFitImage();
     }
 };
