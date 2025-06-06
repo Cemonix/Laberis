@@ -103,7 +103,7 @@ const selectLabel = (labelId: number) => {
 
 .tools-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
     gap: vars.$padding-small;
 }
 
