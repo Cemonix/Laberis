@@ -1,33 +1,37 @@
+import type { Point } from "@/types/common/point";
+
 // --- Specific Data Structures for the 'coordinates' field ---
 export interface PointAnnotationData {
     type: 'point';
-    x: number;
-    y: number;
+    point: Point;
+}
+
+export interface LineAnnotationData {
+    type: 'line';
+    pointFrom: Point;
+    pointTo: Point;
 }
 
 export interface BoundingBoxAnnotationData {
     type: 'bounding_box';
-    x: number;
-    y: number;
-    width: number;
-    height: number;
+    topLeft: Point;
+    bottomRight: Point;
 }
 
 export interface PolylineAnnotationData {
     type: 'polyline';
-    points: number[]; // [x1, y1, x2, y2, ..., xn, yn]
+    points: Point[];
 }
 
 export interface PolygonAnnotationData {
     type: 'polygon';
-    points: number[];
+    points: Point[];
 }
 
 export interface TextAnnotationData {
     type: 'text';
     text: string;
-    x?: number;
-    y?: number;
+    point?: Point;
     width?: number;
     height?: number;
 }
@@ -40,7 +44,7 @@ export type AnnotationCoordinates =
     | TextAnnotationData;
 
 // --- Main Annotation Interface ---
-export type AnnotationTypeValue = 'bounding_box' | 'polygon' | 'polyline' | 'point' | 'text';
+export type AnnotationTypeValue = 'bounding_box' | 'polygon' | 'polyline' | 'line' | 'point' | 'text';
 
 export interface Annotation {
     clientId?: string;
