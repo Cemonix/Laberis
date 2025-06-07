@@ -1,10 +1,12 @@
 <template>
-    <router-link :to="projectUrl" class="project-card">
+    <router-link :to="projectUrl" class="card project-card">
         <header class="card-header">
             <h3 class="project-name">{{ project.name }}</h3>
             <span class="project-status" :class="statusClass">{{ project.status }}</span>
         </header>
-        <p class="project-description">{{ project.description || 'No description provided.' }}</p>
+        <div class="card-body">
+            <p class="project-description">{{ project.description || 'No description provided.' }}</p>
+        </div>
         <footer class="card-footer">
             <span class="project-meta">{{ project.projectType.replace('_', ' ') }}</span>
             <span class="project-meta">Created: {{ formattedDate }}</span>
@@ -14,7 +16,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { Project } from '@/types/project';
+import type { Project } from '@/types/project/project';
 
 const props = defineProps<{
     project: Project;
@@ -35,37 +37,22 @@ const formattedDate = computed(() => {
 <style lang="scss" scoped>
 @use "sass:color";
 @use "@/styles/variables.scss" as vars;
+@use "@/styles/mixins.scss" as mixins;
 
 .project-card {
-    display: flex;
-    flex-direction: column;
-    background-color: vars.$workspace-container-bg;
-    border: 1px solid vars.$workspace-border-color;
-    border-radius: vars.$border-radius-standard;
-    padding: vars.$padding-medium;
-    text-decoration: none;
-    color: vars.$workspace-container-text;
     transition: transform vars.$transition-normal, box-shadow vars.$transition-normal;
     height: 100%;
 
     &:hover {
         transform: translateY(-5px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        border-color: color.adjust(vars.$primary-blue, $lightness: 15%);
+        box-shadow: vars.$shadow-md;
+        border-color: color.adjust(vars.$color-primary, $lightness: 15%);
     }
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: vars.$padding-small;
 }
 
 .project-name {
     font-size: vars.$font_size_large;
-    font-weight: bold;
-    color: vars.$workspace-container-text;
+    font-weight: vars.$font-weight-heading;
     margin: 0;
     margin-right: vars.$padding-small;
 }
@@ -73,42 +60,36 @@ const formattedDate = computed(() => {
 .project-status {
     display: inline-block;
     padding: 0.25em 0.6em;
-    font-size: vars.$font-size-small;
-    font-weight: bold;
+    font-size: vars.$font_size_small;
+    font-weight: vars.$font-weight-heading;
     border-radius: vars.$border-radius-standard;
     text-transform: capitalize;
     white-space: nowrap;
     flex-shrink: 0;
 
-    // Status-specific colors
     &.status-active {
-        background-color: color.adjust(vars.$primary-blue, $alpha: -0.7);
-        color: color.adjust(vars.$primary-blue, $lightness: 25%);
+        background-color: color.adjust(vars.$color-primary, $alpha: -0.7);
+        color: color.adjust(vars.$color-primary, $lightness: 25%);
     }
     &.status-archived {
-        background-color: color.adjust(#6c757d, $alpha: -0.7);
-        color: color.adjust(#6c757d, $lightness: 25%);
+        background-color: color.adjust(vars.$color-secondary, $alpha: -0.7);
+        color: color.adjust(vars.$color-secondary, $lightness: 25%);
     }
     &.status-read_only {
-        background-color: color.adjust(#ffc107, $alpha: -0.7);
-        color: color.adjust(#ffc107, $lightness: 15%);
+        background-color: color.adjust(vars.$color-warning, $alpha: -0.7);
+        color: color.adjust(vars.$color-warning, $lightness: 15%);
     }
 }
 
 .project-description {
     font-size: vars.$font_size_medium;
-    margin-bottom: vars.$padding-medium;
+    margin: 0;
     flex-grow: 1;
-    color: lighten(vars.$workspace-container-text, 25%);
 }
 
 .card-footer {
-    display: flex;
-    justify-content: space-between;
+    @include mixins.flex-between-center();
     font-size: vars.$font_size-small;
-    color: lighten(vars.$workspace-container-text, 40%);
-    border-top: 1px solid vars.$workspace-border-color;
-    padding-top: vars.$padding-small;
     text-transform: capitalize;
 }
 </style>

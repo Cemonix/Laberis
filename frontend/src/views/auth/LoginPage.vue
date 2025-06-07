@@ -11,7 +11,7 @@
                     <label for="password">Password</label>
                     <input type="password" id="password" v-model="password" placeholder="Enter your password" required />
                 </div>
-                <button type="submit">Login</button>
+                <button type="submit" class="btn btn-primary">Login</button>
             </form>
         </div>
     </div>
@@ -30,61 +30,29 @@ const handleLogin = () => {
 
 <style lang="scss" scoped>
 @use "@/styles/variables.scss" as vars;
+@use "@/styles/mixins.scss" as mixins;
 
 .login-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
     width: 100%;
+    @include mixins.flex-center;
 }
 
 .login-box {
     min-width: 400px;
     padding: vars.$padding-large;
-    border: 1px solid vars.$medium-grey-border;
+    border: vars.$border-width solid vars.$theme-border;
     border-radius: vars.$border-radius-standard;
-    background-color: vars.$light-grey-bg;
+    background-color: vars.$color-gray-200;
 
     h1 {
         text-align: center;
         margin-bottom: vars.$padding-large;
-        color: vars.$text_color;
+        color: vars.$theme-text;
     }
 }
 
-.form-group {
-    margin-bottom: vars.$padding-medium;
-
-    label {
-        display: block;
-        margin-bottom: vars.$padding-small;
-    }
-
-    input {
-        width: 100%;
-        padding: vars.$padding-small;
-        border: 1px solid vars.$medium-grey-border;
-        border-radius: vars.$border-radius-input;
-    }
-}
-
-button {
+.btn {
     width: 100%;
-    padding: 0.75rem;
-    background-color: vars.$primary-blue;
-    color: white;
-    border: none;
-    border-radius: vars.$border-radius-input;
-    cursor: pointer;
-    font-size: 1rem;
-
-    &:hover {
-        background-color: vars.$primary-blue-hover;
-    }
-
-    &:focus {
-        outline: 2px solid vars.$primary-blue-hover;
-        outline-offset: 2px;
-    }
+    margin-top: vars.$padding-small;
 }
 </style>

@@ -19,21 +19,20 @@ useRouter();
 
 <style lang="scss" scoped>
 @use "@/styles/variables.scss" as vars;
+@use "@/styles/mixins.scss" as mixins;
 
 .navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: vars.$dark-grey-nav-bg;
+    @include mixins.flex-between-center;
+    background-color: vars.$navbar-bg;
     padding: vars.$padding-medium vars.$padding-large;
-    color: vars.$laberis-brand-text;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    color: vars.$navbar-text;
+    box-shadow: vars.$shadow-sm;
 
     .navbar-brand {
         a {
-            color: vars.$laberis-brand-text;
+            color: vars.$navbar-text;
             text-decoration: none;
-            font-weight: bold;
+            font-weight: vars.$font-weight-heading;
             font-size: 1.5rem;
         }
     }
@@ -43,7 +42,7 @@ useRouter();
         gap: vars.$padding-large;
 
         a {
-            color: vars.$laberis-brand-text;
+            color: vars.$navbar-text;
             text-decoration: none;
             padding: vars.$padding-small 0;
             position: relative;
@@ -56,13 +55,13 @@ useRouter();
                 height: 2px;
                 bottom: 0;
                 left: 50%;
-                background-color: vars.$primary-blue;
+                background-color: vars.$color-primary;
                 transition: width vars.$transition-long, left vars.$transition-long;
             }
 
             &:hover,
             &.router-link-exact-active {
-                color: vars.$primary-link-hover-color;
+                color: vars.$color-link-hover;
             }
 
             &:hover::after,

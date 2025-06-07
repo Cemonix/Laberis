@@ -17,17 +17,18 @@ import Footer from '@/layouts/Footer.vue';
 
 <style lang="scss" scoped>
 @use "@/styles/variables.scss" as vars;
+@use "@/styles/mixins.scss" as mixins;
 
 .default-layout {
-    display: flex;
-    flex-direction: column;
+    @include mixins.flex-column;
     min-height: 100vh;
-    background-color: vars.$background_color;
+    background-color: vars.$theme-background;
 }
 
 .main-content {
+    position: relative;
     flex-grow: 1;
     padding: vars.$padding-medium;
-    background-color: white;
+    background-color: vars.$color-white;
 }
 </style>

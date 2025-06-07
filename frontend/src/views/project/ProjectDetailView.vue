@@ -27,8 +27,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import type { Project } from '@/types/project';
-import { ProjectStatus, ProjectType } from '@/types/project';
+import type { Project } from '@/types/project/project';
+import { ProjectStatus, ProjectType } from '@/types/project/project';
 
 const route = useRoute();
 const project = ref<Project | null>(null);
@@ -50,12 +50,13 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
 @use "@/styles/variables.scss" as vars;
 
 .page-container {
     padding: vars.$padding-large;
     width: 100%;
-    max-width: 1400px;
+    max-width: vars.$max-width-wide;
     margin: 0 auto;
 }
 
@@ -63,11 +64,11 @@ onMounted(() => {
     margin-bottom: vars.$padding-medium;
     .project-name {
         font-size: 2.5rem;
-        color: vars.$text_color;
+        color: vars.$theme-text;
     }
     .project-description {
         font-size: vars.$font_size_large;
-        color: lighten(vars.$text_color, 25%);
+        color: vars.$theme-text-light;
         margin-top: vars.$padding-small;
     }
 }
@@ -75,30 +76,30 @@ onMounted(() => {
 .project-sub-nav {
     display: flex;
     gap: vars.$padding-small;
-    border-bottom: 1px solid vars.$medium-grey-border;
+    border-bottom: vars.$border-width solid vars.$color-gray-300;
     margin-bottom: vars.$padding-large * 2;
 }
 
 .sub-nav-link {
     padding: vars.$padding-small vars.$padding-medium;
     text-decoration: none;
-    color: lighten(vars.$text_color, 30%);
+    color: vars.$color-gray-700;
     border-bottom: 3px solid transparent;
     transition: color vars.$transition-normal, border-color vars.$transition-normal;
 
     &:hover {
-        color: vars.$text_color;
+        color: vars.$theme-text;
     }
 
     &.is-active {
-        color: vars.$primary-blue;
-        border-bottom-color: vars.$primary-blue;
+        color: vars.$color-primary;
+        border-bottom-color: vars.$color-primary;
     }
 }
 
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition: opacity vars.$transition-long, transform vars.$transition-long;
 }
 
 .fade-slide-enter-from,

@@ -1,3 +1,25 @@
+// ==========================================================================
+// RESPONSIVE BREAKPOINT MANAGER
+// ==========================================================================
+// This is a mobile-first mixin. It applies styles from a given breakpoint and up.
+// Example: @include breakpoint-up(md) { ...styles for medium screens and larger... }
+@mixin breakpoint-up($breakpoint) {
+    // Check if the breakpoint exists in the map
+    @if map-has-key(vars.$breakpoints, $breakpoint) {
+        // Get the width value from the map
+        $width: map-get(vars.$breakpoints, $breakpoint);
+        @media (min-width: $width) {
+            @content;
+        }
+    } @else {
+        // Log a warning if the breakpoint name is invalid
+        @warn "Breakpoint `#{$breakpoint}` not found in $breakpoints map. Available breakpoints: #{map-keys(vars.$breakpoints)}";
+    }
+}
+
+// ==========================================================================
+// FLEXBOX HELPERS
+// ==========================================================================
 @mixin flexbox(
     $display: flex,
     $direction: null,
@@ -83,6 +105,16 @@
         $direction: $direction,
         $justify-content: space-between,
         $align-items: center,
+        $gap: $gap
+    );
+}
+
+@mixin flex-between-start($direction: row, $gap: null) {
+    @include flexbox(
+        $display: flex,
+        $direction: $direction,
+        $justify-content: space-between,
+        $align-items: flex-start,
         $gap: $gap
     );
 }
