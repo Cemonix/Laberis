@@ -3,7 +3,7 @@ import type { Timer } from "@/utils/timer";
 import type { Point } from "@/types/common/point";
 import type { Tool, ToolName } from "@/types/workspace/tools";
 import type { Annotation } from '@/types/workspace/annotation';
-import type { LabelScheme } from '@/types/workspace/labelScheme';
+import type { LabelScheme } from '@/types/label/labelScheme';
 
 export interface WorkspaceState {
     currentProjectId: string | null;
