@@ -7,11 +7,8 @@ export interface Label {
     metadata?: any;
 }
 
-export interface LabelScheme {
-    labelSchemeId: number;
+export interface FormPayloadLabel {
     name: string;
-    description?: string;
-    labels: Label[];
-    projectId: number;
-    isDefault?: boolean;
+    description: string;
+    labels: Omit<Label, 'labelId' | 'labelSchemeId'>[];
 }
