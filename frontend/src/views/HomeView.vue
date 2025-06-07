@@ -9,7 +9,7 @@
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables.scss" as vars;
+@use "@/styles/variables" as vars;
 @use '@/styles/mixins' as mixins;
 
 .home-container {

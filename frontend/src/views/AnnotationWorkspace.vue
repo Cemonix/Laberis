@@ -82,7 +82,7 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables.scss" as vars;
+@use "@/styles/variables" as vars;
 @use "@/styles/mixins" as mixins;
 
 .annotation-workspace-container {
@@ -112,7 +112,7 @@ onUnmounted(() => {
             text-decoration: none;
             padding: vars.$padding-small 0;
             position: relative;
-            transition: color vars.$transition-normal;
+            transition: color vars.$transition-normal-ease-in-out;
 
             &::after {
                 content: "";
@@ -122,7 +122,7 @@ onUnmounted(() => {
                 bottom: 0;
                 left: 50%;
                 background-color: vars.$color-primary;
-                transition: width vars.$transition-long, left vars.$transition-long;
+                transition: width vars.$transition-slow-ease, left vars.$transition-slow-ease;
             }
 
             &:hover,

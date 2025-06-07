@@ -21,7 +21,7 @@ const textColor = computed(() => props.label.color);
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables.scss" as vars;
+@use "@/styles/variables" as vars;
 
 .label-chip {
     display: inline-block;

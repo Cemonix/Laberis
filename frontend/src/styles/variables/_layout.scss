@@ -1,0 +1,33 @@
+$spacers: (
+    0: 0,
+    1: 0.25rem, // 4px
+    2: 0.5rem, // 8px
+    3: 1rem, // 16px
+    4: 1.5rem, // 24px
+    5: 2rem, // 32px
+    6: 3rem // 48px
+);
+
+// Paddings
+$padding_smallest: 0.25rem; // 4px
+$padding-small: 0.5rem; // 8px
+$padding-medium: 1rem; // 16px
+$padding-large: 1.5rem; // 24px
+$padding-xlarge: 2rem; // 32px
+
+// Margins
+$margin-small: 0.5rem; // 8px
+$margin-medium: 1rem; // 16px
+$margin-large: 1.5rem; // 24px
+$margin-xlarge: 2rem; // 32px
+
+// Gaps
+$gap-small: 0.5rem; // 8px
+$gap-medium: 1rem; // 16px
+$gap-large: 1.5rem; // 24px
+$gap-xlarge: 2rem; // 32px
+
+// Max container widths
+$max-width-narrow: 960px;
+$max-width-standard: 1200px;
+$max-width-wide: 1400px;

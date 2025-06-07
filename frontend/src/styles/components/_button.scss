@@ -1,0 +1,39 @@
+@use "@/styles/variables" as vars;
+
+$btn-primary-bg: vars.$color-primary !default;
+$btn-primary-text: vars.$color-white !default;
+$btn-primary-hover-bg: vars.$color-primary-hover !default;
+
+$btn-secondary-bg: vars.$color-secondary !default;
+$btn-secondary-text: vars.$color-white !default;
+$btn-secondary-hover-bg: vars.$color-secondary-hover !default;
+
+.btn {
+    display: inline-block;
+    padding: vars.$padding-small vars.$padding-medium;
+    border: 1px solid transparent;
+    border-radius: vars.$border-radius-input;
+    cursor: pointer;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+    transition: vars.$transition-normal-ease-in-out;
+}
+
+.btn-primary {
+    background-color: $btn-primary-bg;
+    color: $btn-primary-text;
+
+    &:hover {
+        background-color: $btn-primary-hover-bg;
+    }
+}
+
+.btn-secondary {
+    background-color: $btn-secondary-bg;
+    color: $btn-secondary-text;
+
+    &:hover {
+        background-color: $btn-secondary-hover-bg;
+    }
+}

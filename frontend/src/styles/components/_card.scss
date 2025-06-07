@@ -1,0 +1,38 @@
+@use "@/styles/variables" as vars;
+@use "@/styles/mixins";
+
+$card-bg: vars.$color-white !default;
+$card-box-shadow: vars.$shadow-sm !default;
+$card-border-color: vars.$color-gray-700 !default;
+$card-header-color: vars.$color-gray-900 !default;
+$card-body-color: vars.$color-gray-800 !default;
+$card-footer-color: vars.$color-gray-600 !default;
+
+.card {
+    @include mixins.flex-column;
+    background-color: $card-bg;
+    border: vars.$border-width solid $card-border-color;
+    border-radius: vars.$border-radius-standard;
+    box-shadow: vars.$shadow-sm;
+    padding: vars.$padding-medium;
+    text-decoration: none;
+}
+
+.card-header {
+    @include mixins.flex-between-start;
+    padding: vars.$padding-small;
+    border-bottom: vars.$border-width solid $card-border-color;
+    color: $card-header-color;
+}
+
+.card-body {
+    padding: vars.$padding-small;
+    flex-grow: 1;
+    color: $card-body-color;
+}
+
+.card-footer {
+    padding: vars.$padding-small;
+    border-top: vars.$border-width solid $card-border-color;
+    color: $card-footer-color;
+}

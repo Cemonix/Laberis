@@ -99,8 +99,8 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables.scss" as vars;
-@use "@/styles/mixins.scss" as mixins;
+@use "@/styles/variables" as vars;
+@use "@/styles/mixins" as mixins;
 
 .page-container {
     display: flex;
@@ -139,7 +139,7 @@ onMounted(() => {
     box-shadow: vars.$shadow-md;
     cursor: pointer;
     padding-bottom: 4px;
-    transition: transform vars.$transition-normal, background-color vars.$transition-normal;
+    transition: transform vars.$transition-normal-ease-in-out, background-color vars.$transition-normal-ease-in-out;
     @include mixins.flex-center;
 
     &:hover {

@@ -51,7 +51,7 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 @use "sass:color";
-@use "@/styles/variables.scss" as vars;
+@use "@/styles/variables" as vars;
 
 .page-container {
     padding: vars.$padding-large;
@@ -85,7 +85,7 @@ onMounted(() => {
     text-decoration: none;
     color: vars.$color-gray-700;
     border-bottom: 3px solid transparent;
-    transition: color vars.$transition-normal, border-color vars.$transition-normal;
+    transition: color vars.$transition-normal-ease-in-out, border-color vars.$transition-normal-ease-in-out;
 
     &:hover {
         color: vars.$theme-text;
@@ -99,7 +99,7 @@ onMounted(() => {
 
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-    transition: opacity vars.$transition-long, transform vars.$transition-long;
+    transition: opacity vars.$transition-slow-ease, transform vars.$transition-slow-ease;
 }
 
 .fade-slide-enter-from,

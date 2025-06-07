@@ -18,19 +18,20 @@ useRouter();
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables.scss" as vars;
-@use "@/styles/mixins.scss" as mixins;
+@use "@/styles/variables" as vars;
+@use "@/styles/components/navbar" as navbar;
+@use "@/styles/mixins" as mixins;
 
 .navbar {
     @include mixins.flex-between-center;
-    background-color: vars.$navbar-bg;
+    background-color: navbar.$navbar-bg;
     padding: vars.$padding-medium vars.$padding-large;
-    color: vars.$navbar-text;
+    color: navbar.$navbar-text;
     box-shadow: vars.$shadow-sm;
 
     .navbar-brand {
         a {
-            color: vars.$navbar-text;
+            color: navbar.$navbar-text;
             text-decoration: none;
             font-weight: vars.$font-weight-heading;
             font-size: 1.5rem;
@@ -42,11 +43,11 @@ useRouter();
         gap: vars.$padding-large;
 
         a {
-            color: vars.$navbar-text;
+            color: navbar.$navbar-text;
             text-decoration: none;
             padding: vars.$padding-small 0;
             position: relative;
-            transition: color vars.$transition-normal;
+            transition: color vars.$transition-normal-ease-in-out;
 
             &::after {
                 content: "";
@@ -56,7 +57,7 @@ useRouter();
                 bottom: 0;
                 left: 50%;
                 background-color: vars.$color-primary;
-                transition: width vars.$transition-long, left vars.$transition-long;
+                transition: width vars.$transition-slow-ease, left vars.$transition-slow-ease;
             }
 
             &:hover,

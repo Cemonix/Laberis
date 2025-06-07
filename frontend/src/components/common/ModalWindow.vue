@@ -55,8 +55,8 @@ watch(() => props.isOpen, (newValue) => {
 <style lang="scss" scoped>
 @use "sass:color";
 @use "sass:map";
-@use "@/styles/variables.scss" as vars;
-@use "@/styles/mixins.scss" as mixins;
+@use "@/styles/variables" as vars;
+@use "@/styles/mixins" as mixins;
 
 .modal-overlay {
     position: fixed;
@@ -120,7 +120,7 @@ watch(() => props.isOpen, (newValue) => {
 
 .modal-fade-enter-active,
 .modal-fade-leave-active {
-    transition: opacity vars.$transition-long;
+    transition: opacity vars.$transition-slow-ease;
 }
 .modal-fade-enter-from,
 .modal-fade-leave-to {

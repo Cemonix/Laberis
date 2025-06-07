@@ -52,7 +52,7 @@ const handleSubmit = () => {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables.scss" as vars;
+@use "@/styles/variables" as vars;
 
 .create-project-form {
     display: flex;

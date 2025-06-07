@@ -22,7 +22,7 @@
         </div>
 
         <div class="add-label-group">
-            <input type="text" v-model.trim="newLabelName" placeholder="New label name" @keydown.enter.prevent="addLabel" />
+            <input type="text" v-model.trim="newLabelName" class="add-label-input" placeholder="New label name" @keydown.enter.prevent="addLabel" />
             <input type="color" v-model="newLabelColor" class="color-picker" title="Select label color" />
             <button type="button" @click.prevent="addLabel" class="btn btn-primary">Add</button>
         </div>
@@ -86,7 +86,7 @@ const handleSubmit = () => {
 
 <style lang="scss" scoped>
 @use "sass:color";
-@use "@/styles/variables.scss" as vars;
+@use "@/styles/variables" as vars;
 
 .create-scheme-form {
     display: flex;
@@ -131,6 +131,13 @@ const handleSubmit = () => {
 
 .label-preview-name {
     flex-grow: 1;
+}
+
+.add-label-input {
+    padding: vars.$padding-small;
+    border: vars.$border-width solid vars.$theme-border;
+    border-radius: vars.$border-radius-input;
+    font-size: vars.$font_size_medium;
 }
 
 .remove-label-btn {
