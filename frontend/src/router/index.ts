@@ -65,7 +65,7 @@ const routes: Array<RouteRecordRaw> = [
             {
                 path: 'label-schemes',
                 name: 'ProjectLabels',
-                component: { template: '<div>Labeling Setup Page</div>' },
+                component: () => import('@/views/project/ProjectLabelSchemesView.vue'),
                 props: true,
             },
             {
