@@ -15,12 +15,12 @@
 .home-container {
 	@include mixins.flex-center($direction: column, $gap: vars.$padding-medium);
 	width: 100%;
-	background-color: vars.$background_color;
+	background-color: vars.$theme-background;
 	padding: vars.$padding-medium;
 
 	h1 {
 		text-align: center;
-		color: vars.$text_color;
+		color: vars.$theme-text;
 	}
 }
 </style>

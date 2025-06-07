@@ -5,12 +5,14 @@
                 <a href="/home">Home</a>
             </div>
             <div class="workspace-top-bar-center">
-                <button>Previous</button>
+                <button class="btn btn-primary">Previous</button>
                 <span>122 / 150</span>
-                <button>Next</button>
+                <button class="btn btn-primary">Next</button>
             </div>
             <div class="workspace-top-bar-right">
-                <span class="zoom-display">Zoom: {{ zoomPercentageDisplay }}</span>
+                <span class="zoom-display"
+                    >Zoom: {{ zoomPercentageDisplay }}</span
+                >
                 <span>{{ displayedTime }}</span>
             </div>
         </div>
@@ -31,7 +33,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, computed } from "vue";
 import AnnotationCanvas from "@/components/annotationWorkspace/AnnotationCanvas.vue";
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useWorkspaceStore } from "@/stores/workspaceStore";
 import ToolsLeftPanel from "@/components/annotationWorkspace/ToolsLeftPanel.vue";
 
 const props = defineProps({
@@ -55,9 +57,16 @@ const zoomPercentageDisplay = computed(() => {
 });
 
 onMounted(async () => {
-    console.log("[WorkspaceView] Mounted. Project ID:", props.projectId, "Asset ID:", props.assetId);
+    console.log(
+        "[WorkspaceView] Mounted. Project ID:",
+        props.projectId,
+        "Asset ID:",
+        props.assetId
+    );
     await workspaceStore.loadAsset(props.projectId, props.assetId);
-    console.log("[WorkspaceView] loadAsset action dispatched. Image URL from store should be updated now.");
+    console.log(
+        "[WorkspaceView] loadAsset action dispatched. Image URL from store should be updated now."
+    );
 
     // TODO: Later, this will be driven by the Pinia store (Step 3.4.1)
     // Example:
@@ -74,14 +83,14 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 @use "@/styles/variables.scss" as vars;
-@use '@/styles/mixins' as mixins;
+@use "@/styles/mixins" as mixins;
 
 .annotation-workspace-container {
     @include mixins.flex-column();
     height: 100%;
     width: 100%;
-    background-color: vars.$workspace-container-bg;
-    color: vars.$workspace-container-text;
+    background-color: vars.$ws-layout-bg;
+    color: vars.$ws-layout-text;
 }
 
 .workspace-top-bar {
@@ -89,17 +98,17 @@ onUnmounted(() => {
     grid-template-columns: 1fr auto 1fr;
     grid-gap: vars.$padding-small;
     align-items: center;
-    background-color: vars.$workspace-top-bar-bg;
+    background-color: vars.$ws-layout-bg;
     padding: vars.$padding-small vars.$padding-medium;
     text-align: center;
-    border-bottom: 1px solid vars.$workspace-border-color;
+    border-bottom: vars.$border-width solid vars.$ws-border;
 
     .workspace-top-bar-left {
-        justify-self: start;
         @include mixins.flex-start-center();
+        justify-self: start;
 
         a {
-            color: vars.$laberis-brand-text;
+            color: vars.$ws-layout-text;
             text-decoration: none;
             padding: vars.$padding-small 0;
             position: relative;
@@ -112,13 +121,13 @@ onUnmounted(() => {
                 height: 2px;
                 bottom: 0;
                 left: 50%;
-                background-color: vars.$primary-blue;
+                background-color: vars.$color-primary;
                 transition: width vars.$transition-long, left vars.$transition-long;
             }
 
             &:hover,
             &.router-link-exact-active {
-                color: vars.$primary-link-hover-color;
+                color: vars.$color-link-hover;
             }
 
             &:hover::after,
@@ -129,24 +138,9 @@ onUnmounted(() => {
         }
     }
     .workspace-top-bar-center {
-        justify-self: center;
-        @include mixins.flex-center();
-        gap: vars.$padding-small;
-
-        button {
-            border: none;
-            border-radius: vars.$border-radius-standard;
-            color: vars.$button-primary-text;
-            background-color: vars.$button-primary-bg;
-            padding: vars.$padding-small;
-            cursor: pointer;
-            &:hover {
-                background-color: vars.$button-primary-hover-bg;
-            }
-        }
+        @include mixins.flex-center($gap: vars.$padding-small);
     }
     .workspace-top-bar-right {
-        justify-self: end;
         @include mixins.flex-end-center();
         font-size: vars.$font-size-medium;
 
@@ -165,27 +159,27 @@ onUnmounted(() => {
 .workspace-tools-left {
     width: auto;
     min-width: 60px;
-    background-color: vars.$workspace-panel-bg;
+    background-color: vars.$ws-panel-bg;
     padding: vars.$padding-small;
-    border-right: 1px solid vars.$workspace-border-color;
+    border-right: vars.$border-width solid vars.$ws-border;
     flex-shrink: 0;
     overflow-y: auto;
 }
 
 .workspace-canvas-area {
-  flex-grow: 1;
-  display: flex;
-  overflow: hidden;
-  position: relative;
-  padding: vars.$padding-medium;
-  background-color: vars.$workspace-layout-bg;
+    @include mixins.flex-column();
+    flex-grow: 1;
+    overflow: hidden;
+    position: relative;
+    padding: vars.$padding-medium;
+    background-color: vars.$ws-canvas-bg;
 }
 
 .workspace-annotations-right {
     width: 200px;
-    background-color: vars.$workspace-panel-bg;
+    background-color: vars.$ws-panel-bg;
     padding: vars.$padding-small;
-    border-left: 1px solid vars.$workspace-border-color;
+    border-left: vars.$border-width solid vars.$ws-border;
     flex-shrink: 0;
     overflow-y: auto;
 }

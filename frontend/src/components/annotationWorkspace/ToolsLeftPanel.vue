@@ -74,31 +74,28 @@ const selectLabel = (labelId: number) => {
 <style lang="scss" scoped>
 @use "sass:color";
 @use "@/styles/variables.scss" as vars;
+@use "@/styles/mixins.scss" as mixins;
 
 .tools-panel-left {
     padding: vars.$padding-small;
-    display: flex;
-    flex-direction: column;
-    gap: vars.$padding-medium;
-    background-color: vars.$workspace-panel-bg;
-    color: vars.$workspace-container-text;
+    background-color: vars.$ws-panel-bg;
+    color: vars.$ws-panel-text;
     overflow-y: auto;
+    @include mixins.flex-column($gap: vars.$padding-medium);
 }
 
 .panel-section {
-    display: flex;
-    flex-direction: column;
-    gap: vars.$padding-small;
+    @include mixins.flex-column($gap: vars.$padding-small);
 }
 
 .section-title {
-    font-size: 0.9rem;
-    font-weight: bold;
-    color: vars.$workspace-container-text;
+    font-size: vars.$font_size_small;
+    font-weight: vars.$font-weight-heading;
+    color: vars.$ws-panel-text;
     text-transform: uppercase;
-    margin-bottom: calc(vars.$padding-small / 2);
-    border-bottom: 1px solid color.adjust(vars.$workspace-border-color, $lightness: 10%);
-    padding-bottom: calc(vars.$padding-small / 2);
+    margin-bottom: vars.$padding-smallest;
+    border-bottom: 1px solid color.adjust(vars.$ws-border, $lightness: 10%);
+    padding-bottom: vars.$padding-smallest;
 }
 
 .tools-grid {
@@ -108,68 +105,63 @@ const selectLabel = (labelId: number) => {
 }
 
 .tool-button {
-    display: flex;
-    justify-content: center;
-    align-items: center;
     width: 100%;
     aspect-ratio: 1 / 1;
     padding: vars.$padding-small;
-    background-color: color.adjust(vars.$workspace-panel-bg, $lightness: -5%);
-    color: vars.$workspace-container-text;
-    border: 1px solid vars.$workspace-border-color;
+    background-color: color.adjust(vars.$ws-panel-bg, $lightness: -5%);
+    color: vars.$ws-panel-text;
+    border: 1px solid vars.$ws-border;
     border-radius: vars.$border-radius-standard;
     cursor: pointer;
     transition: background-color vars.$transition-fast, border-color vars.$transition-fast;
+    @include mixins.flex-center;
 
     &:hover {
-        background-color: color.adjust(vars.$workspace-panel-bg, $lightness: 5%);
-        border-color: color.adjust(vars.$workspace-border-color, $lightness: 10%);
+        background-color: color.adjust(vars.$ws-panel-bg, $lightness: 5%);
+        border-color: color.adjust(vars.$ws-border, $lightness: 10%);
     }
 
     &.active-tool {
-        background-color: vars.$primary-blue;
-        color: white;
-        border-color: color.adjust(vars.$primary-blue, $lightness: -10%);
+        background-color: vars.$color-primary;
+        color: vars.$color-white;
+        border-color: color.adjust(vars.$color-primary, $lightness: -10%);
     }
 
     .tool-icon {
-        font-size: 1.25rem;
+        font-size: vars.$font_size_large;
     }
 }
 
 .labels-list {
-    display: flex;
-    flex-direction: column;
-    gap: calc(vars.$padding-small / 2);
+    @include mixins.flex-column($gap: calc(vars.$padding-small / 2));
 }
 
 .label-button {
-    display: flex;
-    align-items: center;
     width: 100%;
     padding: calc(vars.$padding-small * 0.75) vars.$padding-small;
-    background-color: color.adjust(vars.$workspace-panel-bg, $lightness: -3%);
-    color: vars.$workspace-container-text;
-    border: 1px solid vars.$workspace-border-color;
+    background-color: color.adjust(vars.$ws-panel-bg, $lightness: -3%);
+    color: vars.$ws-panel-text;
+    border: 1px solid vars.$ws-border;
     border-radius: vars.$border-radius-standard;
     cursor: pointer;
     text-align: left;
-    font-size: 0.85rem;
+    font-size: vars.$font_size_small;
     transition: background-color vars.$transition-fast, border-color vars.$transition-fast;
+    @include mixins.flexbox($align-items: center);
 
     &:hover {
-        background-color: color.adjust(vars.$workspace-panel-bg, $lightness: 5%);
-        border-color: color.adjust(vars.$workspace-border-color, $lightness: 10%);
+        background-color: color.adjust(vars.$ws-panel-bg, $lightness: 5%);
+        border-color: color.adjust(vars.$ws-border, $lightness: 10%);
     }
 
     &.active-label {
-        background-color: vars.$primary-blue;
-        color: white;
-        border-color: color.adjust(vars.$primary-blue, $lightness: -10%);
-        font-weight: bold;
+        background-color: vars.$color-primary;
+        color: vars.$color-white;
+        border-color: color.adjust(vars.$color-primary, $lightness: -10%);
+        font-weight: vars.$font-weight-heading;
 
         .label-color-swatch {
-            border-color: rgba(255,255,255,0.7);
+            border-color: rgba(vars.$color-white, 0.7);
         }
     }
 }
@@ -179,7 +171,7 @@ const selectLabel = (labelId: number) => {
     height: 12px;
     border-radius: 3px;
     margin-right: vars.$padding-small;
-    border: 1px solid vars.$workspace-border-color;
+    border: 1px solid vars.$ws-border;
     flex-shrink: 0;
 }
 
@@ -190,8 +182,8 @@ const selectLabel = (labelId: number) => {
 }
 
 .no-labels-message {
-    font-size: 0.8rem;
-    color: color.adjust(vars.$workspace-container-text, $lightness: 20%);
+    font-size: vars.$font_size_small;
+    color: color.adjust(vars.$ws-panel-text, $lightness: 20%);
     padding: vars.$padding-small;
     text-align: center;
 }

@@ -12,8 +12,8 @@
 .footer {
     text-align: center;
     padding: vars.$padding-small;
-    background-color: vars.$footer-bg;
-    border-top: 1px solid vars.$footer-border;
+    background-color: vars.$color-gray-200;
+    border-top: vars.$border-width solid vars.$theme-border;
     width: 100%;
 }
 </style>

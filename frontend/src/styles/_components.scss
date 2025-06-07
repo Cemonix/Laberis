@@ -1,0 +1,110 @@
+@use 'sass:color';
+@use 'variables' as vars;
+@use 'mixins';
+
+// ==========================================================================
+// BUTTONS
+// ==========================================================================
+// Base button style
+.btn {
+    display: inline-block;
+    padding: vars.$padding-small vars.$padding-medium;
+    border: 1px solid transparent;
+    border-radius: vars.$border-radius-input;
+    cursor: pointer;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+    transition: vars.$transition-normal;
+}
+
+// Primary button style
+.btn-primary {
+    background-color: vars.$btn-primary-bg;
+    color: vars.$btn-primary-text;
+
+    &:hover {
+        background-color: vars.$btn-primary-hover-bg;
+    }
+}
+
+// Secondary (or cancel) button style
+.btn-secondary {
+    background-color: vars.$btn-secondary-bg;
+    color: vars.$btn-secondary-text;
+
+    &:hover {
+        background-color: vars.$btn-secondary-hover-bg;
+    }
+}
+
+
+// ==========================================================================
+// FORMS
+// ==========================================================================
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: calc(vars.$padding-small / 2);
+
+    label {
+        font-weight: bold;
+        color: color.adjust(vars.$theme-text, $lightness: 10%);
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    textarea,
+    select {
+        width: 100%;
+        padding: vars.$padding-small;
+        border: vars.$border-width solid vars.$theme-border;
+        border-radius: vars.$border-radius-input;
+        font-size: vars.$font_size_medium;
+        font-family: vars.$font-family-body;
+    }
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: vars.$padding-small;
+    margin-top: vars.$padding-medium;
+    padding-top: vars.$padding-medium;
+    border-top: vars.$border-width solid vars.$theme-border;
+}
+
+
+// ==========================================================================
+// CARDS
+// ==========================================================================
+.card {
+    @include mixins.flex-column;
+    background-color: vars.$card-bg;
+    border: vars.$border-width solid vars.$card-border-color;
+    border-radius: vars.$border-radius-standard;
+    border-color: vars.$card-border-color;
+    box-shadow: vars.$shadow-sm;
+    padding: vars.$padding-medium;
+    text-decoration: none;
+}
+
+.card-header {
+    @include mixins.flex-between-start;
+    padding: vars.$padding-small;
+    border-bottom: vars.$border-width solid vars.$theme-border;
+    color: vars.$card-header-color;
+}
+
+.card-body {
+    padding: vars.$padding-small;
+    color: vars.$card-body-color;
+    flex-grow: 1;
+}
+
+.card-footer {
+    padding: vars.$padding-small;
+    border-top: vars.$border-width solid vars.$theme-border;
+    color: vars.$card-footer-color;
+}

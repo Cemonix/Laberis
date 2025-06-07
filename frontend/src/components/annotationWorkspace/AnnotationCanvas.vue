@@ -39,6 +39,7 @@ const isLoading = ref<boolean>(false);
 const errorLoadingImage = ref<boolean>(false);
 const isPanning = ref(false);
 const lastPanMousePosition = ref<Point | null>(null);
+
 let ctx: CanvasRenderingContext2D | null = null;
 let resizeObserver: ResizeObserver | null = null;
 
@@ -434,16 +435,16 @@ watch(() => workspaceStore.canvasDisplayDimensions, () => {
 
 <style lang="scss" scoped>
 @use "@/styles/variables.scss" as vars;
+@use "@/styles/mixins.scss" as mixins;
 
 .annotation-canvas-wrapper {
+    @include mixins.flex-center;
     width: 100%;
     height: 100%;
     position: relative;
-    background-color: vars.$canvas-wrapper-bg;
+    background-color: vars.$ws-canvas-bg;
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background-color: vars.$ws-canvas-bg;
 }
 
 .main-canvas {
@@ -451,15 +452,13 @@ watch(() => workspaceStore.canvasDisplayDimensions, () => {
 }
 
 %overlay-base {
+    @include mixins.flex-center;
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2em;
+    font-size: vars.$font-size-large;
     z-index: 10;
     pointer-events: none; // Allow interaction with canvas below
 }
@@ -467,11 +466,11 @@ watch(() => workspaceStore.canvasDisplayDimensions, () => {
 .loading-overlay,
 .error-overlay {
     @extend %overlay-base;
-    background-color: vars.$overlay-bg;
-    color: vars.$overlay-text-color;
+    background-color: rgba(vars.$color-black, 0.5);
+    color: vars.$color-white;
 
     &.error-overlay {
-        color: vars.$error-overlay-text-color;
+        color: vars.$color-error;
     }
 }
 </style>
