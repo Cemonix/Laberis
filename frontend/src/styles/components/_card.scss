@@ -13,7 +13,7 @@ $card-footer-color: vars.$color-gray-600 !default;
     background-color: $card-bg;
     border: vars.$border-width solid $card-border-color;
     border-radius: vars.$border-radius-standard;
-    box-shadow: vars.$shadow-sm;
+    box-shadow: $card-box-shadow;
     padding: vars.$padding-medium;
     text-decoration: none;
 }
