@@ -6,7 +6,8 @@ import { Timer } from "@/utils/timer";
 import type { Point } from "@/types/common/point";
 import { ToolName, type Tool } from "@/types/workspace/tools";
 import type { Annotation } from '@/types/workspace/annotation';
-import type { Label, LabelScheme } from '@/types/workspace/labelScheme';
+import type { LabelScheme } from '@/types/label/labelScheme';
+import type { Label } from '@/types/label/label';
 import { fetchAnnotations, saveAnnotation } from '@/services/api/annotationService';
 
 // TODO: Replace with actual API calls or more sophisticated logic
@@ -114,7 +115,6 @@ export const useWorkspaceStore = defineStore("workspace", {
             }
 
             this.startTimer();
-            this.resetZoomAndView();
             this.setActiveTool(ToolName.CURSOR);
         },
 
@@ -240,12 +240,7 @@ export const useWorkspaceStore = defineStore("workspace", {
         setZoomLevel(level: number) {
             this.zoomLevel = Math.max(MIN_ZOOM, Math.min(level, MAX_ZOOM));
         },
-
-        resetZoomAndView() {
-            this.zoomLevel = 1.0;
-            this.viewOffset = { x: 0, y: 0 };
-        },
-
+        
         setActiveTool(toolId: ToolName) {
             const toolExists = this.availableTools.some(tool => tool.id === toolId);
             if (toolExists) {
