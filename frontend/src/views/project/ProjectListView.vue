@@ -8,16 +8,53 @@
                 :project="project"
             />
         </div>
+
+        <button @click="openModal" class="fab" aria-label="Create new project">+</button>
+
+        <ModalWindow 
+            :is-open="isModalOpen" 
+            title="Create New Project" 
+            :hide-footer="true"
+            @close="closeModal"
+        >
+            <CreateProjectForm @cancel="closeModal" @save="handleCreateProject" />
+        </ModalWindow>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import ProjectCard from '@/components/project/ProjectCard.vue';
-import type { Project } from '@/types/project';
-import { ProjectStatus, ProjectType } from '@/types/project';
+import ModalWindow from '@/components/common/ModalWindow.vue';
+import CreateProjectForm from '@/components/project/CreateProjectForm.vue';
+import type { Project } from '@/types/project/project';
+import { ProjectStatus, ProjectType } from '@/types/project/project';
+
+const isModalOpen = ref(false);
+const openModal = () => isModalOpen.value = true;
+const closeModal = () => isModalOpen.value = false;
 
 const projects = ref<Project[]>([]);
+
+const handleCreateProject = (formData: { name: string; description: string; projectType: ProjectType }) => {
+    // Create a new project object and add it to our local mock list
+    const newProject: Project = {
+        projectId: Date.now(), // Use timestamp as a temporary unique ID
+        name: formData.name,
+        description: formData.description,
+        projectType: formData.projectType,
+        status: ProjectStatus.ACTIVE, // Default to active
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+    projects.value.unshift(newProject); // Add to the beginning of the list
+
+    // TODO: API service here
+    // await projectService.createProject(formData);
+    // await fetchProjects(); // And then refresh the list
+
+    closeModal();
+};
 
 // TODO: Replace with actual API call to fetch projects
 onMounted(() => {
@@ -63,23 +100,51 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 @use "@/styles/variables.scss" as vars;
+@use "@/styles/mixins.scss" as mixins;
 
 .page-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
     padding: vars.$padding-large;
     width: 100%;
-    max-width: 1200px;
+    max-width: vars.$max-width-standard;
     margin: 0 auto;
 }
 
 .page-title {
-    font-size: vars.$font-size-xxlarge;
+    font-size: vars.$font_size_xxlarge;
     margin-bottom: vars.$padding-large;
-    color: vars.$text_color;
+    color: vars.$theme-text;
 }
 
 .project-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: vars.$padding-large;
+}
+
+.fab {
+    position: absolute;
+    bottom: vars.$padding-xlarge;
+    right: vars.$padding-xlarge;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: vars.$color-primary;
+    color: vars.$color-white;
+    border: none;
+    font-size: 2.5rem;
+    line-height: 1;
+    box-shadow: vars.$shadow-md;
+    cursor: pointer;
+    padding-bottom: 4px;
+    transition: transform vars.$transition-normal, background-color vars.$transition-normal;
+    @include mixins.flex-center;
+
+    &:hover {
+        background-color: vars.$color-primary-hover;
+        transform: scale(1.1);
+    }
 }
 </style>
