@@ -34,7 +34,7 @@ defineProps<{
 
 <style lang="scss" scoped>
 @use "sass:color";
-@use "@/styles/variables.scss" as vars;
+@use "@/styles/variables" as vars;
 
 .scheme-name {
     font-size: vars.$font_size_large;

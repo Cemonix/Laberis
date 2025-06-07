@@ -36,11 +36,11 @@ const formattedDate = computed(() => {
 
 <style lang="scss" scoped>
 @use "sass:color";
-@use "@/styles/variables.scss" as vars;
-@use "@/styles/mixins.scss" as mixins;
+@use "@/styles/variables" as vars;
+@use "@/styles/mixins" as mixins;
 
 .project-card {
-    transition: transform vars.$transition-normal, box-shadow vars.$transition-normal;
+    transition: transform vars.$transition-normal-ease-in-out, box-shadow vars.$transition-normal-ease-in-out;
     height: 100%;
 
     &:hover {

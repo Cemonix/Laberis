@@ -7,8 +7,8 @@
 <script setup lang="ts"></script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables.scss" as vars;
-@use "@/styles/mixins.scss" as mixins;
+@use "@/styles/variables" as vars;
+@use "@/styles/mixins" as mixins;
 
 .workspace-layout {
     @include mixins.flex-column;

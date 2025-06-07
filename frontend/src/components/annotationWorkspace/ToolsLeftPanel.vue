@@ -73,8 +73,8 @@ const selectLabel = (labelId: number) => {
 
 <style lang="scss" scoped>
 @use "sass:color";
-@use "@/styles/variables.scss" as vars;
-@use "@/styles/mixins.scss" as mixins;
+@use "@/styles/variables" as vars;
+@use "@/styles/mixins" as mixins;
 
 .tools-panel-left {
     padding: vars.$padding-small;
@@ -113,7 +113,7 @@ const selectLabel = (labelId: number) => {
     border: 1px solid vars.$ws-border;
     border-radius: vars.$border-radius-standard;
     cursor: pointer;
-    transition: background-color vars.$transition-fast, border-color vars.$transition-fast;
+    transition: background-color vars.$transition-fast-ease-in-out, border-color vars.$transition-fast-ease-in-out;
     @include mixins.flex-center;
 
     &:hover {
@@ -146,7 +146,7 @@ const selectLabel = (labelId: number) => {
     cursor: pointer;
     text-align: left;
     font-size: vars.$font_size_small;
-    transition: background-color vars.$transition-fast, border-color vars.$transition-fast;
+    transition: background-color vars.$transition-fast-ease-in-out, border-color vars.$transition-fast-ease-in-out;
     @include mixins.flexbox($align-items: center);
 
     &:hover {

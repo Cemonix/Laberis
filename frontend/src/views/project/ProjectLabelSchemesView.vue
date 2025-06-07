@@ -81,7 +81,7 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 @use "sass:color";
-@use "@/styles/variables.scss" as vars;
+@use "@/styles/variables" as vars;
 
 .page-header {
     margin-bottom: vars.$padding-large * 2;
@@ -130,7 +130,7 @@ onMounted(() => {
     justify-content: center;
     align-items: center;
     padding-bottom: 4px;
-    transition: background-color vars.$transition-normal, transform vars.$transition-normal;
+    transition: background-color vars.$transition-normal-ease-in-out, transform vars.$transition-normal-ease-in-out;
     animation: fab-enter 0.2s ease-out 0.35s backwards;
 
     &:hover {

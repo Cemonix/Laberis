@@ -7,7 +7,7 @@
 <script setup lang="ts"></script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables.scss" as vars;
+@use "@/styles/variables" as vars;
 
 .footer {
     text-align: center;

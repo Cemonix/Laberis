@@ -21,7 +21,7 @@ const layout = computed(() => {
 </script>
 
 <style lang="scss">
-@use "@/styles/mixins.scss" as mixins;
+@use "@/styles/mixins" as mixins;
 
 #app {
     @include mixins.flex-column;

@@ -36,8 +36,8 @@
 
 <style lang="scss" scoped>
 @use "sass:color";
-@use "@/styles/variables.scss" as vars;
-@use "@/styles/mixins.scss" as mixins;
+@use "@/styles/variables" as vars;
+@use "@/styles/mixins" as mixins;
 
 .dashboard-grid {
     display: grid;

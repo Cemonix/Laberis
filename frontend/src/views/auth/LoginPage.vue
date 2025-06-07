@@ -29,8 +29,8 @@ const handleLogin = () => {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables.scss" as vars;
-@use "@/styles/mixins.scss" as mixins;
+@use "@/styles/variables" as vars;
+@use "@/styles/mixins" as mixins;
 
 .login-container {
     width: 100%;
