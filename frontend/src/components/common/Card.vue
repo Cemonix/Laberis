@@ -20,11 +20,11 @@
 .base-card {
     display: flex;
     flex-direction: column;
-    background-color: var(--theme-surface, vars.$color-white);
-    border: vars.$border-width solid var(--theme-border, vars.$color-gray-700);
+    flex-grow: 1;
+    background-color: vars.$theme-surface;
+    border: vars.$border-width solid vars.$theme-border;
     border-radius: vars.$border-radius-standard;
     box-shadow: vars.$shadow-sm;
-    height: 100%;
     text-decoration: none;
     color: inherit;
 }
@@ -34,7 +34,7 @@
     justify-content: space-between;
     align-items: center;
     padding: vars.$padding-medium;
-    border-bottom: vars.$border-width solid var(--theme-border, vars.$color-gray-700);
+    border-bottom: vars.$border-width solid vars.$theme-border;
     color: vars.$color-gray-900;
 }
 
@@ -48,10 +48,11 @@
 	display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: vars.$gap-medium;
     font-size: vars.$font_size_small;
     text-transform: capitalize;
     padding: vars.$padding-medium;
-    border-top: vars.$border-width solid var(--theme-border, vars.$color-gray-700);
+    border-top: vars.$border-width solid vars.$theme-border;
     color: vars.$color-gray-600;
 }
 </style>
