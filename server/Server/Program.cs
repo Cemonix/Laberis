@@ -20,20 +20,24 @@ public class Program
 {
     public async static Task Main(string[] args)
     {
-        var logger = new LoggerFactory()
-            .CreateLogger<Program>();
+        var builder = WebApplication.CreateBuilder(args);
 
 #if DEBUG
         string envFilePath = "../.env";
         if (!File.Exists(envFilePath))
         {
-            logger.LogError("No .env file found. Ensure environment variables are set correctly.");
+            TextWriter appStartupErrorWriter = Console.Error;
+            appStartupErrorWriter.WriteLine("No .env file found. Ensure environment variables are set correctly.");
             Environment.Exit(1);
         }
         DotNetEnv.Env.Load(envFilePath);
 #endif
 
-        var builder = WebApplication.CreateBuilder(args);
+        builder.Configuration
+            .AddEnvironmentVariables()
+            .AddJsonFile("Server/appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile($"Server/appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
+
         var configuration = builder.Configuration;
 
         // Configure and validate WebApp settings
@@ -87,7 +91,8 @@ public class Program
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>();
         if (jwtSettings == null)
         {
-            logger.LogError("JWT settings are not configured properly.");
+            TextWriter appStartupErrorWriter = Console.Error;
+            appStartupErrorWriter.WriteLine("JWT settings are not configured properly.");
             Environment.Exit(1);
         }
 
@@ -151,7 +156,8 @@ public class Program
         var webAppSettings = configuration.GetSection(WebAppSettings.SectionName).Get<WebAppSettings>();
         if (webAppSettings == null)
         {
-            logger.LogError("WebApp settings are not configured properly.");
+            TextWriter appStartupErrorWriter = Console.Error;
+            appStartupErrorWriter.WriteLine("WebApp settings are not configured properly.");
             Environment.Exit(1);
         }
 
@@ -178,6 +184,7 @@ public class Program
             }
             catch (Exception ex)
             {
+                var logger = services.GetRequiredService<ILogger<Program>>();
                 logger.LogError(ex, "An error occurred during database seeding.");
                 Environment.Exit(1);
             }
