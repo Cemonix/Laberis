@@ -20,8 +20,8 @@
         <div class="card widget">
             <h3>Quick Actions</h3>
             <div class="quick-actions-list">
-                    <button class="btn btn-primary">Start Annotating</button>
-                    <button class="btn btn-primary">Upload Assets</button>
+                <Button class="btn btn-primary">Start Annotating</Button>
+                <Button class="btn btn-primary">Upload Assets</Button>
             </div>
         </div>
         <div class="card widget">
@@ -32,6 +32,7 @@
 </template>
 
 <script setup lang="ts">
+import Button from '@/components/common/Button.vue';
 </script>
 
 <style lang="scss" scoped>

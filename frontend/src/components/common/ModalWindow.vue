@@ -7,10 +7,11 @@
                         <slot name="header">
                             <h2>{{ title }}</h2>
                         </slot>
-                        <button class="close-button" @click="closeModal" aria-label="Close modal">&times;</button>
+                        <Button class="close-button" @click="closeModal" aria-label="Close modal">&times;</Button>
                     </header>
-                    <main class="modal-body">
-                        <slot></slot> </main>
+                    <div class="modal-body">
+                        <slot></slot>
+                    </div>
                     <footer v-if="!hideFooter" class="modal-footer">
                         <slot name="footer"></slot> 
                     </footer>
@@ -22,6 +23,7 @@
 
 <script setup lang="ts">
 import { watch } from 'vue';
+import Button from '@/components/common/Button.vue';
 
 const props = defineProps<{
     isOpen: boolean;
@@ -56,7 +58,8 @@ watch(() => props.isOpen, (newValue) => {
 @use "sass:color";
 @use "sass:map";
 @use "@/styles/variables" as vars;
-@use "@/styles/components/modal" as modal;
+
+$modal-overlay-bg: rgba(vars.$color-black, 0.6);
 
 .modal-overlay {
     display: flex;
@@ -67,7 +70,7 @@ watch(() => props.isOpen, (newValue) => {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: modal.$modal-overlay-bg;
+    background-color: $modal-overlay-bg;
     z-index: map.get(vars.$z-layers, "modal-backdrop");
 }
 

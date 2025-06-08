@@ -9,7 +9,7 @@
             />
         </div>
 
-        <button @click="openModal" class="fab" aria-label="Create new project">+</button>
+        <Button @click="openModal" class="fab" aria-label="Create new project">+</Button>
 
         <ModalWindow 
             :is-open="isModalOpen" 
@@ -27,6 +27,7 @@ import { ref, onMounted } from 'vue';
 import ProjectCard from '@/components/project/ProjectCard.vue';
 import ModalWindow from '@/components/common/ModalWindow.vue';
 import CreateProjectForm from '@/components/project/CreateProjectForm.vue';
+import Button from '@/components/common/Button.vue';
 import type { Project } from '@/types/project/project';
 import { ProjectStatus, ProjectType } from '@/types/project/project';
 
