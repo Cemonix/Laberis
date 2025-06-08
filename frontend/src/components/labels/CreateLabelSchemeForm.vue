@@ -2,83 +2,142 @@
     <Form @submit="handleSubmit">
         <div class="form-group">
             <label for="schemeName">Scheme Name</label>
-            <input id="schemeName" v-model="formData.name" type="text" required placeholder="e.g., General Object Classes" />
+            <input
+                id="schemeName"
+                v-model="formData.name"
+                type="text"
+                required
+                placeholder="e.g., General Object Classes"
+            />
         </div>
         <div class="form-group">
             <label for="schemeDescription">Description (Optional)</label>
-            <textarea id="schemeDescription" v-model="formData.description" rows="3" placeholder="A short description of this label scheme."></textarea>
+            <textarea
+                id="schemeDescription"
+                v-model="formData.description"
+                rows="3"
+                placeholder="A short description of this label scheme."
+            ></textarea>
         </div>
         <div class="form-section-divider">
             <label>Labels</label>
         </div>
         <div class="labels-preview-list" v-if="formData.labels.length > 0">
-            <div v-for="(label, index) in formData.labels" :key="index" class="label-preview-item">
-                <span class="label-preview-color" :style="{ backgroundColor: label.color }"></span>
+            <div
+                v-for="(label, index) in formData.labels"
+                :key="index"
+                class="label-preview-item"
+            >
+                <span
+                    class="label-preview-color"
+                    :style="{ backgroundColor: label.color }"
+                ></span>
                 <span class="label-preview-name">{{ label.name }}</span>
-                <Button type="button" @click="removeLabel(index)" class="remove-label-btn" aria-label="Remove label">&times;</Button>
+                <Button
+                    type="button"
+                    @click="removeLabel(index)"
+                    class="remove-label-btn"
+                    aria-label="Remove label"
+                    >&times;</Button
+                >
             </div>
         </div>
         <div class="add-label-group">
-            <input type="text" v-model.trim="newLabelName" class="add-label-input" placeholder="New label name" @keydown.enter.prevent="addLabel" />
-            <input type="color" v-model="newLabelColor" class="color-picker" title="Select label color" />
-            <Button type="button" @click.prevent="addLabel" class="btn btn-primary">Add</Button>
+            <input
+                type="text"
+                v-model.trim="newLabelName"
+                class="add-label-input"
+                placeholder="New label name"
+                @keydown.enter.prevent="addLabel"
+            />
+            <input
+                type="color"
+                v-model="newLabelColor"
+                class="color-picker"
+                title="Select label color"
+            />
+            <Button
+                type="button"
+                @click.prevent="addLabel"
+                class="btn btn-primary"
+                >Add</Button
+            >
         </div>
         <div class="form-actions">
-            <Button type="button" @click="$emit('cancel')" class="btn btn-secondary">Cancel</Button>
+            <Button
+                type="button"
+                @click="$emit('cancel')"
+                class="btn btn-secondary"
+                >Cancel</Button
+            >
             <Button type="submit" class="btn btn-primary">Create Scheme</Button>
         </div>
     </Form>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import Form from '@/components/common/Form.vue';
-import Button from '@/components/common/Button.vue';
-import type { FormPayloadLabel } from '@/types/label/label';
+import { ref } from "vue";
+import Form from "@/components/common/Form.vue";
+import Button from "@/components/common/Button.vue";
+import type { FormPayloadLabel } from "@/types/label/label";
+import { useAlert } from "@/composables/useAlert";
+
+const { showAlert } = useAlert();
 
 const emit = defineEmits<{
-    (e: 'save', formData: FormPayloadLabel): void;
-    (e: 'cancel'): void;
+    (e: "save", formData: FormPayloadLabel): void;
+    (e: "cancel"): void;
 }>();
 
 const formData = ref<FormPayloadLabel>({
-    name: '',
-    description: '',
+    name: "",
+    description: "",
     labels: [],
 });
 
-const newLabelName = ref('');
-const newLabelColor = ref('#4287f5');
+const newLabelName = ref("");
+const newLabelColor = ref("#4287f5");
 
-const addLabel = () => {
+const addLabel = async () => {
     if (!newLabelName.value) {
-        alert('Please enter a name for the label.');
+        await showAlert(
+            "Missing Information",
+            "Please enter a name for the label."
+        );
         return;
     }
 
-    if (formData.value.labels.some(label => label.name.toLowerCase() === newLabelName.value.toLowerCase())) {
-        alert('This label name already exists in the list.');
+    if (
+        formData.value.labels.some(
+            (label) =>
+                label.name.toLowerCase() === newLabelName.value.toLowerCase()
+        )
+    ) {
+        await showAlert(
+            "Duplicate Name",
+            "This label name already exists in the list."
+        );
         return;
     }
 
     formData.value.labels.push({
         name: newLabelName.value,
-        color: newLabelColor.value
+        color: newLabelColor.value,
     });
 
-    newLabelName.value = '';
+    newLabelName.value = "";
 };
 
 const removeLabel = (index: number) => {
     formData.value.labels.splice(index, 1);
 };
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
     if (!formData.value.name.trim()) {
-        alert('Scheme Name is required.');
+        await showAlert("Validation Error", "Scheme Name is required.");
         return;
     }
-    emit('save', formData.value);
+    emit("save", formData.value);
 };
 </script>
 
