@@ -11,7 +11,7 @@
                     <label for="password">Password</label>
                     <input type="password" id="password" v-model="password" placeholder="Enter your password" required />
                 </div>
-                <button type="submit" class="btn btn-primary">Login</button>
+                <Button type="submit" class="btn btn-primary">Login</Button>
             </form>
         </div>
     </div>
@@ -19,6 +19,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import Button from "@/components/common/Button.vue";
 
 const email = ref("");
 const password = ref("");

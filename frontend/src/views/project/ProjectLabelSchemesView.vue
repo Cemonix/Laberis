@@ -16,7 +16,7 @@
             </p>
         </div>
 
-        <button class="fab" @click="openModal" aria-label="Create New Scheme">+</button>
+        <Button class="fab" @click="openModal" aria-label="Create New Scheme">+</Button>
 
         <ModalWindow :is-open="isModalOpen" title="Create New Label Scheme" @close="closeModal" :hide-footer="true">
             <CreateLabelSchemeForm @cancel="closeModal" @save="handleCreateScheme" />
@@ -30,6 +30,7 @@ import { useRoute } from 'vue-router';
 import LabelSchemeCard from '@/components/labels/LabelSchemeCard.vue';
 import ModalWindow from '@/components/common/ModalWindow.vue';
 import CreateLabelSchemeForm from '@/components/labels/CreateLabelSchemeForm.vue';
+import Button from '@/components/common/Button.vue';
 import type { LabelScheme, FormPayloadLabelScheme } from '@/types/label/labelScheme';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 

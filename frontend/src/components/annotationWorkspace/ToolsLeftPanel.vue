@@ -3,7 +3,7 @@
         <div class="panel-section">
             <h3 class="section-title">Tools</h3>
             <div class="tools-grid">
-                <button
+                <Button
                     v-for="tool in availableTools"
                     :key="tool.id"
                     class="tool-button"
@@ -12,14 +12,14 @@
                     :title="tool.name"
                 >
                     <font-awesome-icon v-if="tool.iconDefinition" :icon="tool.iconDefinition" class="tool-icon" />
-                </button>
+                </Button>
             </div>
         </div>
 
         <div class="panel-section" v-if="currentLabelScheme && currentLabelScheme.labels.length > 0">
             <h3 class="section-title">Labels</h3>
             <div class="labels-list">
-                <button
+                <Button
                     v-for="label in currentLabelScheme.labels"
                     :key="label.labelId"
                     class="label-button"
@@ -29,7 +29,7 @@
                 >
                     <span class="label-color-swatch" :style="{ backgroundColor: label.color }"></span>
                     <span class="label-name">{{ label.name }}</span>
-                </button>
+                </Button>
             </div>
         </div>
         <div class="panel-section" v-else-if="currentLabelScheme && currentLabelScheme.labels.length === 0">
@@ -48,6 +48,7 @@ import { computed } from 'vue';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import type { ToolName } from '@/types/workspace/tools';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import Button from '@/components/common/Button.vue';
 
 const workspaceStore = useWorkspaceStore();
 

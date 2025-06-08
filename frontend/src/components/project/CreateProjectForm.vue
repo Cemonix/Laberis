@@ -1,5 +1,5 @@
 <template>
-    <form @submit.prevent="handleSubmit" class="create-project-form">
+    <Form @submit="handleSubmit">
         <div class="form-group">
             <label for="projectName">Project Name</label>
             <input id="projectName" v-model="formData.name" type="text" required placeholder="e.g., Autonomous Drone Vision" />
@@ -17,16 +17,17 @@
                 </option>
             </select>
         </div>
-
         <div class="form-actions">
-            <button type="button" @click="$emit('cancel')" class="btn btn-secondary">Cancel</button>
-            <button type="submit" class="btn btn-primary">Create Project</button>
+            <Button type="button" @click="$emit('cancel')">Cancel</Button>
+            <Button type="submit">Create Project</Button>
         </div>
-    </form>
+    </Form>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import Form from '@/components/common/Form.vue';
+import Button from '@/components/common/Button.vue';
 import { ProjectType } from '@/types/project/project';
 
 const emit = defineEmits<{
@@ -54,9 +55,5 @@ const handleSubmit = () => {
 <style lang="scss" scoped>
 @use "@/styles/variables" as vars;
 
-.create-project-form {
-    display: flex;
-    flex-direction: column;
-    gap: vars.$gap-medium;
-}
+/* .create-project-form {  Remove this block, now handled by base Form } */
 </style>

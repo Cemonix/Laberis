@@ -5,9 +5,9 @@
                 <router-link to="/home">Home</router-link>
             </div>
             <div class="workspace-top-bar-center">
-                <button class="btn btn-primary">Previous</button>
+                <Button>Previous</Button>
                 <span>122 / 150</span>
-                <button class="btn btn-primary">Next</button>
+                <Button>Next</Button>
             </div>
             <div class="workspace-top-bar-right">
                 <span class="zoom-display"
@@ -33,6 +33,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, computed } from "vue";
 import AnnotationCanvas from "@/components/annotationWorkspace/AnnotationCanvas.vue";
+import Button from "@/components/common/Button.vue";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import ToolsLeftPanel from "@/components/annotationWorkspace/ToolsLeftPanel.vue";
 

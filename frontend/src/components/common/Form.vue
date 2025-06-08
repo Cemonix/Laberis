@@ -1,8 +1,28 @@
+<template>
+    <form
+        :class="['base-form', $attrs.class]"
+        v-bind="$attrs"
+        @submit.prevent="$emit('submit', $event)"
+    >
+        <slot />
+    </form>
+</template>
+
+<script setup lang="ts">
+defineEmits(["submit"]);
+</script>
+
+<style lang="scss" scoped>
 @use "sass:color";
 @use "@/styles/variables" as vars;
 
+.base-form {
+    display: flex;
+    flex-direction: column;
+    gap: vars.$gap-medium;
+}
 
-.form-group {
+:deep(.form-group) {
     display: flex;
     flex-direction: column;
     gap: vars.$gap-tiny;
@@ -26,7 +46,7 @@
     }
 }
 
-.form-actions {
+:deep(.form-actions) {
     display: flex;
     justify-content: flex-end;
     align-items: center;
@@ -35,3 +55,4 @@
     padding-top: vars.$padding-medium;
     border-top: vars.$border-width solid vars.$color-gray-400;
 }
+</style>

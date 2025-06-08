@@ -1,31 +1,32 @@
 <template>
-    <div class="card scheme-card">
-        <header class="card-header">
+    <Card class="scheme-card">
+        <template #header>
             <h3 class="scheme-name">{{ scheme.name }}</h3>
             <div class="card-actions">
-                <button class="btn btn-primary">Add Label</button>
-                <button class="btn btn-secondary">Edit Scheme</button>
+                <Button variant="primary">Add Label</Button>
+                <Button variant="secondary">Edit Scheme</Button>
             </div>
-        </header>
-        <div class="card-body">
-            <p v-if="scheme.description" class="scheme-description">{{ scheme.description }}</p>
-            <div class="labels-container">
-                <LabelChip
-                    v-for="label in scheme.labels"
-                    :key="label.labelId"
-                    :label="label"
-                />
-                <p v-if="!scheme.labels || scheme.labels.length === 0" class="no-labels">
-                    This scheme has no labels.
-                </p>
-            </div>
+        </template>
+
+        <p v-if="scheme.description" class="scheme-description">{{ scheme.description }}</p>
+        <div class="labels-container">
+            <LabelChip
+                v-for="label in scheme.labels"
+                :key="label.labelId"
+                :label="label"
+            />
+            <p v-if="!scheme.labels || scheme.labels.length === 0" class="no-labels">
+                This scheme has no labels.
+            </p>
         </div>
-    </div>
+    </Card>
 </template>
 
 <script setup lang="ts">
 import type { LabelScheme } from '@/types/label/labelScheme';
 import LabelChip from './LabelChip.vue';
+import Button from '@/components/common/Button.vue';
+import Card from '@/components/common/Card.vue';
 
 defineProps<{
     scheme: LabelScheme;
