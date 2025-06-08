@@ -1,5 +1,5 @@
 <template>
-    <div class="base-card">
+    <div :class="['base-card', $attrs.class]" v-bind="$attrs">
         <header v-if="$slots.header" class="base-card-header">
             <slot name="header"></slot>
         </header>
