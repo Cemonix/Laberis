@@ -74,51 +74,56 @@ const selectLabel = (labelId: number) => {
 <style lang="scss" scoped>
 @use "sass:color";
 @use "@/styles/variables" as vars;
-@use "@/styles/mixins" as mixins;
 
 .tools-panel-left {
+    display: flex;
+    flex-direction: column;
+    gap: vars.$gap-medium;
     padding: vars.$padding-small;
-    background-color: vars.$ws-panel-bg;
-    color: vars.$ws-panel-text;
+    background-color: vars.$color-dark-blue-2;
+    color: vars.$color-white;
     overflow-y: auto;
-    @include mixins.flex-column($gap: vars.$padding-medium);
 }
 
 .panel-section {
-    @include mixins.flex-column($gap: vars.$padding-small);
+    display: flex;
+    flex-direction: column;
+    gap: vars.$gap-small;
 }
 
 .section-title {
     font-size: vars.$font_size_small;
     font-weight: vars.$font-weight-heading;
-    color: vars.$ws-panel-text;
+    color: vars.$color-white;
     text-transform: uppercase;
-    margin-bottom: vars.$padding-smallest;
-    border-bottom: 1px solid color.adjust(vars.$ws-border, $lightness: 10%);
-    padding-bottom: vars.$padding-smallest;
+    margin-bottom: vars.$margin-tiny;
+    border-bottom: 1px solid color.adjust(vars.$color-accent-blue, $lightness: 10%);
+    padding-bottom: vars.$padding-tiny;
 }
 
 .tools-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
-    gap: vars.$padding-small;
+    gap: vars.$gap-small;
 }
 
 .tool-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
     aspect-ratio: 1 / 1;
     padding: vars.$padding-small;
-    background-color: color.adjust(vars.$ws-panel-bg, $lightness: -5%);
-    color: vars.$ws-panel-text;
-    border: 1px solid vars.$ws-border;
+    background-color: color.adjust(vars.$color-dark-blue-2, $lightness: -5%);
+    color: vars.$color-white;
+    border: 1px solid vars.$color-accent-blue;
     border-radius: vars.$border-radius-standard;
     cursor: pointer;
-    transition: background-color vars.$transition-fast-ease-in-out, border-color vars.$transition-fast-ease-in-out;
-    @include mixins.flex-center;
+    transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out;
 
     &:hover {
-        background-color: color.adjust(vars.$ws-panel-bg, $lightness: 5%);
-        border-color: color.adjust(vars.$ws-border, $lightness: 10%);
+        background-color: color.adjust(vars.$color-dark-blue-2, $lightness: 5%);
+        border-color: color.adjust(vars.$color-accent-blue, $lightness: 10%);
     }
 
     &.active-tool {
@@ -133,25 +138,28 @@ const selectLabel = (labelId: number) => {
 }
 
 .labels-list {
-    @include mixins.flex-column($gap: calc(vars.$padding-small / 2));
+    display: flex;
+    flex-direction: column;
+    gap: vars.$gap-small;
 }
 
 .label-button {
+    display: flex;
+    align-items: center;
     width: 100%;
     padding: calc(vars.$padding-small * 0.75) vars.$padding-small;
-    background-color: color.adjust(vars.$ws-panel-bg, $lightness: -3%);
-    color: vars.$ws-panel-text;
-    border: 1px solid vars.$ws-border;
+    background-color: color.adjust(vars.$color-dark-blue-2, $lightness: -3%);
+    color: vars.$color-white;
+    border: 1px solid vars.$color-accent-blue;
     border-radius: vars.$border-radius-standard;
     cursor: pointer;
     text-align: left;
     font-size: vars.$font_size_small;
-    transition: background-color vars.$transition-fast-ease-in-out, border-color vars.$transition-fast-ease-in-out;
-    @include mixins.flexbox($align-items: center);
+    transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out;
 
     &:hover {
-        background-color: color.adjust(vars.$ws-panel-bg, $lightness: 5%);
-        border-color: color.adjust(vars.$ws-border, $lightness: 10%);
+        background-color: color.adjust(vars.$color-dark-blue-2, $lightness: 5%);
+        border-color: color.adjust(vars.$color-accent-blue, $lightness: 10%);
     }
 
     &.active-label {
@@ -170,8 +178,8 @@ const selectLabel = (labelId: number) => {
     width: 12px;
     height: 12px;
     border-radius: 3px;
-    margin-right: vars.$padding-small;
-    border: 1px solid vars.$ws-border;
+    margin-right: vars.$margin-small;
+    border: 1px solid vars.$color-accent-blue;
     flex-shrink: 0;
 }
 
@@ -183,7 +191,7 @@ const selectLabel = (labelId: number) => {
 
 .no-labels-message {
     font-size: vars.$font_size_small;
-    color: color.adjust(vars.$ws-panel-text, $lightness: 20%);
+    color: color.adjust(vars.$color-white, $lightness: 20%);
     padding: vars.$padding-small;
     text-align: center;
 }

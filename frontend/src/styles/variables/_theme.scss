@@ -1,9 +1,14 @@
 @use "colors";
 
-// TODO: Refactor this
+// Brand & surface
 $theme-background: colors.$color-gray-100;
+$theme-surface: colors.$color-white;
+$theme-primary: colors.$color-primary;
+$theme-link-hover: colors.$color-link-hover;
+
+// Text
 $theme-text: colors.$color-gray-800;
 $theme-text-light: colors.$color-gray-600;
-$theme-border: colors.$color-gray-400;
 
-$modal-overlay-bg: rgba(colors.$color-black, 0.6);
+// Border
+$theme-border: colors.$color-gray-400;

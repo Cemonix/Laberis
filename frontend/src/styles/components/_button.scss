@@ -17,7 +17,7 @@ $btn-secondary-hover-bg: vars.$color-secondary-hover !default;
     font-weight: bold;
     text-align: center;
     text-decoration: none;
-    transition: vars.$transition-normal-ease-in-out;
+    transition: 0.2s ease-in-out;
 }
 
 .btn-primary {

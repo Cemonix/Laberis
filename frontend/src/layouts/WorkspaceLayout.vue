@@ -8,14 +8,14 @@
 
 <style lang="scss" scoped>
 @use "@/styles/variables" as vars;
-@use "@/styles/mixins" as mixins;
 
 .workspace-layout {
-    @include mixins.flex-column;
+    display: flex;
+    flex-direction: column;
     height: 100vh;
     width: 100vw;
     overflow: hidden;
-    background-color: vars.$ws-layout-bg;
-    color: vars.$ws-layout-text;
+    background-color: vars.$theme-surface;
+    color: vars.$theme-text;
 }
 </style>

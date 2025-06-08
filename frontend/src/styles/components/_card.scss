@@ -1,5 +1,4 @@
 @use "@/styles/variables" as vars;
-@use "@/styles/mixins";
 
 $card-bg: vars.$color-white !default;
 $card-box-shadow: vars.$shadow-sm !default;
@@ -9,7 +8,8 @@ $card-body-color: vars.$color-gray-800 !default;
 $card-footer-color: vars.$color-gray-600 !default;
 
 .card {
-    @include mixins.flex-column;
+    display: flex;
+    flex-direction: column;
     background-color: $card-bg;
     border: vars.$border-width solid $card-border-color;
     border-radius: vars.$border-radius-standard;
@@ -19,7 +19,9 @@ $card-footer-color: vars.$color-gray-600 !default;
 }
 
 .card-header {
-    @include mixins.flex-between-start;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: vars.$padding-small;
     border-bottom: vars.$border-width solid $card-border-color;
     color: $card-header-color;
