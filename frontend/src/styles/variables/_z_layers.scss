@@ -1,7 +1,5 @@
-$z-layers: (
-    "dropdown": 100,
-    "navbar": 500,
-    "modal-backdrop": 900,
-    "modal-window": 1000,
-    "tooltip": 1100,
-);
+$z-layer-dropdown: 100;
+$z-layer-navbar: 500;
+$z-layer-base-modal: 900;
+$z-layer-alert-modal: 1000;
+$z-layer-tooltip: 1100;
