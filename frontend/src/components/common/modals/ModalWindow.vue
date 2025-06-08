@@ -1,13 +1,24 @@
 <template>
     <teleport to="body">
         <transition name="modal-fade">
-            <div v-if="isOpen" class="modal-overlay" @click.self="closeModal">
+            <div 
+                v-if="isOpen" 
+                class="modal-overlay" 
+                :class="$attrs.class" 
+                @click.self="closeModal"
+            >
                 <div class="modal-window">
                     <header class="modal-header">
                         <slot name="header">
                             <h2>{{ title }}</h2>
                         </slot>
-                        <Button class="close-button" @click="closeModal" aria-label="Close modal">&times;</Button>
+                        <Button 
+                            class="close-button" 
+                            @click="closeModal" 
+                            aria-label="Close modal"
+                        >
+                            &times;
+                        </Button>
                     </header>
                     <div class="modal-body">
                         <slot></slot>
@@ -24,6 +35,10 @@
 <script setup lang="ts">
 import { watch } from 'vue';
 import Button from '@/components/common/Button.vue';
+
+defineOptions({
+    inheritAttrs: false
+});
 
 const props = defineProps<{
     isOpen: boolean;
@@ -59,8 +74,6 @@ watch(() => props.isOpen, (newValue) => {
 @use "sass:map";
 @use "@/styles/variables" as vars;
 
-$modal-overlay-bg: rgba(vars.$color-black, 0.6);
-
 .modal-overlay {
     display: flex;
     justify-content: center;
@@ -70,8 +83,12 @@ $modal-overlay-bg: rgba(vars.$color-black, 0.6);
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: $modal-overlay-bg;
-    z-index: map.get(vars.$z-layers, "modal-backdrop");
+    background-color: rgba(vars.$color-black, 0.6);
+    z-index: vars.$z-layer-base-modal;
+
+    &.alert-modal {
+        z-index: vars.$z-layer-alert-modal;
+    }
 }
 
 .modal-window {
@@ -82,6 +99,7 @@ $modal-overlay-bg: rgba(vars.$color-black, 0.6);
     box-shadow: vars.$shadow-lg;
     width: 90%;
     max-width: 600px;
+    position: relative;
 }
 
 .modal-header {
