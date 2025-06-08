@@ -7,9 +7,9 @@
 
         <nav class="project-sub-nav">
             <router-link :to="`/projects/${projectId}`" class="sub-nav-link" exact-active-class="is-active">Dashboard</router-link>
-            <router-link :to="`/projects/${projectId}/workflows`" class="sub-nav-link" active-class="is-active">Workflows</router-link>
-            <router-link :to="`/projects/${projectId}/assets`" class="sub-nav-link" active-class="is-active">Assets</router-link>
             <router-link :to="`/projects/${projectId}/label-schemes`" class="sub-nav-link" active-class="is-active">Label Schemes</router-link>
+            <router-link :to="`/projects/${projectId}/data-sources`" class="sub-nav-link" active-class="is-active">Data Sources</router-link>
+            <router-link :to="`/projects/${projectId}/workflows`" class="sub-nav-link" active-class="is-active">Workflows</router-link>
             <router-link :to="`/projects/${projectId}/settings`" class="sub-nav-link" active-class="is-active">Settings</router-link>
         </nav>
 
