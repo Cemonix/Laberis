@@ -29,6 +29,9 @@ import { ref } from 'vue';
 import Form from '@/components/common/Form.vue';
 import Button from '@/components/common/Button.vue';
 import { ProjectType } from '@/types/project/project';
+import { useAlert } from '@/composables/useAlert';
+
+const { showAlert } = useAlert();
 
 const emit = defineEmits<{
     (e: 'save', formData: { name: string; description: string; projectType: ProjectType }): void;
@@ -43,9 +46,9 @@ const formData = ref({
     projectType: ProjectType.OTHER, // Default to OTHER type
 });
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
     if (!formData.value.name || !formData.value.projectType) {
-        alert('Project Name and Type are required.');
+        await showAlert('Missing Information', 'Please fill in all required fields.');
         return;
     }
     emit('save', { ...formData.value });
