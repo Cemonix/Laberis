@@ -3,6 +3,7 @@ import HomePage from '@/views/HomeView.vue';
 import AnnotationWorkspace from '@/views/AnnotationWorkspace.vue';
 import DefaultLayout from '@/layouts/DefaultLayout.vue';
 import WorkspaceLayout from '@/layouts/WorkspaceLayout.vue';
+import DataExplorerLayout from '@/layouts/DataExplorerLayout.vue';
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -51,21 +52,30 @@ const routes: Array<RouteRecordRaw> = [
                 props: true,
             },
             {
-                path: 'workflows',
-                name: 'ProjectWorkflows',
-                component: { template: '<div>Workflows Management Page</div>' },
-                props: true,
-            },
-            {
-                path: 'assets',
-                name: 'ProjectAssets',
-                component: { template: '<div>Assets Management Page</div>' },
-                props: true,
-            },
-            {
                 path: 'label-schemes',
                 name: 'ProjectLabels',
                 component: () => import('@/views/project/ProjectLabelSchemesView.vue'),
+                props: true,
+            },
+            {
+                path: 'data-sources',
+                name: 'ProjectDataSources',
+                component: () => import('@/views/project/ProjectDataSourcesView.vue'),
+                props: true,
+            },
+            {
+                path: 'data-sources/:dataSourceId',
+                name: 'DataExplorer',
+                component: () => import('@/views/project/DataExplorerView.vue'),
+                props: true,
+                meta: {
+                    layout: DataExplorerLayout,
+                }
+            },
+            {
+                path: 'workflows',
+                name: 'ProjectWorkflows',
+                component: { template: '<div>Workflows Management Page</div>' },
                 props: true,
             },
             {
