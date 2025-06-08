@@ -30,11 +30,14 @@ const handleLogin = () => {
 
 <style lang="scss" scoped>
 @use "@/styles/variables" as vars;
-@use "@/styles/mixins" as mixins;
+@use "@/styles/variables/theme" as theme;
 
 .login-container {
     width: 100%;
-    @include mixins.flex-center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 .login-box {
@@ -46,13 +49,13 @@ const handleLogin = () => {
 
     h1 {
         text-align: center;
-        margin-bottom: vars.$padding-large;
+        margin-bottom: vars.$margin-large;
         color: vars.$theme-text;
     }
 }
 
 .btn {
     width: 100%;
-    margin-top: vars.$padding-small;
+    margin-top: vars.$margin-small;
 }
 </style>

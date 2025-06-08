@@ -38,28 +38,27 @@ defineProps<{
 
 .scheme-name {
     font-size: vars.$font_size_large;
-    margin: 0;
 }
 
 .card-actions {
     display: flex;
-    gap: vars.$padding-small;
+    gap: vars.$gap-small;
 }
 
 .scheme-description {
     font-style: italic;
-    color: color.adjust(vars.$theme-text, $lightness: 40%);
-    margin-bottom: vars.$padding-medium;
+    color: vars.$theme-text-light;
+    margin-bottom: vars.$margin-medium;
 }
 
 .labels-container {
     display: flex;
     flex-wrap: wrap;
-    gap: vars.$padding-small;
+    gap: vars.$gap-small;
 }
 
 .no-labels {
-    color: color.adjust(vars.$theme-text, $lightness: 50%);
+    color: vars.$theme-text-light;
     font-size: vars.$font_size_small;
 }
 </style>

@@ -37,10 +37,9 @@ const formattedDate = computed(() => {
 <style lang="scss" scoped>
 @use "sass:color";
 @use "@/styles/variables" as vars;
-@use "@/styles/mixins" as mixins;
 
 .project-card {
-    transition: transform vars.$transition-normal-ease-in-out, box-shadow vars.$transition-normal-ease-in-out;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     height: 100%;
 
     &:hover {
@@ -54,7 +53,7 @@ const formattedDate = computed(() => {
     font-size: vars.$font_size_large;
     font-weight: vars.$font-weight-heading;
     margin: 0;
-    margin-right: vars.$padding-small;
+    margin-right: vars.$margin-small;
 }
 
 .project-status {
@@ -88,7 +87,9 @@ const formattedDate = computed(() => {
 }
 
 .card-footer {
-    @include mixins.flex-between-center();
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: vars.$font_size-small;
     text-transform: capitalize;
 }

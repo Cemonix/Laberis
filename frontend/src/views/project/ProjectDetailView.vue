@@ -61,7 +61,7 @@ onMounted(() => {
 }
 
 .project-header {
-    margin-bottom: vars.$padding-medium;
+    margin-bottom: vars.$margin-medium;
     .project-name {
         font-size: 2.5rem;
         color: vars.$theme-text;
@@ -69,15 +69,15 @@ onMounted(() => {
     .project-description {
         font-size: vars.$font_size_large;
         color: vars.$theme-text-light;
-        margin-top: vars.$padding-small;
+        margin-top: vars.$margin-small;
     }
 }
 
 .project-sub-nav {
     display: flex;
-    gap: vars.$padding-small;
+    gap: vars.$gap-small;
     border-bottom: vars.$border-width solid vars.$color-gray-300;
-    margin-bottom: vars.$padding-large * 2;
+    margin-bottom: vars.$margin-large * 2;
 }
 
 .sub-nav-link {
@@ -85,7 +85,7 @@ onMounted(() => {
     text-decoration: none;
     color: vars.$color-gray-700;
     border-bottom: 3px solid transparent;
-    transition: color vars.$transition-normal-ease-in-out, border-color vars.$transition-normal-ease-in-out;
+    transition: color 0.2s ease-in-out, border-color 0.2s ease-in-out;
 
     &:hover {
         color: vars.$theme-text;
@@ -99,7 +99,7 @@ onMounted(() => {
 
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-    transition: opacity vars.$transition-slow-ease, transform vars.$transition-slow-ease;
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .fade-slide-enter-from,

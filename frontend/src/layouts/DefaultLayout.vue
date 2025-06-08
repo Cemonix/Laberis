@@ -17,10 +17,11 @@ import Footer from '@/layouts/Footer.vue';
 
 <style lang="scss" scoped>
 @use "@/styles/variables" as vars;
-@use "@/styles/mixins" as mixins;
+@use "@/styles/variables/theme" as theme;
 
 .default-layout {
-    @include mixins.flex-column;
+    display: flex;
+    flex-direction: column;
     min-height: 100vh;
     background-color: vars.$theme-background;
 }

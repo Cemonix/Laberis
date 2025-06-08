@@ -100,7 +100,6 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 @use "@/styles/variables" as vars;
-@use "@/styles/mixins" as mixins;
 
 .page-container {
     display: flex;
@@ -114,14 +113,14 @@ onMounted(() => {
 
 .page-title {
     font-size: vars.$font_size_xxlarge;
-    margin-bottom: vars.$padding-large;
+    margin-bottom: vars.$margin-large;
     color: vars.$theme-text;
 }
 
 .project-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: vars.$padding-large;
+    gap: vars.$gap-large;
 }
 
 .fab {
@@ -139,8 +138,11 @@ onMounted(() => {
     box-shadow: vars.$shadow-md;
     cursor: pointer;
     padding-bottom: 4px;
-    transition: transform vars.$transition-normal-ease-in-out, background-color vars.$transition-normal-ease-in-out;
-    @include mixins.flex-center;
+    transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row;
 
     &:hover {
         background-color: vars.$color-primary-hover;

@@ -84,21 +84,21 @@ onMounted(() => {
 @use "@/styles/variables" as vars;
 
 .page-header {
-    margin-bottom: vars.$padding-large * 2;
+    margin-bottom: vars.$margin-xlarge;
     h1 {
         font-size: vars.$font_size_xlarge;
-        margin-bottom: calc(vars.$padding-small / 2);
+        margin-bottom: vars.$padding-tiny;
     }
     p {
         color: vars.$theme-text-light;
-        margin-bottom: vars.$padding-medium;
+        margin-bottom: vars.$margin-medium;
     }
 }
 
 .schemes-list {
     display: flex;
     flex-direction: column;
-    gap: vars.$padding-large;
+    gap: vars.$gap-large;
 }
 
 @keyframes fab-enter {
@@ -130,7 +130,7 @@ onMounted(() => {
     justify-content: center;
     align-items: center;
     padding-bottom: 4px;
-    transition: background-color vars.$transition-normal-ease-in-out, transform vars.$transition-normal-ease-in-out;
+    transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
     animation: fab-enter 0.2s ease-out 0.35s backwards;
 
     &:hover {

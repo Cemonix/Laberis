@@ -2,7 +2,7 @@
     <div class="annotation-workspace-container">
         <div class="workspace-top-bar">
             <div class="workspace-top-bar-left">
-                <a href="/home">Home</a>
+                <router-link to="/home">Home</router-link>
             </div>
             <div class="workspace-top-bar-center">
                 <button class="btn btn-primary">Previous</button>
@@ -83,36 +83,38 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 @use "@/styles/variables" as vars;
-@use "@/styles/mixins" as mixins;
 
 .annotation-workspace-container {
-    @include mixins.flex-column();
+    display: flex;
+    flex-direction: column;
     height: 100%;
     width: 100%;
-    background-color: vars.$ws-layout-bg;
-    color: vars.$ws-layout-text;
+    background-color: vars.$color-dark-blue-1;
+    color: vars.$color-gray-200;
 }
 
 .workspace-top-bar {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
-    grid-gap: vars.$padding-small;
+    grid-gap: vars.$gap-small;
     align-items: center;
-    background-color: vars.$ws-layout-bg;
+    background-color: vars.$color-dark-blue-1;
     padding: vars.$padding-small vars.$padding-medium;
     text-align: center;
-    border-bottom: vars.$border-width solid vars.$ws-border;
+    border-bottom: vars.$border-width solid vars.$color-accent-blue;
 
     .workspace-top-bar-left {
-        @include mixins.flex-start-center();
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
         justify-self: start;
 
         a {
-            color: vars.$ws-layout-text;
+            color: vars.$color-gray-200;
             text-decoration: none;
             padding: vars.$padding-small 0;
             position: relative;
-            transition: color vars.$transition-normal-ease-in-out;
+            transition: color 0.2s ease-in-out;
 
             &::after {
                 content: "";
@@ -122,7 +124,7 @@ onUnmounted(() => {
                 bottom: 0;
                 left: 50%;
                 background-color: vars.$color-primary;
-                transition: width vars.$transition-slow-ease, left vars.$transition-slow-ease;
+                transition: width 0.3s ease, left 0.3s ease;
             }
 
             &:hover,
@@ -138,14 +140,19 @@ onUnmounted(() => {
         }
     }
     .workspace-top-bar-center {
-        @include mixins.flex-center($gap: vars.$padding-small);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: vars.$gap-small;
     }
     .workspace-top-bar-right {
-        @include mixins.flex-end-center();
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
         font-size: vars.$font-size-medium;
 
         .zoom-display {
-            margin-right: vars.$padding-small;
+            margin-right: vars.$margin-small;
         }
     }
 }
@@ -159,27 +166,28 @@ onUnmounted(() => {
 .workspace-tools-left {
     width: auto;
     min-width: 60px;
-    background-color: vars.$ws-panel-bg;
+    background-color: vars.$color-dark-blue-2;
     padding: vars.$padding-small;
-    border-right: vars.$border-width solid vars.$ws-border;
+    border-right: vars.$border-width solid vars.$color-accent-blue;
     flex-shrink: 0;
     overflow-y: auto;
 }
 
 .workspace-canvas-area {
-    @include mixins.flex-column();
+    display: flex;
+    flex-direction: column;
     flex-grow: 1;
     overflow: hidden;
     position: relative;
     padding: vars.$padding-medium;
-    background-color: vars.$ws-canvas-bg;
+    background-color: vars.$color-dark-blue-3;
 }
 
 .workspace-annotations-right {
     width: 200px;
-    background-color: vars.$ws-panel-bg;
+    background-color: vars.$color-dark-blue-2;
     padding: vars.$padding-small;
-    border-left: vars.$border-width solid vars.$ws-border;
+    border-left: vars.$border-width solid vars.$color-accent-blue;
     flex-shrink: 0;
     overflow-y: auto;
 }

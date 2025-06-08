@@ -10,12 +10,16 @@
 
 <style lang="scss" scoped>
 @use "@/styles/variables" as vars;
-@use '@/styles/mixins' as mixins;
+@use "@/styles/variables/theme" as theme;
 
 .home-container {
-	@include mixins.flex-center($direction: column, $gap: vars.$padding-medium);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: vars.$gap-medium;
 	width: 100%;
-	background-color: vars.$theme-background;
+	background-color: vars.$color-gray-300;
 	padding: vars.$padding-medium;
 
 	h1 {

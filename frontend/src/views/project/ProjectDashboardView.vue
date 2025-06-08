@@ -37,13 +37,13 @@
 <style lang="scss" scoped>
 @use "sass:color";
 @use "@/styles/variables" as vars;
-@use "@/styles/mixins" as mixins;
+@use "@/styles/variables/theme" as theme;
 
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     grid-auto-rows: 250px;
-    gap: vars.$padding-large;
+    gap: vars.$gap-large;
 }
 
 .widget {
@@ -53,7 +53,7 @@
 
     h3 {
         font-size: vars.$font_size_large;
-        margin-bottom: vars.$padding-medium;
+        margin-bottom: vars.$margin-medium;
     }
 
     .placeholder-text {
@@ -62,17 +62,22 @@
         font-style: italic;
         border: 2px dashed vars.$theme-border;
         border-radius: vars.$border-radius-standard;
-        @include mixins.flex-center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
     }
 
     .kpi-stats {
-        margin-top: vars.$padding-medium;
+        margin-top: vars.$margin-medium;
         display: flex;
         justify-content: space-between;
     }
 
     .quick-actions-list {
-        @include mixins.flex-column($gap: vars.$padding-small);
+        display: flex;
+        flex-direction: column;
+        gap: vars.$gap-small;
     }
 }
 </style>

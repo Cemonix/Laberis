@@ -435,16 +435,18 @@ watch(() => workspaceStore.canvasDisplayDimensions, () => {
 
 <style lang="scss" scoped>
 @use "@/styles/variables" as vars;
-@use "@/styles/mixins" as mixins;
 
 .annotation-canvas-wrapper {
-    @include mixins.flex-center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     width: 100%;
     height: 100%;
     position: relative;
-    background-color: vars.$ws-canvas-bg;
+    background-color: vars.$color-dark-blue-3;
     overflow: hidden;
-    background-color: vars.$ws-canvas-bg;
+    background-color: vars.$color-dark-blue-3;
 }
 
 .main-canvas {
@@ -452,7 +454,9 @@ watch(() => workspaceStore.canvasDisplayDimensions, () => {
 }
 
 %overlay-base {
-    @include mixins.flex-center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     position: absolute;
     top: 0;
     left: 0;

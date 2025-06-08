@@ -87,28 +87,29 @@ const handleSubmit = () => {
 <style lang="scss" scoped>
 @use "sass:color";
 @use "@/styles/variables" as vars;
+@use "@/styles/variables/theme" as theme;
 
 .create-scheme-form {
     display: flex;
     flex-direction: column;
-    gap: vars.$padding-medium;
+    gap: vars.$gap-medium;
 }
 
 .form-section-divider {
-    margin-top: vars.$padding-medium;
+    margin-top: vars.$margin-medium;
     padding-bottom: vars.$padding-small;
     border-bottom: vars.$border-width solid vars.$theme-border;
     label {
         font-weight: vars.$font-weight-heading;
-        color: color.adjust(vars.$theme-text, $lightness: 10%);
+        color: vars.$theme-text-light;
     }
 }
 
 .labels-preview-list {
     display: flex;
     flex-direction: column;
-    gap: calc(vars.$padding-small / 2);
-    margin-top: vars.$padding-small;
+    gap: vars.$gap-tiny;
+    margin-top: vars.$margin-small;
     max-height: 150px;
     overflow-y: auto;
 }
@@ -116,7 +117,7 @@ const handleSubmit = () => {
 .label-preview-item {
     display: flex;
     align-items: center;
-    gap: vars.$padding-small;
+    gap: vars.$gap-small;
     background-color: vars.$color-gray-200;
     padding: vars.$padding-small;
     border-radius: vars.$border-radius-input;
@@ -135,7 +136,7 @@ const handleSubmit = () => {
 
 .add-label-input {
     padding: vars.$padding-small;
-    border: vars.$border-width solid vars.$theme-border;
+    border: vars.$border-width solid vars.$color-gray-400;
     border-radius: vars.$border-radius-input;
     font-size: vars.$font_size_medium;
 }
@@ -144,7 +145,7 @@ const handleSubmit = () => {
     background: none;
     border: none;
     font-size: 1.5rem;
-    color: vars.$theme-text-light;
+    color: vars.$theme-text;
     cursor: pointer;
     line-height: 1;
     &:hover {
@@ -154,9 +155,9 @@ const handleSubmit = () => {
 
 .add-label-group {
     display: flex;
-    gap: vars.$padding-small;
+    gap: vars.$gap-small;
     align-items: center;
-    margin-top: vars.$padding-small;
+    margin-top: vars.$margin-small;
 
     input[type="text"] {
         flex-grow: 1;
@@ -165,7 +166,7 @@ const handleSubmit = () => {
         height: 38px;
         width: 45px;
         padding: 2px;
-        border: vars.$border-width solid vars.$theme-border;
+        border: vars.$border-width solid vars.$color-gray-300;
         border-radius: vars.$border-radius-input;
         cursor: pointer;
     }

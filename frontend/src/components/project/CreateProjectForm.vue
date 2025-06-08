@@ -57,6 +57,6 @@ const handleSubmit = () => {
 .create-project-form {
     display: flex;
     flex-direction: column;
-    gap: vars.$padding-medium;
+    gap: vars.$gap-medium;
 }
 </style>
