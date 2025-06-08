@@ -1,6 +1,6 @@
 <template>
     <div class="dashboard-grid">
-        <div class="card widget kpi-widget">
+        <Card class="widget kpi-widget">
             <h3>Annotation Progress</h3>
             <p class="placeholder-text">[Donut Chart Placeholder]</p>
             <div class="kpi-stats">
@@ -8,31 +8,24 @@
                 <span><strong>Annotated:</strong> 800</span>
                 <span><strong>In Review:</strong> 150</span>
             </div>
-        </div>
-        <div class="card widget">
+        </Card>
+        <Card class="widget">
             <h3>Label Distribution</h3>
             <p class="placeholder-text">[Bar Chart Placeholder]</p>
-        </div>
-        <div class="card widget large-widget">
+        </Card>
+        <Card class="widget large-widget">
             <h3>Recent Activity</h3>
             <p class="placeholder-text">[Activity Feed Placeholder: e.g., "User X annotated Asset Y"]</p>
-        </div>
-        <div class="card widget">
-            <h3>Quick Actions</h3>
-            <div class="quick-actions-list">
-                <Button class="btn btn-primary">Start Annotating</Button>
-                <Button class="btn btn-primary">Upload Assets</Button>
-            </div>
-        </div>
-        <div class="card widget">
+        </Card>
+        <Card class="widget">
             <h3>Team Members</h3>
             <p class="placeholder-text">[List of assigned members]</p>
-        </div>
+        </Card>
     </div>
 </template>
 
 <script setup lang="ts">
-import Button from '@/components/common/Button.vue';
+import Card from '@/components/common/Card.vue';
 </script>
 
 <style lang="scss" scoped>
@@ -58,7 +51,7 @@ import Button from '@/components/common/Button.vue';
     }
 
     .placeholder-text {
-        height: 60%;
+        height: 75%;
         color: vars.$theme-text-light;
         font-style: italic;
         border: 2px dashed vars.$theme-border;
@@ -73,12 +66,6 @@ import Button from '@/components/common/Button.vue';
         margin-top: vars.$margin-medium;
         display: flex;
         justify-content: space-between;
-    }
-
-    .quick-actions-list {
-        display: flex;
-        flex-direction: column;
-        gap: vars.$gap-small;
     }
 }
 </style>
