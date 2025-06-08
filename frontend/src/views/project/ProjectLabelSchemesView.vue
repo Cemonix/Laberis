@@ -1,5 +1,5 @@
 <template>
-    <div class="label-setup-page">
+    <div class="label-schemes-page">
         <div class="page-header">
             <h1>Label Schemes</h1>
             <p>Manage the label schemes and labels for this project.</p>
@@ -28,14 +28,16 @@
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import LabelSchemeCard from '@/components/labels/LabelSchemeCard.vue';
-import ModalWindow from '@/components/common/ModalWindow.vue';
+import ModalWindow from '@/components/common/modals/ModalWindow.vue';
 import CreateLabelSchemeForm from '@/components/labels/CreateLabelSchemeForm.vue';
 import Button from '@/components/common/Button.vue';
 import type { LabelScheme, FormPayloadLabelScheme } from '@/types/label/labelScheme';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { useAlert } from '@/composables/useAlert';
 
 const route = useRoute();
 const workspaceStore = useWorkspaceStore();
+const { showAlert } = useAlert();
 
 const labelSchemes = ref<LabelScheme[]>([]);
 const isModalOpen = ref(false);
@@ -43,11 +45,11 @@ const isModalOpen = ref(false);
 const openModal = () => isModalOpen.value = true;
 const closeModal = () => isModalOpen.value = false;
 
-const handleCreateScheme = (formData: FormPayloadLabelScheme) => {
+const handleCreateScheme = async (formData: FormPayloadLabelScheme) => {
     const projectId = Number(route.params.projectId);
 
     if (labelSchemes.value.some(scheme => scheme.name.toLowerCase() === formData.name.toLowerCase())) {
-        alert('This label name already exists in the list.');
+        await showAlert('Duplicate Scheme', 'This label scheme already exists.');
         return;
     }
 
@@ -141,7 +143,7 @@ onMounted(() => {
     }
 }
 
-.label-setup-page.fade-slide-leave-active .fab {
+.label-schemes-page.fade-slide-leave-active .fab {
     opacity: 0;
 }
 </style>
