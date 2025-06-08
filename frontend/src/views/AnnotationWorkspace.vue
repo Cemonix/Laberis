@@ -68,13 +68,6 @@ onMounted(async () => {
     console.log(
         "[WorkspaceView] loadAsset action dispatched. Image URL from store should be updated now."
     );
-
-    // TODO: Later, this will be driven by the Pinia store (Step 3.4.1)
-    // Example:
-    // import { useWorkspaceStore } from '@/stores/workspaceStore';
-    // const workspaceStore = useWorkspaceStore();
-    // workspaceStore.loadAsset(props.projectId, props.assetId);
-    // currentImageUrl.value = computed(() => workspaceStore.currentImageUrl);
 });
 
 onUnmounted(() => {
