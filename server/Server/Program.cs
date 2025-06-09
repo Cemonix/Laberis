@@ -13,6 +13,11 @@ using server.Repositories;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 using server.Services;
+using server.Services.Storage;
+using Microsoft.AspNetCore.Authentication;
+using server.Authentication;
+using System.Security.Claims;
+using Npgsql;
 
 namespace server;
 
@@ -40,6 +45,14 @@ public class Program
 
         var configuration = builder.Configuration;
 
+        #region Service Configuration
+
+        // Configure and validate Minio settings
+        builder.Services.AddOptions<MinioSettings>()
+            .Bind(configuration.GetSection(MinioSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         // Configure and validate WebApp settings
         builder.Services.AddOptions<WebAppSettings>()
             .Bind(configuration.GetSection(WebAppSettings.SectionName))
@@ -59,6 +72,13 @@ public class Program
             .ValidateOnStart();
 
         var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
+
+        // Use Npgsql data source builder to map all enums
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+
+        NpgsqlEnumMapper.MapEnums(dataSourceBuilder);
+
+        await using var dataSource = dataSourceBuilder.Build();
 
         builder.Services.AddDbContext<LaberisDbContext>(options =>
             options.UseNpgsql(connectionString)
@@ -85,8 +105,13 @@ public class Program
         .AddEntityFrameworkStores<LaberisDbContext>()
         .AddDefaultTokenProviders();
 
+        // Register the storage service factory
+        builder.Services.AddScoped<IStorageServiceFactory, StorageServiceFactory>();
+        builder.Services.AddScoped<IStorageService, MinioStorageService>();
+
         builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
         builder.Services.AddScoped<IProjectService, ProjectService>();
+        builder.Services.AddScoped<IDataSourceRepository, DataSourceRepository>();
 
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>();
         if (jwtSettings == null)
@@ -97,23 +122,49 @@ public class Program
         }
 
         // JWT Authentication
-        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
+        var useFakeUser = builder.Configuration.GetValue<bool>("Authentication:DisableAndUseFakeUser");
+        if (useFakeUser && !builder.Environment.IsDevelopment())
         {
-            options.SaveToken = true;
-            options.Authority = jwtSettings.Authority;
-            options.Audience = jwtSettings.ValidAudience;
-            options.RequireHttpsMetadata = builder.Environment.IsProduction();
-            options.TokenValidationParameters = new TokenValidationParameters
+            TextWriter appStartupErrorWriter = Console.Error;
+            appStartupErrorWriter.WriteLine("Fake authentication is only allowed in Development environment.");
+            Environment.Exit(1);
+        }
+        else if (useFakeUser)
+        {
+            Console.WriteLine("--> FAKE AUTHENTICATION IS ENABLED. All requests will be authenticated as the fake user.");
+
+            var authBuilder = builder.Services.AddAuthentication(options =>
             {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateIssuerSigningKey = true,
-                ValidAudience = jwtSettings.ValidAudience,
-                ValidIssuer = jwtSettings.ValidIssuer,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret))
-            };
-        });
+                options.DefaultAuthenticateScheme = "FakeScheme";
+                options.DefaultChallengeScheme = "FakeScheme";
+            });
+
+            ConfigureJwtBearer(authBuilder, jwtSettings, builder.Environment);
+
+            authBuilder.AddScheme<AuthenticationSchemeOptions, FakeAuthHandler>("FakeScheme", options => { });
+        }
+        else
+        {
+            var authBuilder = builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            });
+
+            ConfigureJwtBearer(authBuilder, jwtSettings, builder.Environment);
+        }
+
+        builder.Services.AddAuthorizationBuilder()
+            .AddPolicy("RequireAuthenticatedUser", policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(ClaimTypes.NameIdentifier);
+            })
+            .AddPolicy("RequireAdminRole", policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireRole("Admin");
+            });
 
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
@@ -173,6 +224,8 @@ public class Program
             });
         });
 
+        #endregion
+
         var app = builder.Build();
 
         using (var scope = app.Services.CreateScope())
@@ -202,17 +255,61 @@ public class Program
         else
         {
             app.UseExceptionHandler("/Error");
+            app.UseHttpsRedirection();
             app.UseHsts();
         }
-
-        app.UseHttpsRedirection();
 
         app.UseCors("AllowSpecificOrigin");
 
         app.UseAuthentication();
         app.UseAuthorization();
+
         app.MapControllers();
 
         app.Run();
+
+    }
+    
+    static void ConfigureJwtBearer(AuthenticationBuilder authBuilder, JwtSettings jwtSettings, IWebHostEnvironment env)
+    {
+        authBuilder.AddJwtBearer(options =>
+        {
+            options.SaveToken = true;
+            options.Authority = jwtSettings.Authority;
+            options.Audience = jwtSettings.ValidAudience;
+            options.RequireHttpsMetadata = env.IsProduction();
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateIssuerSigningKey = true,
+                ValidAudience = jwtSettings.ValidAudience,
+                ValidIssuer = jwtSettings.ValidIssuer,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret))
+            };
+            options.Events = new JwtBearerEvents
+            {
+                OnChallenge = context =>
+                {
+                    context.HandleResponse();
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return Task.CompletedTask;
+                },
+                OnAuthenticationFailed = context =>
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                    {
+                        context.Response.ContentType = "application/json";
+                        return context.Response.WriteAsJsonAsync(new
+                        {
+                            error = "Token expired",
+                            message = "The provided token has expired. Please log in again."
+                        });
+                    }
+                    return Task.CompletedTask;
+                },
+            };
+        });
     }
 }
