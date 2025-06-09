@@ -1,4 +1,6 @@
-using System;
+using server.Data;
+using server.Models.Domain;
+using server.Models.Domain.Enums;
 using server.Models.DTOs;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
@@ -8,14 +10,99 @@ namespace server.Services;
 public class ProjectService : IProjectService
 {
     private readonly IProjectRepository _projectRepository;
+    private readonly IDataSourceRepository _dataSourceRepository;
+    private readonly IStorageServiceFactory _storageServiceFactory;
+    private readonly LaberisDbContext _context;
     private readonly ILogger<ProjectService> _logger;
 
-    public ProjectService(IProjectRepository projectRepository, ILogger<ProjectService> logger)
+    public ProjectService(
+        IProjectRepository projectRepository,
+        IDataSourceRepository dataSourceRepository,
+        IStorageServiceFactory storageServiceFactory,
+        LaberisDbContext context,
+        ILogger<ProjectService> logger)
     {
         _projectRepository = projectRepository ?? throw new ArgumentNullException(nameof(projectRepository));
+        _dataSourceRepository = dataSourceRepository ?? throw new ArgumentNullException(nameof(dataSourceRepository));
+        _storageServiceFactory = storageServiceFactory ?? throw new ArgumentNullException(nameof(storageServiceFactory));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    public async Task<ProjectDto> CreateProjectAsync(CreateProjectDto createDto, string ownerId)
+    {
+        _logger.LogInformation("Attempting to create a new project with name: {ProjectName}", createDto.Name);
+        
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        
+        try
+        {
+            var project = new Project
+            {
+                Name = createDto.Name,
+                Description = createDto.Description ?? string.Empty,
+                ProjectType = createDto.ProjectType,
+                OwnerId = ownerId,
+                Status = ProjectStatus.ACTIVE,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _projectRepository.AddAsync(project);
+            await _projectRepository.SaveChangesAsync();
+            _logger.LogInformation("Project {ProjectId} saved to database.", project.ProjectId);
+
+            // Create the storage container via the factory
+            // TODO: Type is hardcoded for now, but could be made configurable - based on the connection configuration
+            const DataSourceType defaultSourceType = DataSourceType.MINIO_BUCKET;
+            var storageService = _storageServiceFactory.GetService(defaultSourceType);
+            var containerName = $"project-id-{project.ProjectId}";
+
+            await storageService.CreateContainerAsync(containerName);
+            _logger.LogInformation("Storage container '{ContainerName}' created for project {ProjectId}.", containerName, project.ProjectId);
+
+            // Create and save the default DataSource entity
+            var dataSource = new DataSource
+            {
+                ProjectId = project.ProjectId,
+                Name = "Default Storage",
+                Description = "Default Minio bucket for this project.",
+                SourceType = defaultSourceType,
+                ConnectionDetails = $"{{ \"BucketName\": \"{containerName}\" }}",
+                Status = DataSourceStatus.ACTIVE,
+                IsDefault = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _dataSourceRepository.AddAsync(dataSource);
+            await _dataSourceRepository.SaveChangesAsync();
+            _logger.LogInformation("Default data source for project {ProjectId} saved to database.", project.ProjectId);
+
+            // If all steps succeed, commit the transaction
+            await transaction.CommitAsync();
+            _logger.LogInformation("Successfully created project {ProjectId} and its resources.", project.ProjectId);
+
+            return new ProjectDto
+            {
+                Id = project.ProjectId,
+                Name = project.Name,
+                Description = project.Description,
+                CreatedAt = project.CreatedAt,
+                UpdatedAt = project.UpdatedAt,
+                OwnerId = project.OwnerId,
+                ProjectType = project.ProjectType,
+                Status = project.Status
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create project. Rolling back transaction.");
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+    
     public async Task<IEnumerable<ProjectDto>> GetAllProjectsAsync(
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25
