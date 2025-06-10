@@ -19,6 +19,13 @@ public interface IStorageService
     Task CreateContainerAsync(string containerName, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Lists all storage containers (e.g., buckets) available in the storage service.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A task that returns a collection of container names.</returns>
+    Task<IEnumerable<string>> ListContainersAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Checks if a storage container exists.
     /// </summary>
     /// <param name="containerName">The name of the container to check.</param>
