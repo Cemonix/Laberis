@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using server.Configs;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
@@ -7,26 +8,26 @@ namespace server.Authentication;
 
 public class FakeAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
-    private readonly IConfiguration _configuration;
+    private readonly AdminUserSettings _fakeUserSettings;
 
     public FakeAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder,
-        IConfiguration configuration)
-        : base(options, logger, encoder)
+        IOptions<AdminUserSettings> fakeUserSettings
+    ) : base(options, logger, encoder)
     {
-        _configuration = configuration;
+        _fakeUserSettings = fakeUserSettings.Value;
     }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, _configuration.GetValue<string>("Authentication:FakeUser:Id") ?? "auth0|default-debug-user"),
-            new Claim(ClaimTypes.Name, _configuration.GetValue<string>("Authentication:FakeUser:Username") ?? "debugger"),
-            new Claim(ClaimTypes.Email, _configuration.GetValue<string>("Authentication:FakeUser:Email") ?? "debug@example.com"),
-            new Claim(ClaimTypes.Role, _configuration.GetValue<string>("Authentication:FakeUser:Roles") ?? "Admin")
+            new Claim(ClaimTypes.NameIdentifier, _fakeUserSettings.Id),
+            new Claim(ClaimTypes.Name, _fakeUserSettings.Username),
+            new Claim(ClaimTypes.Email, _fakeUserSettings.Email),
+            new Claim(ClaimTypes.Role, _fakeUserSettings.Role)
         };
 
         var identity = new ClaimsIdentity(claims, "Fake");
