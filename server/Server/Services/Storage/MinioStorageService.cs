@@ -71,12 +71,6 @@ public class MinioStorageService : IStorageService
         {
             await _minioClient.MakeBucketAsync(args, cancellationToken);
             _logger.LogInformation("Successfully created Minio bucket '{BucketName}'.", containerName);
-
-            var buckets = await _minioClient.ListBucketsAsync(cancellationToken);
-            foreach (var bucket in buckets.Buckets)
-            {
-                _logger.LogInformation("Existing bucket: {Bucket}", bucket.Name);
-            }
         }
         catch (MinioException ex)
         {
