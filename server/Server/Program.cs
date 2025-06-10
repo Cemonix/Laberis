@@ -100,11 +100,6 @@ public class Program
         .AddEntityFrameworkStores<LaberisDbContext>()
         .AddDefaultTokenProviders();
 
-        builder.Services.AddOptions<MinioSettings>()
-            .Bind(configuration.GetSection(MinioSettings.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
         builder.Services.AddMinio(options =>
         {
             var minioSettings = configuration.GetSection(MinioSettings.SectionName).Get<MinioSettings>();
