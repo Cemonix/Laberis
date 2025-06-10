@@ -32,6 +32,7 @@ public class DataSeeder
         // Define Admin User
         var adminUserToCreate = new IdentityUser
         {
+            Id = adminUserSettings.Id,
             UserName = adminUserSettings.Username,
             Email = adminUserSettings.Email,
             EmailConfirmed = true
