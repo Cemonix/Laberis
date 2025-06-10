@@ -18,6 +18,8 @@ using Microsoft.AspNetCore.Authentication;
 using server.Authentication;
 using System.Security.Claims;
 using Npgsql;
+using server.Models.Domain.Enums;
+using Minio;
 
 namespace server;
 
@@ -73,15 +75,8 @@ public class Program
 
         var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
 
-        // Use Npgsql data source builder to map all enums
-        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-
-        NpgsqlEnumMapper.MapEnums(dataSourceBuilder);
-
-        await using var dataSource = dataSourceBuilder.Build();
-
         builder.Services.AddDbContext<LaberisDbContext>(options =>
-            options.UseNpgsql(connectionString)
+            options.UseNpgsql(connectionString, NpgsqlEnumMapper.ConfigureEnums)
         );
 
         builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
@@ -105,9 +100,24 @@ public class Program
         .AddEntityFrameworkStores<LaberisDbContext>()
         .AddDefaultTokenProviders();
 
-        // Register the storage service factory
-        builder.Services.AddScoped<IStorageServiceFactory, StorageServiceFactory>();
+        builder.Services.AddOptions<MinioSettings>()
+            .Bind(configuration.GetSection(MinioSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        builder.Services.AddMinio(options =>
+        {
+            var minioSettings = configuration.GetSection(MinioSettings.SectionName).Get<MinioSettings>();
+            if (minioSettings != null)
+            {
+                options.WithEndpoint(minioSettings.Endpoint);
+                options.WithCredentials(minioSettings.AccessKey, minioSettings.SecretKey);
+                options.WithSSL(minioSettings.UseSsl);
+            }
+        });
+
         builder.Services.AddScoped<IStorageService, MinioStorageService>();
+        builder.Services.AddScoped<IStorageServiceFactory, StorageServiceFactory>();
 
         builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
         builder.Services.AddScoped<IProjectService, ProjectService>();
@@ -122,7 +132,7 @@ public class Program
         }
 
         // JWT Authentication
-        var useFakeUser = builder.Configuration.GetValue<bool>("Authentication:DisableAndUseFakeUser");
+        var useFakeUser = builder.Configuration.GetValue<bool>("Authentication:UseFakeUser");
         if (useFakeUser && !builder.Environment.IsDevelopment())
         {
             TextWriter appStartupErrorWriter = Console.Error;
@@ -227,6 +237,25 @@ public class Program
         #endregion
 
         var app = builder.Build();
+
+        // Ensure the database is created and migrations are applied
+        await StartupValidator.ValidateStorageServiceAsync(app.Services);
+        
+        // TODO: Uncomment after solving the issue with dotnet ef migrations
+        // using (var scope = app.Services.CreateScope())
+        // {
+        //     var dbContext = scope.ServiceProvider.GetRequiredService<LaberisDbContext>();
+        //     try
+        //     {
+        //         await dbContext.Database.MigrateAsync();
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        //         logger.LogError(ex, "An error occurred while migrating the database.");
+        //         Environment.Exit(1);
+        //     }
+        // }
 
         using (var scope = app.Services.CreateScope())
         {
