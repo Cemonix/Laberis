@@ -16,16 +16,10 @@ public class MinioStorageService : IStorageService
 
     public DataSourceType ForType => DataSourceType.MINIO_BUCKET;
 
-    public MinioStorageService(IOptions<MinioSettings> minioSettings, ILogger<MinioStorageService> logger)
+    public MinioStorageService(IMinioClient minioClient, ILogger<MinioStorageService> logger)
     {
         _logger = logger;
-        var settings = minioSettings.Value;
-
-        _minioClient = new MinioClient()
-            .WithEndpoint(settings.Endpoint)
-            .WithCredentials(settings.AccessKey, settings.SecretKey)
-            .WithSSL(settings.UseSsl)
-            .Build();
+        _minioClient = minioClient;
     }
 
     public async Task<bool> ContainerExistsAsync(string containerName, CancellationToken cancellationToken = default)
@@ -43,6 +37,25 @@ public class MinioStorageService : IStorageService
         }
     }
 
+    public async Task<IEnumerable<string>> ListContainersAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Listing all Minio buckets.");
+        try
+        {
+            var buckets = await _minioClient.ListBucketsAsync(cancellationToken);
+            if (buckets.Buckets == null)
+            {
+                throw new InvalidOperationException("No buckets found or Minio client is not configured correctly.");
+            }
+            return buckets.Buckets.Select(b => b.Name);
+        }
+        catch (MinioException ex)
+        {
+            _logger.LogError(ex, "An error occurred while listing Minio buckets.");
+            throw;
+        }
+    }
+
     public async Task CreateContainerAsync(string containerName, CancellationToken cancellationToken = default)
     {
         if (await ContainerExistsAsync(containerName, cancellationToken))
@@ -52,11 +65,18 @@ public class MinioStorageService : IStorageService
         }
 
         _logger.LogInformation("Creating new Minio bucket '{BucketName}'.", containerName);
+
         var args = new MakeBucketArgs().WithBucket(containerName);
         try
         {
             await _minioClient.MakeBucketAsync(args, cancellationToken);
             _logger.LogInformation("Successfully created Minio bucket '{BucketName}'.", containerName);
+
+            var buckets = await _minioClient.ListBucketsAsync(cancellationToken);
+            foreach (var bucket in buckets.Buckets)
+            {
+                _logger.LogInformation("Existing bucket: {Bucket}", bucket.Name);
+            }
         }
         catch (MinioException ex)
         {
