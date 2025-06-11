@@ -3,12 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi.Models;
 
-using server;
 using server.Data;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using server.Configs;
-using server.Models;
 using server.Repositories;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
@@ -17,8 +15,6 @@ using server.Services.Storage;
 using Microsoft.AspNetCore.Authentication;
 using server.Authentication;
 using System.Security.Claims;
-using Npgsql;
-using server.Models.Domain.Enums;
 using Minio;
 
 namespace server;
@@ -30,20 +26,24 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
 #if DEBUG
-        string envFilePath = "../.env";
-        if (!File.Exists(envFilePath))
+        try
+        {
+            DotNetEnv.Env.TraversePath().Load();
+        }
+        catch (Exception ex)
         {
             TextWriter appStartupErrorWriter = Console.Error;
-            appStartupErrorWriter.WriteLine("No .env file found. Ensure environment variables are set correctly.");
+            appStartupErrorWriter.WriteLine("Failed to load .env file. Ensure the file exists and is correctly formatted.");
+            appStartupErrorWriter.WriteLine(ex.Message);
             Environment.Exit(1);
         }
-        DotNetEnv.Env.Load(envFilePath);
 #endif
 
+        string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
         builder.Configuration
             .AddEnvironmentVariables()
-            .AddJsonFile("Server/appsettings.json", optional: false, reloadOnChange: true)
-            .AddJsonFile($"Server/appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
+            .AddJsonFile($"{baseDirectory}/appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile($"{baseDirectory}/appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
 
         var configuration = builder.Configuration;
 
@@ -111,12 +111,14 @@ public class Program
             }
         });
 
-        builder.Services.AddScoped<IStorageService, MinioStorageService>();
-        builder.Services.AddScoped<IStorageServiceFactory, StorageServiceFactory>();
-
         builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
         builder.Services.AddScoped<IProjectService, ProjectService>();
         builder.Services.AddScoped<IDataSourceRepository, DataSourceRepository>();
+        builder.Services.AddScoped<ILabelSchemeRepository, LabelSchemeRepository>();
+
+        builder.Services.AddScoped<IStorageService, MinioStorageService>();
+        builder.Services.AddScoped<IStorageServiceFactory, StorageServiceFactory>();
+        builder.Services.AddScoped<ILabelSchemeService, LabelSchemeService>();
 
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>();
         if (jwtSettings == null)
@@ -235,22 +237,6 @@ public class Program
 
         // Ensure the database is created and migrations are applied
         await StartupValidator.ValidateStorageServiceAsync(app.Services);
-        
-        // TODO: Uncomment after solving the issue with dotnet ef migrations
-        // using (var scope = app.Services.CreateScope())
-        // {
-        //     var dbContext = scope.ServiceProvider.GetRequiredService<LaberisDbContext>();
-        //     try
-        //     {
-        //         await dbContext.Database.MigrateAsync();
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        //         logger.LogError(ex, "An error occurred while migrating the database.");
-        //         Environment.Exit(1);
-        //     }
-        // }
 
         using (var scope = app.Services.CreateScope())
         {
