@@ -85,6 +85,8 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .WithOne(pm => pm.Project)
             .HasForeignKey(pm => pm.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
-    
+
+        // Query filter to exclude projects pending deletion
+        entity.HasQueryFilter(p => p.Status != ProjectStatus.PENDING_DELETION);
     }
 }
