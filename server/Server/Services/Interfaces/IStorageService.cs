@@ -19,6 +19,14 @@ public interface IStorageService
     Task CreateContainerAsync(string containerName, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Deletes a storage container.
+    /// </summary>
+    /// <param name="containerName">The name of the container to delete.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task DeleteContainerAsync(string containerName, CancellationToken cancellationToken = default);
+    
+    /// <summary>
     /// Lists all storage containers (e.g., buckets) available in the storage service.
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
