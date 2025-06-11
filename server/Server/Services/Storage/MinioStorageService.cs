@@ -78,4 +78,26 @@ public class MinioStorageService : IStorageService
             throw;
         }
     }
+
+    public async Task DeleteContainerAsync(string containerName, CancellationToken cancellationToken = default)
+    {
+        if (!await ContainerExistsAsync(containerName, cancellationToken))
+        {
+            _logger.LogWarning("Minio bucket '{BucketName}' does not exist. Skipping deletion.", containerName);
+            return;
+        }
+        
+        _logger.LogInformation("Deleting Minio bucket '{BucketName}'.", containerName);
+        var args = new RemoveBucketArgs().WithBucket(containerName);
+        try
+        {
+            await _minioClient.RemoveBucketAsync(args, cancellationToken);
+            _logger.LogInformation("Successfully deleted Minio bucket '{BucketName}'.", containerName);
+        }
+        catch (MinioException ex)
+        {
+            _logger.LogError(ex, "Failed to delete Minio bucket '{BucketName}'.", containerName);
+            throw;
+        }
+    }
 }
