@@ -1,7 +1,8 @@
+using System.Text.Json;
 using server.Data;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
-using server.Models.DTOs;
+using server.Models.DTOs.ProjectDto;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 
@@ -29,12 +30,67 @@ public class ProjectService : IProjectService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    public async Task<IEnumerable<ProjectDto>> GetAllProjectsAsync(
+        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25
+    )
+    {
+        _logger.LogInformation("Fetching all projects.");
+        var projects = await _projectRepository.GetAllAsync(
+            filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize
+        );
+        _logger.LogInformation("Fetched {Count} projects.", projects.Count());
+        if (projects == null || !projects.Any())
+        {
+            _logger.LogWarning("No projects found.");
+            return [];
+        }
+        _logger.LogInformation("Mapping projects to DTOs.");
+
+        return [.. projects.Select(p => new ProjectDto
+        {
+            Id = p.ProjectId,
+            Name = p.Name,
+            Description = p.Description,
+            CreatedAt = p.CreatedAt,
+            UpdatedAt = p.UpdatedAt,
+            OwnerId = p.OwnerId,
+            ProjectType = p.ProjectType,
+            Status = p.Status
+        })];
+    }
+
+    public async Task<ProjectDto?> GetProjectByIdAsync(int id)
+    {
+        _logger.LogInformation("Fetching project with ID: {ProjectId}", id);
+        var project = await _projectRepository.GetByIdAsync(id);
+
+        if (project == null)
+        {
+            _logger.LogWarning("Project with ID: {ProjectId} not found.", id);
+            return null;
+        }
+
+        return new ProjectDto
+        {
+            Id = project.ProjectId,
+            Name = project.Name,
+            Description = project.Description,
+            CreatedAt = project.CreatedAt,
+            UpdatedAt = project.UpdatedAt,
+            OwnerId = project.OwnerId,
+            ProjectType = project.ProjectType,
+            Status = project.Status,
+            AnnotationGuidelinesUrl = project.AnnotationGuidelinesUrl
+        };
+    }
+
     public async Task<ProjectDto> CreateProjectAsync(CreateProjectDto createDto, string ownerId)
     {
         _logger.LogInformation("Attempting to create a new project with name: {ProjectName}", createDto.Name);
-        
+
         await using var transaction = await _context.Database.BeginTransactionAsync();
-        
+
         try
         {
             var project = new Project
@@ -103,33 +159,68 @@ public class ProjectService : IProjectService
         }
     }
     
-    public async Task<IEnumerable<ProjectDto>> GetAllProjectsAsync(
-        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
-        bool isAscending = true, int pageNumber = 1, int pageSize = 25
-    )
+    public async Task<ProjectDto?> UpdateProjectAsync(int id, UpdateProjectDto updateDto, string userId)
     {
-        _logger.LogInformation("Fetching all projects.");
-        var projects = await _projectRepository.GetAllAsync(
-            filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize
-        );
-        _logger.LogInformation("Fetched {Count} projects.", projects.Count());
-        if (projects == null || !projects.Any())
-        {
-            _logger.LogWarning("No projects found.");
-            return [];
-        }
-        _logger.LogInformation("Mapping projects to DTOs.");
+        _logger.LogInformation("Attempting to update project with ID: {ProjectId}", id);
+        var existingProject = await _projectRepository.GetByIdAsync(id);
 
-        return [.. projects.Select(p => new ProjectDto
+        if (existingProject == null)
         {
-            Id = p.ProjectId,
-            Name = p.Name,
-            Description = p.Description,
-            CreatedAt = p.CreatedAt,
-            UpdatedAt = p.UpdatedAt,
-            OwnerId = p.OwnerId,
-            ProjectType = p.ProjectType,
-            Status = p.Status
-        })];
+            _logger.LogWarning("Update failed. Project with ID: {ProjectId} not found.", id);
+            return null;
+        }
+
+        // Use the 'with' expression for records to create a new instance with updated values
+        var updatedProject = existingProject with
+        {
+            Name = updateDto.Name,
+            Description = updateDto.Description ?? existingProject.Description,
+            Status = updateDto.Status,
+            AnnotationGuidelinesUrl = updateDto.AnnotationGuidelinesUrl,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _projectRepository.Update(updatedProject);
+        await _projectRepository.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully updated project with ID: {ProjectId}", id);
+
+        return new ProjectDto
+        {
+            Id = updatedProject.ProjectId,
+            Name = updatedProject.Name,
+            Description = updatedProject.Description,
+            CreatedAt = updatedProject.CreatedAt,
+            UpdatedAt = updatedProject.UpdatedAt,
+            OwnerId = updatedProject.OwnerId,
+            ProjectType = updatedProject.ProjectType,
+            Status = updatedProject.Status,
+            AnnotationGuidelinesUrl = updatedProject.AnnotationGuidelinesUrl
+        };
+    }
+
+    public async Task<bool> DeleteProjectAsync(int id)
+    {
+        _logger.LogInformation("Attempting to soft-delete project with ID: {ProjectId}", id);
+
+        var project = await _projectRepository.GetByIdAsync(id);
+        if (project == null)
+        {
+            _logger.LogWarning("Soft delete failed. Project with ID: {ProjectId} not found.", id);
+            return false;
+        }
+
+        // Instead of deleting, we change the project's status.
+        var archivedProject = project with
+        {
+            Status = ProjectStatus.PENDING_DELETION,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _projectRepository.Update(archivedProject);
+        await _projectRepository.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully marked project {ProjectId} as PENDING_DELETION.", id);
+        return true;
     }
 }
