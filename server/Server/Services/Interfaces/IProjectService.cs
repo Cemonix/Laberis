@@ -1,5 +1,6 @@
 using System;
 using server.Models.DTOs;
+using server.Models.DTOs.ProjectDto;
 
 namespace server.Services.Interfaces;
 
@@ -19,6 +20,29 @@ public interface IProjectService
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25
     );
+
+    /// <summary>
+    /// Retrieves a project by its ID.
+    /// </summary>
+    /// <param name="id">The ID of the project to retrieve.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the ProjectDto if found, otherwise null.</returns>
+    Task<ProjectDto?> GetProjectByIdAsync(int id);
+
+    /// <summary>
+    /// Updates an existing project.
+    /// </summary>
+    /// <param name="id">The ID of the project to update.</param>
+    /// <param name="updateDto">The DTO containing updated project information.</param>
+    /// <param name="userId">The ID of the user making the update.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the updated ProjectDto if successful, otherwise null.</returns>
+    Task<ProjectDto?> UpdateProjectAsync(int id, UpdateProjectDto updateDto, string userId);
+
+    /// <summary>
+    /// Deletes a project by its ID.
+    /// </summary>
+    /// <param name="id">The ID of the project to delete.</param>
+    /// <returns>A task that represents the asynchronous operation, returning true if the project was successfully deleted, otherwise false.</returns>
+    Task<bool> DeleteProjectAsync(int id);
 
     /// <summary>
     /// Creates a new project, including a default data source and storage container.
