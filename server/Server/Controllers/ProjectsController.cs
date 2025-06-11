@@ -1,8 +1,6 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using server.Models.DTOs;
+using server.Models.DTOs.ProjectDto;
 using server.Services.Interfaces;
 using System.Security.Claims;
 
@@ -21,44 +19,6 @@ namespace server.Controllers
             _projectService = projectService ?? throw new ArgumentNullException(nameof(projectService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-
-        /// <summary>
-        /// Creates a new project.
-        /// </summary>
-        /// <remarks>
-        /// Creates a new project along with a default data source (Minio bucket). The user making the request will be set as the project owner.
-        /// </remarks>
-        /// <param name="createProjectDto">The project creation data.</param>
-        /// <returns>The newly created project.</returns>
-        /// <response code="201">Returns the newly created project and its location.</response>
-        /// <response code="400">If the request data is invalid.</response>
-        /// <response code="401">If the user is not authenticated.</response>
-        /// <response code="500">If an internal server error occurs.</response>
-        [HttpPost]
-        [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> CreateProject([FromBody] CreateProjectDto createProjectDto)
-        {
-            var ownerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(ownerId))
-            {
-                return Unauthorized("User ID claim not found in token.");
-            }
-
-            try
-            {
-                var newProject = await _projectService.CreateProjectAsync(createProjectDto, ownerId);
-                return CreatedAtAction(nameof(GetAllProjects), new { id = newProject.Id }, newProject);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An error occurred while creating project '{ProjectName}'.", createProjectDto.Name);
-                return StatusCode(500, "An unexpected error occurred. Please try again later.");
-            }
-        }
-
 
         /// <summary>
         /// Gets all projects with optional filtering, sorting, and pagination.
@@ -98,6 +58,111 @@ namespace server.Controllers
                     "An unexpected error occurred. Please try again later."
                 );
             }
+        }
+
+        /// <summary>
+        /// Gets a specific project by its unique ID.
+        /// </summary>
+        /// <param name="id">The ID of the project.</param>
+        /// <returns>The requested project.</returns>
+        [HttpGet("{id:int}")]
+        [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetProjectById(int id)
+        {
+            var project = await _projectService.GetProjectByIdAsync(id);
+
+            if (project == null)
+            {
+                return NotFound($"Project with ID {id} not found.");
+            }
+
+            return Ok(project);
+        }
+
+        /// <summary>
+        /// Creates a new project.
+        /// </summary>
+        /// <remarks>
+        /// Creates a new project along with a default data source (Minio bucket). The user making the request will be set as the project owner.
+        /// </remarks>
+        /// <param name="createProjectDto">The project creation data.</param>
+        /// <returns>The newly created project.</returns>
+        /// <response code="201">Returns the newly created project and its location.</response>
+        /// <response code="400">If the request data is invalid.</response>
+        /// <response code="401">If the user is not authenticated.</response>
+        /// <response code="500">If an internal server error occurs.</response>
+        [HttpPost]
+        [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> CreateProject([FromBody] CreateProjectDto createProjectDto)
+        {
+            var ownerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(ownerId))
+            {
+                return Unauthorized("User ID claim not found in token.");
+            }
+
+            try
+            {
+                var newProject = await _projectService.CreateProjectAsync(createProjectDto, ownerId);
+                return CreatedAtAction(nameof(GetAllProjects), new { id = newProject.Id }, newProject);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while creating project '{ProjectName}'.", createProjectDto.Name);
+                return StatusCode(500, "An unexpected error occurred. Please try again later.");
+            }
+        }
+
+        /// <summary>
+        /// Updates an existing project.
+        /// </summary>
+        /// <param name="id">The ID of the project to update.</param>
+        /// <param name="updateDto">The data to update the project with.</param>
+        /// <returns>The updated project.</returns>
+        [HttpPut("{id:int}")]
+        [ProducesResponseType(typeof(ProjectDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> UpdateProject(int id, [FromBody] UpdateProjectDto updateDto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var updatedProject = await _projectService.UpdateProjectAsync(id, updateDto, userId);
+
+            if (updatedProject == null)
+            {
+                return NotFound($"Project with ID {id} not found.");
+            }
+
+            return Ok(updatedProject);
+        }
+
+        /// <summary>
+        /// Soft-deletes a project by its ID.
+        /// </summary>
+        /// <remarks>
+        /// This endpoint marks the project as pending deletion instead of permanently deleting it.
+        /// This allows for potential recovery or auditing of deleted projects in the future.
+        /// </remarks>
+        /// <param name="id">The ID of the project to delete.</param>
+        /// <returns>A confirmation of deletion.</returns>
+        [HttpDelete("{id:int}")]
+        [Authorize(Policy = "RequireAdminRole")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> DeleteProject(int id)
+        {
+            var success = await _projectService.DeleteProjectAsync(id);
+
+            if (!success)
+            {
+                return NotFound($"Project with ID {id} not found.");
+            }
+
+            return NoContent();
         }
     }
 }
