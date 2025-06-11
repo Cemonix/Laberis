@@ -1,7 +1,7 @@
 using server.Models.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
-namespace server.Models.DTOs;
+namespace server.Models.DTOs.ProjectDto;
 
 public record class CreateProjectDto
 {
