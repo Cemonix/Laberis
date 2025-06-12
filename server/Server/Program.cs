@@ -112,13 +112,14 @@ public class Program
         });
 
         builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
-        builder.Services.AddScoped<IProjectService, ProjectService>();
         builder.Services.AddScoped<IDataSourceRepository, DataSourceRepository>();
         builder.Services.AddScoped<ILabelSchemeRepository, LabelSchemeRepository>();
         builder.Services.AddScoped<ILabelRepository, LabelRepository>();
 
-        builder.Services.AddScoped<IStorageService, MinioStorageService>();
         builder.Services.AddScoped<IStorageServiceFactory, StorageServiceFactory>();
+        builder.Services.AddScoped<IStorageService, MinioStorageService>();
+        builder.Services.AddScoped<IProjectService, ProjectService>();
+        builder.Services.AddScoped<IDataSourceService, DataSourceService>();
         builder.Services.AddScoped<ILabelSchemeService, LabelSchemeService>();
         builder.Services.AddScoped<ILabelService, LabelService>();
 
