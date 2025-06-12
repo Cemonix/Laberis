@@ -11,25 +11,39 @@ namespace server.Controllers
     public class LabelsController : ControllerBase
     {
         private readonly ILabelService _labelService;
-        private readonly ILogger<LabelsController> _logger;
 
-        public LabelsController(ILabelService labelService, ILogger<LabelsController> logger)
+        public LabelsController(ILabelService labelService)
         {
-            _labelService = labelService;
-            _logger = logger;
+            _labelService = labelService ?? throw new ArgumentNullException(nameof(labelService));
         }
 
         /// <summary>
         /// Gets all labels for a specific label scheme.
         /// </summary>
-        /// <param name="projectId">The ID of the project.</param>
         /// <param name="schemeId">The ID of the label scheme.</param>
+        /// <param name="filterOn">The field to filter on.</param>
+        /// <param name="filterQuery">The query string to filter by.</param>
+        /// <param name="sortBy">The field to sort by.</param>
+        /// <param name="isAscending">True for ascending order, false for descending.</param>
+        /// <param name="pageNumber">The page number for pagination (1-based index).</param>
+        /// <param name="pageSize">The number of items per page.</param>
         /// <returns>A list of labels.</returns>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<LabelDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetLabelsForScheme(int projectId, int schemeId)
+        public async Task<IActionResult> GetLabelsForScheme(
+            int schemeId,
+            [FromQuery] string? filterOn = null, [FromQuery] string? filterQuery = null, [FromQuery] string? sortBy = null,
+            [FromQuery] bool isAscending = true, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 25)
         {
-            var labels = await _labelService.GetLabelsForSchemeAsync(schemeId);
+            var labels = await _labelService.GetLabelsForSchemeAsync(
+                schemeId,
+                filterOn,
+                filterQuery,
+                sortBy,
+                isAscending,
+                pageNumber,
+                pageSize
+            );
             return Ok(labels);
         }
 
