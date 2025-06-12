@@ -2,7 +2,7 @@ using System.Text.Json;
 using server.Data;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
-using server.Models.DTOs.ProjectDto;
+using server.Models.DTOs.Project;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 

@@ -1,6 +1,6 @@
 using server.Models.Domain.Enums;
 
-namespace server.Models.DTOs.ProjectDto;
+namespace server.Models.DTOs.Project;
 
 public record class ProjectDto
 {

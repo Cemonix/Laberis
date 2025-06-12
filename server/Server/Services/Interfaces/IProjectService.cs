@@ -1,6 +1,6 @@
 using System;
 using server.Models.DTOs;
-using server.Models.DTOs.ProjectDto;
+using server.Models.DTOs.Project;
 
 namespace server.Services.Interfaces;
 
