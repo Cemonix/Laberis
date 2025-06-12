@@ -69,5 +69,7 @@ public class DataSourceConfiguration : IEntityTypeConfiguration<DataSource>
             .WithOne(a => a.DataSource)
             .HasForeignKey(a => a.DataSourceId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        entity.HasQueryFilter(ds => ds.Project.Status != ProjectStatus.PENDING_DELETION);
     }
 }

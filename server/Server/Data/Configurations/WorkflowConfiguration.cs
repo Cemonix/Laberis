@@ -2,6 +2,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using server.Models.Domain;
+using server.Models.Domain.Enums;
 
 namespace server.Data.Configurations;
 
@@ -53,7 +54,7 @@ public class WorkflowConfiguration : IEntityTypeConfiguration<Workflow>
 
         // Relationship: Workflow to WorkflowStages (One-to-Many)
         entity.HasMany(w => w.WorkflowStages)
-            .WithOne(ws => ws.Workflow) 
+            .WithOne(ws => ws.Workflow)
             .HasForeignKey(ws => ws.WorkflowId)
             .OnDelete(DeleteBehavior.Cascade);
 
@@ -62,5 +63,7 @@ public class WorkflowConfiguration : IEntityTypeConfiguration<Workflow>
             .WithOne(t => t.Workflow)
             .HasForeignKey(t => t.WorkflowId)
             .OnDelete(DeleteBehavior.Restrict);
+            
+        entity.HasQueryFilter(ds => ds.Project.Status != ProjectStatus.PENDING_DELETION);
     }
 }

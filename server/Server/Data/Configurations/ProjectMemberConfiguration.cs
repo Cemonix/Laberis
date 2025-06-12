@@ -2,6 +2,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using server.Models.Domain;
+using server.Models.Domain.Enums;
 
 namespace server.Data.Configurations;
 
@@ -57,5 +58,7 @@ public class ProjectMemberConfiguration : IEntityTypeConfiguration<ProjectMember
             .WithMany()
             .HasForeignKey(pm => pm.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        entity.HasQueryFilter(ds => ds.Project.Status != ProjectStatus.PENDING_DELETION);
     }
 }

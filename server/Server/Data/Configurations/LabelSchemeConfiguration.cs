@@ -2,6 +2,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using server.Models.Domain;
+using server.Models.Domain.Enums;
 
 namespace server.Data.Configurations;
 
@@ -50,5 +51,7 @@ public class LabelSchemeConfiguration : IEntityTypeConfiguration<LabelScheme>
             .WithOne(l => l.LabelScheme)
             .HasForeignKey(l => l.LabelSchemeId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        entity.HasQueryFilter(ds => ds.Project.Status != ProjectStatus.PENDING_DELETION);
     }
 }

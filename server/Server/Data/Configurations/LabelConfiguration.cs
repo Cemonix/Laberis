@@ -2,6 +2,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using server.Models.Domain;
+using server.Models.Domain.Enums;
 
 namespace server.Data.Configurations;
 
@@ -49,5 +50,7 @@ public class LabelConfiguration : IEntityTypeConfiguration<Label>
 
         // Unique constraint for Name within a LabelScheme
         entity.HasIndex(l => new { l.LabelSchemeId, l.Name }).IsUnique();
+
+        entity.HasQueryFilter(l => l.LabelScheme.Project.Status != ProjectStatus.PENDING_DELETION);
     }
 }
