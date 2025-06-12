@@ -115,10 +115,12 @@ public class Program
         builder.Services.AddScoped<IProjectService, ProjectService>();
         builder.Services.AddScoped<IDataSourceRepository, DataSourceRepository>();
         builder.Services.AddScoped<ILabelSchemeRepository, LabelSchemeRepository>();
+        builder.Services.AddScoped<ILabelRepository, LabelRepository>();
 
         builder.Services.AddScoped<IStorageService, MinioStorageService>();
         builder.Services.AddScoped<IStorageServiceFactory, StorageServiceFactory>();
         builder.Services.AddScoped<ILabelSchemeService, LabelSchemeService>();
+        builder.Services.AddScoped<ILabelService, LabelService>();
 
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>();
         if (jwtSettings == null)
