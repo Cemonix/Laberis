@@ -19,9 +19,21 @@ public class LabelSchemeService : ILabelSchemeService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<LabelSchemeDto>> GetLabelSchemesForProjectAsync(int projectId)
+    public async Task<IEnumerable<LabelSchemeDto>> GetLabelSchemesForProjectAsync(
+        int projectId,
+        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
-        var schemes = await _labelSchemeRepository.FindAsync(ls => ls.ProjectId == projectId);
+        var schemes = await _labelSchemeRepository.GetAllAsync(
+            filter: ls => ls.ProjectId == projectId,
+            filterOn: filterOn,
+            filterQuery: filterQuery,
+            sortBy: sortBy,
+            isAscending: isAscending,
+            pageNumber: pageNumber,
+            pageSize: pageSize
+        );
+
         return schemes.Select(ls => new LabelSchemeDto
         {
             Id = ls.LabelSchemeId,

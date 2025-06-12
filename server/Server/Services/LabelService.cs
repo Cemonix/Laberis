@@ -8,17 +8,26 @@ namespace server.Services
     public class LabelService : ILabelService
     {
         private readonly ILabelRepository _labelRepository;
-        private readonly ILogger<LabelService> _logger;
 
-        public LabelService(ILabelRepository labelRepository, ILogger<LabelService> logger)
+        public LabelService(ILabelRepository labelRepository)
         {
             _labelRepository = labelRepository;
-            _logger = logger;
         }
 
-        public async Task<IEnumerable<LabelDto>> GetLabelsForSchemeAsync(int schemeId)
+        public async Task<IEnumerable<LabelDto>> GetLabelsForSchemeAsync(
+            int schemeId,
+            string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+            bool isAscending = true, int pageNumber = 1, int pageSize = 25)
         {
-            var labels = await _labelRepository.FindAsync(l => l.LabelSchemeId == schemeId);
+            var labels = await _labelRepository.GetAllAsync(
+                filter: l => l.LabelSchemeId == schemeId,
+                filterOn: filterOn,
+                filterQuery: filterQuery,
+                sortBy: sortBy,
+                isAscending: isAscending,
+                pageNumber: pageNumber,
+                pageSize: pageSize
+            );
             return labels.Select(l => new LabelDto
             {
                 Id = l.LabelId,

@@ -8,8 +8,18 @@ namespace server.Services.Interfaces
         /// Retrieves all labels for a specific label scheme, optionally filtered and sorted.
         /// </summary>
         /// <param name="schemeId">The ID of the label scheme to retrieve labels for.</param>
+        /// <param name="filterOn">The field to filter on.</param>
+        /// <param name="filterQuery">The query string to filter by.</param>
+        /// <param name="sortBy">The field to sort by.</param>
+        /// <param name="isAscending">True for ascending order, false for descending.</param>
+        /// <param name="pageNumber">The page number for pagination (1-based index).</param>
+        /// <param name="pageSize">The number of items per page.</param>
         /// <returns>A task that represents the asynchronous operation, containing a collection of LabelDto.</returns>
-        Task<IEnumerable<LabelDto>> GetLabelsForSchemeAsync(int schemeId);
+        Task<IEnumerable<LabelDto>> GetLabelsForSchemeAsync(
+            int schemeId,
+            string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+            bool isAscending = true, int pageNumber = 1, int pageSize = 25
+        );
 
         /// <summary>
         /// Retrieves a label by its ID.

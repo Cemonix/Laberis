@@ -9,8 +9,18 @@ public interface ILabelSchemeService
     /// Retrieves all label schemes for a specific project.
     /// </summary>
     /// <param name="projectId">The ID of the project.</param>
+    /// <param name="filterOn">The field to filter on.</param>
+    /// <param name="filterQuery">The query string to filter by.</param>
+    /// <param name="sortBy">The field to sort by.</param>
+    /// <param name="isAscending">True for ascending order, false for descending.</param>
+    /// <param name="pageNumber">The page number for pagination (1-based index).</param>
+    /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A collection of label schemes associated with the project.</returns>
-    Task<IEnumerable<LabelSchemeDto>> GetLabelSchemesForProjectAsync(int projectId);
+    Task<IEnumerable<LabelSchemeDto>> GetLabelSchemesForProjectAsync(
+        int projectId,
+        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25
+    );
 
     /// <summary>
     /// Retrieves a specific label scheme by its ID within a project.
