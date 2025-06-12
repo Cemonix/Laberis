@@ -37,7 +37,12 @@ public class ProjectService : IProjectService
     {
         _logger.LogInformation("Fetching all projects.");
         var projects = await _projectRepository.GetAllAsync(
-            filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize
+            filterOn: filterOn,
+            filterQuery: filterQuery,
+            sortBy: sortBy,
+            isAscending: isAscending,
+            pageNumber: pageNumber,
+            pageSize: pageSize
         );
         _logger.LogInformation("Fetched {Count} projects.", projects.Count());
         if (projects == null || !projects.Any())

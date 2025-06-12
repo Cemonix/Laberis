@@ -20,9 +20,21 @@ namespace server.Services
             _logger = logger;
         }
 
-        public async Task<IEnumerable<DataSourceDto>> GetAllDataSourcesForProjectAsync(int projectId)
+        public async Task<IEnumerable<DataSourceDto>> GetAllDataSourcesForProjectAsync(
+            int projectId,
+            string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+            bool isAscending = true, int pageNumber = 1, int pageSize = 25)
         {
-            var dataSources = await _dataSourceRepository.FindAsync(ds => ds.ProjectId == projectId);
+            var dataSources = await _dataSourceRepository.GetAllAsync(
+                filter: ds => ds.ProjectId == projectId,
+                filterOn: filterOn,
+                filterQuery: filterQuery,
+                sortBy: sortBy,
+                isAscending: isAscending,
+                pageNumber: pageNumber,
+                pageSize: pageSize
+            );
+
             return dataSources.Select(ds => new DataSourceDto
             {
                 Id = ds.DataSourceId,
