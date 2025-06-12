@@ -22,10 +22,17 @@ public abstract class GenericRepository<T> : IGenericRepository<T> where T : cla
     }
 
     public virtual async Task<IEnumerable<T>> GetAllAsync(
+        Expression<Func<T, bool>>? filter = null,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 1000)
     {
         var query = _dbSet.AsQueryable();
+
+        // Apply the main expression filter first if it exists
+        if (filter != null)
+        {
+            query = query.Where(filter);
+        }
 
         query = ApplyIncludes(query);
         query = ApplyFilter(query, filterOn, filterQuery);
