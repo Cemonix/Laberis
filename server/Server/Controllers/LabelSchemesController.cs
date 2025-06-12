@@ -21,10 +21,28 @@ public class LabelSchemesController : ControllerBase
     /// Gets all label schemes for a specific project.
     /// </summary>
     /// <param name="projectId">The ID of the project.</param>
+    /// <param name="filterOn">The field to filter on.</param>
+    /// <param name="filterQuery">The query string to filter by.</param>
+    /// <param name="sortBy">The field to sort by.</param>
+    /// <param name="isAscending">True for ascending order, false for descending.</param>
+    /// <param name="pageNumber">The page number for pagination (1-based index).</param>
+    /// <param name="pageSize">The number of items per page.</param>
+    /// <returns>A list of label schemes.</returns>
     [HttpGet]
-    public async Task<IActionResult> GetLabelSchemesForProject(int projectId)
+    public async Task<IActionResult> GetLabelSchemesForProject(
+        int projectId,
+        [FromQuery] string? filterOn = null, [FromQuery] string? filterQuery = null, [FromQuery] string? sortBy = null,
+        [FromQuery] bool isAscending = true, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 25)
     {
-        var schemes = await _labelSchemeService.GetLabelSchemesForProjectAsync(projectId);
+        var schemes = await _labelSchemeService.GetLabelSchemesForProjectAsync(
+            projectId,
+            filterOn,
+            filterQuery,
+            sortBy,
+            isAscending,
+            pageNumber,
+            pageSize
+        );
         return Ok(schemes);
     }
 
@@ -33,6 +51,7 @@ public class LabelSchemesController : ControllerBase
     /// </summary>
     /// <param name="projectId">The ID of the project.</param>
     /// <param name="schemeId">The ID of the label scheme.</param>
+    /// <returns>The requested label scheme.</returns>
     [HttpGet("{schemeId:int}")]
     public async Task<IActionResult> GetLabelScheme(int projectId, int schemeId)
     {
@@ -49,6 +68,7 @@ public class LabelSchemesController : ControllerBase
     /// </summary>
     /// <param name="projectId">The ID of the project.</param>
     /// <param name="createDto">The data for the new label scheme.</param>
+    /// <returns>The created label scheme.</returns>
     [HttpPost]
     public async Task<IActionResult> CreateLabelScheme(int projectId, [FromBody] CreateLabelSchemeDto createDto)
     {
@@ -59,13 +79,14 @@ public class LabelSchemesController : ControllerBase
         }
         return CreatedAtAction(nameof(GetLabelScheme), new { projectId = newScheme.ProjectId, schemeId = newScheme.Id }, newScheme);
     }
-    
+
     /// <summary>
     /// Updates an existing label scheme.
     /// </summary>
     /// <param name="projectId">The ID of the project.</param>
     /// <param name="schemeId">The ID of the label scheme to update.</param>
     /// <param name="updateDto">The updated data for the label scheme.</param>
+    /// <returns>The updated label scheme.</returns>
     [HttpPut("{schemeId:int}")]
     public async Task<IActionResult> UpdateLabelScheme(int projectId, int schemeId, [FromBody] UpdateLabelSchemeDto updateDto)
     {
