@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using server.Models.DTOs.ProjectDto;
+using server.Models.DTOs.Project;
 using server.Services.Interfaces;
 using System.Security.Claims;
 
