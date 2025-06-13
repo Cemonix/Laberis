@@ -1,6 +1,6 @@
 using server.Models.Domain.Enums;
 
-namespace server.Models.DTOs;
+namespace server.Models.DTOs.DataSource;
 
 public record class DataSourceDto
 {

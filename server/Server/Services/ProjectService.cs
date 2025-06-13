@@ -164,7 +164,7 @@ public class ProjectService : IProjectService
         }
     }
     
-    public async Task<ProjectDto?> UpdateProjectAsync(int id, UpdateProjectDto updateDto, string userId)
+    public async Task<ProjectDto?> UpdateProjectAsync(int id, UpdateProjectDto updateDto)
     {
         _logger.LogInformation("Attempting to update project with ID: {ProjectId}", id);
         var existingProject = await _projectRepository.GetByIdAsync(id);
@@ -175,7 +175,6 @@ public class ProjectService : IProjectService
             return null;
         }
 
-        // Use the 'with' expression for records to create a new instance with updated values
         var updatedProject = existingProject with
         {
             Name = updateDto.Name,
