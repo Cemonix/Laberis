@@ -1,0 +1,87 @@
+using server.Models.DTOs.Task;
+
+namespace server.Services.Interfaces;
+
+public interface ITaskService
+{
+    /// <summary>
+    /// Retrieves all tasks for a specific project, optionally filtered and sorted.
+    /// </summary>
+    /// <param name="projectId">The ID of the project to retrieve tasks for.</param>
+    /// <param name="filterOn">The field to filter on (e.g., "priority", "assigned_to_user_id", "current_workflow_stage_id", "is_completed").</param>
+    /// <param name="filterQuery">The query string to filter by.</param>
+    /// <param name="sortBy">The field to sort by (e.g., "priority", "due_date", "created_at", "completed_at").</param>
+    /// <param name="isAscending">True for ascending order, false for descending.</param>
+    /// <param name="pageNumber">The page number for pagination (1-based index).</param>
+    /// <param name="pageSize">The number of items per page.</param>
+    /// <returns>A task that represents the asynchronous operation, containing a collection of TaskDto.</returns>
+    Task<IEnumerable<TaskDto>> GetTasksForProjectAsync(
+        int projectId,
+        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25
+    );
+
+    /// <summary>
+    /// Retrieves all tasks assigned to a specific user, optionally filtered and sorted.
+    /// </summary>
+    /// <param name="userId">The ID of the user to retrieve assigned tasks for.</param>
+    /// <param name="filterOn">The field to filter on (e.g., "priority", "project_id", "current_workflow_stage_id", "is_completed").</param>
+    /// <param name="filterQuery">The query string to filter by.</param>
+    /// <param name="sortBy">The field to sort by (e.g., "priority", "due_date", "created_at", "completed_at").</param>
+    /// <param name="isAscending">True for ascending order, false for descending.</param>
+    /// <param name="pageNumber">The page number for pagination (1-based index).</param>
+    /// <param name="pageSize">The number of items per page.</param>
+    /// <returns>A task that represents the asynchronous operation, containing a collection of TaskDto.</returns>
+    Task<IEnumerable<TaskDto>> GetTasksForUserAsync(
+        string userId,
+        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25
+    );
+
+    /// <summary>
+    /// Retrieves a task by its ID.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to retrieve.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the TaskDto if found, otherwise null.</returns>
+    Task<TaskDto?> GetTaskByIdAsync(int taskId);
+
+    /// <summary>
+    /// Creates a new task.
+    /// </summary>
+    /// <param name="projectId">The ID of the project to create the task for.</param>
+    /// <param name="createDto">The DTO containing information for the new task.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the newly created TaskDto.</returns>
+    Task<TaskDto> CreateTaskAsync(int projectId, CreateTaskDto createDto);
+
+    /// <summary>
+    /// Updates an existing task.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to update.</param>
+    /// <param name="updateDto">The DTO containing updated task information.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
+    Task<TaskDto?> UpdateTaskAsync(int taskId, UpdateTaskDto updateDto);
+
+    /// <summary>
+    /// Deletes a task by its ID.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to delete.</param>
+    /// <returns>A task that represents the asynchronous operation, returning true if the task was successfully deleted, otherwise false.</returns>
+    Task<bool> DeleteTaskAsync(int taskId);
+
+    /// <summary>
+    /// Assigns a task to a user.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to assign.</param>
+    /// <param name="userId">The ID of the user to assign the task to.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
+    Task<TaskDto?> AssignTaskAsync(int taskId, string userId);
+
+    /// <summary>
+    /// Moves a task to a different workflow stage.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to move.</param>
+    /// <param name="workflowStageId">The ID of the workflow stage to move the task to.</param>
+    /// <param name="userId">The ID of the user performing the action.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
+    Task<TaskDto?> MoveTaskToStageAsync(int taskId, int workflowStageId, string userId);
+}
