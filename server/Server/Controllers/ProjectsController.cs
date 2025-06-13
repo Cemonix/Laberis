@@ -129,8 +129,7 @@ namespace server.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UpdateProject(int id, [FromBody] UpdateProjectDto updateDto)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            var updatedProject = await _projectService.UpdateProjectAsync(id, updateDto, userId);
+            var updatedProject = await _projectService.UpdateProjectAsync(id, updateDto);
 
             if (updatedProject == null)
             {

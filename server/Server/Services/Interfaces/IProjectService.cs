@@ -33,9 +33,8 @@ public interface IProjectService
     /// </summary>
     /// <param name="id">The ID of the project to update.</param>
     /// <param name="updateDto">The DTO containing updated project information.</param>
-    /// <param name="userId">The ID of the user making the update.</param>
     /// <returns>A task that represents the asynchronous operation, containing the updated ProjectDto if successful, otherwise null.</returns>
-    Task<ProjectDto?> UpdateProjectAsync(int id, UpdateProjectDto updateDto, string userId);
+    Task<ProjectDto?> UpdateProjectAsync(int id, UpdateProjectDto updateDto);
 
     /// <summary>
     /// Deletes a project by its ID.
