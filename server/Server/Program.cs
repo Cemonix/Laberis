@@ -115,6 +115,14 @@ public class Program
         builder.Services.AddScoped<IDataSourceRepository, DataSourceRepository>();
         builder.Services.AddScoped<ILabelSchemeRepository, LabelSchemeRepository>();
         builder.Services.AddScoped<ILabelRepository, LabelRepository>();
+        builder.Services.AddScoped<IAssetRepository, AssetRepository>();
+        builder.Services.AddScoped<IAnnotationRepository, AnnotationRepository>();
+        builder.Services.AddScoped<IIssueRepository, IssueRepository>();
+        builder.Services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
+        builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+        builder.Services.AddScoped<ITaskEventRepository, TaskEventRepository>();
+        builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
+        builder.Services.AddScoped<IWorkflowStageRepository, WorkflowStageRepository>();
 
         builder.Services.AddScoped<IStorageServiceFactory, StorageServiceFactory>();
         builder.Services.AddScoped<IStorageService, MinioStorageService>();
@@ -122,6 +130,14 @@ public class Program
         builder.Services.AddScoped<IDataSourceService, DataSourceService>();
         builder.Services.AddScoped<ILabelSchemeService, LabelSchemeService>();
         builder.Services.AddScoped<ILabelService, LabelService>();
+        builder.Services.AddScoped<IAssetService, AssetService>();
+        builder.Services.AddScoped<IAnnotationService, AnnotationService>();
+        builder.Services.AddScoped<IIssueService, IssueService>();
+        builder.Services.AddScoped<IProjectMemberService, ProjectMemberService>();
+        builder.Services.AddScoped<ITaskService, TaskService>();
+        builder.Services.AddScoped<ITaskEventService, TaskEventService>();
+        builder.Services.AddScoped<IWorkflowService, WorkflowService>();
+        builder.Services.AddScoped<IWorkflowStageService, WorkflowStageService>();
 
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>();
         if (jwtSettings == null)
