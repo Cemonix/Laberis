@@ -162,7 +162,7 @@ public class TasksController : ControllerBase
         {
             var newTask = await _taskService.CreateTaskAsync(projectId, createTaskDto);
             return CreatedAtAction(nameof(GetTaskById), 
-                new { projectId = projectId, taskId = newTask.Id }, newTask);
+                new { projectId, taskId = newTask.Id }, newTask);
         }
         catch (Exception ex)
         {

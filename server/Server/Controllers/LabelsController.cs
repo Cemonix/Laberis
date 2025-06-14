@@ -50,14 +50,13 @@ namespace server.Controllers
         /// <summary>
         /// Gets a single label by its ID.
         /// </summary>
-        /// <param name="projectId">The ID of the project.</param>
         /// <param name="schemeId">The ID of the label scheme.</param>
         /// <param name="labelId">The ID of the label.</param>
         /// <returns>The requested label.</returns>
         [HttpGet("{labelId:int}")]
         [ProducesResponseType(typeof(LabelDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetLabelById(int projectId, int schemeId, int labelId)
+        public async Task<IActionResult> GetLabelById(int schemeId, int labelId)
         {
             var label = await _labelService.GetLabelByIdAsync(labelId);
             if (label == null || label.LabelSchemeId != schemeId)
@@ -90,15 +89,13 @@ namespace server.Controllers
         /// <summary>
         /// Updates an existing label.
         /// </summary>
-        /// <param name="projectId">The ID of the project.</param>
-        /// <param name="schemeId">The ID of the label scheme.</param>
         /// <param name="labelId">The ID of the label to update.</param>
         /// <param name="updateDto">The updated data for the label.</param>
         /// <returns>The updated label.</returns>
         [HttpPut("{labelId:int}")]
         [ProducesResponseType(typeof(LabelDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> UpdateLabel(int projectId, int schemeId, int labelId, [FromBody] UpdateLabelDto updateDto)
+        public async Task<IActionResult> UpdateLabel(int labelId, [FromBody] UpdateLabelDto updateDto)
         {
             var updatedLabel = await _labelService.UpdateLabelAsync(labelId, updateDto);
             if (updatedLabel == null)
@@ -111,15 +108,13 @@ namespace server.Controllers
         /// <summary>
         /// Deletes a label.
         /// </summary>
-        /// <param name="projectId">The ID of the project.</param>
-        /// <param name="schemeId">The ID of the label scheme.</param>
         /// <param name="labelId">The ID of the label to delete.</param>
         /// <returns>A confirmation of deletion.</returns>
         [HttpDelete("{labelId:int}")]
         [Authorize(Policy = "RequireAdminRole")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> DeleteLabel(int projectId, int schemeId, int labelId)
+        public async Task<IActionResult> DeleteLabel(int labelId)
         {
             var success = await _labelService.DeleteLabelAsync(labelId);
             if (!success)
