@@ -294,7 +294,7 @@ describe('Auth Store', () => {
       expect(authStore.tokens).toEqual(mockTokens)
       
       // Wait for the async getCurrentUser call
-      await new Promise(resolve => setTimeout(resolve, 0))
+        await vi.runAllTimersAsync()
       
       expect(authService.getCurrentUser).toHaveBeenCalled()
     })
@@ -315,7 +315,7 @@ describe('Auth Store', () => {
       authStore.initializeAuth()
 
       // Wait for the async operations to complete
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await vi.runAllTimersAsync()
 
       expect(authStore.tokens).toBeNull()
       expect(localStorage.getItem('auth_tokens')).toBeNull()
