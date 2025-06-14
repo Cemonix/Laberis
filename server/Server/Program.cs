@@ -16,6 +16,8 @@ using Microsoft.AspNetCore.Authentication;
 using server.Authentication;
 using System.Security.Claims;
 using Minio;
+using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace server;
 
@@ -192,7 +194,12 @@ public class Program
                 policy.RequireRole("Admin");
             });
 
-        builder.Services.AddControllers();
+        builder.Services.AddControllers()
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+            });
         builder.Services.AddEndpointsApiExplorer();
 
         builder.Services.AddSwaggerGen(options =>
