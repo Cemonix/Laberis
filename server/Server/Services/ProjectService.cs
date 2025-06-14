@@ -2,6 +2,7 @@ using System.Text.Json;
 using server.Data;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
+using server.Models.DTOs;
 using server.Models.DTOs.Project;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
@@ -30,13 +31,13 @@ public class ProjectService : IProjectService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<IEnumerable<ProjectDto>> GetAllProjectsAsync(
+    public async Task<PaginatedResponse<ProjectDto>> GetAllProjectsAsync(
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25
     )
     {
         _logger.LogInformation("Fetching all projects.");
-        var projects = await _projectRepository.GetAllAsync(
+        var (projects, totalCount) = await _projectRepository.GetAllWithCountAsync(
             filterOn: filterOn,
             filterQuery: filterQuery,
             sortBy: sortBy,
@@ -44,25 +45,33 @@ public class ProjectService : IProjectService
             pageNumber: pageNumber,
             pageSize: pageSize
         );
-        _logger.LogInformation("Fetched {Count} projects.", projects.Count());
+        _logger.LogInformation("Fetched {Count} projects out of {TotalCount} total.", projects.Count(), totalCount);
+
         if (projects == null || !projects.Any())
         {
             _logger.LogWarning("No projects found.");
-            return [];
+            return new PaginatedResponse<ProjectDto>
+            {
+                Data = [],
+                PageSize = pageSize,
+                CurrentPage = pageNumber,
+                TotalPages = 0
+            };
         }
+
         _logger.LogInformation("Mapping projects to DTOs.");
 
-        return [.. projects.Select(p => new ProjectDto
+        var projectDtos = projects.Select(MapToDto).ToArray();
+
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<ProjectDto>
         {
-            Id = p.ProjectId,
-            Name = p.Name,
-            Description = p.Description,
-            CreatedAt = p.CreatedAt,
-            UpdatedAt = p.UpdatedAt,
-            OwnerId = p.OwnerId,
-            ProjectType = p.ProjectType,
-            Status = p.Status
-        })];
+            Data = projectDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages
+        };
     }
 
     public async Task<ProjectDto?> GetProjectByIdAsync(int id)
@@ -76,18 +85,7 @@ public class ProjectService : IProjectService
             return null;
         }
 
-        return new ProjectDto
-        {
-            Id = project.ProjectId,
-            Name = project.Name,
-            Description = project.Description,
-            CreatedAt = project.CreatedAt,
-            UpdatedAt = project.UpdatedAt,
-            OwnerId = project.OwnerId,
-            ProjectType = project.ProjectType,
-            Status = project.Status,
-            AnnotationGuidelinesUrl = project.AnnotationGuidelinesUrl
-        };
+        return MapToDto(project);
     }
 
     public async Task<ProjectDto> CreateProjectAsync(CreateProjectDto createDto, string ownerId)
@@ -144,17 +142,7 @@ public class ProjectService : IProjectService
             await transaction.CommitAsync();
             _logger.LogInformation("Successfully created project {ProjectId} and its resources.", project.ProjectId);
 
-            return new ProjectDto
-            {
-                Id = project.ProjectId,
-                Name = project.Name,
-                Description = project.Description,
-                CreatedAt = project.CreatedAt,
-                UpdatedAt = project.UpdatedAt,
-                OwnerId = project.OwnerId,
-                ProjectType = project.ProjectType,
-                Status = project.Status
-            };
+            return MapToDto(project);
         }
         catch (Exception ex)
         {
@@ -163,7 +151,7 @@ public class ProjectService : IProjectService
             throw;
         }
     }
-    
+
     public async Task<ProjectDto?> UpdateProjectAsync(int id, UpdateProjectDto updateDto)
     {
         _logger.LogInformation("Attempting to update project with ID: {ProjectId}", id);
@@ -189,18 +177,7 @@ public class ProjectService : IProjectService
 
         _logger.LogInformation("Successfully updated project with ID: {ProjectId}", id);
 
-        return new ProjectDto
-        {
-            Id = updatedProject.ProjectId,
-            Name = updatedProject.Name,
-            Description = updatedProject.Description,
-            CreatedAt = updatedProject.CreatedAt,
-            UpdatedAt = updatedProject.UpdatedAt,
-            OwnerId = updatedProject.OwnerId,
-            ProjectType = updatedProject.ProjectType,
-            Status = updatedProject.Status,
-            AnnotationGuidelinesUrl = updatedProject.AnnotationGuidelinesUrl
-        };
+        return MapToDto(updatedProject);
     }
 
     public async Task<bool> DeleteProjectAsync(int id)
@@ -226,5 +203,21 @@ public class ProjectService : IProjectService
 
         _logger.LogInformation("Successfully marked project {ProjectId} as PENDING_DELETION.", id);
         return true;
+    }
+    
+    private static ProjectDto MapToDto(Project project)
+    {
+        return new ProjectDto
+        {
+            Id = project.ProjectId,
+            Name = project.Name,
+            Description = project.Description,
+            CreatedAt = project.CreatedAt,
+            UpdatedAt = project.UpdatedAt,
+            OwnerId = project.OwnerId,
+            ProjectType = project.ProjectType,
+            Status = project.Status,
+            AnnotationGuidelinesUrl = project.AnnotationGuidelinesUrl
+        };
     }
 }
