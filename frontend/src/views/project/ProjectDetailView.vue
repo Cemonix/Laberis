@@ -1,51 +1,79 @@
 <template>
-    <div v-if="project" class="page-container">
-        <header class="project-header">
-            <h1 class="project-name">{{ project.name }}</h1>
-            <p class="project-description">{{ project.description }}</p>
-        </header>
+    <div class="page-container">
+        <div v-if="loading" class="loading-state">
+            <p>Loading project details...</p>
+        </div>
 
-        <nav class="project-sub-nav">
-            <router-link :to="`/projects/${projectId}`" class="sub-nav-link" exact-active-class="is-active">Dashboard</router-link>
-            <router-link :to="`/projects/${projectId}/label-schemes`" class="sub-nav-link" active-class="is-active">Label Schemes</router-link>
-            <router-link :to="`/projects/${projectId}/data-sources`" class="sub-nav-link" active-class="is-active">Data Sources</router-link>
-            <router-link :to="`/projects/${projectId}/workflows`" class="sub-nav-link" active-class="is-active">Workflows</router-link>
-            <router-link :to="`/projects/${projectId}/settings`" class="sub-nav-link" active-class="is-active">Settings</router-link>
-        </nav>
+        <div v-else-if="error" class="error-state">
+            <p>{{ error }}</p>
+        </div>
 
-        <router-view v-slot="{ Component }">
-            <transition name="fade-slide" mode="out-in">
-                <component :is="Component" />
-            </transition>
-        </router-view>
-    </div>
-    <div v-else class="page-container">
-        <p>Loading project details or project not found...</p>
+        <div v-else-if="project">
+            <header class="project-header">
+                <h1 class="project-name">{{ project.name }}</h1>
+                <p class="project-description">{{ project.description }}</p>
+            </header>
+
+            <nav class="project-sub-nav">
+                <router-link :to="`/projects/${projectId}`" class="sub-nav-link" exact-active-class="is-active">Dashboard</router-link>
+                <router-link :to="`/projects/${projectId}/label-schemes`" class="sub-nav-link" active-class="is-active">Label Schemes</router-link>
+                <router-link :to="`/projects/${projectId}/data-sources`" class="sub-nav-link" active-class="is-active">Data Sources</router-link>
+                <router-link :to="`/projects/${projectId}/workflows`" class="sub-nav-link" active-class="is-active">Workflows</router-link>
+                <router-link :to="`/projects/${projectId}/settings`" class="sub-nav-link" active-class="is-active">Settings</router-link>
+            </nav>
+
+            <router-view v-slot="{ Component }">
+                <transition name="fade-slide" mode="out-in">
+                    <component :is="Component" />
+                </transition>
+            </router-view>
+        </div>
+
+        <div v-else class="error-state">
+            <p>Project not found.</p>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type { Project } from '@/types/project/project';
-import { ProjectStatus, ProjectType } from '@/types/project/project';
+import { projectService } from '@/services/api/projectService';
+import { useAlert } from '@/composables/useAlert';
 
 const route = useRoute();
+const router = useRouter();
+const { showAlert } = useAlert();
+
 const project = ref<Project | null>(null);
+const loading = ref(false);
+const error = ref<string | null>(null);
 const projectId = route.params.projectId as string;
 
-const MOCK_PROJECTS: Project[] = [
-    { projectId: 1, name: 'Urban Object Detection', description: 'Detecting cars, pedestrians, and traffic signs in city environments.', projectType: ProjectType.OBJECT_DETECTION, status: ProjectStatus.ACTIVE, createdAt: '2024-05-15T10:00:00Z', updatedAt: '2024-06-03T14:30:00Z' },
-    { projectId: 2, name: 'Medical Image Segmentation', description: 'Segmenting tumors in MRI scans.', projectType: ProjectType.IMAGE_SEGMENTATION, status: ProjectStatus.ACTIVE, createdAt: '2024-03-20T09:00:00Z', updatedAt: '2024-05-28T11:00:00Z' },
-    { projectId: 3, name: 'Sentiment Analysis for Reviews', projectType: ProjectType.TEXT_ANNOTATION, status: ProjectStatus.READ_ONLY, createdAt: '2023-11-10T12:00:00Z', updatedAt: '2024-01-25T16:45:00Z' },
-    { projectId: 4, name: 'Legacy Project - Archived', description: 'Old project for data classification.', projectType: ProjectType.IMAGE_CLASSIFICATION, status: ProjectStatus.ARCHIVED, createdAt: '2022-01-15T18:00:00Z', updatedAt: '2022-09-30T17:00:00Z' },
-];
+const fetchProject = async () => {
+    loading.value = true;
+    error.value = null;
+    
+    try {
+        const projectIdNum = parseInt(projectId, 10);
+        if (isNaN(projectIdNum)) {
+            throw new Error('Invalid project ID');
+        }
+        
+        project.value = await projectService.getProject(projectIdNum);
+    } catch (err) {
+        console.error('Error fetching project:', err);
+        error.value = 'Failed to load project details. Please try again.';
+        await showAlert('Error', 'Project not found. You will be redirected to the projects list.');
+        router.push('/projects');
+    } finally {
+        loading.value = false;
+    }
+};
 
 onMounted(() => {
-    const foundProject = MOCK_PROJECTS.find(p => p.projectId.toString() === projectId);
-    if (foundProject) {
-        project.value = foundProject;
-    }
+    fetchProject();
 });
 </script>
 
@@ -58,6 +86,24 @@ onMounted(() => {
     width: 100%;
     max-width: vars.$max-width-wide;
     margin: 0 auto;
+}
+
+.loading-state,
+.error-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    text-align: center;
+    
+    p {
+        font-size: vars.$font_size_large;
+        color: vars.$theme-text-light;
+    }
+}
+
+.error-state p {
+    color: vars.$color-error;
 }
 
 .project-header {
