@@ -26,7 +26,7 @@ const buttonClass = computed(() => [
     display: inline-block;
     padding: vars.$padding-small vars.$padding-medium;
     border: 1px solid transparent;
-    border-radius: vars.$border-radius-input;
+    border-radius: vars.$border-radius-sm;
     cursor: pointer;
     font-weight: bold;
     text-align: center;

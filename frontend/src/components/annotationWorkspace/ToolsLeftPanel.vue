@@ -118,7 +118,7 @@ const selectLabel = (labelId: number) => {
     background-color: color.adjust(vars.$color-dark-blue-2, $lightness: -5%);
     color: vars.$color-white;
     border: 1px solid vars.$color-accent-blue;
-    border-radius: vars.$border-radius-standard;
+    border-radius: vars.$border-radius;
     cursor: pointer;
     transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out;
 
@@ -152,7 +152,7 @@ const selectLabel = (labelId: number) => {
     background-color: color.adjust(vars.$color-dark-blue-2, $lightness: -3%);
     color: vars.$color-white;
     border: 1px solid vars.$color-accent-blue;
-    border-radius: vars.$border-radius-standard;
+    border-radius: vars.$border-radius;
     cursor: pointer;
     text-align: left;
     font-size: vars.$font_size_small;

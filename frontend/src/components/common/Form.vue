@@ -40,7 +40,7 @@ defineEmits(["submit"]);
         width: 100%;
         padding: vars.$padding-small;
         border: vars.$border-width solid vars.$color-gray-400;
-        border-radius: vars.$border-radius-input;
+        border-radius: vars.$border-radius-sm;
         font-size: vars.$font_size_medium;
         font-family: vars.$font-family-body;
     }

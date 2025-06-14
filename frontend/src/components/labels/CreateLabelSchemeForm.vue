@@ -171,7 +171,7 @@ const handleSubmit = async () => {
     gap: vars.$gap-small;
     background-color: vars.$color-gray-200;
     padding: vars.$padding-small;
-    border-radius: vars.$border-radius-input;
+    border-radius: vars.$border-radius-sm;
 }
 
 .label-preview-color {
@@ -188,7 +188,7 @@ const handleSubmit = async () => {
 .add-label-input {
     padding: vars.$padding-small;
     border: vars.$border-width solid vars.$color-gray-400;
-    border-radius: vars.$border-radius-input;
+    border-radius: vars.$border-radius-sm;
     font-size: vars.$font_size_medium;
 }
 
@@ -218,7 +218,7 @@ const handleSubmit = async () => {
         width: 45px;
         padding: 2px;
         border: vars.$border-width solid vars.$color-gray-300;
-        border-radius: vars.$border-radius-input;
+        border-radius: vars.$border-radius-sm;
         cursor: pointer;
     }
 }

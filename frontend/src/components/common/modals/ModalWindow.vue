@@ -95,7 +95,7 @@ watch(() => props.isOpen, (newValue) => {
     display: flex;
     flex-direction: column;
     background-color: vars.$color-white;
-    border-radius: vars.$border-radius-standard;
+    border-radius: vars.$border-radius;
     box-shadow: vars.$shadow-lg;
     width: 90%;
     max-width: 600px;
