@@ -34,6 +34,7 @@ namespace Server.Tests.Repositories
             var testProject = new Project { Name = "Test Project" };
             var testLabelScheme = new LabelScheme 
             { 
+                LabelSchemeId = 1,
                 Name = "Test Scheme", 
                 Project = testProject 
             };
@@ -46,7 +47,7 @@ namespace Server.Tests.Repositories
                 Name = "Test Label",
                 Color = "#FF0000",
                 Description = "A label for testing",
-                LabelSchemeId = 1 // Assuming a LabelScheme with Id 1 exists for this test context
+                LabelSchemeId =  testLabelScheme.LabelSchemeId
             };
 
             await labelRepository.AddAsync(newLabel);
