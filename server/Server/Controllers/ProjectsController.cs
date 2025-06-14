@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using server.Models.DTOs;
 using server.Models.DTOs.Project;
 using server.Services.Interfaces;
 using System.Security.Claims;
@@ -33,7 +34,7 @@ namespace server.Controllers
         /// <response code="200">Returns the list of project DTOs.</response>
         /// <response code="500">If an unexpected error occurs.</response>
         [HttpGet]
-        [ProducesResponseType(typeof(IEnumerable<ProjectDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PaginatedResponse<ProjectDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAllProjects(
             [FromQuery] string? filterOn = null,
