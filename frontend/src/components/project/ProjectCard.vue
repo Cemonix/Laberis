@@ -31,7 +31,7 @@ const props = defineProps<{
     project: Project;
 }>();
 
-const projectUrl = computed(() => `/projects/${props.project.projectId}`);
+const projectUrl = computed(() => `/projects/${props.project.id}`);
 const statusClass = computed(
     () => `status-${props.project.status.toLowerCase()}`
 );
@@ -78,7 +78,7 @@ const formattedDate = computed(() => {
     padding: 0.25em 0.6em;
     font-size: vars.$font_size_small;
     font-weight: vars.$font-weight-heading;
-    border-radius: vars.$border-radius-standard;
+    border-radius: vars.$border-radius;
     text-transform: capitalize;
     white-space: nowrap;
     flex-shrink: 0;

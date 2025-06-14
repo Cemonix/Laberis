@@ -51,10 +51,10 @@ const mockDataSources = [
 ];
 
 const mockAssets: Asset[] = [
-    { assetId: 101, dataSourceId: 1, name: 'image_001.jpg', path: '/', thumbnailUrl: 'https://picsum.photos/400/250?random=1', status: AssetStatus.NEW, annotationsCount: 0, createdAt: '2025-06-01T10:00:00Z' },
+    { assetId: 101, dataSourceId: 1, name: 'image_001.jpg', path: '/', thumbnailUrl: 'https://picsum.photos/400/250?random=1', status: AssetStatus.IMPORTED, annotationsCount: 0, createdAt: '2025-06-01T10:00:00Z' },
     { assetId: 102, dataSourceId: 1, name: 'image_002.png', path: '/', thumbnailUrl: 'https://picsum.photos/400/250?random=2', status: AssetStatus.ANNOTATED, annotationsCount: 3, createdAt: '2025-06-01T10:05:00Z' },
-    { assetId: 103, dataSourceId: 1, name: 'photo-of-a-very-long-file-name-to-test-ellipsis.tiff', path: '/', thumbnailUrl: 'https://picsum.photos/400/250?random=3', status: AssetStatus.IN_REVIEW, annotationsCount: 5, createdAt: '2025-06-02T11:00:00Z' },
-    { assetId: 104, dataSourceId: 1, name: 'image_004.jpg', path: '/', thumbnailUrl: 'https://picsum.photos/400/250?random=4', status: AssetStatus.APPROVED, annotationsCount: 5, createdAt: '2025-06-03T14:00:00Z' },
+    { assetId: 103, dataSourceId: 1, name: 'photo-of-a-very-long-file-name-to-test-ellipsis.tiff', path: '/', thumbnailUrl: 'https://picsum.photos/400/250?random=3', status: AssetStatus.REVIEW_IN_PROGRESS, annotationsCount: 5, createdAt: '2025-06-02T11:00:00Z' },
+    { assetId: 104, dataSourceId: 1, name: 'image_004.jpg', path: '/', thumbnailUrl: 'https://picsum.photos/400/250?random=4', status: AssetStatus.REVIEW_ACCEPTED, annotationsCount: 5, createdAt: '2025-06-03T14:00:00Z' },
 ];
 
 onMounted(() => {

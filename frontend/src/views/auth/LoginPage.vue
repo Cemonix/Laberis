@@ -45,7 +45,7 @@ const handleLogin = () => {
     min-width: 400px;
     padding: vars.$padding-large;
     border: vars.$border-width solid vars.$theme-border;
-    border-radius: vars.$border-radius-standard;
+    border-radius: vars.$border-radius;
     background-color: vars.$color-gray-200;
 
     h1 {

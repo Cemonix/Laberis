@@ -31,7 +31,7 @@ import DataSourceCard from '@/components/project/DataSourceCard.vue';
 import ModalWindow from '@/components/common/modals/ModalWindow.vue';
 import CreateDataSourceForm from '@/components/project/CreateDataSourceForm.vue';
 import Button from '@/components/common/Button.vue';
-import { DataSourceType, type DataSource, type FormPayloadDataSource } from '@/types/project/dataSource';
+import { DataSourceType, DataSourceStatus, type DataSource, type FormPayloadDataSource } from '@/types/project/dataSource';
 
 const route = useRoute();
 const dataSources = ref<DataSource[]>([]);
@@ -48,6 +48,7 @@ const handleCreateDataSource = (formData: FormPayloadDataSource) => {
         name: formData.name,
         description: formData.description,
         type: formData.type,
+        status: DataSourceStatus.ACTIVE,
         assetCount: 0,
         projectId: projectId,
         createdAt: new Date().toISOString(),
@@ -66,7 +67,8 @@ onMounted(() => {
             dataSourceId: 1,
             name: 'default-source',
             description: 'Default data source created with the project for initial uploads.',
-            type: DataSourceType.S3_COMPATIBLE,
+            type: DataSourceType.MINIO_BUCKET,
+            status: DataSourceStatus.ACTIVE,
             assetCount: 0,
             projectId: Number(route.params.projectId),
             createdAt: '2025-06-08T12:00:00Z',
@@ -76,7 +78,8 @@ onMounted(() => {
             dataSourceId: 2,
             name: 'archive-2024-images',
             description: 'A collection of historical images from the 2024 archive.',
-            type: DataSourceType.S3_COMPATIBLE,
+            type: DataSourceType.MINIO_BUCKET,
+            status: DataSourceStatus.ACTIVE,
             assetCount: 1450,
             projectId: Number(route.params.projectId),
             createdAt: '2025-05-20T10:30:00Z',
