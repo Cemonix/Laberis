@@ -42,7 +42,7 @@ const dataSourceTypes = Object.values(DataSourceType);
 const formData = ref<FormPayloadDataSource>({
     name: '',
     description: '',
-    type: DataSourceType.S3_COMPATIBLE,
+    type: DataSourceType.MINIO_BUCKET,
 });
 
 const handleSubmit = async () => {
