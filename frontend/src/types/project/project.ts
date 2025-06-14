@@ -1,29 +1,41 @@
 export enum ProjectType {
-    OTHER = 'other',
-    IMAGE_CLASSIFICATION = 'image_classification',
-    OBJECT_DETECTION = 'object_detection',
-    IMAGE_SEGMENTATION = 'image_segmentation',
-    VIDEO_ANNOTATION = 'video_annotation',
-    TEXT_ANNOTATION = 'text_annotation',
+    OTHER = 'OTHER',
+    IMAGE_CLASSIFICATION = 'IMAGE_CLASSIFICATION',
+    OBJECT_DETECTION = 'OBJECT_DETECTION',
+    IMAGE_SEGMENTATION = 'IMAGE_SEGMENTATION',
+    VIDEO_ANNOTATION = 'VIDEO_ANNOTATION',
+    TEXT_ANNOTATION = 'TEXT_ANNOTATION',
 }
 
 export enum ProjectStatus {
-    ACTIVE = 'active',
-    ARCHIVED = 'archived',
-    READ_ONLY = 'read_only',
-    PENDING_DELETION = 'pending_deletion',
+    ACTIVE = 'ACTIVE',
+    ARCHIVED = 'ARCHIVED',
+    READ_ONLY = 'READ_ONLY',
+    PENDING_DELETION = 'PENDING_DELETION',
 }
 
 export interface Project {
-    projectId: number;
+    id: number;
     name: string;
-    description?: string;
+    description: string;
     projectType: ProjectType;
     status: ProjectStatus;
     createdAt: string;
     updatedAt: string;
-    
-    assetCount?: number;
-    annotatorCount?: number;
     ownerId?: string;
+    annotationGuidelinesUrl?: string;
+}
+
+export interface CreateProjectDto {
+    name: string;
+    description?: string;
+    projectType: ProjectType;
+}
+
+export interface UpdateProjectDto {
+    name?: string;
+    description?: string;
+    projectType?: ProjectType;
+    status?: ProjectStatus;
+    annotationGuidelinesUrl?: string;
 }

@@ -1,8 +1,20 @@
-// TODO: Properly implement according to the backend API
 export enum DataSourceType {
-    S3_COMPATIBLE = 's3_compatible',
-    LOCAL_STORAGE = 'local_storage',
-    DATABASE = 'database',
+    MINIO_BUCKET = 'MINIO_BUCKET',
+    S3_BUCKET = 'S3_BUCKET',
+    GSC_BUCKET = 'GSC_BUCKET',
+    AZURE_BLOB_STORAGE = 'AZURE_BLOB_STORAGE',
+    LOCAL_DIRECTORY = 'LOCAL_DIRECTORY',
+    DATABASE = 'DATABASE',
+    API = 'API',
+    OTHER = 'OTHER',
+}
+
+export enum DataSourceStatus {
+    ACTIVE = 'ACTIVE',
+    INACTIVE = 'INACTIVE',
+    SYNCING = 'SYNCING',
+    ERROR = 'ERROR',
+    ARCHIVED = 'ARCHIVED',
 }
 
 export interface DataSource {
@@ -10,6 +22,7 @@ export interface DataSource {
     name: string;
     description?: string;
     type: DataSourceType;
+    status: DataSourceStatus;
     assetCount: number;
     projectId: number;
     createdAt: string;
