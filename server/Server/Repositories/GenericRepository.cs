@@ -24,7 +24,7 @@ public abstract class GenericRepository<T> : IGenericRepository<T> where T : cla
     public virtual async Task<IEnumerable<T>> GetAllAsync(
         Expression<Func<T, bool>>? filter = null,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
-        bool isAscending = true, int pageNumber = 1, int pageSize = 1000)
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         var query = _dbSet.AsQueryable();
 
@@ -47,6 +47,37 @@ public abstract class GenericRepository<T> : IGenericRepository<T> where T : cla
         return await query.ToListAsync();
     }
 
+    public virtual async Task<(IEnumerable<T>, int)> GetAllWithCountAsync(
+        Expression<Func<T, bool>>? filter = null,
+        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25)
+    {
+        var query = _dbSet.AsQueryable();
+
+        // Apply the main expression filter first if it exists
+        if (filter != null)
+        {
+            query = query.Where(filter);
+        }
+
+        query = ApplyIncludes(query);
+        query = ApplyFilter(query, filterOn, filterQuery);
+        query = ApplySorting(query, sortBy, isAscending);
+
+        // Count total items before pagination
+        var totalCount = await query.CountAsync();
+
+        // Pagination
+        var skipAmount = (pageNumber - 1) * pageSize;
+        if (skipAmount < 0) skipAmount = 0; // Ensure skipAmount is not negative
+
+        query = query.Skip(skipAmount).Take(pageSize);
+
+        var items = await query.ToListAsync();
+        
+        return (items, totalCount);
+    }
+    
     public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
     {
         return await _dbSet.Where(predicate).ToListAsync();
