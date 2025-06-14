@@ -230,7 +230,7 @@ public class WorkflowStagesController : ControllerBase
     {
         try
         {
-            if (stageIds == null || !stageIds.Any())
+            if (stageIds == null || stageIds.Count == 0)
             {
                 return BadRequest("Stage IDs list cannot be empty.");
             }
