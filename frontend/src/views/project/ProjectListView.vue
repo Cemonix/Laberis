@@ -1,10 +1,23 @@
 <template>
     <div class="page-container">
         <h1 class="page-title">Projects</h1>
-        <div class="project-grid">
+        
+        <div v-if="loading" class="loading-state">
+            Loading projects...
+        </div>
+        
+        <div v-else-if="error" class="error-state">
+            <p>Error loading projects: {{ error }}</p>
+            <Button @click="fetchProjects">Retry</Button>
+        </div>
+        
+        <div v-else class="project-grid">
+            <div v-if="projects.length === 0" class="no-projects">
+                No projects found. Create your first project!
+            </div>
             <ProjectCard
                 v-for="project in projects"
-                :key="project.projectId"
+                :key="project.id"
                 :project="project"
             />
         </div>
@@ -29,73 +42,60 @@ import ModalWindow from '@/components/common/modals/ModalWindow.vue';
 import CreateProjectForm from '@/components/project/CreateProjectForm.vue';
 import Button from '@/components/common/Button.vue';
 import type { Project } from '@/types/project/project';
-import { ProjectStatus, ProjectType } from '@/types/project/project';
+import { ProjectType } from '@/types/project/project';
+import { projectService } from '@/services/api/projectService';
+import type { CreateProjectRequest } from '@/types/project/requests';
+import { useAlert } from '@/composables/useAlert';
+
+const { showAlert } = useAlert();
 
 const isModalOpen = ref(false);
+const projects = ref<Project[]>([]);
+const loading = ref(false);
+const error = ref<string | null>(null);
+
 const openModal = () => isModalOpen.value = true;
 const closeModal = () => isModalOpen.value = false;
 
-const projects = ref<Project[]>([]);
-
-const handleCreateProject = (formData: { name: string; description: string; projectType: ProjectType }) => {
-    // Create a new project object and add it to our local mock list
-    const newProject: Project = {
-        projectId: Date.now(), // Use timestamp as a temporary unique ID
-        name: formData.name,
-        description: formData.description,
-        projectType: formData.projectType,
-        status: ProjectStatus.ACTIVE, // Default to active
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    };
-    projects.value.unshift(newProject); // Add to the beginning of the list
-
-    // TODO: API service here
-    // await projectService.createProject(formData);
-    // await fetchProjects(); // And then refresh the list
-
-    closeModal();
+const fetchProjects = async () => {
+    loading.value = true;
+    error.value = null;
+    
+    try {
+        const response = await projectService.getProjects({
+            sortBy: 'updatedAt',
+            sortOrder: 'desc'
+        });
+        projects.value = response.data;
+    } catch (err) {
+        console.error('Error fetching projects:', err);
+        error.value = 'Failed to load projects. Please try again.';
+    } finally {
+        loading.value = false;
+    }
 };
 
-// TODO: Replace with actual API call to fetch projects
+const handleCreateProject = async (formData: { name: string; description: string; projectType: ProjectType }) => {
+    try {
+        const createRequest: CreateProjectRequest = {
+            name: formData.name,
+            description: formData.description,
+            projectType: formData.projectType,
+        };
+        
+        const newProject = await projectService.createProject(createRequest);
+        projects.value.unshift(newProject);
+        closeModal();
+        
+        await showAlert('Success', 'Project created successfully!');
+    } catch (err) {
+        console.error('Error creating project:', err);
+        await showAlert('Error', 'Failed to create project. Please try again.');
+    }
+};
+
 onMounted(() => {
-    projects.value = [
-        {
-            projectId: 1,
-            name: 'Urban Object Detection',
-            description: 'Detecting cars, pedestrians, and traffic signs in city environments.',
-            projectType: ProjectType.OBJECT_DETECTION,
-            status: ProjectStatus.ACTIVE,
-            createdAt: '2024-05-15T10:00:00Z',
-            updatedAt: '2024-06-03T14:30:00Z',
-        },
-        {
-            projectId: 2,
-            name: 'Medical Image Segmentation',
-            description: 'Segmenting tumors in MRI scans.',
-            projectType: ProjectType.IMAGE_SEGMENTATION,
-            status: ProjectStatus.ACTIVE,
-            createdAt: '2024-03-20T09:00:00Z',
-            updatedAt: '2024-05-28T11:00:00Z',
-        },
-        {
-            projectId: 3,
-            name: 'Sentiment Analysis for Reviews',
-            projectType: ProjectType.TEXT_ANNOTATION,
-            status: ProjectStatus.READ_ONLY,
-            createdAt: '2023-11-10T12:00:00Z',
-            updatedAt: '2024-01-25T16:45:00Z',
-        },
-        {
-            projectId: 4,
-            name: 'Legacy Project - Archived',
-            description: 'Old project for data classification.',
-            projectType: ProjectType.IMAGE_CLASSIFICATION,
-            status: ProjectStatus.ARCHIVED,
-            createdAt: '2022-01-15T18:00:00Z',
-            updatedAt: '2022-09-30T17:00:00Z',
-        },
-    ];
+    fetchProjects();
 });
 </script>
 
@@ -122,6 +122,40 @@ onMounted(() => {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: vars.$gap-large;
+}
+
+.loading-state,
+.error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: vars.$gap-medium;
+    padding: vars.$padding-xlarge;
+    color: vars.$theme-text-light;
+    text-align: center;
+}
+
+.no-projects {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: vars.$padding-xlarge;
+    color: vars.$theme-text-light;
+    font-style: italic;
+}
+
+.debug-info {
+    margin-top: vars.$margin-large;
+    padding: vars.$padding-medium;
+    background-color: #f5f5f5;
+    border-radius: vars.$border-radius-sm;
+    font-family: monospace;
+    font-size: 12px;
+    
+    pre {
+        white-space: pre-wrap;
+        max-height: 200px;
+        overflow-y: auto;
+    }
 }
 
 .fab {
