@@ -55,7 +55,7 @@ import Card from '@/components/common/Card.vue';
         color: vars.$theme-text-light;
         font-style: italic;
         border: 2px dashed vars.$theme-border;
-        border-radius: vars.$border-radius-standard;
+        border-radius: vars.$border-radius;
         display: flex;
         flex-direction: column;
         justify-content: center;
