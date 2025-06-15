@@ -1,4 +1,5 @@
 import type { Environment } from "@/types/environment";
+import { LogLevel, type LogConfig } from "@/types/logging";
 
 function validateEnv(environment: Environment): void {
     const required = [
@@ -15,6 +16,18 @@ function validateEnv(environment: Environment): void {
     }
 }
 
+function createLogConfig(): LogConfig {
+    const logLevel = import.meta.env.VITE_LOG_LEVEL as LogLevel;
+    const validLogLevels = Object.values(LogLevel);
+    
+    return {
+        level: validLogLevels.includes(logLevel) ? logLevel : LogLevel.INFO,
+        enableInProduction: import.meta.env.VITE_LOG_IN_PRODUCTION === 'true',
+        enableTimestamps: import.meta.env.VITE_LOG_TIMESTAMPS !== 'false',
+        enableServicePrefix: import.meta.env.VITE_LOG_SERVICE_PREFIX !== 'false'
+    };
+}
+
 function createEnv(): Environment {
     const nodeEnv = import.meta.env.NODE_ENV || "development";
 
@@ -25,6 +38,7 @@ function createEnv(): Environment {
         IS_PRODUCTION: nodeEnv === "production",
         APP_NAME: import.meta.env.VITE_APP_NAME || "Laberis",
         APP_VERSION: import.meta.env.VITE_APP_VERSION || "0.1.0",
+        LOGGING: createLogConfig(),
     } as const;
 
     validateEnv(environment);
