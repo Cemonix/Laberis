@@ -20,7 +20,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import type { Asset } from '@/types/project/asset';
+import type { Asset } from '@/types/asset/asset';
 import Card from '@/components/common/Card.vue';
 
 const props = defineProps<{

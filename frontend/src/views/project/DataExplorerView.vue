@@ -33,8 +33,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import type { Asset } from '@/types/project/asset';
-import { AssetStatus } from '@/types/project/asset';
+import type { Asset } from '@/types/asset/asset';
+import { AssetStatus } from '@/types/asset/asset';
 import AssetThumbnail from '@/components/project/AssetThumbnail.vue';
 import Button from '@/components/common/Button.vue';
 
