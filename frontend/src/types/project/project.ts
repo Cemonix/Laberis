@@ -1,3 +1,4 @@
+// Domain enums - should match backend exactly
 export enum ProjectType {
     OTHER = 'OTHER',
     IMAGE_CLASSIFICATION = 'IMAGE_CLASSIFICATION',
@@ -14,6 +15,7 @@ export enum ProjectStatus {
     PENDING_DELETION = 'PENDING_DELETION',
 }
 
+// Main Project interface
 export interface Project {
     id: number;
     name: string;
@@ -23,19 +25,5 @@ export interface Project {
     createdAt: string;
     updatedAt: string;
     ownerId?: string;
-    annotationGuidelinesUrl?: string;
-}
-
-export interface CreateProjectDto {
-    name: string;
-    description?: string;
-    projectType: ProjectType;
-}
-
-export interface UpdateProjectDto {
-    name?: string;
-    description?: string;
-    projectType?: ProjectType;
-    status?: ProjectStatus;
     annotationGuidelinesUrl?: string;
 }
