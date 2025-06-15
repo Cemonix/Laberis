@@ -1,3 +1,5 @@
+import type { LogConfig } from './logging';
+
 export interface Environment {
     readonly API_BASE_URL: string;
     readonly NODE_ENV: string;
@@ -5,4 +7,5 @@ export interface Environment {
     readonly IS_PRODUCTION: boolean;
     readonly APP_NAME: string;
     readonly APP_VERSION: string;
+    readonly LOGGING: LogConfig;
 }
