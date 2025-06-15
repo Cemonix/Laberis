@@ -10,7 +10,7 @@
             @wheel="handleWheel"
             :style="{ cursor: canvasCursorStyle }"
         ></canvas>
-        <div v-if="isLoading" class="loading-overlay">Loading Image...</div>
+        <div v-if="isLoading" class="loading-overlay" role="status" aria-live="polite">Loading Image...</div>
         <div v-if="errorLoadingImage" class="error-overlay">Error loading image.</div>
     </div>
 </template>

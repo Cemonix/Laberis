@@ -6,7 +6,7 @@
         </div>
         
         <div class="schemes-list">
-            <div v-if="isLoading" class="loading-state">
+            <div v-if="isLoading" class="loading-state" role="status" aria-live="polite">
                 <p>Loading label schemes...</p>
             </div>
             <template v-else>
