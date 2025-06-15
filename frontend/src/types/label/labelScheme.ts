@@ -1,12 +1,12 @@
-import type { Label } from '@/types/label/label';
+import type { Label } from './label';
 
 export interface LabelScheme {
     labelSchemeId: number;
     name: string;
     description?: string;
-    labels: Label[];
     projectId: number;
     isDefault?: boolean;
+    labels: Label[];
 }
 
 export interface FormPayloadLabelScheme {
