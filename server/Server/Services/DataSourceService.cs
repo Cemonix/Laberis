@@ -11,12 +11,18 @@ namespace server.Services
     {
         private readonly IDataSourceRepository _dataSourceRepository;
         private readonly IProjectRepository _projectRepository;
+        private readonly IStorageServiceFactory _storageServiceFactory;
         private readonly ILogger<DataSourceService> _logger;
 
-        public DataSourceService(IDataSourceRepository dataSourceRepository, IProjectRepository projectRepository, ILogger<DataSourceService> logger)
+        public DataSourceService(
+            IDataSourceRepository dataSourceRepository, 
+            IProjectRepository projectRepository,
+            IStorageServiceFactory storageServiceFactory,
+            ILogger<DataSourceService> logger)
         {
             _dataSourceRepository = dataSourceRepository;
             _projectRepository = projectRepository;
+            _storageServiceFactory = storageServiceFactory;
             _logger = logger;
         }
 
@@ -119,6 +125,37 @@ namespace server.Services
             _dataSourceRepository.Remove(dataSource);
             await _dataSourceRepository.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<IEnumerable<DataSourceType>> GetAvailableDataSourceTypesAsync()
+        {
+            var availableTypes = new List<DataSourceType>();
+            
+            // Check which storage services are actually configured
+            foreach (var dataSourceType in Enum.GetValues<DataSourceType>())
+            {
+                try
+                {
+                    // Try to get the service - if it exists and is properly configured, include it
+                    var service = _storageServiceFactory.GetService(dataSourceType);
+                    if (service != null)
+                    {
+                        availableTypes.Add(dataSourceType);
+                    }
+                }
+                catch (NotSupportedException)
+                {
+                    // Service not registered/configured for this type
+                    _logger.LogDebug("Data source type {DataSourceType} is not configured", dataSourceType);
+                }
+                catch (Exception ex)
+                {
+                    // Log other exceptions but continue checking other types
+                    _logger.LogWarning(ex, "Error checking availability of data source type {DataSourceType}", dataSourceType);
+                }
+            }
+            
+            return await System.Threading.Tasks.Task.FromResult(availableTypes);
         }
     }
 }

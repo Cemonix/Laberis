@@ -121,5 +121,23 @@ namespace server.Controllers
             }
             return NoContent();
         }
+
+        /// <summary>
+        /// Gets all available data source types that are configured and ready to use.
+        /// </summary>
+        /// <returns>A list of available data source types.</returns>
+        [HttpGet("types/available")]
+        public async Task<IActionResult> GetAvailableDataSourceTypes()
+        {
+            try
+            {
+                var availableTypes = await _dataSourceService.GetAvailableDataSourceTypesAsync();
+                return Ok(availableTypes);
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to retrieve available data source types");
+            }
+        }
     }
 }
