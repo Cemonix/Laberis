@@ -6,20 +6,41 @@
         </div>
         
         <div class="schemes-list">
-            <LabelSchemeCard
-            v-for="scheme in labelSchemes"
-            :key="scheme.labelSchemeId"
-            :scheme="scheme"
-            />
-            <p v-if="!labelSchemes || labelSchemes.length === 0">
-                No label schemes have been created for this project yet.
-            </p>
+            <div v-if="isLoading" class="loading-state">
+                <p>Loading label schemes...</p>
+            </div>
+            <template v-else>
+                <LabelSchemeCard
+                    v-for="scheme in labelSchemes"
+                    :key="scheme.labelSchemeId"
+                    :scheme="scheme"
+                />
+                <p v-if="!labelSchemes || labelSchemes.length === 0">
+                    No label schemes have been created for this project yet.
+                </p>
+            </template>
         </div>
 
-        <Button class="fab" @click="openModal" aria-label="Create New Scheme">+</Button>
+        <Button 
+            class="fab" 
+            @click="openModal" 
+            :disabled="isLoading"
+            aria-label="Create New Scheme"
+        >
+            +
+        </Button>
 
-        <ModalWindow :is-open="isModalOpen" title="Create New Label Scheme" @close="closeModal" :hide-footer="true">
-            <CreateLabelSchemeForm @cancel="closeModal" @save="handleCreateScheme" />
+        <ModalWindow 
+            :is-open="isModalOpen" 
+            title="Create New Label Scheme" 
+            @close="closeModal" 
+            :hide-footer="true"
+        >
+            <CreateLabelSchemeForm 
+                @cancel="closeModal" 
+                @save="handleCreateScheme" 
+                :disabled="isLoading"
+            />
         </ModalWindow>
     </div>
 </template>
@@ -32,19 +53,42 @@ import ModalWindow from '@/components/common/modals/ModalWindow.vue';
 import CreateLabelSchemeForm from '@/components/labels/CreateLabelSchemeForm.vue';
 import Button from '@/components/common/Button.vue';
 import type { LabelScheme, FormPayloadLabelScheme } from '@/types/label/labelScheme';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { labelSchemeService } from '@/services/api/labelSchemeService';
+import { labelService } from '@/services/api/labelService';
 import { useAlert } from '@/composables/useAlert';
 
 const route = useRoute();
-const workspaceStore = useWorkspaceStore();
 const { showAlert } = useAlert();
 
 const labelSchemes = ref<LabelScheme[]>([]);
 const isModalOpen = ref(false);
+const isLoading = ref(false);
 
 const openModal = () => isModalOpen.value = true;
 const closeModal = () => isModalOpen.value = false;
 
+/**
+ * Fetches label schemes for the current project
+ */
+const fetchLabelSchemes = async () => {
+    const projectId = Number(route.params.projectId);
+    if (!projectId) return;
+
+    try {
+        isLoading.value = true;
+        const result = await labelSchemeService.getLabelSchemesForProject(projectId);
+        labelSchemes.value = result.schemes;
+    } catch (error) {
+        await showAlert('Error', 'Failed to load label schemes. Please try again.');
+        console.error('Failed to fetch label schemes:', error);
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+/**
+ * Creates a new label scheme with labels
+ */
 const handleCreateScheme = async (formData: FormPayloadLabelScheme) => {
     const projectId = Number(route.params.projectId);
 
@@ -53,32 +97,50 @@ const handleCreateScheme = async (formData: FormPayloadLabelScheme) => {
         return;
     }
 
-    const newScheme: LabelScheme = {
-        labelSchemeId: Date.now(), // Mock ID
-        name: formData.name,
-        description: formData.description,
-        labels: formData.labels.map((label, index) => ({
-            ...label,
-            labelId: Date.now() + index, // Mock label ID
-            labelSchemeId: 0 // This would be set by the backend
-        })),
-        projectId: projectId,
-        isDefault: false,
-    };
-    labelSchemes.value.push(newScheme);
+    try {
+        isLoading.value = true;
+        
+        // Create the label scheme first
+        const newScheme = await labelSchemeService.createLabelScheme(projectId, {
+            name: formData.name,
+            description: formData.description
+        });
 
-    // TODO: API service here
-    // await labelSchemeService.createScheme(projectId, formData);
-    // await fetchLabelSchemes(); // And then refresh the list from the server
+        // Create labels for the scheme if any were provided
+        if (formData.labels && formData.labels.length > 0) {
+            const createdLabels = [];
+            for (const labelData of formData.labels) {
+                const createdLabel = await labelService.createLabel(
+                    projectId, 
+                    newScheme.labelSchemeId, 
+                    {
+                        name: labelData.name,
+                        color: labelData.color,
+                        description: labelData.description
+                    }
+                );
+                createdLabels.push(createdLabel);
+            }
+            
+            // Update the scheme with the created labels
+            newScheme.labels = createdLabels;
+        }
 
-    closeModal(); // Close the modal on success
+        // Refresh the list to get the latest data
+        await fetchLabelSchemes();
+        
+        closeModal();
+        await showAlert('Success', 'Label scheme created successfully!');
+    } catch (error) {
+        await showAlert('Error', 'Failed to create label scheme. Please try again.');
+        console.error('Failed to create label scheme:', error);
+    } finally {
+        isLoading.value = false;
+    }
 };
 
-onMounted(() => {
-    const mockScheme = workspaceStore.getCurrentLabelScheme;
-    if (mockScheme) {
-        labelSchemes.value = [mockScheme];
-    }
+onMounted(async () => {
+    await fetchLabelSchemes();
 });
 </script>
 
@@ -102,6 +164,12 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     gap: vars.$gap-large;
+}
+
+.loading-state {
+    text-align: center;
+    padding: vars.$padding-xlarge;
+    color: vars.$theme-text-light;
 }
 
 @keyframes fab-enter {

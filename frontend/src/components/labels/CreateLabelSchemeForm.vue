@@ -7,6 +7,7 @@
                 v-model="formData.name"
                 type="text"
                 required
+                :disabled="props.disabled"
                 placeholder="e.g., General Object Classes"
             />
         </div>
@@ -16,6 +17,7 @@
                 id="schemeDescription"
                 v-model="formData.description"
                 rows="3"
+                :disabled="props.disabled"
                 placeholder="A short description of this label scheme."
             ></textarea>
         </div>
@@ -48,18 +50,21 @@
                 v-model.trim="newLabelName"
                 class="add-label-input"
                 placeholder="New label name"
+                :disabled="props.disabled"
                 @keydown.enter.prevent="addLabel"
             />
             <input
                 type="color"
                 v-model="newLabelColor"
                 class="color-picker"
+                :disabled="props.disabled"
                 title="Select label color"
             />
             <Button
                 type="button"
                 @click.prevent="addLabel"
                 class="btn btn-primary"
+                :disabled="props.disabled"
                 >Add</Button
             >
         </div>
@@ -68,9 +73,16 @@
                 type="button"
                 @click="$emit('cancel')"
                 class="btn btn-secondary"
+                :disabled="props.disabled"
                 >Cancel</Button
             >
-            <Button type="submit" class="btn btn-primary">Create Scheme</Button>
+            <Button 
+                type="submit" 
+                class="btn btn-primary"
+                :disabled="props.disabled"
+            >
+                {{ props.disabled ? 'Creating...' : 'Create Scheme' }}
+            </Button>
         </div>
     </Form>
 </template>
@@ -79,17 +91,21 @@
 import { ref } from "vue";
 import Form from "@/components/common/Form.vue";
 import Button from "@/components/common/Button.vue";
-import type { FormPayloadLabel } from "@/types/label/label";
+import type { FormPayloadLabelScheme } from "@/types/label/labelScheme";
 import { useAlert } from "@/composables/useAlert";
+
+const props = defineProps<{
+    disabled?: boolean;
+}>();
 
 const { showAlert } = useAlert();
 
 const emit = defineEmits<{
-    (e: "save", formData: FormPayloadLabel): void;
+    (e: "save", formData: FormPayloadLabelScheme): void;
     (e: "cancel"): void;
 }>();
 
-const formData = ref<FormPayloadLabel>({
+const formData = ref<FormPayloadLabelScheme>({
     name: "",
     description: "",
     labels: [],
