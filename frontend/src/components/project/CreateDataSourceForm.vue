@@ -22,7 +22,7 @@
         </div>
         <div class="form-actions">
             <Button type="button" @click="$emit('cancel')" variant="secondary">Cancel</Button>
-            <Button type="submit" variant="primary" :disabled="!loading && availableDataSourceTypes.length === 0">
+            <Button type="submit" variant="primary" :disabled="loading || availableDataSourceTypes.length === 0">
                 Create Data Source
             </Button>
         </div>
