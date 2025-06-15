@@ -8,7 +8,7 @@
         <div class="data-sources-list">
             <DataSourceCard
                 v-for="source in dataSources"
-                :key="source.dataSourceId"
+                :key="source.id"
                 :data-source="source"
             />
             <p v-if="!dataSources || dataSources.length === 0" class="no-content-message">
@@ -19,7 +19,7 @@
         <Button class="fab" @click="openModal" aria-label="Create New Data Source">+</Button>
 
         <ModalWindow :is-open="isModalOpen" title="Create New Data Source" @close="closeModal" :hide-footer="true">
-            <CreateDataSourceForm @cancel="closeModal" @save="handleCreateDataSource" />
+            <CreateDataSourceForm :project-id="Number(route.params.projectId)" @cancel="closeModal" @save="handleCreateDataSource" />
         </ModalWindow>
     </div>
 </template>
@@ -31,7 +31,7 @@ import DataSourceCard from '@/components/project/DataSourceCard.vue';
 import ModalWindow from '@/components/common/modals/ModalWindow.vue';
 import CreateDataSourceForm from '@/components/project/CreateDataSourceForm.vue';
 import Button from '@/components/common/Button.vue';
-import { DataSourceType, DataSourceStatus, type DataSource, type FormPayloadDataSource } from '@/types/project/dataSource';
+import { DataSourceType, DataSourceStatus, type DataSource, type CreateDataSourceRequest } from '@/types/dataSource';
 
 const route = useRoute();
 const dataSources = ref<DataSource[]>([]);
@@ -40,19 +40,18 @@ const isModalOpen = ref(false);
 const openModal = () => isModalOpen.value = true;
 const closeModal = () => isModalOpen.value = false;
 
-const handleCreateDataSource = (formData: FormPayloadDataSource) => {
+const handleCreateDataSource = (formData: CreateDataSourceRequest) => {
     const projectId = Number(route.params.projectId);
 
     const newDataSource: DataSource = {
-        dataSourceId: Date.now(), // Mock ID
+        id: Date.now(), // Mock ID
         name: formData.name,
         description: formData.description,
-        type: formData.type,
+        sourceType: formData.sourceType,
         status: DataSourceStatus.ACTIVE,
-        assetCount: 0,
+        isDefault: false,
         projectId: projectId,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
     };
     dataSources.value.push(newDataSource);
 
@@ -64,26 +63,24 @@ onMounted(() => {
     // Mock data for the view
     dataSources.value = [
         {
-            dataSourceId: 1,
+            id: 1,
             name: 'default-source',
             description: 'Default data source created with the project for initial uploads.',
-            type: DataSourceType.MINIO_BUCKET,
+            sourceType: DataSourceType.MINIO_BUCKET,
             status: DataSourceStatus.ACTIVE,
-            assetCount: 0,
+            isDefault: true,
             projectId: Number(route.params.projectId),
             createdAt: '2025-06-08T12:00:00Z',
-            updatedAt: '2025-06-08T12:00:00Z',
         },
         {
-            dataSourceId: 2,
+            id: 2,
             name: 'archive-2024-images',
             description: 'A collection of historical images from the 2024 archive.',
-            type: DataSourceType.MINIO_BUCKET,
+            sourceType: DataSourceType.MINIO_BUCKET,
             status: DataSourceStatus.ACTIVE,
-            assetCount: 1450,
+            isDefault: false,
             projectId: Number(route.params.projectId),
             createdAt: '2025-05-20T10:30:00Z',
-            updatedAt: '2025-06-01T15:00:00Z',
         },
     ];
 });
