@@ -7,10 +7,10 @@ export interface CreateProjectRequest {
 }
 
 export interface UpdateProjectRequest {
-    name?: string;
+    name: string;
     description?: string;
-    projectType?: ProjectType;
-    status?: ProjectStatus;
+    status: ProjectStatus;
+    annotationGuidelinesUrl?: string;
 }
 
 export interface ProjectListParams {

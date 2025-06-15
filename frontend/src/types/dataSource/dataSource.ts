@@ -18,19 +18,13 @@ export enum DataSourceStatus {
 }
 
 export interface DataSource {
-    dataSourceId: number;
+    id: number;
     name: string;
     description?: string;
-    type: DataSourceType;
+    sourceType: DataSourceType;
     status: DataSourceStatus;
-    assetCount: number;
-    projectId: number;
+    isDefault: boolean;
     createdAt: string;
-    updatedAt: string;
-}
-
-export interface FormPayloadDataSource {
-    name: string;
-    description?: string;
-    type: DataSourceType;
+    projectId: number;
+    assetCount?: number;
 }
