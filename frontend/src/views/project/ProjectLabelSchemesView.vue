@@ -108,19 +108,19 @@ const handleCreateScheme = async (formData: FormPayloadLabelScheme) => {
 
         // Create labels for the scheme if any were provided
         if (formData.labels && formData.labels.length > 0) {
-            const createdLabels = [];
-            for (const labelData of formData.labels) {
-                const createdLabel = await labelService.createLabel(
-                    projectId, 
-                    newScheme.labelSchemeId, 
-                    {
-                        name: labelData.name,
-                        color: labelData.color,
-                        description: labelData.description
-                    }
-                );
-                createdLabels.push(createdLabel);
-            }
+            const createdLabels = await Promise.all(
+                formData.labels.map(labelData => 
+                    labelService.createLabel(
+                        projectId, 
+                        newScheme.labelSchemeId, 
+                        {
+                            name: labelData.name,
+                            color: labelData.color,
+                            description: labelData.description
+                        }
+                    )
+                )
+            );
             
             // Update the scheme with the created labels
             newScheme.labels = createdLabels;
