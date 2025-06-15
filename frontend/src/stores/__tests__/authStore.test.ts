@@ -1,324 +1,349 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
-import { useAuthStore } from '../authStore'
-import type { AuthTokens, User, LoginCredentials } from '@/types/auth/auth'
-import { UserRole } from '@/types/auth/auth'
-import { authService } from '@/services/auth/authService'
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { setActivePinia, createPinia } from "pinia";
+import { useAuthStore } from "../authStore";
+import type { AuthTokens, User, LoginCredentials } from "@/types/auth/auth";
+import { UserRole } from "@/types/auth/auth";
 
-vi.mock('@/services/auth/authService', () => ({
-  authService: {
-    login: vi.fn(),
-    logout: vi.fn(),
-    refreshToken: vi.fn(),
-    getCurrentUser: vi.fn(),
-  }
-}))
+vi.mock("@/services/auth/authService", () => ({
+    authService: {
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
+        getCurrentUser: vi.fn(),
+    },
+}));
 
-describe('Auth Store', () => {
-  let authStore: ReturnType<typeof useAuthStore>
+import { authService } from "@/services/auth/authService";
 
-  // Mock data
-  const mockUser: User = {
-    id: 1,
-    email: 'test@example.com',
-    firstName: 'Test',
-    lastName: 'User',
-    role: UserRole.ADMIN,
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  }
+describe("Auth Store", () => {
+    let authStore: ReturnType<typeof useAuthStore>;
 
-  const mockTokens: AuthTokens = {
-    accessToken: 'mock-access-token',
-    refreshToken: 'mock-refresh-token',
-    expiresAt: Date.now() + 3600000 // 1 hour from now
-  }
+    // Mock data
+    const mockUser: User = {
+        id: 1,
+        email: "test@example.com",
+        firstName: "Test",
+        lastName: "User",
+        role: UserRole.ADMIN,
+        isActive: true,
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+    };
 
-  const mockExpiredTokens: AuthTokens = {
-    accessToken: 'mock-expired-token',
-    refreshToken: 'mock-expired-refresh',
-    expiresAt: Date.now() - 1000 // Expired 1 second ago
-  }
+    const mockTokens: AuthTokens = {
+        accessToken: "mock-access-token",
+        refreshToken: "mock-refresh-token",
+        expiresAt: Date.now() + 3600000, // 1 hour from now
+    };
 
-  const mockCredentials: LoginCredentials = {
-    email: 'test@example.com',
-    password: 'password123'
-  }
+    const mockExpiredTokens: AuthTokens = {
+        accessToken: "mock-expired-token",
+        refreshToken: "mock-expired-refresh",
+        expiresAt: Date.now() - 1000, // Expired 1 second ago
+    };
 
-  beforeEach(() => {
-    // Create a fresh pinia instance for each test
-    setActivePinia(createPinia())
-    authStore = useAuthStore()
+    const mockCredentials: LoginCredentials = {
+        email: "test@example.com",
+        password: "password123",
+    };
 
-    // Clear localStorage before each test
-    localStorage.clear()
+    beforeEach(() => {
+        // Create a fresh pinia instance for each test
+        setActivePinia(createPinia());
+        authStore = useAuthStore();
 
-    // Reset all mocks
-    vi.clearAllMocks()
-  })
+        // Clear localStorage before each test
+        localStorage.clear();
 
-  afterEach(() => {
-    // Clean up after each test
-    localStorage.clear()
-  })
+        // Reset all mocks
+        vi.clearAllMocks();
+    });
 
-  describe('Initial State', () => {
-    it('should have correct initial state', () => {
-      expect(authStore.user).toBeNull()
-      expect(authStore.tokens).toBeNull()
-      expect(authStore.isLoading).toBe(false)
-    })
-  })
+    afterEach(() => {
+        // Clean up after each test
+        localStorage.clear();
+    });
 
-  describe('Getters', () => {
-    it('should return false for isAuthenticated when no user or tokens', () => {
-      expect(authStore.isAuthenticated).toBe(false)
-    })
+    describe("Initial State", () => {
+        it("should have correct initial state", () => {
+            expect(authStore.user).toBeNull();
+            expect(authStore.tokens).toBeNull();
+            expect(authStore.isLoading).toBe(false);
+        });
+    });
 
-    it('should return true for isAuthenticated when user and valid tokens exist', () => {
-      authStore.user = mockUser
-      authStore.tokens = mockTokens
-      expect(authStore.isAuthenticated).toBe(true)
-    })
+    describe("Getters", () => {
+        it("should return false for isAuthenticated when no user or tokens", () => {
+            expect(authStore.isAuthenticated).toBe(false);
+        });
 
-    it('should return false for isAuthenticated when tokens are expired', () => {
-      authStore.user = mockUser
-      authStore.tokens = mockExpiredTokens
-      expect(authStore.isAuthenticated).toBe(false)
-    })
+        it("should return true for isAuthenticated when user and valid tokens exist", () => {
+            authStore.user = mockUser;
+            authStore.tokens = mockTokens;
+            expect(authStore.isAuthenticated).toBe(true);
+        });
 
-    it('should return current user', () => {
-      authStore.user = mockUser
-      expect(authStore.currentUser).toEqual(mockUser)
-    })
+        it("should return false for isAuthenticated when tokens are expired", () => {
+            authStore.user = mockUser;
+            authStore.tokens = mockExpiredTokens;
+            expect(authStore.isAuthenticated).toBe(false);
+        });
 
-    it('should check user role correctly', () => {
-      authStore.user = mockUser
-      expect(authStore.hasRole(UserRole.ADMIN)).toBe(true)
-      expect(authStore.hasRole(UserRole.VIEWER)).toBe(false)
-    })
+        it("should return current user", () => {
+            authStore.user = mockUser;
+            expect(authStore.currentUser).toEqual(mockUser);
+        });
 
-    it('should validate token expiration', () => {
-      authStore.tokens = mockTokens
-      expect(authStore.isTokenValid).toBe(true)
+        it("should check user role correctly", () => {
+            authStore.user = mockUser;
+            expect(authStore.hasRole(UserRole.ADMIN)).toBe(true);
+            expect(authStore.hasRole(UserRole.VIEWER)).toBe(false);
+        });
 
-      authStore.tokens = mockExpiredTokens
-      expect(authStore.isTokenValid).toBe(false)
-    })
+        it("should validate token expiration", () => {
+            authStore.tokens = mockTokens;
+            expect(authStore.isTokenValid).toBe(true);
 
-    it('should return access token when authenticated', () => {
-      authStore.user = mockUser
-      authStore.tokens = mockTokens
-      expect(authStore.getAccessToken).toBe('mock-access-token')
-    })
+            authStore.tokens = mockExpiredTokens;
+            expect(authStore.isTokenValid).toBe(false);
+        });
 
-    it('should return null access token when not authenticated', () => {
-      expect(authStore.getAccessToken).toBeNull()
-    })
-  })
+        it("should return access token when authenticated", () => {
+            authStore.user = mockUser;
+            authStore.tokens = mockTokens;
+            expect(authStore.getAccessToken).toBe("mock-access-token");
+        });
 
-  describe('Token Storage', () => {
-    it('should save tokens to localStorage', () => {
-      authStore.saveTokensToStorage(mockTokens)
-      
-      const stored = localStorage.getItem('auth_tokens')
-      expect(stored).toBeTruthy()
-      expect(JSON.parse(stored!)).toEqual(mockTokens)
-    })
+        it("should return null access token when not authenticated", () => {
+            expect(authStore.getAccessToken).toBeNull();
+        });
+    });
 
-    it('should load valid tokens from localStorage', () => {
-      localStorage.setItem('auth_tokens', JSON.stringify(mockTokens))
-      
-      const loaded = authStore.loadTokensFromStorage()
-      expect(loaded).toEqual(mockTokens)
-    })
+    describe("Token Storage", () => {
+        it("should save tokens to localStorage", () => {
+            authStore.saveTokensToStorage(mockTokens);
 
-    it('should return null and clear storage for expired tokens', () => {
-      localStorage.setItem('auth_tokens', JSON.stringify(mockExpiredTokens))
-      
-      const loaded = authStore.loadTokensFromStorage()
-      expect(loaded).toBeNull()
-      expect(localStorage.getItem('auth_tokens')).toBeNull()
-    })
+            const stored = localStorage.getItem("auth_tokens");
+            expect(stored).toBeTruthy();
+            expect(JSON.parse(stored!)).toEqual(mockTokens);
+        });
 
-    it('should handle malformed JSON in localStorage', () => {
-      localStorage.setItem('auth_tokens', 'invalid-json')
-      
-      const loaded = authStore.loadTokensFromStorage()
-      expect(loaded).toBeNull()
-      expect(localStorage.getItem('auth_tokens')).toBeNull()
-    })
+        it("should load valid tokens from localStorage", () => {
+            localStorage.setItem("auth_tokens", JSON.stringify(mockTokens));
 
-    it('should remove tokens from localStorage', () => {
-      localStorage.setItem('auth_tokens', JSON.stringify(mockTokens))
-      authStore.removeTokensFromStorage()
-      
-      expect(localStorage.getItem('auth_tokens')).toBeNull()
-    })
-  })
+            const loaded = authStore.loadTokensFromStorage();
+            expect(loaded).toEqual(mockTokens);
+        });
 
-  describe('Authentication Actions', () => {
-    it('should login successfully', async () => {
-      const mockResponse = { user: mockUser, tokens: mockTokens }
-      vi.mocked(authService.login).mockResolvedValue(mockResponse)
+        it("should return null and clear storage for expired tokens", () => {
+            localStorage.setItem(
+                "auth_tokens",
+                JSON.stringify(mockExpiredTokens)
+            );
 
-      await authStore.login(mockCredentials)
+            const loaded = authStore.loadTokensFromStorage();
+            expect(loaded).toBeNull();
+            expect(localStorage.getItem("auth_tokens")).toBeNull();
+        });
 
-      expect(authService.login).toHaveBeenCalledWith(mockCredentials)
-      expect(authStore.user).toEqual(mockUser)
-      expect(authStore.tokens).toEqual(mockTokens)
-      expect(authStore.isLoading).toBe(false)
-      
-      // Check that tokens were saved to localStorage
-      const stored = localStorage.getItem('auth_tokens')
-      expect(JSON.parse(stored!)).toEqual(mockTokens)
-    })
+        it("should handle malformed JSON in localStorage", () => {
+            localStorage.setItem("auth_tokens", "invalid-json");
 
-    it('should handle login failure', async () => {
-      const error = new Error('Login failed')
-      vi.mocked(authService.login).mockRejectedValue(error)
+            const loaded = authStore.loadTokensFromStorage();
+            expect(loaded).toBeNull();
+            expect(localStorage.getItem("auth_tokens")).toBeNull();
+        });
 
-      await expect(authStore.login(mockCredentials)).rejects.toThrow('Login failed')
-      
-      expect(authStore.user).toBeNull()
-      expect(authStore.tokens).toBeNull()
-      expect(authStore.isLoading).toBe(false)
-    })
+        it("should remove tokens from localStorage", () => {
+            localStorage.setItem("auth_tokens", JSON.stringify(mockTokens));
+            authStore.removeTokensFromStorage();
 
-    it('should logout successfully', async () => {
-      // Set up authenticated state
-      authStore.user = mockUser
-      authStore.tokens = mockTokens
-      localStorage.setItem('auth_tokens', JSON.stringify(mockTokens))
+            expect(localStorage.getItem("auth_tokens")).toBeNull();
+        });
+    });
 
-      await authStore.logout()
+    describe("Authentication Actions", () => {
+        it("should login successfully", async () => {
+            const mockResponse = { user: mockUser, tokens: mockTokens };
+            vi.mocked(authService.login).mockResolvedValue(mockResponse);
 
-      expect(authService.logout).toHaveBeenCalledWith(mockTokens.refreshToken)
-      expect(authStore.user).toBeNull()
-      expect(authStore.tokens).toBeNull()
-      expect(authStore.isLoading).toBe(false)
-      expect(localStorage.getItem('auth_tokens')).toBeNull()
-    })
+            await authStore.login(mockCredentials);
 
-    it('should logout even if service call fails', async () => {
-      authStore.user = mockUser
-      authStore.tokens = mockTokens
-      localStorage.setItem('auth_tokens', JSON.stringify(mockTokens))
+            expect(authService.login).toHaveBeenCalledWith(mockCredentials);
+            expect(authStore.user).toEqual(mockUser);
+            expect(authStore.tokens).toEqual(mockTokens);
+            expect(authStore.isLoading).toBe(false);
 
-      vi.mocked(authService.logout).mockRejectedValue(new Error('Network error'))
+            // Check that tokens were saved to localStorage
+            const stored = localStorage.getItem("auth_tokens");
+            expect(JSON.parse(stored!)).toEqual(mockTokens);
+        });
 
-      await authStore.logout()
+        it("should handle login failure", async () => {
+            const error = new Error("Login failed");
+            vi.mocked(authService.login).mockRejectedValue(error);
 
-      // Should still clear local state even if service call fails
-      expect(authStore.user).toBeNull()
-      expect(authStore.tokens).toBeNull()
-      expect(localStorage.getItem('auth_tokens')).toBeNull()
-    })
-  })
+            await expect(authStore.login(mockCredentials)).rejects.toThrow(
+                "Login failed"
+            );
 
-  describe('Token Refresh', () => {
-    it('should refresh tokens successfully', async () => {
-      const newTokens: AuthTokens = {
-        accessToken: 'new-access-token',
-        refreshToken: 'new-refresh-token',
-        expiresAt: Date.now() + 3600000
-      }
+            expect(authStore.user).toBeNull();
+            expect(authStore.tokens).toBeNull();
+            expect(authStore.isLoading).toBe(false);
+        });
 
-      authStore.tokens = mockTokens
-      vi.mocked(authService.refreshToken).mockResolvedValue({ tokens: newTokens })
+        it("should logout successfully", async () => {
+            // Set up authenticated state
+            authStore.user = mockUser;
+            authStore.tokens = mockTokens;
+            localStorage.setItem("auth_tokens", JSON.stringify(mockTokens));
 
-      const result = await authStore.refreshTokens()
+            await authStore.logout();
 
-      expect(result).toBe(true)
-      expect(authService.refreshToken).toHaveBeenCalledWith(mockTokens.refreshToken)
-      expect(authStore.tokens).toEqual(newTokens)
-      
-      // Check that new tokens were saved
-      const stored = localStorage.getItem('auth_tokens')
-      expect(JSON.parse(stored!)).toEqual(newTokens)
-    })
+            expect(authService.logout).toHaveBeenCalledWith(
+                mockTokens.refreshToken
+            );
+            expect(authStore.user).toBeNull();
+            expect(authStore.tokens).toBeNull();
+            expect(authStore.isLoading).toBe(false);
+            expect(localStorage.getItem("auth_tokens")).toBeNull();
+        });
 
-    it('should return false when no refresh token available', async () => {
-      const result = await authStore.refreshTokens()
+        it("should logout even if service call fails", async () => {
+            authStore.user = mockUser;
+            authStore.tokens = mockTokens;
+            localStorage.setItem("auth_tokens", JSON.stringify(mockTokens));
 
-      expect(result).toBe(false)
-      expect(authService.refreshToken).not.toHaveBeenCalled()
-    })
+            vi.mocked(authService.logout).mockRejectedValue(
+                new Error("Network error")
+            );
 
-    it('should logout on refresh failure', async () => {
-      authStore.tokens = mockTokens
-      authStore.user = mockUser
-      vi.mocked(authService.refreshToken).mockRejectedValue(new Error('Refresh failed'))
+            await authStore.logout();
 
-      const result = await authStore.refreshTokens()
+            // Should still clear local state even if service call fails
+            expect(authStore.user).toBeNull();
+            expect(authStore.tokens).toBeNull();
+            expect(localStorage.getItem("auth_tokens")).toBeNull();
+        });
+    });
 
-      expect(result).toBe(false)
-      expect(authStore.user).toBeNull()
-      expect(authStore.tokens).toBeNull()
-    })
-  })
+    describe("Token Refresh", () => {
+        it("should refresh tokens successfully", async () => {
+            const newTokens: AuthTokens = {
+                accessToken: "new-access-token",
+                refreshToken: "new-refresh-token",
+                expiresAt: Date.now() + 3600000,
+            };
 
-  describe('Get Current User', () => {
-    it('should get current user successfully', async () => {
-      authStore.tokens = mockTokens
-      vi.mocked(authService.getCurrentUser).mockResolvedValue(mockUser)
+            authStore.tokens = mockTokens;
+            vi.mocked(authService.refreshToken).mockResolvedValue({
+                tokens: newTokens,
+            });
 
-      await authStore.getCurrentUser()
+            const result = await authStore.refreshTokens();
 
-      expect(authService.getCurrentUser).toHaveBeenCalled()
-      expect(authStore.user).toEqual(mockUser)
-    })
+            expect(result).toBe(true);
+            expect(authService.refreshToken).toHaveBeenCalledWith(
+                mockTokens.refreshToken
+            );
+            expect(authStore.tokens).toEqual(newTokens);
 
-    it('should throw error when no access token', async () => {
-      await expect(authStore.getCurrentUser()).rejects.toThrow('No access token available')
-      expect(authService.getCurrentUser).not.toHaveBeenCalled()
-    })
+            // Check that new tokens were saved
+            const stored = localStorage.getItem("auth_tokens");
+            expect(JSON.parse(stored!)).toEqual(newTokens);
+        });
 
-    it('should handle getCurrentUser failure', async () => {
-      authStore.tokens = mockTokens
-      const error = new Error('User fetch failed')
-      vi.mocked(authService.getCurrentUser).mockRejectedValue(error)
+        it("should return false when no refresh token available", async () => {
+            const result = await authStore.refreshTokens();
 
-      await expect(authStore.getCurrentUser()).rejects.toThrow('User fetch failed')
-    })
-  })
+            expect(result).toBe(false);
+            expect(authService.refreshToken).not.toHaveBeenCalled();
+        });
 
-  describe('Initialize Auth', () => {
-    it('should initialize with valid stored tokens', async () => {
-      localStorage.setItem('auth_tokens', JSON.stringify(mockTokens))
-      vi.mocked(authService.getCurrentUser).mockResolvedValue(mockUser)
+        it("should logout on refresh failure", async () => {
+            authStore.tokens = mockTokens;
+            authStore.user = mockUser;
+            vi.mocked(authService.refreshToken).mockRejectedValue(
+                new Error("Refresh failed")
+            );
 
-      authStore.initializeAuth()
+            const result = await authStore.refreshTokens();
 
-      expect(authStore.tokens).toEqual(mockTokens)
-      
-      // Wait for the async getCurrentUser call
-        await vi.runAllTimersAsync()
-      
-      expect(authService.getCurrentUser).toHaveBeenCalled()
-    })
+            expect(result).toBe(false);
+            expect(authStore.user).toBeNull();
+            expect(authStore.tokens).toBeNull();
+        });
+    });
 
-    it('should not initialize with expired tokens', () => {
-      localStorage.setItem('auth_tokens', JSON.stringify(mockExpiredTokens))
+    describe("Get Current User", () => {
+        it("should get current user successfully", async () => {
+            authStore.tokens = mockTokens;
+            vi.mocked(authService.getCurrentUser).mockResolvedValue(mockUser);
 
-      authStore.initializeAuth()
+            await authStore.getCurrentUser();
 
-      expect(authStore.tokens).toBeNull()
-      expect(authService.getCurrentUser).not.toHaveBeenCalled()
-    })
+            expect(authService.getCurrentUser).toHaveBeenCalled();
+            expect(authStore.user).toEqual(mockUser);
+        });
 
-    it('should logout if getCurrentUser fails during initialization', async () => {
-      localStorage.setItem('auth_tokens', JSON.stringify(mockTokens))
-      vi.mocked(authService.getCurrentUser).mockRejectedValue(new Error('User fetch failed'))
+        it("should throw error when no access token", async () => {
+            await expect(authStore.getCurrentUser()).rejects.toThrow(
+                "No access token available"
+            );
+            expect(authService.getCurrentUser).not.toHaveBeenCalled();
+        });
 
-      authStore.initializeAuth()
+        it("should handle getCurrentUser failure", async () => {
+            authStore.tokens = mockTokens;
+            const error = new Error("User fetch failed");
+            vi.mocked(authService.getCurrentUser).mockRejectedValue(error);
 
-      // Wait for the async operations to complete
-      await vi.runAllTimersAsync()
+            await expect(authStore.getCurrentUser()).rejects.toThrow(
+                "User fetch failed"
+            );
+        });
+    });
 
-      expect(authStore.tokens).toBeNull()
-      expect(localStorage.getItem('auth_tokens')).toBeNull()
-    })
-  })
-})
+    describe("Initialize Auth", () => {
+        it("should initialize with valid stored tokens", async () => {
+            localStorage.setItem("auth_tokens", JSON.stringify(mockTokens));
+            vi.mocked(authService.getCurrentUser).mockResolvedValue(mockUser);
+
+            authStore.initializeAuth();
+
+            expect(authStore.tokens).toEqual(mockTokens);
+
+            // Wait for the async getCurrentUser call
+            await vi.runAllTimersAsync();
+
+            expect(authService.getCurrentUser).toHaveBeenCalled();
+        });
+
+        it("should not initialize with expired tokens", () => {
+            localStorage.setItem(
+                "auth_tokens",
+                JSON.stringify(mockExpiredTokens)
+            );
+
+            authStore.initializeAuth();
+
+            expect(authStore.tokens).toBeNull();
+            expect(authService.getCurrentUser).not.toHaveBeenCalled();
+        });
+
+        it("should logout if getCurrentUser fails during initialization", async () => {
+            localStorage.setItem("auth_tokens", JSON.stringify(mockTokens));
+            vi.mocked(authService.getCurrentUser).mockRejectedValue(
+                new Error("User fetch failed")
+            );
+
+            authStore.initializeAuth();
+
+            // Wait for the async operations to complete
+            await vi.runAllTimersAsync();
+
+            expect(authStore.tokens).toBeNull();
+            expect(localStorage.getItem("auth_tokens")).toBeNull();
+        });
+    });
+});
