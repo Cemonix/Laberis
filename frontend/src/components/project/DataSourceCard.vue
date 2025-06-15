@@ -2,7 +2,7 @@
     <Card class="data-source-card">
         <template #header>
             <h3 class="data-source-name">{{ dataSource.name }}</h3>
-            <span class="asset-count">{{ dataSource.assetCount }} Assets</span>
+            <span class="asset-count">{{ dataSource.assetCount || 0 }} Assets</span>
         </template>
 
         <p class="data-source-description">
@@ -11,7 +11,7 @@
 
         <template #footer>
             <div class="card-meta">
-                <span>Type: {{ dataSource.type.replace('_', ' ') }}</span>
+                <span>Type: {{ dataSource.sourceType.replace('_', ' ') }}</span>
                 <span>Created: {{ formattedDate }}</span>
             </div>
             <div class="card-actions">
@@ -29,7 +29,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { DataSource } from "@/types/project/dataSource";
+import type { DataSource } from "@/types/dataSource/dataSource";
 import Card from "@/components/common/Card.vue";
 import Button from "@/components/common/Button.vue";
 
@@ -37,7 +37,7 @@ const props = defineProps<{
     dataSource: DataSource;
 }>();
 
-const explorerUrl = computed(() => `/projects/${props.dataSource.projectId}/data-sources/${props.dataSource.dataSourceId}`);
+const explorerUrl = computed(() => `/projects/${props.dataSource.projectId}/data-sources/${props.dataSource.id}`);
 
 const formattedDate = computed(() => {
     return new Date(props.dataSource.createdAt).toLocaleDateString("en-US", {
