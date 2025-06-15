@@ -1,5 +1,6 @@
 using server.Models.DTOs;
 using server.Models.DTOs.DataSource;
+using server.Models.Domain.Enums;
 
 namespace server.Services.Interfaces
 {
@@ -51,5 +52,11 @@ namespace server.Services.Interfaces
         /// <param name="dataSourceId">The ID of the data source to delete.</param>
         /// <returns>A task that represents the asynchronous operation, returning true if the data source was successfully deleted, otherwise false.</returns>
         Task<bool> DeleteDataSourceAsync(int dataSourceId);
+
+        /// <summary>
+        /// Gets all data source types that are currently configured and available for use.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation, containing a collection of available DataSourceType.</returns>
+        Task<IEnumerable<DataSourceType>> GetAvailableDataSourceTypesAsync();
     }
 }
