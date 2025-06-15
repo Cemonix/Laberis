@@ -7,184 +7,146 @@ import type {
     ProjectListParams,
     ProjectStatsResponse
 } from '@/types/project/requests';
+import { loggerInstance } from '@/utils/logger';
 
 class ProjectService {
     private readonly baseUrl = '/projects';
+    private readonly log = loggerInstance.createServiceLogger('ProjectService');
 
     /**
-     * Get all projects with optional filtering and pagination
+     * Retrieves projects with optional filtering, sorting, and pagination
+     * @param params Query parameters for filtering and pagination
+     * @returns Promise resolving to paginated project list
      */
     async getProjects(params?: ProjectListParams): Promise<PaginatedResponse<Project>> {
-        console.log('[ProjectService] Fetching projects with params:', params);
+        this.log.debug('Fetching projects', params);
         
-        try {
-            const response = await apiClient.get<PaginatedResponse<Project>>(this.baseUrl, {
-                params
-            });
-            
-            console.log('[ProjectService] Projects fetched successfully:', response.data);
-            return response.data;
-        } catch (error) {
-            console.error('[ProjectService] Failed to fetch projects:', error);
-            throw error;
-        }
+        const response = await apiClient.get<PaginatedResponse<Project>>(this.baseUrl, { params });
+        this.log.info(`Fetched ${response.data.data?.length || 0} projects`);
+        return response.data;
     }
 
     /**
-     * Get a single project by ID
+     * Retrieves a single project by its ID
+     * @param projectId The unique identifier of the project
+     * @returns Promise resolving to the project data
      */
     async getProject(projectId: number): Promise<Project> {
-        console.log('[ProjectService] Fetching project:', projectId);
+        this.log.debug(`Fetching project ${projectId}`);
         
-        try {
-            const response = await apiClient.get<Project>(`${this.baseUrl}/${projectId}`);
-            
-            console.log('[ProjectService] Project fetched successfully:', response.data);
-            return response.data;
-        } catch (error) {
-            console.error('[ProjectService] Failed to fetch project:', error);
-            throw error;
-        }
+        const response = await apiClient.get<Project>(`${this.baseUrl}/${projectId}`);
+        this.log.info(`Fetched project: ${response.data.name}`);
+        return response.data;
     }
 
     /**
-     * Create a new project
+     * Creates a new project
+     * @param projectData The project data for creation
+     * @returns Promise resolving to the created project
      */
     async createProject(projectData: CreateProjectRequest): Promise<Project> {
-        console.log('[ProjectService] Creating project:', projectData);
+        this.log.debug('Creating project', projectData);
         
-        try {
-            const response = await apiClient.post<Project>(this.baseUrl, projectData);
-            
-            console.log('[ProjectService] Project created successfully:', response.data);
-            return response.data;
-        } catch (error) {
-            console.error('[ProjectService] Failed to create project:', error);
-            throw error;
-        }
+        const response = await apiClient.post<Project>(this.baseUrl, projectData);
+        this.log.info(`Created project: ${response.data.name} (ID: ${response.data.id})`);
+        return response.data;
     }
 
     /**
-     * Update an existing project
+     * Updates an existing project
+     * @param projectId The unique identifier of the project to update
+     * @param projectData The updated project data
+     * @returns Promise resolving to the updated project
      */
     async updateProject(projectId: number, projectData: UpdateProjectRequest): Promise<Project> {
-        console.log('[ProjectService] Updating project:', projectId, projectData);
+        this.log.debug(`Updating project ${projectId}`, projectData);
         
-        try {
-            const response = await apiClient.put<Project>(`${this.baseUrl}/${projectId}`, projectData);
-            
-            console.log('[ProjectService] Project updated successfully:', response.data);
-            return response.data;
-        } catch (error) {
-            console.error('[ProjectService] Failed to update project:', error);
-            throw error;
-        }
+        const response = await apiClient.put<Project>(`${this.baseUrl}/${projectId}`, projectData);
+        this.log.info(`Updated project: ${response.data.name}`);
+        return response.data;
     }
 
     /**
-     * Delete a project (soft delete - archives the project)
+     * Permanently deletes a project and all associated data
+     * @param projectId The unique identifier of the project to delete
      */
     async deleteProject(projectId: number): Promise<void> {
-        console.log('[ProjectService] Deleting project:', projectId);
+        this.log.debug(`Deleting project ${projectId}`);
         
-        try {
-            await apiClient.delete(`${this.baseUrl}/${projectId}`);
-            
-            console.log('[ProjectService] Project deleted successfully');
-        } catch (error) {
-            console.error('[ProjectService] Failed to delete project:', error);
-            throw error;
-        }
+        await apiClient.delete(`${this.baseUrl}/${projectId}`);
+        this.log.info(`Deleted project ${projectId}`);
     }
 
     /**
-     * Archive a project (change status to archived)
+     * Archives a project (soft delete - changes status to archived)
+     * @param projectId The unique identifier of the project to archive
+     * @returns Promise resolving to the archived project
      */
     async archiveProject(projectId: number): Promise<Project> {
-        console.log('[ProjectService] Archiving project:', projectId);
+        this.log.debug(`Archiving project ${projectId}`);
         
-        try {
-            const response = await apiClient.patch<ApiResponse<Project>>(`${this.baseUrl}/${projectId}/archive`);
-            
-            console.log('[ProjectService] Project archived successfully:', response.data.data);
-            return response.data.data;
-        } catch (error) {
-            console.error('[ProjectService] Failed to archive project:', error);
-            throw error;
-        }
+        const response = await apiClient.patch<ApiResponse<Project>>(`${this.baseUrl}/${projectId}/archive`);
+        this.log.info(`Archived project: ${response.data.data.name}`);
+        return response.data.data;
     }
 
     /**
-     * Restore an archived project
+     * Restores an archived project back to active status
+     * @param projectId The unique identifier of the project to restore
+     * @returns Promise resolving to the restored project
      */
     async restoreProject(projectId: number): Promise<Project> {
-        console.log('[ProjectService] Restoring project:', projectId);
+        this.log.debug(`Restoring project ${projectId}`);
         
-        try {
-            const response = await apiClient.patch<ApiResponse<Project>>(`${this.baseUrl}/${projectId}/restore`);
-            
-            console.log('[ProjectService] Project restored successfully:', response.data.data);
-            return response.data.data;
-        } catch (error) {
-            console.error('[ProjectService] Failed to restore project:', error);
-            throw error;
-        }
+        const response = await apiClient.patch<ApiResponse<Project>>(`${this.baseUrl}/${projectId}/restore`);
+        this.log.info(`Restored project: ${response.data.data.name}`);
+        return response.data.data;
     }
 
     /**
-     * Get project statistics and progress information
+     * Retrieves detailed statistics and progress information for a project
+     * @param projectId The unique identifier of the project
+     * @returns Promise resolving to project statistics
      */
     async getProjectStats(projectId: number): Promise<ProjectStatsResponse> {
-        console.log('[ProjectService] Fetching project stats:', projectId);
+        this.log.debug(`Fetching stats for project ${projectId}`);
         
-        try {
-            const response = await apiClient.get<ApiResponse<ProjectStatsResponse>>(`${this.baseUrl}/${projectId}/stats`);
-            
-            console.log('[ProjectService] Project stats fetched successfully:', response.data.data);
-            return response.data.data;
-        } catch (error) {
-            console.error('[ProjectService] Failed to fetch project stats:', error);
-            throw error;
-        }
+        const response = await apiClient.get<ApiResponse<ProjectStatsResponse>>(`${this.baseUrl}/${projectId}/stats`);
+        this.log.info(`Fetched stats for project ${projectId}: ${response.data.data.completionPercentage}% complete`);
+        return response.data.data;
     }
 
     /**
-     * Duplicate an existing project
+     * Creates a duplicate of an existing project with a new name
+     * @param projectId The unique identifier of the project to duplicate
+     * @param newName The name for the duplicated project
+     * @returns Promise resolving to the newly created duplicate project
      */
     async duplicateProject(projectId: number, newName: string): Promise<Project> {
-        console.log('[ProjectService] Duplicating project:', projectId, 'with new name:', newName);
+        this.log.debug(`Duplicating project ${projectId} with name: ${newName}`);
         
-        try {
-            const response = await apiClient.post<ApiResponse<Project>>(`${this.baseUrl}/${projectId}/duplicate`, {
-                name: newName
-            });
-            
-            console.log('[ProjectService] Project duplicated successfully:', response.data.data);
-            return response.data.data;
-        } catch (error) {
-            console.error('[ProjectService] Failed to duplicate project:', error);
-            throw error;
-        }
+        const response = await apiClient.post<ApiResponse<Project>>(`${this.baseUrl}/${projectId}/duplicate`, {
+            name: newName
+        });
+        this.log.info(`Duplicated project: ${response.data.data.name} (ID: ${response.data.data.id})`);
+        return response.data.data;
     }
 
     /**
-     * Export project data
+     * Exports project data in the specified format
+     * @param projectId The unique identifier of the project to export
+     * @param format The export format (json, csv, or coco)
+     * @returns Promise resolving to the exported data as a Blob
      */
     async exportProject(projectId: number, format: 'json' | 'csv' | 'coco'): Promise<Blob> {
-        console.log('[ProjectService] Exporting project:', projectId, 'in format:', format);
+        this.log.debug(`Exporting project ${projectId} in ${format} format`);
         
-        try {
-            const response = await apiClient.get(`${this.baseUrl}/${projectId}/export`, {
-                params: { format },
-                responseType: 'blob'
-            });
-            
-            console.log('[ProjectService] Project exported successfully');
-            return response.data;
-        } catch (error) {
-            console.error('[ProjectService] Failed to export project:', error);
-            throw error;
-        }
+        const response = await apiClient.get(`${this.baseUrl}/${projectId}/export`, {
+            params: { format },
+            responseType: 'blob'
+        });
+        this.log.info(`Exported project ${projectId} in ${format} format`);
+        return response.data;
     }
 }
 
