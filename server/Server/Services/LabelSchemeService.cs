@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using server.Models.Domain;
+using server.Models.DTOs;
 using server.Models.DTOs.LabelScheme;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
@@ -19,12 +20,12 @@ public class LabelSchemeService : ILabelSchemeService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<LabelSchemeDto>> GetLabelSchemesForProjectAsync(
+    public async Task<PaginatedResponse<LabelSchemeDto>> GetLabelSchemesForProjectAsync(
         int projectId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
-        var schemes = await _labelSchemeRepository.GetAllAsync(
+        var (schemes, totalCount) = await _labelSchemeRepository.GetAllWithCountAsync(
             filter: ls => ls.ProjectId == projectId,
             filterOn: filterOn,
             filterQuery: filterQuery,
@@ -34,7 +35,7 @@ public class LabelSchemeService : ILabelSchemeService
             pageSize: pageSize
         );
 
-        return schemes.Select(ls => new LabelSchemeDto
+        var schemeDtos = schemes.Select(ls => new LabelSchemeDto
         {
             Id = ls.LabelSchemeId,
             Name = ls.Name,
@@ -42,7 +43,17 @@ public class LabelSchemeService : ILabelSchemeService
             IsDefault = ls.IsDefault,
             ProjectId = ls.ProjectId,
             CreatedAt = ls.CreatedAt
-        });
+        }).ToArray();
+
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<LabelSchemeDto>
+        {
+            Data = schemeDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages
+        };
     }
 
     public async Task<LabelSchemeDto?> GetLabelSchemeByIdAsync(int projectId, int schemeId)

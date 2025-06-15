@@ -1,4 +1,5 @@
 using server.Models.Domain;
+using server.Models.DTOs;
 using server.Models.DTOs.Label;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
@@ -14,12 +15,12 @@ namespace server.Services
             _labelRepository = labelRepository;
         }
 
-        public async Task<IEnumerable<LabelDto>> GetLabelsForSchemeAsync(
+        public async Task<PaginatedResponse<LabelDto>> GetLabelsForSchemeAsync(
             int schemeId,
             string? filterOn = null, string? filterQuery = null, string? sortBy = null,
             bool isAscending = true, int pageNumber = 1, int pageSize = 25)
         {
-            var labels = await _labelRepository.GetAllAsync(
+            var (labels, totalCount) = await _labelRepository.GetAllWithCountAsync(
                 filter: l => l.LabelSchemeId == schemeId,
                 filterOn: filterOn,
                 filterQuery: filterQuery,
@@ -28,7 +29,8 @@ namespace server.Services
                 pageNumber: pageNumber,
                 pageSize: pageSize
             );
-            return labels.Select(l => new LabelDto
+
+            var labelDtos = labels.Select(l => new LabelDto
             {
                 Id = l.LabelId,
                 Name = l.Name,
@@ -36,7 +38,17 @@ namespace server.Services
                 Color = l.Color,
                 LabelSchemeId = l.LabelSchemeId,
                 CreatedAt = l.CreatedAt
-            });
+            }).ToArray();
+
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            return new PaginatedResponse<LabelDto>
+            {
+                Data = labelDtos,
+                PageSize = pageSize,
+                CurrentPage = pageNumber,
+                TotalPages = totalPages
+            };
         }
 
         public async Task<LabelDto?> GetLabelByIdAsync(int labelId)

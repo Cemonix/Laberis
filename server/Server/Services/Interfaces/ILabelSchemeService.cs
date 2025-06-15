@@ -1,4 +1,5 @@
 using System;
+using server.Models.DTOs;
 using server.Models.DTOs.LabelScheme;
 
 namespace server.Services.Interfaces;
@@ -16,7 +17,7 @@ public interface ILabelSchemeService
     /// <param name="pageNumber">The page number for pagination (1-based index).</param>
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A collection of label schemes associated with the project.</returns>
-    Task<IEnumerable<LabelSchemeDto>> GetLabelSchemesForProjectAsync(
+    Task<PaginatedResponse<LabelSchemeDto>> GetLabelSchemesForProjectAsync(
         int projectId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25

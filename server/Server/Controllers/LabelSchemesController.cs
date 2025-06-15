@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using server.Models.DTOs;
 using server.Models.DTOs.LabelScheme;
 using server.Services.Interfaces;
 
@@ -29,6 +30,7 @@ public class LabelSchemesController : ControllerBase
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A list of label schemes.</returns>
     [HttpGet]
+    [ProducesResponseType(typeof(PaginatedResponse<LabelSchemeDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLabelSchemesForProject(
         int projectId,
         [FromQuery] string? filterOn = null, [FromQuery] string? filterQuery = null, [FromQuery] string? sortBy = null,
