@@ -10,7 +10,5 @@ export type {
 } from './requests';
 export type { 
     LabelSchemeResponse, 
-    LabelResponse, 
-    PaginatedLabelSchemesResponse, 
-    PaginatedLabelsResponse 
+    LabelResponse,
 } from './responses';
