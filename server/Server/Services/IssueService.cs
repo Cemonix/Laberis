@@ -1,6 +1,7 @@
 using server.Models.Domain;
 using server.Models.DTOs.Issue;
 using server.Models.Domain.Enums;
+using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 
@@ -19,14 +20,14 @@ public class IssueService : IIssueService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<IEnumerable<IssueDto>> GetIssuesForAssetAsync(
+    public async Task<PaginatedResponse<IssueDto>> GetIssuesForAssetAsync(
         int assetId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching issues for asset: {AssetId}", assetId);
-        
-        var issues = await _issueRepository.GetAllAsync(
+
+        var (issues, totalCount) = await _issueRepository.GetAllWithCountAsync(
             filter: i => i.AssetId == assetId,
             filterOn: filterOn,
             filterQuery: filterQuery,
@@ -37,18 +38,28 @@ public class IssueService : IIssueService
         );
 
         _logger.LogInformation("Fetched {Count} issues for asset: {AssetId}", issues.Count(), assetId);
-        
-        return issues.Select(MapToDto);
+
+        var issueDtos = issues.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<IssueDto>
+        {
+            Data = issueDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
     }
 
-    public async Task<IEnumerable<IssueDto>> GetIssuesForUserAsync(
+    public async Task<PaginatedResponse<IssueDto>> GetIssuesForUserAsync(
         string userId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching issues for user: {UserId}", userId);
-        
-        var issues = await _issueRepository.GetAllAsync(
+
+        var (issues, totalCount) = await _issueRepository.GetAllWithCountAsync(
             filter: i => i.AssignedToUserId == userId,
             filterOn: filterOn,
             filterQuery: filterQuery,
@@ -59,16 +70,26 @@ public class IssueService : IIssueService
         );
 
         _logger.LogInformation("Fetched {Count} issues for user: {UserId}", issues.Count(), userId);
-        
-        return issues.Select(MapToDto);
+
+        var issueDtos = issues.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<IssueDto>
+        {
+            Data = issueDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
     }
 
     public async Task<IssueDto?> GetIssueByIdAsync(int issueId)
     {
         _logger.LogInformation("Fetching issue with ID: {IssueId}", issueId);
-        
+
         var issue = await _issueRepository.GetByIdAsync(issueId);
-        
+
         if (issue == null)
         {
             _logger.LogWarning("Issue with ID: {IssueId} not found.", issueId);
@@ -100,9 +121,9 @@ public class IssueService : IIssueService
 
         await _issueRepository.AddAsync(issue);
         await _issueRepository.SaveChangesAsync();
-        
+
         _logger.LogInformation("Successfully created issue with ID: {IssueId}", issue.IssueId);
-        
+
         return MapToDto(issue);
     }
 
@@ -140,7 +161,7 @@ public class IssueService : IIssueService
         _logger.LogInformation("Deleting issue with ID: {IssueId}", issueId);
 
         var issue = await _issueRepository.GetByIdAsync(issueId);
-        
+
         if (issue == null)
         {
             _logger.LogWarning("Issue with ID: {IssueId} not found for deletion.", issueId);

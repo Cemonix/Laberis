@@ -1,5 +1,5 @@
 using server.Models.Domain;
-using server.Models.DTOs;
+using server.Models.Common;
 using server.Models.DTOs.Label;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
@@ -47,7 +47,8 @@ namespace server.Services
                 Data = labelDtos,
                 PageSize = pageSize,
                 CurrentPage = pageNumber,
-                TotalPages = totalPages
+                TotalPages = totalPages,
+                TotalItems = totalCount
             };
         }
 

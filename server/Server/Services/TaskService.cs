@@ -1,6 +1,7 @@
 using server.Models.Domain;
 using server.Models.DTOs.Task;
 using server.Models.Domain.Enums;
+using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 using LaberisTask = server.Models.Domain.Task;
@@ -23,14 +24,14 @@ public class TaskService : ITaskService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<IEnumerable<TaskDto>> GetTasksForProjectAsync(
+    public async Task<PaginatedResponse<TaskDto>> GetTasksForProjectAsync(
         int projectId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching tasks for project: {ProjectId}", projectId);
-        
-        var tasks = await _taskRepository.GetAllAsync(
+
+        var (tasks, totalCount) = await _taskRepository.GetAllWithCountAsync(
             filter: t => t.ProjectId == projectId,
             filterOn: filterOn,
             filterQuery: filterQuery,
@@ -41,18 +42,28 @@ public class TaskService : ITaskService
         );
 
         _logger.LogInformation("Fetched {Count} tasks for project: {ProjectId}", tasks.Count(), projectId);
-        
-        return tasks.Select(MapToDto);
+
+        var taskDtos = tasks.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<TaskDto>
+        {
+            Data = taskDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
     }
 
-    public async Task<IEnumerable<TaskDto>> GetTasksForUserAsync(
+    public async Task<PaginatedResponse<TaskDto>> GetTasksForUserAsync(
         string userId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching tasks for user: {UserId}", userId);
-        
-        var tasks = await _taskRepository.GetAllAsync(
+
+        var (tasks, totalCount) = await _taskRepository.GetAllWithCountAsync(
             filter: t => t.AssignedToUserId == userId,
             filterOn: filterOn,
             filterQuery: filterQuery,
@@ -63,16 +74,26 @@ public class TaskService : ITaskService
         );
 
         _logger.LogInformation("Fetched {Count} tasks for user: {UserId}", tasks.Count(), userId);
-        
-        return tasks.Select(MapToDto);
+
+        var taskDtos = tasks.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<TaskDto>
+        {
+            Data = taskDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
     }
 
     public async Task<TaskDto?> GetTaskByIdAsync(int taskId)
     {
         _logger.LogInformation("Fetching task with ID: {TaskId}", taskId);
-        
+
         var task = await _taskRepository.GetByIdAsync(taskId);
-        
+
         if (task == null)
         {
             _logger.LogWarning("Task with ID: {TaskId} not found.", taskId);
@@ -103,9 +124,9 @@ public class TaskService : ITaskService
 
         await _taskRepository.AddAsync(task);
         await _taskRepository.SaveChangesAsync();
-        
+
         _logger.LogInformation("Successfully created task with ID: {TaskId}", task.TaskId);
-        
+
         return MapToDto(task);
     }
 
@@ -144,7 +165,7 @@ public class TaskService : ITaskService
         _logger.LogInformation("Deleting task with ID: {TaskId}", taskId);
 
         var task = await _taskRepository.GetByIdAsync(taskId);
-        
+
         if (task == null)
         {
             _logger.LogWarning("Task with ID: {TaskId} not found for deletion.", taskId);
@@ -207,7 +228,7 @@ public class TaskService : ITaskService
         }
 
         var previousStageId = existingTask.CurrentWorkflowStageId;
-        
+
         var updatedTask = existingTask with
         {
             CurrentWorkflowStageId = workflowStageId,

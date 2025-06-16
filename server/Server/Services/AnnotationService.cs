@@ -1,5 +1,6 @@
 using server.Models.Domain;
 using server.Models.DTOs.Annotation;
+using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 
@@ -18,14 +19,14 @@ public class AnnotationService : IAnnotationService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<IEnumerable<AnnotationDto>> GetAnnotationsForTaskAsync(
+    public async Task<PaginatedResponse<AnnotationDto>> GetAnnotationsForTaskAsync(
         int taskId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching annotations for task: {TaskId}", taskId);
-        
-        var annotations = await _annotationRepository.GetAllAsync(
+
+        var (annotations, totalCount) = await _annotationRepository.GetAllWithCountAsync(
             filter: a => a.TaskId == taskId,
             filterOn: filterOn,
             filterQuery: filterQuery,
@@ -36,18 +37,28 @@ public class AnnotationService : IAnnotationService
         );
 
         _logger.LogInformation("Fetched {Count} annotations for task: {TaskId}", annotations.Count(), taskId);
-        
-        return annotations.Select(MapToDto);
+
+        var annotationDtos = annotations.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<AnnotationDto>
+        {
+            Data = annotationDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
     }
 
-    public async Task<IEnumerable<AnnotationDto>> GetAnnotationsForAssetAsync(
+    public async Task<PaginatedResponse<AnnotationDto>> GetAnnotationsForAssetAsync(
         int assetId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching annotations for asset: {AssetId}", assetId);
-        
-        var annotations = await _annotationRepository.GetAllAsync(
+
+        var (annotations, totalCount) = await _annotationRepository.GetAllWithCountAsync(
             filter: a => a.AssetId == assetId,
             filterOn: filterOn,
             filterQuery: filterQuery,
@@ -58,16 +69,26 @@ public class AnnotationService : IAnnotationService
         );
 
         _logger.LogInformation("Fetched {Count} annotations for asset: {AssetId}", annotations.Count(), assetId);
-        
-        return annotations.Select(MapToDto);
+
+        var annotationDtos = annotations.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<AnnotationDto>
+        {
+            Data = annotationDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
     }
 
     public async Task<AnnotationDto?> GetAnnotationByIdAsync(long annotationId)
     {
         _logger.LogInformation("Fetching annotation with ID: {AnnotationId}", annotationId);
-        
+
         var annotation = await _annotationRepository.GetByIdAsync(annotationId);
-        
+
         if (annotation == null)
         {
             _logger.LogWarning("Annotation with ID: {AnnotationId} not found.", annotationId);
@@ -80,7 +101,7 @@ public class AnnotationService : IAnnotationService
 
     public async Task<AnnotationDto> CreateAnnotationAsync(CreateAnnotationDto createDto, string annotatorUserId)
     {
-        _logger.LogInformation("Creating new annotation for task: {TaskId}, asset: {AssetId}", 
+        _logger.LogInformation("Creating new annotation for task: {TaskId}, asset: {AssetId}",
             createDto.TaskId, createDto.AssetId);
 
         var annotation = new Annotation
@@ -103,9 +124,9 @@ public class AnnotationService : IAnnotationService
 
         await _annotationRepository.AddAsync(annotation);
         await _annotationRepository.SaveChangesAsync();
-        
+
         _logger.LogInformation("Successfully created annotation with ID: {AnnotationId}", annotation.AnnotationId);
-        
+
         return MapToDto(annotation);
     }
 
@@ -143,7 +164,7 @@ public class AnnotationService : IAnnotationService
         _logger.LogInformation("Deleting annotation with ID: {AnnotationId}", annotationId);
 
         var annotation = await _annotationRepository.GetByIdAsync(annotationId);
-        
+
         if (annotation == null)
         {
             _logger.LogWarning("Annotation with ID: {AnnotationId} not found for deletion.", annotationId);

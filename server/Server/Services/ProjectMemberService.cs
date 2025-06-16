@@ -1,5 +1,6 @@
 using server.Models.Domain;
 using server.Models.DTOs.ProjectMember;
+using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 
@@ -18,14 +19,14 @@ public class ProjectMemberService : IProjectMemberService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<IEnumerable<ProjectMemberDto>> GetProjectMembersAsync(
+    public async Task<PaginatedResponse<ProjectMemberDto>> GetProjectMembersAsync(
         int projectId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching project members for project: {ProjectId}", projectId);
-        
-        var members = await _projectMemberRepository.GetAllAsync(
+
+        var (members, totalCount) = await _projectMemberRepository.GetAllWithCountAsync(
             filter: pm => pm.ProjectId == projectId,
             filterOn: filterOn,
             filterQuery: filterQuery,
@@ -36,18 +37,28 @@ public class ProjectMemberService : IProjectMemberService
         );
 
         _logger.LogInformation("Fetched {Count} project members for project: {ProjectId}", members.Count(), projectId);
-        
-        return members.Select(MapToDto);
+
+        var memberDtos = members.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<ProjectMemberDto>
+        {
+            Data = memberDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
     }
 
-    public async Task<IEnumerable<ProjectMemberDto>> GetUserProjectMembershipsAsync(
+    public async Task<PaginatedResponse<ProjectMemberDto>> GetUserProjectMembershipsAsync(
         string userId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching project memberships for user: {UserId}", userId);
-        
-        var memberships = await _projectMemberRepository.GetAllAsync(
+
+        var (memberships, totalCount) = await _projectMemberRepository.GetAllWithCountAsync(
             filter: pm => pm.UserId == userId,
             filterOn: filterOn,
             filterQuery: filterQuery,
@@ -58,8 +69,17 @@ public class ProjectMemberService : IProjectMemberService
         );
 
         _logger.LogInformation("Fetched {Count} project memberships for user: {UserId}", memberships.Count(), userId);
-        
-        return memberships.Select(MapToDto);
+        var memberDtos = memberships.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<ProjectMemberDto>
+        {
+            Data = memberDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
     }
 
     public async Task<ProjectMemberDto?> GetProjectMemberAsync(int projectId, string userId)

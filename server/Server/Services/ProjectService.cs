@@ -1,8 +1,8 @@
 using System.Text.Json;
 using server.Data;
+using server.Models.Common;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
-using server.Models.DTOs;
 using server.Models.DTOs.Project;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
@@ -55,7 +55,8 @@ public class ProjectService : IProjectService
                 Data = [],
                 PageSize = pageSize,
                 CurrentPage = pageNumber,
-                TotalPages = 0
+                TotalPages = 0,
+                TotalItems = 0
             };
         }
 
@@ -70,7 +71,8 @@ public class ProjectService : IProjectService
             Data = projectDtos,
             PageSize = pageSize,
             CurrentPage = pageNumber,
-            TotalPages = totalPages
+            TotalPages = totalPages,
+            TotalItems = totalCount
         };
     }
 
