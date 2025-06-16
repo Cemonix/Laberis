@@ -16,7 +16,7 @@
             </div>
         </div>
 
-        <div class="panel-section" v-if="currentLabelScheme && currentLabelScheme.labels.length > 0">
+        <div class="panel-section" v-if="currentLabelScheme && currentLabelScheme.labels && currentLabelScheme.labels.length > 0">
             <h3 class="section-title">Labels</h3>
             <div class="labels-list">
                 <Button
@@ -32,7 +32,7 @@
                 </Button>
             </div>
         </div>
-        <div class="panel-section" v-else-if="currentLabelScheme && currentLabelScheme.labels.length === 0">
+        <div class="panel-section" v-else-if="currentLabelScheme && currentLabelScheme.labels && currentLabelScheme.labels.length === 0">
             <h3 class="section-title">Labels</h3>
             <p class="no-labels-message">No labels in the current scheme.</p>
         </div>

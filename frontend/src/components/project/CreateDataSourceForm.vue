@@ -36,10 +36,10 @@ import Button from '@/components/common/Button.vue';
 import { DataSourceType, type CreateDataSourceRequest } from '@/types/dataSource';
 import { useAlert } from '@/composables/useAlert';
 import { dataSourceService } from '@/services/api/dataSourceService';
-import { loggerInstance } from '@/utils/logger';
+import { AppLogger } from '@/utils/logger';
 
 const { showAlert } = useAlert();
-const log = loggerInstance.createServiceLogger('CreateDataSourceForm');
+const log = AppLogger.createServiceLogger('CreateDataSourceForm');
 
 const props = defineProps<{
     projectId: number;
