@@ -306,6 +306,8 @@ describe("Auth Store", () => {
 
     describe("Initialize Auth", () => {
         it("should initialize with valid stored tokens", async () => {
+            vi.useFakeTimers();
+            
             localStorage.setItem("auth_tokens", JSON.stringify(mockTokens));
             vi.mocked(authService.getCurrentUser).mockResolvedValue(mockUser);
 
@@ -317,6 +319,8 @@ describe("Auth Store", () => {
             await vi.runAllTimersAsync();
 
             expect(authService.getCurrentUser).toHaveBeenCalled();
+            
+            vi.useRealTimers();
         });
 
         it("should not initialize with expired tokens", () => {
@@ -332,6 +336,8 @@ describe("Auth Store", () => {
         });
 
         it("should logout if getCurrentUser fails during initialization", async () => {
+            vi.useFakeTimers();
+            
             localStorage.setItem("auth_tokens", JSON.stringify(mockTokens));
             vi.mocked(authService.getCurrentUser).mockRejectedValue(
                 new Error("User fetch failed")
@@ -344,6 +350,8 @@ describe("Auth Store", () => {
 
             expect(authStore.tokens).toBeNull();
             expect(localStorage.getItem("auth_tokens")).toBeNull();
+            
+            vi.useRealTimers();
         });
     });
 });
