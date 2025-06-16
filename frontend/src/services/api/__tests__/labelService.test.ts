@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { labelService } from '../labelService';
-import type { 
-    LabelResponse, 
-    PaginatedLabelsResponse 
-} from '@/types/label/responses';
+import type { LabelResponse } from '@/types/label/responses';
 import type { CreateLabelRequest, UpdateLabelRequest } from '@/types/label/requests';
+import type { PaginatedResponse } from '@/types/api/paginatedResponse';
 
 // Mock the API client
 vi.mock('../apiClient', () => ({
@@ -18,7 +16,7 @@ vi.mock('../apiClient', () => ({
 
 // Mock the logger
 vi.mock('@/utils/logger', () => ({
-    loggerInstance: {
+    AppLogger: {
         createServiceLogger: vi.fn(() => ({
             info: vi.fn(),
             error: vi.fn(),
@@ -50,7 +48,7 @@ describe('LabelService', () => {
         it('should fetch labels for a scheme successfully', async () => {
             const projectId = 1;
             const schemeId = 1;
-            const mockResponse: PaginatedLabelsResponse = {
+            const mockResponse: PaginatedResponse<LabelResponse> = {
                 data: [
                     {
                         id: 1,
@@ -75,7 +73,8 @@ describe('LabelService', () => {
                 ],
                 pageSize: 25,
                 currentPage: 1,
-                totalPages: 1
+                totalPages: 1,
+                totalItems: 2
             };
 
             mockGet.mockResolvedValue({ data: mockResponse });
@@ -86,17 +85,19 @@ describe('LabelService', () => {
                 `/projects/${projectId}/labelschemes/${schemeId}/labels`,
                 { params: {} }
             );
-            expect(result.labels).toHaveLength(2);
-            expect(result.labels[0]).toEqual({
+            expect(result.data).toHaveLength(2);
+            expect(result.data[0]).toEqual({
                 labelId: 1,
                 name: 'Person',
                 color: '#FF0000',
                 description: 'Person label',
                 labelSchemeId: 1,
-                metadata: { category: 'entity' }
+                createdAt: '2025-01-01T00:00:00Z'
             });
-            expect(result.pagination).toBeDefined();
-            expect(result.pagination?.pageSize).toBe(25);
+            expect(result.currentPage).toBe(1);
+            expect(result.pageSize).toBe(25);
+            expect(result.totalPages).toBe(1);
+            expect(result.totalItems).toBe(2);
         });
 
         it('should handle query parameters', async () => {
@@ -116,7 +117,8 @@ describe('LabelService', () => {
                     data: [], 
                     pageSize: 10, 
                     currentPage: 2, 
-                    totalPages: 0
+                    totalPages: 0,
+                    totalItems: 0
                 } 
             });
 
@@ -170,7 +172,7 @@ describe('LabelService', () => {
                 color: '#FF0000',
                 description: 'Person label',
                 labelSchemeId: 1,
-                metadata: { category: 'entity' }
+                createdAt: '2025-01-01T00:00:00Z'
             });
         });
 
@@ -222,7 +224,7 @@ describe('LabelService', () => {
                 color: '#0000FF',
                 description: 'Animal label',
                 labelSchemeId: 1,
-                metadata: null
+                createdAt: '2025-01-01T00:00:00Z'
             });
         });
 

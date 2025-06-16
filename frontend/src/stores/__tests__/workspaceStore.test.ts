@@ -88,6 +88,7 @@ describe("Workspace Store", () => {
                 color: "#FF0000",
                 labelSchemeId: 2,
                 description: "A test label",
+                createdAt: "2024-01-01T00:00:00Z",
             },
             {
                 labelId: 11,
@@ -95,8 +96,10 @@ describe("Workspace Store", () => {
                 color: "#00FF00",
                 labelSchemeId: 2,
                 description: "Another test label",
+                createdAt: "2024-01-01T00:00:00Z",
             },
         ],
+        createdAt: "2024-01-01T00:00:00Z",
     };
 
     beforeEach(() => {
@@ -237,7 +240,13 @@ describe("Workspace Store", () => {
 
     describe("Asset Loading", () => {
         it("should load asset successfully", async () => {
-            vi.mocked(fetchAnnotations).mockResolvedValue([mockAnnotation]);
+            vi.mocked(fetchAnnotations).mockResolvedValue({
+                data: [mockAnnotation],
+                currentPage: 1,
+                pageSize: 25,
+                totalPages: 1,
+                totalItems: 1
+            });
 
             await workspaceStore.loadAsset("project-1", "asset-1");
 
@@ -560,7 +569,7 @@ describe("Workspace Store", () => {
             );
             expect(workspaceStore.currentLabelScheme?.labels).toHaveLength(3);
             expect(
-                workspaceStore.currentLabelScheme?.labels.map((l) => l.name)
+                workspaceStore.currentLabelScheme?.labels?.map((l) => l.name)
             ).toEqual(["Person", "Car", "Tree"]);
         });
     });
