@@ -124,6 +124,11 @@ watch(() => props.isOpen, (newValue) => {
     cursor: pointer;
     color: vars.$theme-text-light;
     padding: 0;
+
+    &:hover {
+        color: vars.$color-error;
+        background: none;
+    }
 }
 
 .modal-body {
