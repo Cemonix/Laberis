@@ -14,7 +14,7 @@ vi.mock('@/config/env', () => ({
     }
 }));
 
-import { loggerInstance } from '../logger';
+import { AppLogger } from '../logger';
 
 describe('Logger Basic Functionality', () => {
     let consoleSpy: {
@@ -40,22 +40,22 @@ describe('Logger Basic Functionality', () => {
 
     describe('Basic Logging', () => {
         it('should call debug method', () => {
-            loggerInstance.debug('debug message');
+            AppLogger.debug('debug message');
             expect(consoleSpy.debug).toHaveBeenCalledWith('debug message');
         });
 
         it('should call info method', () => {
-            loggerInstance.info('info message');
+            AppLogger.info('info message');
             expect(consoleSpy.info).toHaveBeenCalledWith('info message');
         });
 
         it('should call warn method', () => {
-            loggerInstance.warn('warn message');
+            AppLogger.warn('warn message');
             expect(consoleSpy.warn).toHaveBeenCalledWith('warn message');
         });
 
         it('should call error method', () => {
-            loggerInstance.error('error message');
+            AppLogger.error('error message');
             expect(consoleSpy.error).toHaveBeenCalledWith('error message');
         });
     });
@@ -64,7 +64,7 @@ describe('Logger Basic Functionality', () => {
         it('should log objects as second parameter', () => {
             const testObject = { key: 'value', number: 42 };
             
-            loggerInstance.info('test message', testObject);
+            AppLogger.info('test message', testObject);
 
             expect(consoleSpy.info).toHaveBeenCalledTimes(2);
             expect(consoleSpy.info).toHaveBeenNthCalledWith(1, 'test message');
@@ -72,19 +72,19 @@ describe('Logger Basic Functionality', () => {
         });
 
         it('should not log undefined objects', () => {
-            loggerInstance.info('test message', undefined);
+            AppLogger.info('test message', undefined);
             expect(consoleSpy.info).toHaveBeenCalledTimes(1);
             expect(consoleSpy.info).toHaveBeenCalledWith('test message');
         });
 
         it('should not log null objects', () => {
-            loggerInstance.info('test message', null);
+            AppLogger.info('test message', null);
             expect(consoleSpy.info).toHaveBeenCalledTimes(1);
             expect(consoleSpy.info).toHaveBeenCalledWith('test message');
         });
 
         it('should log falsy but valid objects like 0', () => {
-            loggerInstance.info('test message', 0);
+            AppLogger.info('test message', 0);
             expect(consoleSpy.info).toHaveBeenCalledTimes(2);
             expect(consoleSpy.info).toHaveBeenNthCalledWith(1, 'test message');
             expect(consoleSpy.info).toHaveBeenNthCalledWith(2, 0);
@@ -93,7 +93,7 @@ describe('Logger Basic Functionality', () => {
 
     describe('Service Logger', () => {
         it('should create service logger', () => {
-            const serviceLogger = loggerInstance.createServiceLogger('TestService');
+            const serviceLogger = AppLogger.createServiceLogger('TestService');
             
             expect(serviceLogger).toBeDefined();
             expect(typeof serviceLogger.debug).toBe('function');
@@ -103,7 +103,7 @@ describe('Logger Basic Functionality', () => {
         });
 
         it('should use service logger methods', () => {
-            const serviceLogger = loggerInstance.createServiceLogger('TestService');
+            const serviceLogger = AppLogger.createServiceLogger('TestService');
             
             serviceLogger.debug('debug from service');
             serviceLogger.info('info from service');
@@ -118,7 +118,7 @@ describe('Logger Basic Functionality', () => {
         });
 
         it('should handle objects in service logger', () => {
-            const serviceLogger = loggerInstance.createServiceLogger('TestService');
+            const serviceLogger = AppLogger.createServiceLogger('TestService');
             const testObject = { serviceData: 'test' };
 
             serviceLogger.info('service message', testObject);
@@ -131,25 +131,25 @@ describe('Logger Basic Functionality', () => {
 
     describe('Edge Cases', () => {
         it('should handle empty messages', () => {
-            loggerInstance.info('');
+            AppLogger.info('');
             expect(consoleSpy.info).toHaveBeenCalledWith('');
         });
 
         it('should handle special characters', () => {
             const specialMessage = 'Message with \n newlines \t tabs and "quotes"';
-            loggerInstance.info(specialMessage);
+            AppLogger.info(specialMessage);
             expect(consoleSpy.info).toHaveBeenCalledWith(specialMessage);
         });
 
         it('should handle very long messages', () => {
             const longMessage = 'A'.repeat(1000);
-            loggerInstance.info(longMessage);
+            AppLogger.info(longMessage);
             expect(consoleSpy.info).toHaveBeenCalledWith(longMessage);
         });
 
         it('should handle unicode characters', () => {
             const unicodeMessage = '🚀 Logger test with emojis 🎉 and ünicode chars';
-            loggerInstance.info(unicodeMessage);
+            AppLogger.info(unicodeMessage);
             expect(consoleSpy.info).toHaveBeenCalledWith(unicodeMessage);
         });
     });
@@ -157,7 +157,7 @@ describe('Logger Basic Functionality', () => {
     describe('Multiple Calls', () => {
         it('should handle multiple rapid calls', () => {
             for (let i = 0; i < 10; i++) {
-                loggerInstance.info(`Message ${i}`);
+                AppLogger.info(`Message ${i}`);
             }
 
             expect(consoleSpy.info).toHaveBeenCalledTimes(10);
@@ -167,12 +167,12 @@ describe('Logger Basic Functionality', () => {
         });
 
         it('should handle mixed log levels', () => {
-            loggerInstance.debug('debug 1');
-            loggerInstance.info('info 1');
-            loggerInstance.warn('warn 1');
-            loggerInstance.error('error 1');
-            loggerInstance.debug('debug 2');
-            loggerInstance.info('info 2');
+            AppLogger.debug('debug 1');
+            AppLogger.info('info 1');
+            AppLogger.warn('warn 1');
+            AppLogger.error('error 1');
+            AppLogger.debug('debug 2');
+            AppLogger.info('info 2');
 
             expect(consoleSpy.debug).toHaveBeenCalledTimes(2);
             expect(consoleSpy.info).toHaveBeenCalledTimes(2);
