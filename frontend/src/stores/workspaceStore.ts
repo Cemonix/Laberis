@@ -15,10 +15,11 @@ const SAMPLE_LABEL_SCHEME: LabelScheme = {
     labelSchemeId: 1,
     name: "Default Scheme",
     projectId: 1,
+    createdAt: "2023-01-01T00:00:00Z",
     labels: [
-        { labelId: 1, name: "Person", color: "#FF0000", labelSchemeId: 1, description: "A human being" },
-        { labelId: 2, name: "Car", color: "#00FF00", labelSchemeId: 1, description: "A vehicle" },
-        { labelId: 3, name: "Tree", color: "#0000FF", labelSchemeId: 1, description: "A woody plant" },
+        { labelId: 1, name: "Person", color: "#FF0000", labelSchemeId: 1, description: "A human being", createdAt: "2023-01-01T00:00:00Z" },
+        { labelId: 2, name: "Car", color: "#00FF00", labelSchemeId: 1, description: "A vehicle", createdAt: "2023-01-01T00:00:00Z" },
+        { labelId: 3, name: "Tree", color: "#0000FF", labelSchemeId: 1, description: "A woody plant", createdAt: "2023-01-01T00:00:00Z" },
     ],
 };
 
@@ -83,7 +84,7 @@ export const useWorkspaceStore = defineStore("workspace", {
         },
         getLabelById(state): (labelId: number) => Label | undefined {
             return (labelId: number) => {
-                if (!state.currentLabelScheme) {
+                if (!state.currentLabelScheme || !state.currentLabelScheme.labels) {
                     return undefined;
                 }
                 return state.currentLabelScheme.labels.find(label => label.labelId === labelId);
@@ -108,7 +109,7 @@ export const useWorkspaceStore = defineStore("workspace", {
 
             try {
                 const fetchedAnnotations = await fetchAnnotations(assetId);
-                this.setAnnotations(fetchedAnnotations);
+                this.setAnnotations(fetchedAnnotations.data);
             } catch (error) {
                 console.error("Failed to fetch annotations:", error);
                 this.setAnnotations([]); // Clear annotations on error
