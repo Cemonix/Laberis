@@ -4,7 +4,7 @@ export interface Label {
     color: string;
     description?: string;
     labelSchemeId: number;
-    metadata?: any;
+    createdAt: string;
 }
 
 export interface FormPayloadLabel {

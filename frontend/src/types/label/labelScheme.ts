@@ -6,11 +6,16 @@ export interface LabelScheme {
     description?: string;
     projectId: number;
     isDefault?: boolean;
-    labels: Label[];
+    createdAt: string;
+    labels?: Label[];
 }
 
 export interface FormPayloadLabelScheme {
     name: string;
     description?: string;
-    labels: Omit<Label, 'labelId' | 'labelSchemeId'>[];
+    labels: {
+        name: string;
+        color: string;
+        description?: string;
+    }[];
 }

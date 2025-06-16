@@ -20,20 +20,6 @@ export interface LabelResponse {
     updatedAt: string;
 }
 
-export interface PaginatedLabelSchemesResponse {
-    data: LabelSchemeResponse[];
-    pageSize: number;
-    currentPage: number;
-    totalPages: number;
-}
-
-export interface PaginatedLabelsResponse {
-    data: LabelResponse[];
-    pageSize: number;
-    currentPage: number;
-    totalPages: number;
-}
-
 /**
  * Utility type to transform backend response to frontend types
  */
