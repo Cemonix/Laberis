@@ -21,53 +21,6 @@
                 placeholder="A short description of this label scheme."
             ></textarea>
         </div>
-        <div class="form-section-divider">
-            <label>Labels</label>
-        </div>
-        <div class="labels-preview-list" v-if="formData.labels.length > 0">
-            <div
-                v-for="(label, index) in formData.labels"
-                :key="index"
-                class="label-preview-item"
-            >
-                <span
-                    class="label-preview-color"
-                    :style="{ backgroundColor: label.color }"
-                ></span>
-                <span class="label-preview-name">{{ label.name }}</span>
-                <Button
-                    type="button"
-                    @click="removeLabel(index)"
-                    class="remove-label-btn"
-                    aria-label="Remove label"
-                    >&times;</Button
-                >
-            </div>
-        </div>
-        <div class="add-label-group">
-            <input
-                type="text"
-                v-model.trim="newLabelName"
-                class="add-label-input"
-                placeholder="New label name"
-                :disabled="props.disabled"
-                @keydown.enter.prevent="addLabel"
-            />
-            <input
-                type="color"
-                v-model="newLabelColor"
-                class="color-picker"
-                :disabled="props.disabled"
-                title="Select label color"
-            />
-            <Button
-                type="button"
-                @click.prevent="addLabel"
-                class="btn btn-primary"
-                :disabled="props.disabled"
-                >Add</Button
-            >
-        </div>
         <div class="form-actions">
             <Button
                 type="button"
@@ -108,45 +61,7 @@ const emit = defineEmits<{
 const formData = ref<FormPayloadLabelScheme>({
     name: "",
     description: "",
-    labels: [],
 });
-
-const newLabelName = ref("");
-const newLabelColor = ref("#4287f5");
-
-const addLabel = async () => {
-    if (!newLabelName.value) {
-        await showAlert(
-            "Missing Information",
-            "Please enter a name for the label."
-        );
-        return;
-    }
-
-    if (
-        formData.value.labels.some(
-            (label) =>
-                label.name.toLowerCase() === newLabelName.value.toLowerCase()
-        )
-    ) {
-        await showAlert(
-            "Duplicate Name",
-            "This label name already exists in the list."
-        );
-        return;
-    }
-
-    formData.value.labels.push({
-        name: newLabelName.value,
-        color: newLabelColor.value,
-    });
-
-    newLabelName.value = "";
-};
-
-const removeLabel = (index: number) => {
-    formData.value.labels.splice(index, 1);
-};
 
 const handleSubmit = async () => {
     if (!formData.value.name.trim()) {
@@ -162,80 +77,50 @@ const handleSubmit = async () => {
 @use "@/styles/variables" as vars;
 @use "@/styles/variables/theme" as theme;
 
-.form-section-divider {
-    margin-top: vars.$margin-medium;
-    padding-bottom: vars.$padding-small;
-    border-bottom: vars.$border-width solid vars.$theme-border;
+.form-group {
+    margin-bottom: vars.$margin-large;
+
     label {
+        display: block;
+        margin-bottom: vars.$margin-small;
         font-weight: vars.$font-weight-heading;
-        color: vars.$theme-text-light;
+        color: vars.$theme-text;
+    }
+
+    input, textarea {
+        width: 100%;
+        padding: vars.$padding-medium;
+        border: 1px solid vars.$theme-border;
+        border-radius: vars.$border-radius;
+        font-size: vars.$font_size_medium;
+        
+        &:focus {
+            outline: none;
+            border-color: vars.$color-primary;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+        
+        &:disabled {
+            background-color: vars.$color-gray-200;
+            color: vars.$theme-text-light;
+            cursor: not-allowed;
+        }
+    }
+
+    textarea {
+        resize: vertical;
+        min-height: 100px;
+        max-height: 300px;
+        font-family: inherit;
     }
 }
 
-.labels-preview-list {
+.form-actions {
     display: flex;
-    flex-direction: column;
-    gap: vars.$gap-tiny;
-    margin-top: vars.$margin-small;
-    max-height: 150px;
-    overflow-y: auto;
-}
-
-.label-preview-item {
-    display: flex;
-    align-items: center;
-    gap: vars.$gap-small;
-    background-color: vars.$color-gray-200;
-    padding: vars.$padding-small;
-    border-radius: vars.$border-radius-sm;
-}
-
-.label-preview-color {
-    width: 16px;
-    height: 16px;
-    border-radius: 3px;
-    flex-shrink: 0;
-}
-
-.label-preview-name {
-    flex-grow: 1;
-}
-
-.add-label-input {
-    padding: vars.$padding-small;
-    border: vars.$border-width solid vars.$color-gray-400;
-    border-radius: vars.$border-radius-sm;
-    font-size: vars.$font_size_medium;
-}
-
-.remove-label-btn {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: vars.$theme-text;
-    cursor: pointer;
-    line-height: 1;
-    &:hover {
-        color: vars.$color-error;
-    }
-}
-
-.add-label-group {
-    display: flex;
-    gap: vars.$gap-small;
-    align-items: center;
-    margin-top: vars.$margin-small;
-
-    input[type="text"] {
-        flex-grow: 1;
-    }
-    .color-picker {
-        height: 38px;
-        width: 45px;
-        padding: 2px;
-        border: vars.$border-width solid vars.$color-gray-300;
-        border-radius: vars.$border-radius-sm;
-        cursor: pointer;
-    }
+    justify-content: flex-end;
+    gap: vars.$gap-medium;
+    margin-top: vars.$margin-xlarge;
+    padding-top: vars.$padding-large;
+    border-top: 1px solid vars.$theme-border;
 }
 </style>
