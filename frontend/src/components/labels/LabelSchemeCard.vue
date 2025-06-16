@@ -3,7 +3,7 @@
         <template #header>
             <h3 class="scheme-name">{{ scheme.name }}</h3>
             <div class="card-actions">
-                <Button variant="primary">Add Label</Button>
+                <Button variant="primary" @click="openAddLabelModal">Add Label</Button>
                 <Button variant="secondary">Edit Scheme</Button>
             </div>
         </template>
@@ -25,6 +25,20 @@
                 </p>
             </template>
         </div>
+
+        <!-- Add Label Modal -->
+        <ModalWindow 
+            :is-open="isAddLabelModalOpen" 
+            title="Add New Label" 
+            @close="closeAddLabelModal" 
+            :hide-footer="true"
+        >
+            <CreateLabelForm 
+                @cancel="closeAddLabelModal" 
+                @save="handleCreateLabel" 
+                :disabled="isLoadingLabels"
+            />
+        </ModalWindow>
     </Card>
 </template>
 
@@ -32,10 +46,14 @@
 import { ref, onMounted } from 'vue';
 import type { LabelScheme } from '@/types/label/labelScheme';
 import type { Label } from '@/types/label/label';
+import type { CreateLabelRequest } from '@/types/label/requests';
 import { labelService } from '@/services/api/labelService';
+import { useAlert } from '@/composables/useAlert';
 import LabelChip from './LabelChip.vue';
+import CreateLabelForm from './CreateLabelForm.vue';
 import Button from '@/components/common/Button.vue';
 import Card from '@/components/common/Card.vue';
+import ModalWindow from '@/components/common/modals/ModalWindow.vue';
 
 const props = defineProps<{
     scheme: LabelScheme;
@@ -43,6 +61,40 @@ const props = defineProps<{
 
 const labels = ref<Label[]>([]);
 const isLoadingLabels = ref(false);
+const isAddLabelModalOpen = ref(false);
+
+const { showAlert } = useAlert();
+
+const openAddLabelModal = () => {
+    isAddLabelModalOpen.value = true;
+};
+
+const closeAddLabelModal = () => {
+    isAddLabelModalOpen.value = false;
+};
+
+const handleCreateLabel = async (formData: CreateLabelRequest) => {
+    try {
+        isLoadingLabels.value = true;
+        
+        const newLabel = await labelService.createLabel(
+            props.scheme.projectId,
+            props.scheme.labelSchemeId,
+            formData
+        );
+        
+        // Add the new label to the current list
+        labels.value.push(newLabel);
+        
+        // Don't close modal - let user create multiple labels
+        await showAlert('Success', 'Label created successfully!');
+    } catch (error) {
+        await showAlert('Error', 'Failed to create label. Please try again.');
+        console.error('Failed to create label:', error);
+    } finally {
+        isLoadingLabels.value = false;
+    }
+};
 
 const fetchLabels = async () => {
     // If labels are already provided with the scheme, use them
