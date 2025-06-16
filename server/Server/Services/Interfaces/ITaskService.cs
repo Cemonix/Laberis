@@ -1,3 +1,4 @@
+using server.Models.Common;
 using server.Models.DTOs.Task;
 
 namespace server.Services.Interfaces;
@@ -15,7 +16,7 @@ public interface ITaskService
     /// <param name="pageNumber">The page number for pagination (1-based index).</param>
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A task that represents the asynchronous operation, containing a collection of TaskDto.</returns>
-    Task<IEnumerable<TaskDto>> GetTasksForProjectAsync(
+    Task<PaginatedResponse<TaskDto>> GetTasksForProjectAsync(
         int projectId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25
@@ -32,7 +33,7 @@ public interface ITaskService
     /// <param name="pageNumber">The page number for pagination (1-based index).</param>
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A task that represents the asynchronous operation, containing a collection of TaskDto.</returns>
-    Task<IEnumerable<TaskDto>> GetTasksForUserAsync(
+    Task<PaginatedResponse<TaskDto>> GetTasksForUserAsync(
         string userId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25

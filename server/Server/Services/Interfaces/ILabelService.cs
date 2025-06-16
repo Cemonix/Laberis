@@ -1,4 +1,4 @@
-using server.Models.DTOs;
+using server.Models.Common;
 using server.Models.DTOs.Label;
 
 namespace server.Services.Interfaces

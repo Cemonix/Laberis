@@ -1,5 +1,5 @@
 using System;
-using server.Models.DTOs;
+using server.Models.Common;
 using server.Models.DTOs.LabelScheme;
 
 namespace server.Services.Interfaces;

@@ -1,6 +1,6 @@
-using server.Models.DTOs;
-using server.Models.DTOs.DataSource;
 using server.Models.Domain.Enums;
+using server.Models.Common;
+using server.Models.DTOs.DataSource;
 
 namespace server.Services.Interfaces
 {
@@ -17,7 +17,7 @@ namespace server.Services.Interfaces
         /// <param name="pageNumber">The page number for pagination (1-based index).</param>
         /// <param name="pageSize">The number of items per page.</param>
         /// <returns>A task that represents the asynchronous operation, containing a collection of DataSourceDto.</returns>
-        Task<IEnumerable<DataSourceDto>> GetAllDataSourcesForProjectAsync(
+        Task<PaginatedResponse<DataSourceDto>> GetAllDataSourcesForProjectAsync(
             int projectId,
             string? filterOn = null, string? filterQuery = null, string? sortBy = null,
             bool isAscending = true, int pageNumber = 1, int pageSize = 25
