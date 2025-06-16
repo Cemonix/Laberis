@@ -1,5 +1,6 @@
 using server.Models.Domain;
 using server.Models.DTOs.Asset;
+using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 
@@ -18,14 +19,14 @@ public class AssetService : IAssetService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<IEnumerable<AssetDto>> GetAssetsForProjectAsync(
+    public async Task<PaginatedResponse<AssetDto>> GetAssetsForProjectAsync(
         int projectId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching assets for project: {ProjectId}", projectId);
-        
-        var assets = await _assetRepository.GetAllAsync(
+
+        var (assets, totalCount) = await _assetRepository.GetAllWithCountAsync(
             filter: a => a.ProjectId == projectId,
             filterOn: filterOn,
             filterQuery: filterQuery,
@@ -36,8 +37,18 @@ public class AssetService : IAssetService
         );
 
         _logger.LogInformation("Fetched {Count} assets for project: {ProjectId}", assets.Count(), projectId);
-        
-        return assets.Select(MapToDto);
+
+        var assetDtos = assets.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<AssetDto>
+        {
+            Data = assetDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
     }
 
     public async Task<AssetDto?> GetAssetByIdAsync(int assetId)

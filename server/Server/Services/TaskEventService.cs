@@ -1,5 +1,6 @@
 using server.Models.Domain;
 using server.Models.DTOs.TaskEvent;
+using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 
@@ -18,14 +19,14 @@ public class TaskEventService : ITaskEventService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<IEnumerable<TaskEventDto>> GetTaskEventsAsync(
+    public async Task<PaginatedResponse<TaskEventDto>> GetTaskEventsAsync(
         int taskId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching task events for task: {TaskId}", taskId);
-        
-        var events = await _taskEventRepository.GetAllAsync(
+
+        var (events, totalCount) = await _taskEventRepository.GetAllWithCountAsync(
             filter: te => te.TaskId == taskId,
             filterOn: filterOn,
             filterQuery: filterQuery,
@@ -36,16 +37,26 @@ public class TaskEventService : ITaskEventService
         );
 
         _logger.LogInformation("Fetched {Count} task events for task: {TaskId}", events.Count(), taskId);
-        
-        return events.Select(MapToDto);
+
+        var eventDtos = events.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<TaskEventDto>
+        {
+            Data = eventDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
     }
 
     public async Task<TaskEventDto?> GetTaskEventByIdAsync(long eventId)
     {
         _logger.LogInformation("Fetching task event with ID: {EventId}", eventId);
-        
+
         var taskEvent = await _taskEventRepository.GetByIdAsync(eventId);
-        
+
         if (taskEvent == null)
         {
             _logger.LogWarning("Task event with ID: {EventId} not found.", eventId);
@@ -74,7 +85,7 @@ public class TaskEventService : ITaskEventService
         await _taskEventRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully logged task event with ID: {EventId}", taskEvent.EventId);
-        
+
         return MapToDto(taskEvent);
     }
 

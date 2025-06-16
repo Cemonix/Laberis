@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using server.Models.Domain;
-using server.Models.DTOs;
+using server.Models.Common;
 using server.Models.DTOs.LabelScheme;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
@@ -52,7 +52,8 @@ public class LabelSchemeService : ILabelSchemeService
             Data = schemeDtos,
             PageSize = pageSize,
             CurrentPage = pageNumber,
-            TotalPages = totalPages
+            TotalPages = totalPages,
+            TotalItems = totalCount
         };
     }
 

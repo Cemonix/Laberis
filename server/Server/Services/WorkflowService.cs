@@ -1,5 +1,6 @@
 using server.Models.Domain;
 using server.Models.DTOs.Workflow;
+using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 
@@ -18,14 +19,14 @@ public class WorkflowService : IWorkflowService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<IEnumerable<WorkflowDto>> GetWorkflowsForProjectAsync(
+    public async Task<PaginatedResponse<WorkflowDto>> GetWorkflowsForProjectAsync(
         int projectId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching workflows for project: {ProjectId}", projectId);
-        
-        var workflows = await _workflowRepository.GetAllAsync(
+
+        var (workflows, totalCount) = await _workflowRepository.GetAllWithCountAsync(
             filter: w => w.ProjectId == projectId,
             filterOn: filterOn,
             filterQuery: filterQuery,
@@ -36,8 +37,18 @@ public class WorkflowService : IWorkflowService
         );
 
         _logger.LogInformation("Fetched {Count} workflows for project: {ProjectId}", workflows.Count(), projectId);
-        
-        return workflows.Select(MapToDto);
+
+        var workflowDtos = workflows.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<WorkflowDto>
+        {
+            Data = workflowDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
     }
 
     public async Task<WorkflowDto?> GetWorkflowByIdAsync(int workflowId)

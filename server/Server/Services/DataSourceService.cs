@@ -1,6 +1,6 @@
 using server.Models.Domain;
 using server.Models.Domain.Enums;
-using server.Models.DTOs;
+using server.Models.Common;
 using server.Models.DTOs.DataSource;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
@@ -26,12 +26,12 @@ namespace server.Services
             _logger = logger;
         }
 
-        public async Task<IEnumerable<DataSourceDto>> GetAllDataSourcesForProjectAsync(
+        public async Task<PaginatedResponse<DataSourceDto>> GetAllDataSourcesForProjectAsync(
             int projectId,
             string? filterOn = null, string? filterQuery = null, string? sortBy = null,
             bool isAscending = true, int pageNumber = 1, int pageSize = 25)
         {
-            var dataSources = await _dataSourceRepository.GetAllAsync(
+            var (dataSources, totalCount) = await _dataSourceRepository.GetAllWithCountAsync(
                 filter: ds => ds.ProjectId == projectId,
                 filterOn: filterOn,
                 filterQuery: filterQuery,
@@ -41,7 +41,7 @@ namespace server.Services
                 pageSize: pageSize
             );
 
-            return dataSources.Select(ds => new DataSourceDto
+            var dataSourceDtos = dataSources.Select(ds => new DataSourceDto
             {
                 Id = ds.DataSourceId,
                 Name = ds.Name,
@@ -51,7 +51,18 @@ namespace server.Services
                 IsDefault = ds.IsDefault,
                 CreatedAt = ds.CreatedAt,
                 ProjectId = ds.ProjectId
-            });
+            }).ToArray();
+
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            return new PaginatedResponse<DataSourceDto>
+            {
+                Data = dataSourceDtos,
+                PageSize = pageSize,
+                CurrentPage = pageNumber,
+                TotalPages = totalPages,
+                TotalItems = totalCount
+            };
         }
 
         public async Task<DataSourceDto?> GetDataSourceByIdAsync(int dataSourceId)
