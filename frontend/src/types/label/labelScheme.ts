@@ -13,7 +13,7 @@ export interface LabelScheme {
 export interface FormPayloadLabelScheme {
     name: string;
     description?: string;
-    labels: {
+    labels?: {
         name: string;
         color: string;
         description?: string;
