@@ -54,7 +54,6 @@ import CreateLabelSchemeForm from '@/components/labels/CreateLabelSchemeForm.vue
 import Button from '@/components/common/Button.vue';
 import type { LabelScheme, FormPayloadLabelScheme } from '@/types/label/labelScheme';
 import { labelSchemeService } from '@/services/api/labelSchemeService';
-import { labelService } from '@/services/api/labelService';
 import { useAlert } from '@/composables/useAlert';
 
 const route = useRoute();
@@ -77,7 +76,7 @@ const fetchLabelSchemes = async () => {
     try {
         isLoading.value = true;
         const result = await labelSchemeService.getLabelSchemesForProject(projectId);
-        labelSchemes.value = result.schemes;
+        labelSchemes.value = result.data;
     } catch (error) {
         await showAlert('Error', 'Failed to load label schemes. Please try again.');
         console.error('Failed to fetch label schemes:', error);
@@ -87,7 +86,7 @@ const fetchLabelSchemes = async () => {
 };
 
 /**
- * Creates a new label scheme with labels
+ * Creates a new label scheme
  */
 const handleCreateScheme = async (formData: FormPayloadLabelScheme) => {
     const projectId = Number(route.params.projectId);
@@ -100,37 +99,17 @@ const handleCreateScheme = async (formData: FormPayloadLabelScheme) => {
     try {
         isLoading.value = true;
         
-        // Create the label scheme first
-        const newScheme = await labelSchemeService.createLabelScheme(projectId, {
+        // Create the label scheme
+        await labelSchemeService.createLabelScheme(projectId, {
             name: formData.name,
             description: formData.description
         });
-
-        // Create labels for the scheme if any were provided
-        if (formData.labels && formData.labels.length > 0) {
-            const createdLabels = await Promise.all(
-                formData.labels.map(labelData => 
-                    labelService.createLabel(
-                        projectId, 
-                        newScheme.labelSchemeId, 
-                        {
-                            name: labelData.name,
-                            color: labelData.color,
-                            description: labelData.description
-                        }
-                    )
-                )
-            );
-            
-            // Update the scheme with the created labels
-            newScheme.labels = createdLabels;
-        }
 
         // Refresh the list to get the latest data
         await fetchLabelSchemes();
         
         closeModal();
-        await showAlert('Success', 'Label scheme created successfully!');
+        await showAlert('Success', 'Label scheme created successfully! You can now add labels to it.');
     } catch (error) {
         await showAlert('Error', 'Failed to create label scheme. Please try again.');
         console.error('Failed to create label scheme:', error);
