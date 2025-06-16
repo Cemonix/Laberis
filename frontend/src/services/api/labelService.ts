@@ -3,23 +3,23 @@
  */
 
 import apiClient from './apiClient';
-import { loggerInstance } from '@/utils/logger';
-import type { 
-    LabelResponse, 
-    PaginatedLabelsResponse
-} from '@/types/label/responses';
-import type { 
-    CreateLabelRequest, 
+import { AppLogger } from '@/utils/logger';
+import type { LabelResponse } from '@/types/label/responses';
+import type {
+    CreateLabelRequest,
     UpdateLabelRequest,
-    GetLabelsQuery 
+    GetLabelsQuery
 } from '@/types/label/requests';
 import type { Label } from '@/types/label/label';
+import type { PaginatedResponse } from '@/types/api/paginatedResponse';
 
-// Create service-specific logger
-const logger = loggerInstance.createServiceLogger('LabelService');
+const logger = AppLogger.createServiceLogger('LabelService');
 
 /**
- * Transform backend LabelResponse to frontend Label
+ * Transforms a backend LabelResponse object to a frontend Label object.
+ * Assumes LabelResponse mirrors the backend LabelDto.
+ * @param response - The backend label response object.
+ * @returns The transformed frontend label object.
  */
 function transformLabelResponse(response: LabelResponse): Label {
     return {
@@ -28,216 +28,211 @@ function transformLabelResponse(response: LabelResponse): Label {
         color: response.color,
         description: response.description,
         labelSchemeId: response.labelSchemeId,
-        metadata: response.metadata
+        createdAt: response.createdAt,
     };
 }
 
 /**
- * Service class for managing labels within label schemes
+ * Service class for managing labels within label schemes.
  */
 class LabelService {
     /**
-     * Retrieves all labels for a specific label scheme with optional filtering and pagination
-     * @param projectId The unique identifier of the project
-     * @param schemeId The unique identifier of the label scheme
-     * @param query Optional query parameters for filtering, sorting, and pagination
-     * @returns Promise resolving to labels with pagination metadata
+     * Retrieves all labels for a specific label scheme with optional filtering and pagination.
+     * @param projectId - The unique identifier of the project.
+     * @param schemeId - The unique identifier of the label scheme.
+     * @param query - Optional query parameters for filtering, sorting, and pagination.
+     * @returns A promise resolving to a paginated response of labels.
      */
     async getLabelsForScheme(
         projectId: number,
-        schemeId: number, 
+        schemeId: number,
         query: GetLabelsQuery = {}
-    ): Promise<{ labels: Label[]; pagination?: any }> {
+    ): Promise<PaginatedResponse<Label>> {
+        const { pageNumber = 1, pageSize = 25 } = query;
         logger.info('Fetching labels for scheme', { projectId, schemeId, query });
-        
+
         try {
-            const response = await apiClient.get<PaginatedLabelsResponse>(
+            const response = await apiClient.get<PaginatedResponse<LabelResponse>>(
                 `/projects/${projectId}/labelschemes/${schemeId}/labels`,
                 { params: query }
             );
 
-            // Handle empty or invalid response
-            if (!response?.data) {
-                logger.warn('Empty response received', { projectId, schemeId, query });
+            if (
+                !response?.data ||
+                typeof response.data.data === 'undefined' ||
+                !Array.isArray(response.data.data) ||
+                typeof response.data.currentPage !== 'number' ||
+                typeof response.data.pageSize !== 'number' ||
+                typeof response.data.totalPages !== 'number'
+            ) {
+                logger.warn('Invalid paginated response structure received for labels', {
+                    projectId,
+                    schemeId,
+                    query,
+                    responseData: response?.data
+                });
                 return {
-                    labels: [],
-                    pagination: {
-                        pageSize: query.pageSize || 25,
-                        currentPage: query.pageNumber || 1,
-                        totalPages: 0,
-                        hasNextPage: false,
-                        hasPreviousPage: false
-                    }
+                    data: [],
+                    currentPage: pageNumber,
+                    pageSize: pageSize,
+                    totalPages: 0,
+                    totalItems: 0
                 };
             }
-            else if (!Array.isArray(response.data.data)) {
-                logger.warn('Invalid data format received', { projectId, schemeId, query });
-                return {
-                    labels: [],
-                    pagination: {
-                        pageSize: query.pageSize || 25,
-                        currentPage: query.pageNumber || 1,
-                        totalPages: 0,
-                        hasNextPage: false,
-                        hasPreviousPage: false
-                    }
-                };
-            }
-            else if (response.data.data.length === 0) {
-                logger.info('No labels found for scheme', { projectId, schemeId });
-                return {
-                    labels: [],
-                    pagination: {
-                        pageSize: query.pageSize || 25,
-                        currentPage: query.pageNumber || 1,
-                        totalPages: 0,
-                        hasNextPage: false,
-                        hasPreviousPage: false
-                    }
-                };
-            }
-            
+
             const labels = response.data.data.map(transformLabelResponse);
-            
-            logger.info('Successfully fetched labels', { 
-                projectId, 
+
+            logger.info('Successfully fetched labels', {
+                projectId,
                 schemeId,
                 count: labels.length,
                 currentPage: response.data.currentPage,
-                totalPages: response.data.totalPages 
+                totalPages: response.data.totalPages
             });
-            
+
             return {
-                labels,
-                pagination: {
-                    pageSize: response.data.pageSize,
-                    currentPage: response.data.currentPage,
-                    totalPages: response.data.totalPages,
-                    hasNextPage: response.data.currentPage < response.data.totalPages,
-                    hasPreviousPage: response.data.currentPage > 1
-                }
+                data: labels,
+                currentPage: response.data.currentPage,
+                pageSize: response.data.pageSize,
+                totalPages: response.data.totalPages,
+                totalItems: response.data.totalItems
             };
         } catch (error) {
-            logger.error('Failed to fetch labels for scheme', error);
+            logger.error('Failed to fetch labels for scheme', { error, projectId, schemeId, query });
             throw error;
         }
     }
 
     /**
-     * Retrieves a single label by its ID
-     * @param projectId The unique identifier of the project
-     * @param schemeId The unique identifier of the label scheme
-     * @param labelId The unique identifier of the label
-     * @returns Promise resolving to the label data
+     * Retrieves a single label by its ID.
+     * @param projectId - The unique identifier of the project.
+     * @param schemeId - The unique identifier of the label scheme.
+     * @param labelId - The unique identifier of the label.
+     * @returns A promise resolving to the label data.
      */
     async getLabelById(
         projectId: number,
-        schemeId: number, 
+        schemeId: number,
         labelId: number
     ): Promise<Label> {
         logger.info('Fetching label by ID', { projectId, schemeId, labelId });
-        
+
         try {
             const response = await apiClient.get<LabelResponse>(
                 `/projects/${projectId}/labelschemes/${schemeId}/labels/${labelId}`
             );
-            
+
+            if (!response?.data) {
+                logger.warn('Empty response data received for getLabelById', { projectId, schemeId, labelId });
+                throw new Error('Invalid data received for label');
+            }
+
             const label = transformLabelResponse(response.data);
-            
-            logger.info('Successfully fetched label', { 
-                projectId, 
-                schemeId, 
-                labelId, 
-                name: label.name 
+
+            logger.info('Successfully fetched label', {
+                projectId,
+                schemeId,
+                labelId,
+                name: label.name
             });
-            
+
             return label;
         } catch (error) {
-            logger.error('Failed to fetch label', error);
+            logger.error('Failed to fetch label by ID', { error, projectId, schemeId, labelId });
             throw error;
         }
     }
 
     /**
-     * Creates a new label within a label scheme
-     * @param projectId The unique identifier of the project
-     * @param schemeId The unique identifier of the label scheme
-     * @param data The label data for creation
-     * @returns Promise resolving to the created label
+     * Creates a new label within a label scheme.
+     * @param projectId - The unique identifier of the project.
+     * @param schemeId - The unique identifier of the label scheme.
+     * @param data - The label data for creation.
+     * @returns A promise resolving to the created label.
      */
     async createLabel(
         projectId: number,
-        schemeId: number, 
+        schemeId: number,
         data: CreateLabelRequest
     ): Promise<Label> {
         logger.info('Creating new label', { projectId, schemeId, name: data.name });
-        
+
         try {
             const response = await apiClient.post<LabelResponse>(
                 `/projects/${projectId}/labelschemes/${schemeId}/labels`,
                 data
             );
-            
+
+            if (!response?.data) {
+                logger.warn('Empty response data received for createLabel', { projectId, schemeId, name: data.name });
+                throw new Error('Invalid data received after creating label');
+            }
+
             const label = transformLabelResponse(response.data);
-            
-            logger.info('Successfully created label', { 
-                projectId, 
+
+            logger.info('Successfully created label', {
+                projectId,
                 schemeId,
-                labelId: label.labelId, 
-                name: label.name 
+                labelId: label.labelId,
+                name: label.name
             });
-            
+
             return label;
         } catch (error) {
-            logger.error('Failed to create label', error);
+            logger.error('Failed to create label', { error, projectId, schemeId, requestData: data });
             throw error;
         }
     }
 
     /**
-     * Updates an existing label
-     * @param projectId The unique identifier of the project
-     * @param schemeId The unique identifier of the label scheme
-     * @param labelId The unique identifier of the label to update
-     * @param data The updated label data
-     * @returns Promise resolving to the updated label
+     * Updates an existing label.
+     * @param projectId - The unique identifier of the project.
+     * @param schemeId - The unique identifier of the label scheme.
+     * @param labelId - The unique identifier of the label to update.
+     * @param data - The updated label data.
+     * @returns A promise resolving to the updated label.
      */
     async updateLabel(
         projectId: number,
         schemeId: number,
-        labelId: number, 
+        labelId: number,
         data: UpdateLabelRequest
     ): Promise<Label> {
         logger.info('Updating label', { projectId, schemeId, labelId, updates: data });
-        
+
         try {
             const response = await apiClient.put<LabelResponse>(
                 `/projects/${projectId}/labelschemes/${schemeId}/labels/${labelId}`,
                 data
             );
-            
+
+            if (!response?.data) {
+                logger.warn('Empty response data received for updateLabel', { projectId, schemeId, labelId });
+                throw new Error('Invalid data received after updating label');
+            }
+
             const label = transformLabelResponse(response.data);
-            
-            logger.info('Successfully updated label', { 
-                projectId, 
+
+            logger.info('Successfully updated label', {
+                projectId,
                 schemeId,
-                labelId, 
-                name: label.name 
+                labelId,
+                name: label.name
             });
-            
+
             return label;
         } catch (error) {
-            logger.error('Failed to update label', error);
+            logger.error('Failed to update label', { error, projectId, schemeId, labelId, requestData: data });
             throw error;
         }
     }
 
     /**
-     * Deletes a label from a label scheme
-     * @param projectId The unique identifier of the project
-     * @param schemeId The unique identifier of the label scheme
-     * @param labelId The unique identifier of the label to delete
-     * @returns Promise that resolves when the label is deleted
+     * Deletes a label from a label scheme.
+     * @param projectId - The unique identifier of the project.
+     * @param schemeId - The unique identifier of the label scheme.
+     * @param labelId - The unique identifier of the label to delete.
+     * @returns A promise that resolves when the label is deleted.
      */
     async deleteLabel(
         projectId: number,
@@ -245,19 +240,17 @@ class LabelService {
         labelId: number
     ): Promise<void> {
         logger.info('Deleting label', { projectId, schemeId, labelId });
-        
+
         try {
             await apiClient.delete(
                 `/projects/${projectId}/labelschemes/${schemeId}/labels/${labelId}`
             );
-            
             logger.info('Successfully deleted label', { projectId, schemeId, labelId });
         } catch (error) {
-            logger.error('Failed to delete label', error);
+            logger.error('Failed to delete label', { error, projectId, schemeId, labelId });
             throw error;
         }
     }
 }
 
-// Export singleton instance
 export const labelService = new LabelService();
