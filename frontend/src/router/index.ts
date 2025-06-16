@@ -54,19 +54,19 @@ const routes: Array<RouteRecordRaw> = [
             {
                 path: 'label-schemes',
                 name: 'ProjectLabels',
-                component: () => import('@/views/project/ProjectLabelSchemesView.vue'),
+                component: () => import('@/views/project/labelScheme/LabelSchemesView.vue'),
                 props: true,
             },
             {
                 path: 'data-sources',
                 name: 'ProjectDataSources',
-                component: () => import('@/views/project/ProjectDataSourcesView.vue'),
+                component: () => import('@/views/project/dataSources/DataSourcesView.vue'),
                 props: true,
             },
             {
                 path: 'data-sources/:dataSourceId',
                 name: 'DataExplorer',
-                component: () => import('@/views/project/DataExplorerView.vue'),
+                component: () => import('@/views/dataExplorer/DataExplorerView.vue'),
                 props: true,
                 meta: {
                     layout: DataExplorerLayout,
