@@ -87,7 +87,7 @@ import Form from '@/components/common/Form.vue';
 import Button from '@/components/common/Button.vue';
 import LabelChip from './LabelChip.vue';
 import type { CreateLabelRequest } from '@/types/label/requests';
-import { generateRandomColor } from '@/utils/colorUtils';
+import { generateRandomColor, isValidHexColor } from '@/utils/colors';
 
 const props = defineProps<{
     disabled?: boolean;
@@ -105,8 +105,7 @@ const formData = ref<CreateLabelRequest>({
 });
 
 const isFormValid = computed(() => {
-    return formData.value.name.trim().length > 0 && 
-           formData.value.color.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/);
+    return formData.value.name.trim().length > 0 && isValidHexColor(formData.value.color);
 });
 
 const handleSubmit = () => {
