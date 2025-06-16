@@ -76,32 +76,29 @@ class Logger {
     }
 }
 
-const loggerInstance = new Logger();
+export const AppLogger = new Logger();
 
 export const logger = {
     install(app: App) {
         app.config.globalProperties.$logDebug = (message: string, obj?: any) => 
-            loggerInstance.debug(message, obj);
+            AppLogger.debug(message, obj);
         app.config.globalProperties.$logInfo = (message: string, obj?: any) => 
-            loggerInstance.info(message, obj);
+            AppLogger.info(message, obj);
         app.config.globalProperties.$logWarn = (message: string, obj?: any) => 
-            loggerInstance.warn(message, obj);
+            AppLogger.warn(message, obj);
         app.config.globalProperties.$logError = (message: string, obj?: any) => 
-            loggerInstance.error(message, obj);
+            AppLogger.error(message, obj);
     }
 }
 
 export const piniaLogger = function () {
     return {
-        $logDebug: (message: string, obj?: any) => loggerInstance.debug(message, obj),
-        $logInfo: (message: string, obj?: any) => loggerInstance.info(message, obj),
-        $logWarn: (message: string, obj?: any) => loggerInstance.warn(message, obj),
-        $logError: (message: string, obj?: any) => loggerInstance.error(message, obj)
+        $logDebug: (message: string, obj?: any) => AppLogger.debug(message, obj),
+        $logInfo: (message: string, obj?: any) => AppLogger.info(message, obj),
+        $logWarn: (message: string, obj?: any) => AppLogger.warn(message, obj),
+        $logError: (message: string, obj?: any) => AppLogger.error(message, obj)
     }
 }
-
-// For use in services and other non-Vue code
-export { loggerInstance };
 
 // Type declarations for Vue components
 declare module '@vue/runtime-core' {
