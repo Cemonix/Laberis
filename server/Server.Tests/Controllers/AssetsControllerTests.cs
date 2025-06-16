@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
 using server.Controllers;
+using server.Models.Common;
 using server.Models.DTOs.Asset;
 using server.Models.Domain.Enums;
 using server.Services.Interfaces;
@@ -53,7 +54,7 @@ namespace Server.Tests.Controllers
         {
             // Arrange
             var projectId = 1;
-            var expectedAssets = new List<AssetDto>
+            var assetDtos = new List<AssetDto>
             {
                 new()
                 {
@@ -80,6 +81,15 @@ namespace Server.Tests.Controllers
                 }
             };
 
+            var expectedAssets = new PaginatedResponse<AssetDto>
+            {
+                Data = assetDtos.ToArray(),
+                PageSize = 25,
+                CurrentPage = 1,
+                TotalPages = 1,
+                TotalItems = 2
+            };
+
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
                 projectId, null, null, null, true, 1, 25)
             ).ReturnsAsync(expectedAssets);
@@ -89,9 +99,10 @@ namespace Server.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var assets = Assert.IsAssignableFrom<IEnumerable<AssetDto>>(okResult.Value);
-            Assert.Equal(2, assets.Count());
-            Assert.Equal(expectedAssets, assets);
+            var paginatedResponse = Assert.IsType<PaginatedResponse<AssetDto>>(okResult.Value);
+            Assert.Equal(2, paginatedResponse.Data.Length);
+            Assert.Equal(2, paginatedResponse.TotalItems);
+            Assert.Equal(expectedAssets.Data, paginatedResponse.Data);
 
             _mockAssetService.Verify(s => s.GetAssetsForProjectAsync(
                 projectId, null, null, null, true, 1, 25), Times.Once);
@@ -109,17 +120,24 @@ namespace Server.Tests.Controllers
             var pageNumber = 2;
             var pageSize = 10;
 
-            var expectedAssets = new List<AssetDto>
+            var expectedAssets = new PaginatedResponse<AssetDto>
             {
-                new() {
-                    Id = 1,
-                    ExternalId = "asset-1",
-                    Filename = "test1.jpg",
-                    Status = AssetStatus.IMPORTED,
-                    ProjectId = projectId,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                }
+                Data =
+                [
+                    new() {
+                        Id = 1,
+                        ExternalId = "asset-1",
+                        Filename = "test1.jpg",
+                        Status = AssetStatus.IMPORTED,
+                        ProjectId = projectId,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    }
+                ],
+                PageSize = pageSize,
+                CurrentPage = pageNumber,
+                TotalPages = 1,
+                TotalItems = 1
             };
 
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
@@ -132,8 +150,9 @@ namespace Server.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var assets = Assert.IsAssignableFrom<IEnumerable<AssetDto>>(okResult.Value);
-            Assert.Single(assets);
+            var paginatedResponse = Assert.IsType<PaginatedResponse<AssetDto>>(okResult.Value);
+            Assert.Single(paginatedResponse.Data);
+            Assert.Equal(1, paginatedResponse.TotalItems);
 
             _mockAssetService.Verify(s => s.GetAssetsForProjectAsync(
                 projectId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize), Times.Once);
@@ -144,7 +163,14 @@ namespace Server.Tests.Controllers
         {
             // Arrange
             var projectId = 1;
-            var expectedAssets = new List<AssetDto>();
+            var expectedAssets = new PaginatedResponse<AssetDto>
+            {
+                Data = [],
+                PageSize = 25,
+                CurrentPage = 1,
+                TotalPages = 0,
+                TotalItems = 0
+            };
 
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
                 projectId, null, null, null, true, 1, 25))
@@ -155,8 +181,9 @@ namespace Server.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var assets = Assert.IsAssignableFrom<IEnumerable<AssetDto>>(okResult.Value);
-            Assert.Empty(assets);
+            var paginatedResponse = Assert.IsType<PaginatedResponse<AssetDto>>(okResult.Value);
+            Assert.Empty(paginatedResponse.Data);
+            Assert.Equal(0, paginatedResponse.TotalItems);
         }
 
         [Fact]
