@@ -1,3 +1,4 @@
+using server.Models.Common;
 using server.Models.DTOs.ProjectMember;
 
 namespace server.Services.Interfaces;
@@ -15,7 +16,7 @@ public interface IProjectMemberService
     /// <param name="pageNumber">The page number for pagination (1-based index).</param>
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A task that represents the asynchronous operation, containing a collection of ProjectMemberDto.</returns>
-    Task<IEnumerable<ProjectMemberDto>> GetProjectMembersAsync(
+    Task<PaginatedResponse<ProjectMemberDto>> GetProjectMembersAsync(
         int projectId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25
@@ -32,7 +33,7 @@ public interface IProjectMemberService
     /// <param name="pageNumber">The page number for pagination (1-based index).</param>
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A task that represents the asynchronous operation, containing a collection of ProjectMemberDto.</returns>
-    Task<IEnumerable<ProjectMemberDto>> GetUserProjectMembershipsAsync(
+    Task<PaginatedResponse<ProjectMemberDto>> GetUserProjectMembershipsAsync(
         string userId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25
