@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { labelSchemeService } from '../labelSchemeService';
-import type { 
-    LabelSchemeResponse, 
-    PaginatedLabelSchemesResponse 
-} from '@/types/label/responses';
+import type { LabelSchemeResponse } from '@/types/label/responses';
 import type { CreateLabelSchemeRequest, UpdateLabelSchemeRequest } from '@/types/label/requests';
+import type { PaginatedResponse } from '@/types/api/paginatedResponse';
 
 // Mock the API client
 vi.mock('../apiClient', () => ({
@@ -18,7 +16,7 @@ vi.mock('../apiClient', () => ({
 
 // Mock the logger
 vi.mock('@/utils/logger', () => ({
-    loggerInstance: {
+    AppLogger: {
         createServiceLogger: vi.fn(() => ({
             info: vi.fn(),
             error: vi.fn(),
@@ -49,7 +47,7 @@ describe('LabelSchemeService', () => {
     describe('getLabelSchemesForProject', () => {
         it('should fetch label schemes for a project successfully', async () => {
             const projectId = 1;
-            const mockResponse: PaginatedLabelSchemesResponse = {
+            const mockResponse: PaginatedResponse<LabelSchemeResponse> = {
                 data: [
                     {
                         id: 1,
@@ -64,7 +62,8 @@ describe('LabelSchemeService', () => {
                 ],
                 pageSize: 25,
                 currentPage: 1,
-                totalPages: 1
+                totalPages: 1,
+                totalItems: 1
             };
 
             mockGet.mockResolvedValue({ data: mockResponse });
@@ -75,16 +74,19 @@ describe('LabelSchemeService', () => {
                 `/projects/${projectId}/labelschemes`,
                 { params: {} }
             );
-            expect(result.schemes).toHaveLength(1);
-            expect(result.schemes[0]).toEqual({
+            expect(result.data).toHaveLength(1);
+            expect(result.data[0]).toEqual({
                 labelSchemeId: 1,
                 name: 'Test Scheme',
                 description: 'A test label scheme',
                 projectId: 1,
                 isDefault: true,
-                labels: []
+                createdAt: '2025-01-01T00:00:00Z'
             });
-            expect(result.pagination).toBeDefined();
+            expect(result.currentPage).toBe(1);
+            expect(result.pageSize).toBe(25);
+            expect(result.totalPages).toBe(1);
+            expect(result.totalItems).toBe(1);
         });
 
         it('should handle query parameters', async () => {
@@ -103,7 +105,8 @@ describe('LabelSchemeService', () => {
                     data: [], 
                     pageSize: 10, 
                     currentPage: 2, 
-                    totalPages: 0
+                    totalPages: 0,
+                    totalItems: 0
                 } 
             });
 
@@ -155,7 +158,7 @@ describe('LabelSchemeService', () => {
                 description: 'A test label scheme',
                 projectId: 1,
                 isDefault: true,
-                labels: []
+                createdAt: '2025-01-01T00:00:00Z'
             });
         });
 
@@ -204,7 +207,7 @@ describe('LabelSchemeService', () => {
                 description: 'A new label scheme',
                 projectId: 1,
                 isDefault: false,
-                labels: []
+                createdAt: '2025-01-01T00:00:00Z'
             });
         });
 
