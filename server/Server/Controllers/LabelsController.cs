@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using server.Models.DTOs;
+using server.Models.Common;
 using server.Services.Interfaces;
 using server.Models.DTOs.Label;
 
