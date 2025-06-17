@@ -28,13 +28,7 @@ public class MinioStorageService : IStorageService, IFileStorageService
 
     #region Bucket Methods Region
 
-    /// <summary>
-    /// Generates a bucket name based on project ID and data source name
-    /// </summary>
-    /// <param name="projectId">The project ID</param>
-    /// <param name="dataSourceName">The data source name</param>
-    /// <returns>A properly formatted bucket name</returns>
-    public static string GenerateBucketName(int projectId, string dataSourceName)
+    public string GenerateBucketName(int projectId, string dataSourceName)
     {
         var sanitizedName = SanitizeBucketName(dataSourceName);
         return $"{projectId}-{sanitizedName}";

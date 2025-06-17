@@ -15,17 +15,20 @@ public class AssetService : IAssetService
     private readonly IAssetRepository _assetRepository;
     private readonly IFileStorageService _fileStorageService;
     private readonly IDataSourceRepository _dataSourceRepository;
+    private readonly IStorageService _storageService;
     private readonly ILogger<AssetService> _logger;
 
     public AssetService(
         IAssetRepository assetRepository,
         IFileStorageService fileStorageService,
         IDataSourceRepository dataSourceRepository,
+        IStorageService storageService,
         ILogger<AssetService> logger)
     {
         _assetRepository = assetRepository ?? throw new ArgumentNullException(nameof(assetRepository));
         _fileStorageService = fileStorageService ?? throw new ArgumentNullException(nameof(fileStorageService));
         _dataSourceRepository = dataSourceRepository ?? throw new ArgumentNullException(nameof(dataSourceRepository));
+        _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -200,7 +203,7 @@ public class AssetService : IAssetService
                 return CreateFailedUploadResult(uploadDto.File.FileName, $"DataSource with ID {uploadDto.DataSourceId} not found", ErrorTypes.ValidationError.ToStringValue());
             }
 
-            string bucketName = MinioStorageService.GenerateBucketName(projectId, dataSource.Name);
+            string bucketName = _storageService.GenerateBucketName(projectId, dataSource.Name);
 
             // Upload file to storage using dynamic bucket naming
             string storagePath;

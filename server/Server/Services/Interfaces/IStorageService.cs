@@ -11,6 +11,14 @@ public interface IStorageService
     DataSourceType ForType { get; }
 
     /// <summary>
+    /// Generates a bucket name based on project ID and data source name
+    /// </summary>
+    /// <param name="projectId">The project ID</param>
+    /// <param name="dataSourceName">The data source name</param>
+    /// <returns>A properly formatted bucket name</returns>
+    string GenerateBucketName(int projectId, string dataSourceName);
+    
+    /// <summary>
     /// Creates a new storage bucket if it does not already exist.
     /// </summary>
     /// <param name="bucketName">The name of the bucket to create.</param>

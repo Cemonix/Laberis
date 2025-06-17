@@ -17,6 +17,7 @@ namespace Server.Tests.Services
         private readonly Mock<IAssetRepository> _mockAssetRepository;
         private readonly Mock<IFileStorageService> _mockFileStorageService;
         private readonly Mock<IDataSourceRepository> _mockDataSourceRepository;
+        private readonly Mock<IStorageService> _mockStorageService;
         private readonly Mock<ILogger<AssetService>> _mockLogger;
         private readonly AssetService _assetService;
 
@@ -26,12 +27,14 @@ namespace Server.Tests.Services
             _mockAssetRepository = new Mock<IAssetRepository>();
             _mockFileStorageService = new Mock<IFileStorageService>();
             _mockDataSourceRepository = new Mock<IDataSourceRepository>();
+            _mockStorageService = new Mock<IStorageService>();
             _mockLogger = new Mock<ILogger<AssetService>>();
 
             _assetService = new AssetService(
                 _mockAssetRepository.Object,
                 _mockFileStorageService.Object,
                 _mockDataSourceRepository.Object,
+                _mockStorageService.Object,
                 _mockLogger.Object
             );
         }
