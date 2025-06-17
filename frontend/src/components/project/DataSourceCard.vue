@@ -20,22 +20,35 @@
                         View Assets
                     </Button>
                 </router-link>
-                <Button variant="secondary">Import</Button>
+                <Button variant="secondary" @click="openImportModal">Import</Button>
                 <Button variant="secondary">Export</Button>
             </div>
         </template>
+        
+        <ImportImagesModal 
+            v-model:isOpen="isImportModalOpen"
+            :dataSource="dataSource"
+            @import-complete="handleImportComplete"
+        />
     </Card>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import type { DataSource } from "@/types/dataSource/dataSource";
 import Card from "@/components/common/Card.vue";
 import Button from "@/components/common/Button.vue";
+import ImportImagesModal from "./ImportImagesModal.vue";
 
 const props = defineProps<{
     dataSource: DataSource;
 }>();
+
+const emit = defineEmits<{
+    'assets-imported': [count: number];
+}>();
+
+const isImportModalOpen = ref(false);
 
 const explorerUrl = computed(() => `/projects/${props.dataSource.projectId}/data-sources/${props.dataSource.id}`);
 
@@ -46,6 +59,16 @@ const formattedDate = computed(() => {
         day: "numeric",
     });
 });
+
+// Import modal handlers
+const openImportModal = () => {
+    isImportModalOpen.value = true;
+};
+
+const handleImportComplete = (count: number) => {
+    isImportModalOpen.value = false;
+    emit('assets-imported', count);
+};
 </script>
 
 <style lang="scss" scoped>

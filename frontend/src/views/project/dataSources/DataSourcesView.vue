@@ -10,6 +10,7 @@
                 v-for="source in dataSources"
                 :key="source.id"
                 :data-source="source"
+                @assets-imported="handleAssetsImported(source.id, $event)"
             />
             <p v-if="!dataSources || dataSources.length === 0" class="no-content-message">
                 No data sources have been created for this project yet.
@@ -59,6 +60,14 @@ const handleCreateDataSource = (formData: CreateDataSourceRequest) => {
     closeModal();
 };
 
+const handleAssetsImported = (dataSourceId: number, importedCount: number) => {
+    // Find the data source and update its asset count
+    const dataSource = dataSources.value.find(ds => ds.id === dataSourceId);
+    if (dataSource) {
+        dataSource.assetCount = (dataSource.assetCount || 0) + importedCount;
+    }
+};
+
 onMounted(() => {
     // Mock data for the view
     dataSources.value = [
@@ -71,6 +80,7 @@ onMounted(() => {
             isDefault: true,
             projectId: Number(route.params.projectId),
             createdAt: '2025-06-08T12:00:00Z',
+            assetCount: 42,
         },
         {
             id: 2,
@@ -81,6 +91,7 @@ onMounted(() => {
             isDefault: false,
             projectId: Number(route.params.projectId),
             createdAt: '2025-05-20T10:30:00Z',
+            assetCount: 128,
         },
     ];
 });
