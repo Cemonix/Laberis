@@ -39,11 +39,6 @@ class AssetService {
             const response = await apiClient.post<UploadResult>(
                 `${this.baseUrl}/${projectId}/assets/upload`,
                 formData,
-                {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                }
             );
 
             if (response && response.data) {
@@ -97,9 +92,6 @@ class AssetService {
                 `${this.baseUrl}/${projectId}/assets/upload/bulk`,
                 formData,
                 {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
                     onUploadProgress: (progressEvent) => {
                         if (onProgress && progressEvent.total) {
                             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
