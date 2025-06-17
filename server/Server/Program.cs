@@ -18,6 +18,7 @@ using System.Security.Claims;
 using Minio;
 using System.Text.Json.Serialization;
 using System.Text.Json;
+using server.Extensions;
 
 namespace server;
 
@@ -286,14 +287,17 @@ public class Program
             {
                 options.SwaggerEndpoint("/swagger/v1/swagger.json", "Laberis API V1");
             });
-            app.UseDeveloperExceptionPage();
+            // Don't use DeveloperExceptionPage since we have our custom middleware
         }
         else
         {
-            app.UseExceptionHandler("/Error");
+            // Don't use UseExceptionHandler since we have our custom middleware
             app.UseHttpsRedirection();
             app.UseHsts();
         }
+
+        // Add global exception handling middleware early in the pipeline
+        app.UseGlobalExceptionHandling();
 
         app.UseCors("AllowSpecificOrigin");
 
