@@ -29,7 +29,10 @@ namespace Server.Tests.Services
             _mockLogger = new Mock<ILogger<AssetService>>();
 
             _assetService = new AssetService(
-                _mockAssetRepository.Object, _mockFileStorageService.Object, _mockDataSourceRepository.Object, _mockLogger.Object
+                _mockAssetRepository.Object,
+                _mockFileStorageService.Object,
+                _mockDataSourceRepository.Object,
+                _mockLogger.Object
             );
         }
 
