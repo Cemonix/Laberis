@@ -1,6 +1,8 @@
 import apiClient from './apiClient';
 import type { ApiError } from '@/types/api/error';
 import type { UploadResult, BulkUploadResult } from '@/types/asset';
+import {  NoFilesProvidedError } from '@/types/asset';
+import { ApiResponseError, ServerError, NetworkError } from '@/types/common/errors';
 import { AppLogger } from '@/utils/logger';
 
 const logger = AppLogger.createServiceLogger('AssetService');
@@ -39,6 +41,11 @@ class AssetService {
             const response = await apiClient.post<UploadResult>(
                 `${this.baseUrl}/${projectId}/assets/upload`,
                 formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                }
             );
 
             if (response && response.data) {
@@ -46,12 +53,29 @@ class AssetService {
                 return response.data;
             } else {
                 logger.error(`Invalid response structure for asset upload`, response);
-                throw new Error('Invalid response structure from API for asset upload.');
+                throw new ApiResponseError('Invalid response structure from API for asset upload.');
             }
         } catch (error) {
+            if (error instanceof ApiResponseError) {
+                throw error;
+            }
+
             const apiError = error as ApiError;
             logger.error(`Failed to upload asset: ${file.name}`, apiError.response?.data || apiError.message);
-            throw apiError;
+            
+            if (apiError.response) {
+                throw new ServerError(
+                    apiError.response.data?.message || 'Server error occurred',
+                    apiError.response.status,
+                    apiError.response.data
+                );
+            }
+            
+            if (apiError.code === 'NETWORK_ERROR' || apiError.request) {
+                throw new NetworkError(apiError.message, apiError);
+            }
+
+            throw new NetworkError(apiError.message || 'Unknown upload error', apiError);
         }
     }
 
@@ -71,6 +95,12 @@ class AssetService {
         metadata?: string,
         onProgress?: (progress: number) => void
     ): Promise<BulkUploadResult> {
+        // Validate that files are provided
+        if (!files || files.length === 0) {
+            logger.error('Bulk upload attempted with no files');
+            throw new NoFilesProvidedError();
+        }
+
         logger.info(`Uploading ${files.length} assets to project ${projectId}, data source ${dataSourceId}`, {
             filenames: files.map(f => f.name),
             totalSize: files.reduce((sum, f) => sum + f.size, 0)
@@ -92,6 +122,9 @@ class AssetService {
                 `${this.baseUrl}/${projectId}/assets/upload/bulk`,
                 formData,
                 {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
                     onUploadProgress: (progressEvent) => {
                         if (onProgress && progressEvent.total) {
                             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -106,12 +139,29 @@ class AssetService {
                 return response.data;
             } else {
                 logger.error(`Invalid response structure for bulk asset upload`, response);
-                throw new Error('Invalid response structure from API for bulk asset upload.');
+                throw new ApiResponseError('Invalid response structure from API for bulk asset upload.');
             }
         } catch (error) {
+            if (error instanceof NoFilesProvidedError || error instanceof ApiResponseError) {
+                throw error;
+            }
+
             const apiError = error as ApiError;
             logger.error(`Failed to upload assets`, apiError.response?.data || apiError.message);
-            throw apiError;
+            
+            if (apiError.response) {
+                throw new ServerError(
+                    apiError.response.data?.message || 'Server error occurred during bulk upload',
+                    apiError.response.status,
+                    apiError.response.data
+                );
+            }
+            
+            if (apiError.code === 'NETWORK_ERROR' || apiError.request) {
+                throw new NetworkError(apiError.message, apiError);
+            }
+
+            throw new NetworkError(apiError.message || 'Unknown bulk upload error', apiError);
         }
     }
 }
