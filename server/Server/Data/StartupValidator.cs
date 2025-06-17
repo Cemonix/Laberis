@@ -20,7 +20,7 @@ public class StartupValidator
         try
         {
             var storageService = storageFactory.GetService(sourceType);
-            await storageService.ListContainersAsync();
+            await storageService.ListBucketsAsync();
             logger.LogInformation("Storage service validation successful. Connection established.");
         }
         catch (Exception ex)
