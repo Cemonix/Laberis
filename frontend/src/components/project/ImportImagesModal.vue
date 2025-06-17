@@ -173,6 +173,8 @@ import ModalWindow from '@/components/common/modals/ModalWindow.vue';
 import AlertModal from '@/components/common/modals/AlertModal.vue';
 import Button from '@/components/common/Button.vue';
 import type { DataSource } from '@/types/dataSource/dataSource';
+import { NoFilesProvidedError, UploadError } from '@/types/asset';
+import { ApiResponseError, ServerError, NetworkError } from '@/types/common/errors';
 import { AppLogger } from '@/utils/logger';
 import { useAlert } from '@/composables/useAlert';
 import assetService from '@/services/api/assetService';
@@ -342,8 +344,45 @@ const formatFileSize = (bytes: number): string => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+const handleImportError = (error: unknown) => {
+    logger.error('Import process failed', error);
+    
+    if (error instanceof NoFilesProvidedError) {
+        showAlert('No Files Selected', 'Please select at least one image file to import.');
+        return;
+    }
+
+    if (error instanceof ServerError) {
+        const statusText = error.statusCode ? ` (${error.statusCode})` : '';
+        showAlert('Server Error', `The server encountered an error during import${statusText}. Please try again.`);
+        return;
+    }
+
+    if (error instanceof NetworkError) {
+        showAlert('Network Error', 'A network error occurred during import. Please check your connection and try again.');
+        return;
+    }
+
+    if (error instanceof ApiResponseError) {
+        showAlert('Response Error', 'The server response was invalid. Please try again or contact support.');
+        return;
+    }
+    
+    if (error instanceof UploadError) {
+        showAlert('Upload Error', error.message || 'An upload error occurred. Please try again.');
+        return;
+    }
+    
+    // Default fallback for any other error
+    showAlert('Import Failed', 'The import process failed unexpectedly. Please try again.');
+};
+
 const startImport = async () => {
-    if (selectedFiles.value.length === 0) return;
+    if (selectedFiles.value.length === 0) {
+        logger.warn('Import attempted with no files selected');
+        showAlert('No Files Selected', 'Please select at least one image file to import.');
+        return;
+    }
     
     isImporting.value = true;
     importProgress.value = 0;
@@ -358,7 +397,7 @@ const startImport = async () => {
             props.dataSource.projectId,
             props.dataSource.id,
             selectedFiles.value,
-            undefined, // No additional metadata for now
+            undefined, // TODO: No additional metadata for now
             (progress) => {
                 importProgress.value = progress;
             }
@@ -394,8 +433,7 @@ const startImport = async () => {
         }
         
     } catch (error) {
-        logger.error('Import process failed', error);
-        showAlert('Import Failed', 'The import process failed unexpectedly. Please try again.');
+        handleImportError(error);
     } finally {
         isImporting.value = false;
     }
