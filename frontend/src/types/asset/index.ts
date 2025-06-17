@@ -12,3 +12,11 @@ export type {
     UploadProgress,
     ProgressCallback
 } from './uploadTypes';
+
+// Asset-specific upload errors
+export {
+    UploadError,
+    NoFilesProvidedError,
+    InvalidFileTypeError,
+    FileTooLargeError
+} from './uploadErrors';
