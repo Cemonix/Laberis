@@ -51,4 +51,20 @@ public interface IAssetService
     /// <param name="assetId">The ID of the asset to delete.</param>
     /// <returns>A task that represents the asynchronous operation, returning true if the asset was successfully deleted, otherwise false.</returns>
     Task<bool> DeleteAssetAsync(int assetId);
+
+    /// <summary>
+    /// Uploads a single asset file.
+    /// </summary>
+    /// <param name="projectId">The ID of the project to upload the asset to.</param>
+    /// <param name="uploadDto">The upload DTO containing the file and metadata.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the upload result.</returns>
+    Task<UploadResultDto> UploadAssetAsync(int projectId, UploadAssetDto uploadDto);
+
+    /// <summary>
+    /// Uploads multiple asset files in bulk.
+    /// </summary>
+    /// <param name="projectId">The ID of the project to upload the assets to.</param>
+    /// <param name="bulkUploadDto">The bulk upload DTO containing the files and metadata.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the bulk upload result.</returns>
+    Task<BulkUploadResultDto> UploadAssetsAsync(int projectId, BulkUploadAssetDto bulkUploadDto);
 }
