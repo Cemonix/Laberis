@@ -6,21 +6,30 @@
         </div>
         
         <div class="data-sources-list">
-            <DataSourceCard
-                v-for="source in dataSources"
-                :key="source.id"
-                :data-source="source"
-                @assets-imported="handleAssetsImported(source.id, $event)"
-            />
-            <p v-if="!dataSources || dataSources.length === 0" class="no-content-message">
-                No data sources have been created for this project yet.
-            </p>
+            <div v-if="isLoading" class="loading-message">
+                Loading data sources...
+            </div>
+            <template v-else>
+                <DataSourceCard
+                    v-for="source in dataSources"
+                    :key="source.id"
+                    :data-source="source"
+                    @assets-imported="handleAssetsImported(source.id, $event)"
+                />
+                <p v-if="!dataSources || dataSources.length === 0" class="no-content-message">
+                    No data sources have been created for this project yet.
+                </p>
+            </template>
         </div>
 
         <Button class="fab" @click="openModal" aria-label="Create New Data Source">+</Button>
 
         <ModalWindow :is-open="isModalOpen" title="Create New Data Source" @close="closeModal" :hide-footer="true">
-            <CreateDataSourceForm :project-id="Number(route.params.projectId)" @cancel="closeModal" @save="handleCreateDataSource" />
+            <CreateDataSourceForm 
+                :project-id="Number(route.params.projectId)" 
+                @cancel="closeModal" 
+                @save="handleCreateDataSource" 
+            />
         </ModalWindow>
     </div>
 </template>
@@ -32,32 +41,67 @@ import DataSourceCard from '@/components/project/DataSourceCard.vue';
 import ModalWindow from '@/components/common/modals/ModalWindow.vue';
 import CreateDataSourceForm from '@/components/project/CreateDataSourceForm.vue';
 import Button from '@/components/common/Button.vue';
-import { DataSourceType, DataSourceStatus, type DataSource, type CreateDataSourceRequest } from '@/types/dataSource';
+import { type DataSource, type CreateDataSourceRequest } from '@/types/dataSource';
+import { dataSourceService } from '@/services/api/dataSourceService';
+import { useAlert } from '@/composables/useAlert';
+import { AppLogger } from '@/utils/logger';
 
+const logger = AppLogger.createServiceLogger('DataSourcesView');
 const route = useRoute();
+const { showAlert } = useAlert();
+
 const dataSources = ref<DataSource[]>([]);
 const isModalOpen = ref(false);
+const isLoading = ref(false);
+const isCreating = ref(false);
 
 const openModal = () => isModalOpen.value = true;
 const closeModal = () => isModalOpen.value = false;
 
-const handleCreateDataSource = (formData: CreateDataSourceRequest) => {
+const loadDataSources = async () => {
     const projectId = Number(route.params.projectId);
+    if (!projectId || isNaN(projectId)) {
+        logger.error('Invalid project ID in route params', route.params.projectId);
+        await showAlert('Error', 'Invalid project ID');
+        return;
+    }
 
-    const newDataSource: DataSource = {
-        id: Date.now(), // Mock ID
-        name: formData.name,
-        description: formData.description,
-        sourceType: formData.sourceType,
-        status: DataSourceStatus.ACTIVE,
-        isDefault: false,
-        projectId: projectId,
-        createdAt: new Date().toISOString(),
-    };
-    dataSources.value.push(newDataSource);
+    isLoading.value = true;
+    try {
+        const response = await dataSourceService.getDataSources({ projectId });
+        dataSources.value = response.data;
+        logger.info(`Loaded ${response.data.length} data sources for project ${projectId}`);
+    } catch (error) {
+        logger.error('Failed to load data sources', error);
+        await showAlert('Error', 'Failed to load data sources. Please try again.');
+    } finally {
+        isLoading.value = false;
+    }
+};
 
-    // TODO: Integrate with a real API service
-    closeModal();
+const handleCreateDataSource = async (formData: CreateDataSourceRequest) => {
+    const projectId = Number(route.params.projectId);
+    if (!projectId || isNaN(projectId)) {
+        logger.error('Invalid project ID in route params', route.params.projectId);
+        await showAlert('Error', 'Invalid project ID');
+        return;
+    }
+
+    isCreating.value = true;
+    try {
+        const newDataSource = await dataSourceService.createDataSource(projectId, formData);
+        dataSources.value.push(newDataSource);
+        logger.info(`Created data source: ${newDataSource.name} (ID: ${newDataSource.id})`);
+        closeModal();
+        
+        // Optionally reload data sources to ensure we have the most up-to-date information
+        // await loadDataSources();
+    } catch (error) {
+        logger.error('Failed to create data source', error);
+        await showAlert('Error', 'Failed to create data source. Please try again.');
+    } finally {
+        isCreating.value = false;
+    }
 };
 
 const handleAssetsImported = (dataSourceId: number, importedCount: number) => {
@@ -69,31 +113,7 @@ const handleAssetsImported = (dataSourceId: number, importedCount: number) => {
 };
 
 onMounted(() => {
-    // Mock data for the view
-    dataSources.value = [
-        {
-            id: 1,
-            name: 'default-source',
-            description: 'Default data source created with the project for initial uploads.',
-            sourceType: DataSourceType.MINIO_BUCKET,
-            status: DataSourceStatus.ACTIVE,
-            isDefault: true,
-            projectId: Number(route.params.projectId),
-            createdAt: '2025-06-08T12:00:00Z',
-            assetCount: 42,
-        },
-        {
-            id: 2,
-            name: 'archive-2024-images',
-            description: 'A collection of historical images from the 2024 archive.',
-            sourceType: DataSourceType.MINIO_BUCKET,
-            status: DataSourceStatus.ACTIVE,
-            isDefault: false,
-            projectId: Number(route.params.projectId),
-            createdAt: '2025-05-20T10:30:00Z',
-            assetCount: 128,
-        },
-    ];
+    loadDataSources();
 });
 </script>
 
@@ -119,7 +139,8 @@ onMounted(() => {
     gap: vars.$gap-large;
 }
 
-.no-content-message {
+.no-content-message,
+.loading-message {
     color: vars.$theme-text-light;
     font-style: italic;
 }
