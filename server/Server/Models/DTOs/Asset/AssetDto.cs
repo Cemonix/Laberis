@@ -16,5 +16,5 @@ public record class AssetDto
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
     public int ProjectId { get; init; }
-    public int? DataSourceId { get; init; }
+    public int DataSourceId { get; init; }
 }
