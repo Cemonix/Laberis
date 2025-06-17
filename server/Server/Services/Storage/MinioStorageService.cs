@@ -1,18 +1,22 @@
 using System;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel.Args;
 using Minio.Exceptions;
 using server.Configs;
+using server.Exceptions;
 using server.Models.Domain.Enums;
 using server.Services.Interfaces;
 
 namespace server.Services.Storage;
 
-public class MinioStorageService : IStorageService
+public class MinioStorageService : IStorageService, IFileStorageService
 {
     private readonly ILogger<MinioStorageService> _logger;
     private readonly IMinioClient _minioClient;
+    private const string DefaultBucketName = "default";
+    private const int MaxBucketNameLength = 50;
 
     public DataSourceType ForType => DataSourceType.MINIO_BUCKET;
 
@@ -22,22 +26,39 @@ public class MinioStorageService : IStorageService
         _minioClient = minioClient;
     }
 
-    public async Task<bool> ContainerExistsAsync(string containerName, CancellationToken cancellationToken = default)
+    #region Bucket Methods Region
+
+    /// <summary>
+    /// Generates a bucket name based on project ID and data source name
+    /// </summary>
+    /// <param name="projectId">The project ID</param>
+    /// <param name="dataSourceName">The data source name</param>
+    /// <returns>A properly formatted bucket name</returns>
+    public static string GenerateBucketName(int projectId, string dataSourceName)
     {
-        _logger.LogInformation("Checking if Minio bucket '{BucketName}' exists.", containerName);
-        var args = new BucketExistsArgs().WithBucket(containerName);
+        var sanitizedName = SanitizeBucketName(dataSourceName);
+        return $"{projectId}-{sanitizedName}";
+    }
+
+    public async Task<bool> BucketExistsAsync(string bucketName, CancellationToken cancellationToken = default)
+    {
+        // Defensive sanitization - ensure bucket name is always valid
+        bucketName = SanitizeBucketName(bucketName);
+        
+        _logger.LogInformation("Checking if Minio bucket '{BucketName}' exists.", bucketName);
+        var args = new BucketExistsArgs().WithBucket(bucketName);
         try
         {
             return await _minioClient.BucketExistsAsync(args, cancellationToken);
         }
         catch (MinioException ex)
         {
-            _logger.LogError(ex, "An error occurred while checking for bucket '{BucketName}'.", containerName);
+            _logger.LogError(ex, "An error occurred while checking for bucket '{BucketName}'.", bucketName);
             throw;
         }
     }
 
-    public async Task<IEnumerable<string>> ListContainersAsync(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<string>> ListBucketsAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Listing all Minio buckets.");
         try
@@ -56,48 +77,260 @@ public class MinioStorageService : IStorageService
         }
     }
 
-    public async Task CreateContainerAsync(string containerName, CancellationToken cancellationToken = default)
+    public async Task<string> CreateBucketAsync(string? bucketName = null, CancellationToken cancellationToken = default)
     {
-        if (await ContainerExistsAsync(containerName, cancellationToken))
+        if (string.IsNullOrWhiteSpace(bucketName))
         {
-            _logger.LogWarning("Minio bucket '{BucketName}' already exists. Skipping creation.", containerName);
-            return;
+            _logger.LogWarning("Bucket name is null or empty. Using default bucket name '{DefaultBucketName}'.", DefaultBucketName);
+            bucketName = DefaultBucketName;
+        }
+        else
+        {
+            bucketName = SanitizeBucketName(bucketName);
+            if (bucketName.Length > MaxBucketNameLength)
+            {
+                _logger.LogWarning("Bucket name '{BucketName}' exceeds maximum length of {MaxLength}. Trimming to fit.", bucketName, MaxBucketNameLength);
+                bucketName = bucketName[..MaxBucketNameLength];
+            }
         }
 
-        _logger.LogInformation("Creating new Minio bucket '{BucketName}'.", containerName);
+        if (await BucketExistsAsync(bucketName, cancellationToken))
+        {
+            _logger.LogWarning("Minio bucket '{BucketName}' already exists. Skipping creation.", bucketName);
+            return bucketName;
+        }
 
-        var args = new MakeBucketArgs().WithBucket(containerName);
+        _logger.LogInformation("Creating new Minio bucket '{BucketName}'.", bucketName);
+
+        var args = new MakeBucketArgs().WithBucket(bucketName);
         try
         {
             await _minioClient.MakeBucketAsync(args, cancellationToken);
-            _logger.LogInformation("Successfully created Minio bucket '{BucketName}'.", containerName);
+            _logger.LogInformation("Successfully created Minio bucket '{BucketName}'.", bucketName);
         }
         catch (MinioException ex)
         {
-            _logger.LogError(ex, "Failed to create Minio bucket '{BucketName}'.", containerName);
+            _logger.LogError(ex, "Failed to create Minio bucket '{BucketName}'.", bucketName);
+            throw;
+        }
+
+        return bucketName;
+    }
+
+    public async Task DeleteBucketAsync(string bucketName, CancellationToken cancellationToken = default)
+    {
+        bucketName = SanitizeBucketName(bucketName);
+        
+        if (!await BucketExistsAsync(bucketName, cancellationToken))
+        {
+            _logger.LogWarning("Minio bucket '{BucketName}' does not exist. Skipping deletion.", bucketName);
+            return;
+        }
+
+        _logger.LogInformation("Deleting Minio bucket '{BucketName}'.", bucketName);
+        var args = new RemoveBucketArgs().WithBucket(bucketName);
+        try
+        {
+            await _minioClient.RemoveBucketAsync(args, cancellationToken);
+            _logger.LogInformation("Successfully deleted Minio bucket '{BucketName}'.", bucketName);
+        }
+        catch (MinioException ex)
+        {
+            _logger.LogError(ex, "Failed to delete Minio bucket '{BucketName}'.", bucketName);
             throw;
         }
     }
 
-    public async Task DeleteContainerAsync(string containerName, CancellationToken cancellationToken = default)
+    #endregion
+
+    #region File Storage Methods
+
+    public async Task<string> UploadFileAsync(Stream file, string bucketName, string objectName, CancellationToken cancellationToken = default)
     {
-        if (!await ContainerExistsAsync(containerName, cancellationToken))
-        {
-            _logger.LogWarning("Minio bucket '{BucketName}' does not exist. Skipping deletion.", containerName);
-            return;
-        }
-        
-        _logger.LogInformation("Deleting Minio bucket '{BucketName}'.", containerName);
-        var args = new RemoveBucketArgs().WithBucket(containerName);
         try
         {
-            await _minioClient.RemoveBucketAsync(args, cancellationToken);
-            _logger.LogInformation("Successfully deleted Minio bucket '{BucketName}'.", containerName);
+            _logger.LogInformation("Uploading file to MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
+
+            await BucketExistsAsync(bucketName, cancellationToken);
+
+            var putObjectArgs = new PutObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(objectName)
+                .WithStreamData(file)
+                .WithObjectSize(file.Length);
+
+            var response = await _minioClient.PutObjectAsync(putObjectArgs, cancellationToken);
+
+            _logger.LogInformation("Successfully uploaded file to MinIO: {BucketName}/{ObjectName}", bucketName, objectName);
+            return $"{bucketName}/{objectName}";
         }
         catch (MinioException ex)
         {
-            _logger.LogError(ex, "Failed to delete Minio bucket '{BucketName}'.", containerName);
-            throw;
+            _logger.LogError(ex, "Failed to upload file to MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
+            throw new StorageException($"Failed to upload file to storage: {ex.Message}", ex);
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while uploading file to MinIO");
+            throw new StorageException($"Unexpected error during file upload: {ex.Message}", ex);
+        }
+    }
+
+    public async Task<Stream> DownloadFileAsync(string bucketName, string objectName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Downloading file from MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
+
+            var memoryStream = new MemoryStream();
+            var getObjectArgs = new GetObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(objectName)
+                .WithCallbackStream(stream => stream.CopyTo(memoryStream));
+
+            await _minioClient.GetObjectAsync(getObjectArgs, cancellationToken);
+            memoryStream.Position = 0;
+
+            _logger.LogInformation("Successfully downloaded file from MinIO: {BucketName}/{ObjectName}", bucketName, objectName);
+            return memoryStream;
+        }
+        catch (MinioException ex)
+        {
+            _logger.LogError(ex, "Failed to download file from MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
+            throw new StorageException($"Failed to download file from storage: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while downloading file from MinIO");
+            throw new StorageException($"Unexpected error during file download: {ex.Message}", ex);
+        }
+    }
+
+    public async Task DeleteFileAsync(string bucketName, string objectName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Deleting file from MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
+
+            var removeObjectArgs = new RemoveObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(objectName);
+
+            await _minioClient.RemoveObjectAsync(removeObjectArgs, cancellationToken);
+
+            _logger.LogInformation("Successfully deleted file from MinIO: {BucketName}/{ObjectName}", bucketName, objectName);
+        }
+        catch (MinioException ex)
+        {
+            _logger.LogError(ex, "Failed to delete file from MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
+            throw new StorageException($"Failed to delete file from storage: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while deleting file from MinIO");
+            throw new StorageException($"Unexpected error during file deletion: {ex.Message}", ex);
+        }
+    }
+
+    public async Task<bool> FileExistsAsync(string bucketName, string objectName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Checking if file exists in MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
+
+            var statObjectArgs = new StatObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(objectName);
+
+            await _minioClient.StatObjectAsync(statObjectArgs, cancellationToken);
+            return true;
+        }
+        catch (ObjectNotFoundException)
+        {
+            _logger.LogDebug("File does not exist in MinIO: {BucketName}/{ObjectName}", bucketName, objectName);
+            return false;
+        }
+        catch (MinioException ex)
+        {
+            _logger.LogError(ex, "Error checking if file exists in MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
+            throw new StorageException($"Failed to check file existence: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while checking file existence in MinIO");
+            throw new StorageException($"Unexpected error during file existence check: {ex.Message}", ex);
+        }
+    }
+
+    public async Task<FileMetadata> GetFileMetadataAsync(string bucketName, string objectName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting file metadata from MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
+
+            var statObjectArgs = new StatObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(objectName);
+
+            var objectStat = await _minioClient.StatObjectAsync(statObjectArgs, cancellationToken);
+
+            return new FileMetadata
+            {
+                Size = objectStat.Size,
+                ContentType = objectStat.ContentType ?? "application/octet-stream",
+                LastModified = objectStat.LastModified,
+                ETag = objectStat.ETag ?? string.Empty,
+                Metadata = objectStat.MetaData?.ToDictionary(kv => kv.Key, kv => kv.Value) ?? new Dictionary<string, string>()
+            };
+        }
+        catch (ObjectNotFoundException)
+        {
+            _logger.LogWarning("File metadata not found in MinIO: {BucketName}/{ObjectName}", bucketName, objectName);
+            throw new NotFoundException($"File not found: {bucketName}/{objectName}");
+        }
+        catch (MinioException ex)
+        {
+            _logger.LogError(ex, "Failed to get file metadata from MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
+            throw new StorageException($"Failed to get file metadata: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while getting file metadata from MinIO");
+            throw new StorageException($"Unexpected error during metadata retrieval: {ex.Message}", ex);
+        }
+    }
+
+    #endregion
+    
+    /// <summary>
+    /// Sanitizes a string to be used as part of a bucket name
+    /// Converts to lowercase, replaces invalid characters with hyphens
+    /// </summary>
+    private static string SanitizeBucketName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return DefaultBucketName;
+
+        // Convert to lowercase and replace invalid characters with hyphens
+        var sanitized = name.ToLowerInvariant()
+            .Replace(" ", "-")
+            .Replace("_", "-");
+
+        // Remove any characters that aren't letters, numbers, or hyphens
+        // TODO: Use GeneratedRegexAttribute
+        sanitized = Regex.Replace(sanitized, "[^a-z0-9-]", "");
+
+        // Ensure it doesn't start or end with hyphen
+        sanitized = sanitized.Trim('-');
+
+        // Ensure it's not empty after sanitization and limit length to avoid bucket name issues
+        if (string.IsNullOrEmpty(sanitized))
+            sanitized = DefaultBucketName;
+
+        // MinIO bucket names have length restrictions
+        if (sanitized.Length > MaxBucketNameLength)
+            sanitized = sanitized[..MaxBucketNameLength].TrimEnd('-');
+
+        return sanitized;
     }
 }
