@@ -21,11 +21,11 @@ public record class Asset
 
     // Foreign Keys
     public int ProjectId { get; init; }
-    public int? DataSourceId { get; init; }
+    public int DataSourceId { get; init; }
 
     // Navigation Properties
     public virtual Project Project { get; init; } = null!;
-    public virtual DataSource? DataSource { get; init; }
+    public virtual DataSource DataSource { get; init; } = null!;
 
     public virtual ICollection<Task> Tasks { get; init; } = [];
     public virtual ICollection<Annotation> Annotations { get; init; } = [];

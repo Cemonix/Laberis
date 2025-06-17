@@ -51,7 +51,7 @@ public class AssetConfiguration : IEntityTypeConfiguration<Asset>
             .ValueGeneratedOnAddOrUpdate();
 
         entity.Property(a => a.ProjectId).HasColumnName("project_id");
-        entity.Property(a => a.DataSourceId).HasColumnName("data_source_id").IsRequired(false);
+        entity.Property(a => a.DataSourceId).HasColumnName("data_source_id");
 
         entity.HasIndex(a => new { a.ProjectId, a.ExternalId }).IsUnique();
 
@@ -67,8 +67,7 @@ public class AssetConfiguration : IEntityTypeConfiguration<Asset>
         entity.HasOne(a => a.DataSource)
             .WithMany(ds => ds.Assets)
             .HasForeignKey(a => a.DataSourceId)
-            .OnDelete(DeleteBehavior.SetNull)
-            .IsRequired(false);
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Asset to Tasks (One-to-Many)
         entity.HasMany(a => a.Tasks)

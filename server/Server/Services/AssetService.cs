@@ -3,6 +3,7 @@ using server.Models.DTOs.Asset;
 using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
+using server.Models.Domain.Enums;
 
 namespace server.Services;
 
@@ -82,7 +83,7 @@ public class AssetService : IAssetService
             Metadata = createDto.Metadata,
             ProjectId = projectId,
             DataSourceId = createDto.DataSourceId,
-            Status = Models.Domain.Enums.AssetStatus.PENDING_IMPORT,
+            Status = AssetStatus.PENDING_IMPORT,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
