@@ -49,15 +49,10 @@ public interface IFileStorageService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>File metadata including size, content type, etc.</returns>
     Task<FileMetadata> GetFileMetadataAsync(string bucketName, string objectName, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Ensures a bucket exists, creating it if necessary
-    /// </summary>
-    /// <param name="bucketName">The bucket/container name</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    Task EnsureBucketExistsAsync(string bucketName, CancellationToken cancellationToken = default);
 }
 
+
+// TODO: Move to a separate file
 /// <summary>
 /// Represents file metadata from storage
 /// </summary>

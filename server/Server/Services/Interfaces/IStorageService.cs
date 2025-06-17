@@ -11,33 +11,33 @@ public interface IStorageService
     DataSourceType ForType { get; }
 
     /// <summary>
-    /// Creates a new storage container (e.g., a bucket) if it does not already exist.
+    /// Creates a new storage bucket if it does not already exist.
     /// </summary>
-    /// <param name="containerName">The name of the container to create.</param>
+    /// <param name="bucketName">The name of the bucket to create.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task CreateContainerAsync(string containerName, CancellationToken cancellationToken = default);
+    Task<string> CreateBucketAsync(string? bucketName = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes a storage container.
+    /// Deletes a storage bucket.
     /// </summary>
-    /// <param name="containerName">The name of the container to delete.</param>
+    /// <param name="bucketName">The name of the bucket to delete.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task DeleteContainerAsync(string containerName, CancellationToken cancellationToken = default);
+    Task DeleteBucketAsync(string bucketName, CancellationToken cancellationToken = default);
     
     /// <summary>
-    /// Lists all storage containers (e.g., buckets) available in the storage service.
+    /// Lists all storage buckets available in the storage service.
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>A task that returns a collection of container names.</returns>
-    Task<IEnumerable<string>> ListContainersAsync(CancellationToken cancellationToken = default);
+    /// <returns>A task that returns a collection of bucket names.</returns>
+    Task<IEnumerable<string>> ListBucketsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Checks if a storage container exists.
+    /// Checks if a storage bucket exists.
     /// </summary>
-    /// <param name="containerName">The name of the container to check.</param>
+    /// <param name="bucketName">The name of the bucket to check.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>True if the container exists, otherwise false.</returns>
-    Task<bool> ContainerExistsAsync(string containerName, CancellationToken cancellationToken = default);
+    /// <returns>True if the bucket exists, otherwise false.</returns>
+    Task<bool> BucketExistsAsync(string bucketName, CancellationToken cancellationToken = default);
 }
