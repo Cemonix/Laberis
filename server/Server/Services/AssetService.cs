@@ -6,6 +6,7 @@ using server.Services.Interfaces;
 using server.Models.Domain.Enums;
 using server.Utils;
 using server.Exceptions;
+using server.Services.Storage;
 
 namespace server.Services;
 
@@ -13,16 +14,18 @@ public class AssetService : IAssetService
 {
     private readonly IAssetRepository _assetRepository;
     private readonly IFileStorageService _fileStorageService;
+    private readonly IDataSourceRepository _dataSourceRepository;
     private readonly ILogger<AssetService> _logger;
-    private const string DefaultBucketName = "laberis-assets";
 
     public AssetService(
         IAssetRepository assetRepository,
         IFileStorageService fileStorageService,
+        IDataSourceRepository dataSourceRepository,
         ILogger<AssetService> logger)
     {
         _assetRepository = assetRepository ?? throw new ArgumentNullException(nameof(assetRepository));
         _fileStorageService = fileStorageService ?? throw new ArgumentNullException(nameof(fileStorageService));
+        _dataSourceRepository = dataSourceRepository ?? throw new ArgumentNullException(nameof(dataSourceRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -190,11 +193,20 @@ public class AssetService : IAssetService
                 }
             }
 
-            // Upload file to storage
+            // Get data source to determine bucket name
+            var dataSource = await _dataSourceRepository.GetByIdAsync(uploadDto.DataSourceId);
+            if (dataSource == null)
+            {
+                return CreateFailedUploadResult(uploadDto.File.FileName, $"DataSource with ID {uploadDto.DataSourceId} not found", ErrorTypes.ValidationError.ToStringValue());
+            }
+
+            string bucketName = MinioStorageService.GenerateBucketName(projectId, dataSource.Name);
+
+            // Upload file to storage using dynamic bucket naming
             string storagePath;
             using (var stream = uploadDto.File.OpenReadStream())
             {
-                storagePath = await _fileStorageService.UploadFileAsync(stream, DefaultBucketName, uniqueObjectName);
+                storagePath = await _fileStorageService.UploadFileAsync(stream, bucketName, uniqueObjectName);
             }
 
             // Create asset record in database
@@ -246,6 +258,20 @@ public class AssetService : IAssetService
     public async Task<BulkUploadResultDto> UploadAssetsAsync(int projectId, BulkUploadAssetDto bulkUploadDto)
     {
         _logger.LogInformation("Starting bulk upload of {FileCount} files for project {ProjectId}", bulkUploadDto.Files.Count, projectId);
+
+        // Validate that files are provided
+        if (bulkUploadDto.Files == null || bulkUploadDto.Files.Count == 0)
+        {
+            _logger.LogWarning("Bulk upload attempted with no files for project {ProjectId}", projectId);
+            return new BulkUploadResultDto
+            {
+                Results = [],
+                TotalFiles = 0,
+                SuccessfulUploads = 0,
+                FailedUploads = 0,
+                Summary = "No files provided for upload"
+            };
+        }
 
         var results = new List<UploadResultDto>();
         var successCount = 0;
