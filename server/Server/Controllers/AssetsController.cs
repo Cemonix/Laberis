@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using server.Extensions;
 using server.Models.DTOs.Asset;
 using server.Services.Interfaces;
 using System.Security.Claims;
@@ -46,20 +47,9 @@ public class AssetsController : ControllerBase
         [FromQuery] int pageSize = 25
     )
     {
-        try
-        {
-            var assets = await _assetService.GetAssetsForProjectAsync(
-                projectId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
-            return Ok(assets);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while fetching assets for project {ProjectId}.", projectId);
-            return StatusCode(
-                StatusCodes.Status500InternalServerError,
-                "An unexpected error occurred. Please try again later."
-            );
-        }
+        var assets = await _assetService.GetAssetsForProjectAsync(
+            projectId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
+        return Ok(assets);
     }
 
     /// <summary>
@@ -73,25 +63,8 @@ public class AssetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAssetById(int projectId, int assetId)
     {
-        try
-        {
-            var asset = await _assetService.GetAssetByIdAsync(assetId);
-
-            if (asset == null)
-            {
-                return NotFound($"Asset with ID {assetId} not found.");
-            }
-
-            return Ok(asset);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while fetching asset {AssetId}.", assetId);
-            return StatusCode(
-                StatusCodes.Status500InternalServerError,
-                "An unexpected error occurred. Please try again later."
-            );
-        }
+        var asset = await _assetService.GetAssetByIdAsync(assetId);
+        return asset == null ? this.CreateNotFoundResponse("Asset", assetId) : Ok(asset);
     }
 
     /// <summary>
@@ -111,23 +84,13 @@ public class AssetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateAsset(int projectId, [FromBody] CreateAssetDto createAssetDto)
     {
-        try
-        {
-            var newAsset = await _assetService.CreateAssetAsync(projectId, createAssetDto);
-            return CreatedAtAction(nameof(GetAssetById), 
-                new { projectId = projectId, assetId = newAsset.Id }, newAsset);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while creating asset for project {ProjectId}.", projectId);
-            return StatusCode(500, "An unexpected error occurred. Please try again later.");
-        }
+        var newAsset = await _assetService.CreateAssetAsync(projectId, createAssetDto);
+        return CreatedAtAction(nameof(GetAssetById), new { projectId, assetId = newAsset.Id }, newAsset);
     }
 
     /// <summary>
     /// Updates an existing asset.
     /// </summary>
-    /// <param name="projectId">The ID of the project the asset belongs to.</param>
     /// <param name="assetId">The ID of the asset to update.</param>
     /// <param name="updateAssetDto">The data to update the asset with.</param>
     /// <returns>The updated asset.</returns>
@@ -140,30 +103,15 @@ public class AssetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateAsset(int projectId, int assetId, [FromBody] UpdateAssetDto updateAssetDto)
+    public async Task<IActionResult> UpdateAsset(int assetId, [FromBody] UpdateAssetDto updateAssetDto)
     {
-        try
-        {
-            var updatedAsset = await _assetService.UpdateAssetAsync(assetId, updateAssetDto);
-
-            if (updatedAsset == null)
-            {
-                return NotFound($"Asset with ID {assetId} not found.");
-            }
-
-            return Ok(updatedAsset);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while updating asset {AssetId}.", assetId);
-            return StatusCode(500, "An unexpected error occurred. Please try again later.");
-        }
+        var updatedAsset = await _assetService.UpdateAssetAsync(assetId, updateAssetDto);
+        return updatedAsset == null ? this.CreateNotFoundResponse("Asset", assetId) : Ok(updatedAsset);
     }
 
     /// <summary>
     /// Deletes an asset by its ID.
     /// </summary>
-    /// <param name="projectId">The ID of the project the asset belongs to.</param>
     /// <param name="assetId">The ID of the asset to delete.</param>
     /// <returns>No content if successful.</returns>
     /// <response code="204">If the asset was successfully deleted.</response>
@@ -173,23 +121,77 @@ public class AssetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DeleteAsset(int projectId, int assetId)
+    public async Task<IActionResult> DeleteAsset(int assetId)
     {
-        try
-        {
-            var result = await _assetService.DeleteAssetAsync(assetId);
+        var result = await _assetService.DeleteAssetAsync(assetId);
+        return !result ? this.CreateNotFoundResponse("Asset", assetId) : NoContent();
+    }
 
-            if (!result)
-            {
-                return NotFound($"Asset with ID {assetId} not found.");
-            }
-
-            return NoContent();
-        }
-        catch (Exception ex)
+    /// <summary>
+    /// Uploads a single asset file.
+    /// </summary>
+    /// <param name="projectId">The ID of the project to upload the asset to.</param>
+    /// <param name="file">The file to upload.</param>
+    /// <param name="dataSourceId">The data source ID to associate with this asset.</param>
+    /// <param name="metadata">Optional metadata for the asset as JSON string.</param>
+    /// <returns>The upload result.</returns>
+    /// <response code="200">Returns the upload result.</response>
+    /// <response code="400">If the request data is invalid.</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPost("upload")]
+    [ProducesResponseType(typeof(UploadResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UploadAsset(
+        int projectId,
+        [FromForm] IFormFile file,
+        [FromForm] int dataSourceId,
+        [FromForm] string? metadata = null)
+    {
+        var uploadDto = new UploadAssetDto
         {
-            _logger.LogError(ex, "An error occurred while deleting asset {AssetId}.", assetId);
-            return StatusCode(500, "An unexpected error occurred. Please try again later.");
-        }
+            File = file,
+            DataSourceId = dataSourceId,
+            Metadata = metadata
+        };
+
+        var result = await _assetService.UploadAssetAsync(projectId, uploadDto);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Uploads multiple asset files in bulk.
+    /// </summary>
+    /// <param name="projectId">The ID of the project to upload the assets to.</param>
+    /// <param name="files">The files to upload.</param>
+    /// <param name="dataSourceId">The data source ID to associate with these assets.</param>
+    /// <param name="metadata">Optional metadata for all assets as JSON string.</param>
+    /// <returns>The bulk upload result.</returns>
+    /// <response code="200">Returns the bulk upload result.</response>
+    /// <response code="400">If the request data is invalid.</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPost("upload/bulk")]
+    [ProducesResponseType(typeof(BulkUploadResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UploadAssets(
+        int projectId,
+        [FromForm] IFormFileCollection files,
+        [FromForm] int dataSourceId,
+        [FromForm] string? metadata = null)
+    {
+        var bulkUploadDto = new BulkUploadAssetDto
+        {
+            Files = files,
+            DataSourceId = dataSourceId,
+            Metadata = metadata
+        };
+
+        var result = await _assetService.UploadAssetsAsync(projectId, bulkUploadDto);
+        return Ok(result);
     }
 }

@@ -132,6 +132,7 @@ public class Program
         builder.Services.AddScoped<IProjectService, ProjectService>();
         builder.Services.AddScoped<IDataSourceService, DataSourceService>();
         builder.Services.AddScoped<ILabelSchemeService, LabelSchemeService>();
+        builder.Services.AddScoped<IFileStorageService, MinioFileStorageService>();
         builder.Services.AddScoped<ILabelService, LabelService>();
         builder.Services.AddScoped<IAssetService, AssetService>();
         builder.Services.AddScoped<IAnnotationService, AnnotationService>();
