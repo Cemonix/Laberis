@@ -117,10 +117,9 @@ public class ProjectService : IProjectService
             // TODO: Type is hardcoded for now, but could be made configurable - based on the connection configuration
             const DataSourceType defaultSourceType = DataSourceType.MINIO_BUCKET;
             var storageService = _storageServiceFactory.GetService(defaultSourceType);
-            var containerName = $"project-id-{project.ProjectId}";
 
-            await storageService.CreateContainerAsync(containerName);
-            _logger.LogInformation("Storage container '{ContainerName}' created for project {ProjectId}.", containerName, project.ProjectId);
+            var bucketName = await storageService.CreateBucketAsync();
+            _logger.LogInformation("Default storage bucket created for project {ProjectId}.", project.ProjectId);
 
             // Create and save the default DataSource entity
             var dataSource = new DataSource
@@ -129,7 +128,7 @@ public class ProjectService : IProjectService
                 Name = "Default Storage",
                 Description = "Default Minio bucket for this project.",
                 SourceType = defaultSourceType,
-                ConnectionDetails = $"{{ \"BucketName\": \"{containerName}\" }}",
+                ConnectionDetails = $"{{ \"BucketName\": \"{bucketName}\" }}",
                 Status = DataSourceStatus.ACTIVE,
                 IsDefault = true,
                 CreatedAt = DateTime.UtcNow,
