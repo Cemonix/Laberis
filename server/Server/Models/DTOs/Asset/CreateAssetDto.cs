@@ -24,6 +24,5 @@ public record class CreateAssetDto
 
     public string? Metadata { get; init; }
 
-    [Required]
     public int DataSourceId { get; init; }
 }
