@@ -1,0 +1,15 @@
+{
+    "typescript.preferences.quoteStyle": "single",
+    "typescript.suggest.autoImports": true,
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "vue.inlayHints.missingProps": true,
+    "vue.inlayHints.inlineHandlerLeading": true,
+    "vue.inlayHints.optionsWrapper": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    },
+    "debug.terminal.clearBeforeReusing": true,
+    "files.associations": {
+        "*.vue": "vue"
+    }
+}

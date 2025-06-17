@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Frontend: Debug (Brave)",
+            "type": "chrome",
+            "request": "launch",
+            "preLaunchTask": "start dev server",
+            "url": "http://localhost:5173",
+            "webRoot": "${workspaceFolder}/src",
+            "sourceMaps": true,
+            "runtimeExecutable": "/usr/bin/brave-browser",
+        }
+    ]
+}
