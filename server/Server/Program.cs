@@ -280,6 +280,9 @@ public class Program
             }
         }
 
+        // Add global exception handling middleware early in the pipeline
+        app.UseGlobalExceptionHandling();
+
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
@@ -295,9 +298,6 @@ public class Program
             app.UseHttpsRedirection();
             app.UseHsts();
         }
-
-        // Add global exception handling middleware early in the pipeline
-        app.UseGlobalExceptionHandling();
 
         app.UseCors("AllowSpecificOrigin");
 
