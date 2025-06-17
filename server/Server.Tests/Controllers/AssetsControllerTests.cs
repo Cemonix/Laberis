@@ -393,7 +393,7 @@ namespace Server.Tests.Controllers
                 .ReturnsAsync(updatedAsset);
 
             // Act
-            var result = await _controller.UpdateAsset(projectId, assetId, updateAssetDto);
+            var result = await _controller.UpdateAsset(assetId, updateAssetDto);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -409,7 +409,6 @@ namespace Server.Tests.Controllers
         public async Task UpdateAsset_Should_ReturnNotFound_WhenAssetDoesNotExist()
         {
             // Arrange
-            var projectId = 1;
             var assetId = 999;
             var updateAssetDto = new UpdateAssetDto
             {
@@ -421,7 +420,7 @@ namespace Server.Tests.Controllers
                 .ReturnsAsync((AssetDto?)null);
 
             // Act
-            var result = await _controller.UpdateAsset(projectId, assetId, updateAssetDto);
+            var result = await _controller.UpdateAsset(assetId, updateAssetDto);
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -434,7 +433,6 @@ namespace Server.Tests.Controllers
         public async Task UpdateAsset_Should_ReturnInternalServerError_WhenExceptionThrown()
         {
             // Arrange
-            var projectId = 1;
             var assetId = 1;
             var updateAssetDto = new UpdateAssetDto
             {
@@ -446,7 +444,7 @@ namespace Server.Tests.Controllers
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
-            var result = await _controller.UpdateAsset(projectId, assetId, updateAssetDto);
+            var result = await _controller.UpdateAsset(assetId, updateAssetDto);
 
             // Assert
             var statusResult = Assert.IsType<ObjectResult>(result);
@@ -462,14 +460,13 @@ namespace Server.Tests.Controllers
         public async Task DeleteAsset_Should_ReturnNoContent_WhenAssetDeletedSuccessfully()
         {
             // Arrange
-            var projectId = 1;
             var assetId = 1;
 
             _mockAssetService.Setup(s => s.DeleteAssetAsync(assetId))
                 .ReturnsAsync(true);
 
             // Act
-            var result = await _controller.DeleteAsset(projectId, assetId);
+            var result = await _controller.DeleteAsset(assetId);
 
             // Assert
             Assert.IsType<NoContentResult>(result);
@@ -481,14 +478,13 @@ namespace Server.Tests.Controllers
         public async Task DeleteAsset_Should_ReturnNotFound_WhenAssetDoesNotExist()
         {
             // Arrange
-            var projectId = 1;
             var assetId = 999;
 
             _mockAssetService.Setup(s => s.DeleteAssetAsync(assetId))
                 .ReturnsAsync(false);
 
             // Act
-            var result = await _controller.DeleteAsset(projectId, assetId);
+            var result = await _controller.DeleteAsset(assetId);
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -501,14 +497,13 @@ namespace Server.Tests.Controllers
         public async Task DeleteAsset_Should_ReturnInternalServerError_WhenExceptionThrown()
         {
             // Arrange
-            var projectId = 1;
             var assetId = 1;
 
             _mockAssetService.Setup(s => s.DeleteAssetAsync(assetId))
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
-            var result = await _controller.DeleteAsset(projectId, assetId);
+            var result = await _controller.DeleteAsset(assetId);
 
             // Assert
             var statusResult = Assert.IsType<ObjectResult>(result);
