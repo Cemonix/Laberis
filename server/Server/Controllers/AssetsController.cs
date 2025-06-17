@@ -150,6 +150,12 @@ public class AssetsController : ControllerBase
         [FromForm] int dataSourceId,
         [FromForm] string? metadata = null)
     {
+        // Validate file is provided
+        if (file == null)
+        {
+            return BadRequest("No file provided for upload");
+        }
+
         var uploadDto = new UploadAssetDto
         {
             File = file,
@@ -184,6 +190,12 @@ public class AssetsController : ControllerBase
         [FromForm] int dataSourceId,
         [FromForm] string? metadata = null)
     {
+        // Validate files collection
+        if (files == null || files.Count == 0)
+        {
+            return BadRequest("No files provided for upload");
+        }
+
         var bulkUploadDto = new BulkUploadAssetDto
         {
             Files = files,
