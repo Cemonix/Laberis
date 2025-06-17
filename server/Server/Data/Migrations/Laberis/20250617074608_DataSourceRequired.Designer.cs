@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using server.Data;
@@ -12,24 +13,17 @@ using server.Models.Domain.Enums;
 namespace server.Data.Migrations.Laberis
 {
     [DbContext(typeof(LaberisDbContext))]
-    partial class LaberisDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250617074608_DataSourceRequired")]
+    partial class DataSourceRequired
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "9.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "annotation_type_enum", new[] { "bounding_box", "point", "polygon", "polyline", "text" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "asset_status_enum", new[] { "annotated", "annotation_in_progress", "archived", "exported", "import_error", "imported", "pending_import", "pending_processing", "pending_review", "processing", "processing_error", "ready_for_annotation", "review_accepted", "review_in_progress", "review_rejected" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "data_source_status_enum", new[] { "active", "archived", "error", "inactive", "syncing" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "data_source_type_enum", new[] { "api", "azure_blob_storage", "database", "gsc_bucket", "local_directory", "minio_bucket", "other", "s3_bucket" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "issue_status_enum", new[] { "canceled", "closed", "in_progress", "open", "reopened", "resolved" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "issue_type_enum", new[] { "ambiguous_task", "asset_quality_issue", "guideline_inquiry", "incorrect_annotation", "missing_annotation", "other" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "project_role_enum", new[] { "admin", "annotator", "manager", "reviewer", "viewer" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "project_status_enum", new[] { "active", "archived", "pending_deletion", "read_only" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "project_type_enum", new[] { "image_classification", "image_segmentation", "object_detection", "other", "text_annotation", "video_annotation" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "annotation_type_enum", new[] { "bounding_box", "polygon", "polyline", "point", "text" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "asset_status_enum", new[] { "pending_import", "imported", "import_error", "pending_processing", "processing", "processing_error", "ready_for_annotation", "annotation_in_progress", "annotated", "pending_review", "review_in_progress", "review_accepted", "review_rejected", "exported", "archived" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "data_source_status_enum", new[] { "active", "inactive", "syncing", "error", "archived" });
@@ -41,8 +35,6 @@ namespace server.Data.Migrations.Laberis
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "project_type_enum", new[] { "image_classification", "object_detection", "image_segmentation", "video_annotation", "text_annotation", "other" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "task_event_type_enum", new[] { "task_created", "task_assigned", "task_unassigned", "stage_changed", "status_changed", "comment_added", "annotation_created", "annotation_updated", "annotation_deleted", "review_submitted", "issue_raised", "priority_changed", "due_date_changed", "task_completed", "task_archived" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "workflow_stage_type_enum", new[] { "initial_import", "preprocessing", "annotation", "review", "quality_assurance", "auto_labeling", "export", "final_acceptance" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "task_event_type_enum", new[] { "annotation_created", "annotation_deleted", "annotation_updated", "comment_added", "due_date_changed", "issue_raised", "priority_changed", "review_submitted", "stage_changed", "status_changed", "task_archived", "task_assigned", "task_completed", "task_created", "task_unassigned" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "workflow_stage_type_enum", new[] { "annotation", "auto_labeling", "export", "final_acceptance", "initial_import", "preprocessing", "quality_assurance", "review" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
