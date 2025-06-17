@@ -7,6 +7,7 @@ using server.Models.Domain;
 using server.Models.DTOs.Asset;
 using server.Models.Domain.Enums;
 using System.Linq.Expressions;
+using server.Services.Interfaces;
 
 namespace Server.Tests.Services
 {
@@ -14,6 +15,8 @@ namespace Server.Tests.Services
     {
         private readonly DbContextFactory _dbContextFactory;
         private readonly Mock<IAssetRepository> _mockAssetRepository;
+        private readonly Mock<IFileStorageService> _mockFileStorageService;
+        private readonly Mock<IDataSourceRepository> _mockDataSourceRepository;
         private readonly Mock<ILogger<AssetService>> _mockLogger;
         private readonly AssetService _assetService;
 
@@ -21,9 +24,13 @@ namespace Server.Tests.Services
         {
             _dbContextFactory = new DbContextFactory();
             _mockAssetRepository = new Mock<IAssetRepository>();
+            _mockFileStorageService = new Mock<IFileStorageService>();
+            _mockDataSourceRepository = new Mock<IDataSourceRepository>();
             _mockLogger = new Mock<ILogger<AssetService>>();
-            
-            _assetService = new AssetService(_mockAssetRepository.Object, _mockLogger.Object);
+
+            _assetService = new AssetService(
+                _mockAssetRepository.Object, _mockFileStorageService.Object, _mockDataSourceRepository.Object, _mockLogger.Object
+            );
         }
 
         [Fact]
