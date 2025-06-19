@@ -18,12 +18,39 @@ $color-dark-blue-3: #283747;
 
 // Semantic (Feedback)
 $color-success: #28a745;
+$color-success-light: #d4edda;
+$color-success-dark: #1e7e34;
 $color-warning: #ffc107;
+$color-warning-light: #fff3cd;
+$color-warning-dark: #e0a800;
 $color-error: #dc3545;
+$color-error-light: #f8d7da;
+$color-error-dark: #c82333;
 $color-info: #17a2b8;
+$color-info-light: #d1ecf1;
+$color-info-dark: #138496;
+
+// Error page specific colors
+$color-error-page-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+$color-error-page-card: #ffffff;
+$color-error-page-shadow: rgba(0, 0, 0, 0.1);
+$color-error-icon: #ef4444;
+$color-error-code-bg: #fef2f2;
+$color-error-code-text: #ef4444;
+
+// Button variants
+$color-btn-primary: #667eea;
+$color-btn-primary-hover: #5a67d8;
+$color-btn-secondary: #6b7280;
+$color-btn-secondary-hover: #4b5563;
+$color-btn-outline: transparent;
+$color-btn-outline-border: #667eea;
+$color-btn-outline-hover-bg: #667eea;
+$color-btn-outline-hover-text: #ffffff;
 
 // Grayscale
 $color-white: #ffffff;
+$color-gray-50: #f9fafb;
 $color-gray-100: #f8f9fa;
 $color-gray-200: #f1f1f1;
 $color-gray-300: #e9ecef;
@@ -35,5 +62,13 @@ $color-gray-800: #333;
 $color-gray-900: #212529;
 $color-black: #000000;
 
+// Text colors
+$color-text-primary: #1f2937;
+$color-text-secondary: #6b7280;
+$color-text-muted: #9ca3af;
+
 // Links
 $color-link-hover: #00aaff;
+
+// Border colors
+$color-border-light: #e5e7eb;
