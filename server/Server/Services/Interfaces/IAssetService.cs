@@ -15,11 +15,14 @@ public interface IAssetService
     /// <param name="isAscending">True for ascending order, false for descending.</param>
     /// <param name="pageNumber">The page number for pagination (1-based index).</param>
     /// <param name="pageSize">The number of items per page.</param>
+    /// <param name="includeUrls">Whether to include presigned URLs in the response (default: true).</param>
+    /// <param name="urlExpiryInSeconds">The expiry time for URLs in seconds (default: 1 hour).</param>
     /// <returns>A task that represents the asynchronous operation, containing a collection of AssetDto.</returns>
     Task<PaginatedResponse<AssetDto>> GetAssetsForProjectAsync(
         int projectId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
-        bool isAscending = true, int pageNumber = 1, int pageSize = 25
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25,
+        bool includeUrls = true, int urlExpiryInSeconds = 3600
     );
 
     /// <summary>
@@ -67,4 +70,12 @@ public interface IAssetService
     /// <param name="bulkUploadDto">The bulk upload DTO containing the files and metadata.</param>
     /// <returns>A task that represents the asynchronous operation, containing the bulk upload result.</returns>
     Task<BulkUploadResultDto> UploadAssetsAsync(int projectId, BulkUploadAssetDto bulkUploadDto);
+
+    /// <summary>
+    /// Validates that an asset belongs to a specific project.
+    /// </summary>
+    /// <param name="assetId">The ID of the asset.</param>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <returns>A task that represents the asynchronous operation, returning true if the asset belongs to the project.</returns>
+    Task<bool> ValidateAssetBelongsToProjectAsync(int assetId, int projectId);
 }

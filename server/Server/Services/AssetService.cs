@@ -35,7 +35,8 @@ public class AssetService : IAssetService
     public async Task<PaginatedResponse<AssetDto>> GetAssetsForProjectAsync(
         int projectId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
-        bool isAscending = true, int pageNumber = 1, int pageSize = 25)
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25,
+        bool includeUrls = true, int urlExpiryInSeconds = 3600)
     {
         _logger.LogInformation("Fetching assets for project: {ProjectId}", projectId);
 
@@ -51,12 +52,52 @@ public class AssetService : IAssetService
 
         _logger.LogInformation("Fetched {Count} assets for project: {ProjectId}", assets.Count(), projectId);
 
-        var assetDtos = assets.Select(MapToDto).ToArray();
+        var assetDtos = new List<AssetDto>();
+        
+        foreach (var asset in assets)
+        {
+            string? imageUrl = null;
+
+            if (includeUrls)
+            {
+                try
+                {
+                    // Get the data source to determine the bucket name
+                    var dataSource = await _dataSourceRepository.GetByIdAsync(asset.DataSourceId);
+                    if (dataSource != null)
+                    {
+                        var bucketName = _storageService.GenerateBucketName(asset.ProjectId, dataSource.Name);
+                        imageUrl = await _storageService.GetPresignedUrlAsync(bucketName, asset.ExternalId, urlExpiryInSeconds);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to generate URL for asset {AssetId}", asset.AssetId);
+                    // Continue without URL rather than failing the entire request
+                }
+            }
+
+            assetDtos.Add(new AssetDto
+            {
+                Id = asset.AssetId,
+                Filename = asset.Filename,
+                MimeType = asset.MimeType,
+                SizeBytes = asset.SizeBytes,
+                Width = asset.Width,
+                Height = asset.Height,
+                DurationMs = asset.DurationMs,
+                Status = asset.Status,
+                CreatedAt = asset.CreatedAt,
+                UpdatedAt = asset.UpdatedAt,
+                ImageUrl = imageUrl
+            });
+        }
+
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
         return new PaginatedResponse<AssetDto>
         {
-            Data = assetDtos,
+            Data = assetDtos.ToArray(),
             PageSize = pageSize,
             CurrentPage = pageNumber,
             TotalPages = totalPages,
@@ -172,12 +213,12 @@ public class AssetService : IAssetService
             var validationError = ValidateFile(uploadDto.File);
             if (validationError != null)
             {
-                return CreateFailedUploadResult(uploadDto.File.FileName, validationError, ErrorTypes.ValidationError.ToStringValue());
+                return CreateFailedUploadResult(uploadDto.File.FileName, validationError, ErrorType.ValidationError);
             }
 
             // Generate unique file name and storage path
             var sanitizedFileName = FileProcessingUtils.SanitizeFileName(uploadDto.File.FileName);
-            var uniqueObjectName = FileProcessingUtils.GenerateUniqueFileName(sanitizedFileName, projectId);
+            var uniqueObjectName = FileProcessingUtils.GenerateUniqueFileName(sanitizedFileName);
             var mimeType = FileProcessingUtils.GetMimeType(uploadDto.File.FileName);
 
             // Extract image dimensions and validate if it's an image
@@ -189,7 +230,7 @@ public class AssetService : IAssetService
                     // Use ImageSharp for robust image validation and dimension extraction
                     if (!FileProcessingUtils.IsValidImageStream(stream))
                     {
-                        return CreateFailedUploadResult(uploadDto.File.FileName, "File appears to be corrupted or is not a valid image", ErrorTypes.ValidationError.ToStringValue());
+                        return CreateFailedUploadResult(uploadDto.File.FileName, "File appears to be corrupted or is not a valid image", ErrorType.ValidationError);
                     }
                     
                     dimensions = FileProcessingUtils.GetImageDimensions(stream);
@@ -200,7 +241,7 @@ public class AssetService : IAssetService
             var dataSource = await _dataSourceRepository.GetByIdAsync(uploadDto.DataSourceId);
             if (dataSource == null)
             {
-                return CreateFailedUploadResult(uploadDto.File.FileName, $"DataSource with ID {uploadDto.DataSourceId} not found", ErrorTypes.ValidationError.ToStringValue());
+                return CreateFailedUploadResult(uploadDto.File.FileName, $"DataSource with ID {uploadDto.DataSourceId} not found", ErrorType.ValidationError);
             }
 
             string bucketName = _storageService.GenerateBucketName(projectId, dataSource.Name);
@@ -244,17 +285,17 @@ public class AssetService : IAssetService
         catch (ValidationException ex)
         {
             _logger.LogWarning(ex, "Validation error uploading file '{FileName}': {Message}", uploadDto.File.FileName, ex.Message);
-            return CreateFailedUploadResult(uploadDto.File.FileName, ex.Message, ErrorTypes.ValidationError.ToStringValue());
+            return CreateFailedUploadResult(uploadDto.File.FileName, ex.Message, ErrorType.ValidationError);
         }
         catch (StorageException ex)
         {
             _logger.LogError(ex, "Storage error uploading file '{FileName}': {Message}", uploadDto.File.FileName, ex.Message);
-            return CreateFailedUploadResult(uploadDto.File.FileName, ex.Message, ErrorTypes.StorageError.ToStringValue());
+            return CreateFailedUploadResult(uploadDto.File.FileName, ex.Message, ErrorType.StorageError);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error uploading file '{FileName}': {Message}", uploadDto.File.FileName, ex.Message);
-            return CreateFailedUploadResult(uploadDto.File.FileName, "An unexpected error occurred during upload", ErrorTypes.InternalServerError.ToStringValue());
+            return CreateFailedUploadResult(uploadDto.File.FileName, "An unexpected error occurred during upload", ErrorType.InternalServerError);
         }
     }
 
@@ -320,6 +361,21 @@ public class AssetService : IAssetService
         };
     }
 
+    public async Task<bool> ValidateAssetBelongsToProjectAsync(int assetId, int projectId)
+    {
+        _logger.LogInformation("Validating that asset {AssetId} belongs to project {ProjectId}", assetId, projectId);
+
+        var asset = await _assetRepository.GetByIdAsync(assetId);
+        if (asset == null)
+        {
+            _logger.LogWarning("Asset with ID: {AssetId} not found.", assetId);
+            return false;
+        }
+
+        return asset.ProjectId == projectId;
+    }
+
+    #region Private Helper Methods
     private static string? ValidateFile(IFormFile file)
     {
         if (file.Length == 0)
@@ -359,7 +415,7 @@ public class AssetService : IAssetService
         return null;
     }
 
-    private static UploadResultDto CreateFailedUploadResult(string filename, string errorMessage, string errorType)
+    private static UploadResultDto CreateFailedUploadResult(string filename, string errorMessage, ErrorType errorType)
     {
         return new UploadResultDto
         {
@@ -370,12 +426,11 @@ public class AssetService : IAssetService
         };
     }
 
-    private static AssetDto MapToDto(Asset asset)
+    private static AssetDto MapToDto(Asset asset, string? imageUrl = null)
     {
         return new AssetDto
         {
             Id = asset.AssetId,
-            ExternalId = asset.ExternalId,
             Filename = asset.Filename,
             MimeType = asset.MimeType,
             SizeBytes = asset.SizeBytes,
@@ -385,8 +440,9 @@ public class AssetService : IAssetService
             Status = asset.Status,
             CreatedAt = asset.CreatedAt,
             UpdatedAt = asset.UpdatedAt,
-            ProjectId = asset.ProjectId,
-            DataSourceId = asset.DataSourceId
+            ImageUrl = imageUrl
         };
     }
+
+    #endregion
 }
