@@ -2,7 +2,17 @@
     <router-link v-if="asset" :to="workspaceUrl" class="asset-thumbnail-link">
         <Card class="asset-card">
             <div class="asset-image-wrapper">
-                <img :src="asset.externalId" :alt="`Thumbnail for ${asset.filename}`" class="asset-image" loading="lazy" />
+                <img 
+                    v-if="asset.imageUrl" 
+                    :src="asset.imageUrl" 
+                    :alt="`Thumbnail for ${asset.filename}`" 
+                    class="asset-image" 
+                    loading="lazy"
+                    @error="handleImageError"
+                />
+                <div v-else class="error-placeholder">
+                    <span>No image available</span>
+                </div>
                 <div class="image-overlay">
                     <span class="overlay-text">Annotate</span>
                 </div>
@@ -37,6 +47,9 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Asset } from '@/types/asset/asset';
 import Card from '@/components/common/Card.vue';
+import { AppLogger } from '@/utils/logger';
+
+const logger = AppLogger.createServiceLogger('AssetThumbnail');
 
 const props = defineProps<{
     asset?: Asset | null;
@@ -46,11 +59,15 @@ const route = useRoute();
 const projectId = route.params.projectId;
 
 const workspaceUrl = computed(() => {
-    if (!props.asset?.assetId) {
+    if (!props.asset?.id) {
         return '#';
     }
-    return `/workspace/project/${projectId}/asset/${props.asset.assetId}`;
+    return `/workspace/project/${projectId}/asset/${props.asset.id}`;
 });
+
+const handleImageError = () => {
+    logger.warn(`Failed to load image for asset ${props.asset?.id}: URL ${props.asset?.imageUrl}`);
+};
 </script>
 
 <style lang="scss" scoped>
