@@ -2,11 +2,9 @@ export type { Label, FormPayloadLabel } from './label';
 export type { LabelScheme, FormPayloadLabelScheme } from './labelScheme';
 export type { 
     CreateLabelSchemeRequest, 
-    UpdateLabelSchemeRequest, 
-    GetLabelSchemesQuery,
+    UpdateLabelSchemeRequest,
     CreateLabelRequest,
     UpdateLabelRequest,
-    GetLabelsQuery
 } from './requests';
 export type { 
     LabelSchemeResponse, 

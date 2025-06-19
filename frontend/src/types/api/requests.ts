@@ -19,7 +19,7 @@ export interface FilterParams {
  */
 export interface SortParams {
     sortBy?: string;
-    isAscending?: boolean;
+    sortOrder?: 'asc' | 'desc';
 }
 
 /**

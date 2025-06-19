@@ -4,6 +4,5 @@ export { ProjectType, ProjectStatus } from './project';
 export type {
     CreateProjectRequest,
     UpdateProjectRequest,
-    ProjectListParams,
     ProjectStatsResponse,
 } from './requests';
