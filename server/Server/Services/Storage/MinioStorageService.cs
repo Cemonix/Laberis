@@ -13,7 +13,6 @@ public class MinioStorageService : IStorageService, IFileStorageService
 {
     private readonly ILogger<MinioStorageService> _logger;
     private readonly IMinioClient _minioClient;
-    private const string DefaultBucketName = "default";
     private const int MaxBucketNameLength = 50;
 
     public DataSourceType ForType => DataSourceType.MINIO_BUCKET;
@@ -26,10 +25,10 @@ public class MinioStorageService : IStorageService, IFileStorageService
 
     #region Bucket Methods Region
 
-    public string GenerateBucketName(int projectId, string dataSourceName)
+    public string GenerateBucketName(int projectId, string dataSourceName = "default")
     {
         var sanitizedName = SanitizeBucketName(dataSourceName);
-        return $"{projectId}-{sanitizedName}";
+        return $"{sanitizedName}-{projectId}";
     }
 
     public async Task<bool> BucketExistsAsync(string bucketName, CancellationToken cancellationToken = default)
@@ -69,27 +68,20 @@ public class MinioStorageService : IStorageService, IFileStorageService
         }
     }
 
-    public async Task<string> CreateBucketAsync(string? bucketName = null, CancellationToken cancellationToken = default)
+    public async Task CreateBucketAsync(string bucketName, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(bucketName))
+
+        bucketName = SanitizeBucketName(bucketName);
+        if (bucketName.Length > MaxBucketNameLength)
         {
-            _logger.LogWarning("Bucket name is null or empty. Using default bucket name '{DefaultBucketName}'.", DefaultBucketName);
-            bucketName = DefaultBucketName;
+            _logger.LogWarning("Bucket name '{BucketName}' exceeds maximum length of {MaxLength}. Trimming to fit.", bucketName, MaxBucketNameLength);
+            bucketName = bucketName[..MaxBucketNameLength];
         }
-        else
-        {
-            bucketName = SanitizeBucketName(bucketName);
-            if (bucketName.Length > MaxBucketNameLength)
-            {
-                _logger.LogWarning("Bucket name '{BucketName}' exceeds maximum length of {MaxLength}. Trimming to fit.", bucketName, MaxBucketNameLength);
-                bucketName = bucketName[..MaxBucketNameLength];
-            }
-        }
+        
 
         if (await BucketExistsAsync(bucketName, cancellationToken))
         {
             _logger.LogWarning("Minio bucket '{BucketName}' already exists. Skipping creation.", bucketName);
-            return bucketName;
         }
 
         _logger.LogInformation("Creating new Minio bucket '{BucketName}'.", bucketName);
@@ -105,8 +97,6 @@ public class MinioStorageService : IStorageService, IFileStorageService
             _logger.LogError(ex, "Failed to create Minio bucket '{BucketName}'.", bucketName);
             throw;
         }
-
-        return bucketName;
     }
 
     public async Task DeleteBucketAsync(string bucketName, CancellationToken cancellationToken = default)
@@ -143,7 +133,11 @@ public class MinioStorageService : IStorageService, IFileStorageService
         {
             _logger.LogInformation("Uploading file to MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
 
-            await BucketExistsAsync(bucketName, cancellationToken);
+            if (!await BucketExistsAsync(bucketName, cancellationToken))
+            {
+                _logger.LogInformation("Bucket {BucketName} does not exist, creating it", bucketName);
+                await CreateBucketAsync(bucketName, cancellationToken);
+            }
 
             var putObjectArgs = new PutObjectArgs()
                 .WithBucket(bucketName)
@@ -160,6 +154,11 @@ public class MinioStorageService : IStorageService, IFileStorageService
         {
             _logger.LogError(ex, "Failed to upload file to MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
             throw new StorageException($"Failed to upload file to storage: {ex.Message}", ex);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation while uploading file to MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
+            throw new StorageException($"Invalid operation during file upload: {ex.Message}", ex);
         }
         catch (Exception ex)
         {
@@ -292,6 +291,39 @@ public class MinioStorageService : IStorageService, IFileStorageService
         }
     }
 
+    public async Task<string> GetPresignedUrlAsync(string bucketName, string objectName, int expiryInSeconds = 3600, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Generating presigned URL for MinIO object '{ObjectName}' in bucket '{BucketName}' with expiry {ExpirySeconds}s", objectName, bucketName, expiryInSeconds);
+
+            var presignedGetObjectArgs = new PresignedGetObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(objectName)
+                .WithExpiry(expiryInSeconds);
+
+            var presignedUrl = await _minioClient.PresignedGetObjectAsync(presignedGetObjectArgs);
+
+            _logger.LogDebug("Generated presigned URL for {BucketName}/{ObjectName}", bucketName, objectName);
+            return presignedUrl;
+        }
+        catch (ObjectNotFoundException)
+        {
+            _logger.LogWarning("Object not found for presigned URL generation: {BucketName}/{ObjectName}", bucketName, objectName);
+            throw new NotFoundException($"Object not found: {bucketName}/{objectName}");
+        }
+        catch (MinioException ex)
+        {
+            _logger.LogError(ex, "Failed to generate presigned URL for MinIO object '{ObjectName}' in bucket '{BucketName}'", objectName, bucketName);
+            throw new StorageException($"Failed to generate presigned URL: {ex.Message}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while generating presigned URL");
+            throw new StorageException($"Unexpected error during presigned URL generation: {ex.Message}", ex);
+        }
+    }
+
     #endregion
     
     /// <summary>
@@ -300,9 +332,6 @@ public class MinioStorageService : IStorageService, IFileStorageService
     /// </summary>
     private static string SanitizeBucketName(string name)
     {
-        if (string.IsNullOrWhiteSpace(name))
-            return DefaultBucketName;
-
         // Convert to lowercase and replace invalid characters with hyphens
         var sanitized = name.ToLowerInvariant()
             .Replace(" ", "-")
@@ -317,7 +346,8 @@ public class MinioStorageService : IStorageService, IFileStorageService
 
         // Ensure it's not empty after sanitization and limit length to avoid bucket name issues
         if (string.IsNullOrEmpty(sanitized))
-            sanitized = DefaultBucketName;
+            // TODO: Create a custom exception for this
+            throw new ArgumentException("Bucket name cannot be empty or consist only of invalid characters.");
 
         // MinIO bucket names have length restrictions
         if (sanitized.Length > MaxBucketNameLength)

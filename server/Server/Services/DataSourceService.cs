@@ -11,17 +11,20 @@ namespace server.Services
     {
         private readonly IDataSourceRepository _dataSourceRepository;
         private readonly IProjectRepository _projectRepository;
+        private readonly IAssetRepository _assetRepository;
         private readonly IStorageServiceFactory _storageServiceFactory;
         private readonly ILogger<DataSourceService> _logger;
 
         public DataSourceService(
             IDataSourceRepository dataSourceRepository, 
             IProjectRepository projectRepository,
+            IAssetRepository assetRepository,
             IStorageServiceFactory storageServiceFactory,
             ILogger<DataSourceService> logger)
         {
             _dataSourceRepository = dataSourceRepository;
             _projectRepository = projectRepository;
+            _assetRepository = assetRepository;
             _storageServiceFactory = storageServiceFactory;
             _logger = logger;
         }
@@ -41,23 +44,34 @@ namespace server.Services
                 pageSize: pageSize
             );
 
-            var dataSourceDtos = dataSources.Select(ds => new DataSourceDto
+            var dataSourceDtos = new List<DataSourceDto>();
+            foreach (var ds in dataSources)
             {
-                Id = ds.DataSourceId,
-                Name = ds.Name,
-                Description = ds.Description,
-                SourceType = ds.SourceType,
-                Status = ds.Status,
-                IsDefault = ds.IsDefault,
-                CreatedAt = ds.CreatedAt,
-                ProjectId = ds.ProjectId
-            }).ToArray();
+                // Get asset count for this data source
+                var (_, assetCount) = await _assetRepository.GetAllWithCountAsync(
+                    filter: asset => asset.DataSourceId == ds.DataSourceId,
+                    pageSize: 1 // We only need the count, so minimal page size
+                );
+
+                dataSourceDtos.Add(new DataSourceDto
+                {
+                    Id = ds.DataSourceId,
+                    Name = ds.Name,
+                    Description = ds.Description,
+                    SourceType = ds.SourceType,
+                    Status = ds.Status,
+                    IsDefault = ds.IsDefault,
+                    CreatedAt = ds.CreatedAt,
+                    ProjectId = ds.ProjectId,
+                    AssetCount = assetCount
+                });
+            }
 
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             return new PaginatedResponse<DataSourceDto>
             {
-                Data = dataSourceDtos,
+                Data = [.. dataSourceDtos],
                 PageSize = pageSize,
                 CurrentPage = pageNumber,
                 TotalPages = totalPages,
@@ -70,6 +84,12 @@ namespace server.Services
             var ds = await _dataSourceRepository.GetByIdAsync(dataSourceId);
             if (ds == null) return null;
 
+            // Get asset count for this data source
+            var (_, assetCount) = await _assetRepository.GetAllWithCountAsync(
+                filter: asset => asset.DataSourceId == ds.DataSourceId,
+                pageSize: 1 // We only need the count, so minimal page size
+            );
+
             return new DataSourceDto
             {
                 Id = ds.DataSourceId,
@@ -79,7 +99,8 @@ namespace server.Services
                 Status = ds.Status,
                 IsDefault = ds.IsDefault,
                 CreatedAt = ds.CreatedAt,
-                ProjectId = ds.ProjectId
+                ProjectId = ds.ProjectId,
+                AssetCount = assetCount
             };
         }
 
