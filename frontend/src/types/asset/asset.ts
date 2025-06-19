@@ -18,11 +18,16 @@ export enum AssetStatus {
 
 export interface Asset {
     assetId: number;
+    projectId: number;
     dataSourceId: number;
-    name: string;
-    path: string;
-    thumbnailUrl: string;
+    durationMs: number;
+    externalId: string;
+    filename: string;
+    height: number;
+    width: number;
+    mimeType: string;
+    sizeBytes: number;
     status: AssetStatus;
-    annotationsCount: number;
-    createdAt: string;
+    createdAt: string
+    updatedAt: string;
 }

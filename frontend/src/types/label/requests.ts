@@ -11,15 +11,6 @@ export interface UpdateLabelSchemeRequest {
     description?: string;
 }
 
-export interface GetLabelSchemesQuery {
-    filterOn?: string;
-    filterQuery?: string;
-    sortBy?: string;
-    isAscending?: boolean;
-    pageNumber?: number;
-    pageSize?: number;
-}
-
 export interface CreateLabelRequest {
     name: string;
     color: string;
@@ -32,13 +23,4 @@ export interface UpdateLabelRequest {
     color?: string;
     description?: string;
     metadata?: any;
-}
-
-export interface GetLabelsQuery {
-    filterOn?: string;
-    filterQuery?: string;
-    sortBy?: string;
-    isAscending?: boolean;
-    pageNumber?: number;
-    pageSize?: number;
 }

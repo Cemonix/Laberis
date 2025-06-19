@@ -1,4 +1,5 @@
 import type { DataSourceType, DataSourceStatus } from './dataSource';
+import type { BaseListParams } from '../api';
 
 export interface CreateDataSourceRequest {
     name: string;
@@ -14,15 +15,10 @@ export interface UpdateDataSourceRequest {
     connectionDetails?: string;
 }
 
-export interface DataSourceListParams {
-    projectId: number;
-    page?: number;
-    pageSize?: number;
+export interface DataSourceListParams extends BaseListParams {
+    projectId?: number;
     status?: DataSourceStatus;
     sourceType?: DataSourceType;
-    search?: string;
-    sortBy?: 'name' | 'createdAt' | 'status';
-    sortOrder?: 'asc' | 'desc';
 }
 
 export interface DataSourceStatsResponse {

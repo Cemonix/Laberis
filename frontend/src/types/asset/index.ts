@@ -4,6 +4,11 @@ export type {
     AssetStatus,
 } from './asset';
 
+// Asset request types
+export type {
+    AssetListParams,
+} from './requests';
+
 // Upload types
 export type {
     AssetDto,
