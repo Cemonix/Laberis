@@ -4,10 +4,10 @@ import type { ApiError } from '@/types/api/error';
 import type { Project } from '@/types/project/project';
 import type { 
     CreateProjectRequest, 
-    UpdateProjectRequest, 
-    ProjectListParams,
+    UpdateProjectRequest,
     ProjectStatsResponse
 } from '@/types/project/requests';
+import type { BaseListParams } from '@/types/api';
 import { AppLogger } from '@/utils/logger';
 
 const logger = AppLogger.createServiceLogger('ProjectService');
@@ -20,7 +20,7 @@ class ProjectService {
      * @param params Query parameters for filtering and pagination
      * @returns Promise resolving to paginated project list
      */
-    async getProjects(params?: ProjectListParams): Promise<PaginatedResponse<Project>> {
+    async getProjects(params?: BaseListParams): Promise<PaginatedResponse<Project>> {
         logger.info(`Fetching projects...`, params);
         try {
             const response = await apiClient.get<PaginatedResponse<Project>>(this.baseUrl, { params });
