@@ -65,16 +65,15 @@ public static class FileProcessingUtils
     /// Generates a unique file name to avoid conflicts
     /// </summary>
     /// <param name="originalFileName">The original file name</param>
-    /// <param name="projectId">The project ID</param>
     /// <returns>A unique file name</returns>
-    public static string GenerateUniqueFileName(string originalFileName, int projectId)
+    public static string GenerateUniqueFileName(string originalFileName)
     {
         var extension = Path.GetExtension(originalFileName);
         var nameWithoutExtension = Path.GetFileNameWithoutExtension(originalFileName);
         var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd_HHmmss");
         var guid = Guid.NewGuid().ToString("N")[..8]; // First 8 characters
         
-        return $"{projectId}/{timestamp}_{guid}_{nameWithoutExtension}{extension}";
+        return $"{timestamp}_{guid}_{nameWithoutExtension}{extension}";
     }
 
     /// <summary>

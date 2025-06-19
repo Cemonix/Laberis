@@ -16,15 +16,15 @@ public interface IStorageService
     /// <param name="projectId">The project ID</param>
     /// <param name="dataSourceName">The data source name</param>
     /// <returns>A properly formatted bucket name</returns>
-    string GenerateBucketName(int projectId, string dataSourceName);
-    
+    string GenerateBucketName(int projectId, string dataSourceName = "default");
+
     /// <summary>
     /// Creates a new storage bucket if it does not already exist.
     /// </summary>
     /// <param name="bucketName">The name of the bucket to create.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task<string> CreateBucketAsync(string? bucketName = null, CancellationToken cancellationToken = default);
+    Task CreateBucketAsync(string bucketName, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a storage bucket.
@@ -48,4 +48,14 @@ public interface IStorageService
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>True if the bucket exists, otherwise false.</returns>
     Task<bool> BucketExistsAsync(string bucketName, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Generates a presigned URL for accessing an object in the storage service.
+    /// </summary>
+    /// <param name="bucketName">The name of the bucket containing the object.</param>
+    /// <param name="objectName">The name/key of the object.</param>
+    /// <param name="expiryInSeconds">The expiry time for the URL in seconds (default: 1 hour).</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A presigned URL that can be used to access the object.</returns>
+    Task<string> GetPresignedUrlAsync(string bucketName, string objectName, int expiryInSeconds = 3600, CancellationToken cancellationToken = default);
 }
