@@ -6,10 +6,10 @@ namespace server.Exceptions;
 public class FileOperationException : AppException
 {
     public override int StatusCode => 400;
-    public override ErrorTypes ErrorType { get; }
+    public override ErrorType ErrorType { get; }
     public override Dictionary<string, object>? Metadata { get; }
 
-    public FileOperationException(ErrorTypes errorType, string message, Dictionary<string, object>? metadata = null) 
+    public FileOperationException(ErrorType errorType, string message, Dictionary<string, object>? metadata = null) 
         : base(message)
     {
         ErrorType = errorType;
@@ -19,7 +19,7 @@ public class FileOperationException : AppException
     public static FileOperationException FileTooLarge(string fileName, long maxSize)
     {
         return new FileOperationException(
-            ErrorTypes.FileTooLarge,
+            ErrorType.FileTooLarge,
             $"File '{fileName}' exceeds the maximum allowed size of {maxSize} bytes.",
             new Dictionary<string, object> { ["fileName"] = fileName, ["maxSize"] = maxSize }
         );
@@ -28,7 +28,7 @@ public class FileOperationException : AppException
     public static FileOperationException UnsupportedFileType(string fileName, string fileType)
     {
         return new FileOperationException(
-            ErrorTypes.UnsupportedFileType,
+            ErrorType.UnsupportedFileType,
             $"File type '{fileType}' is not supported for file '{fileName}'.",
             new Dictionary<string, object> { ["fileName"] = fileName, ["fileType"] = fileType }
         );

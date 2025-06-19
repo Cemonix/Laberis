@@ -15,7 +15,7 @@ public record ErrorResponse
     /// <summary>
     /// Error type/category
     /// </summary>
-    public string Type { get; init; } = string.Empty;
+    public ErrorType Type { get; init; }
 
     /// <summary>
     /// Human-readable error message

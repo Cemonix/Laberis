@@ -6,7 +6,7 @@ namespace server.Exceptions;
 public class ValidationException : AppException
 {
     public override int StatusCode => 400;
-    public override ErrorTypes ErrorType => ErrorTypes.ValidationError;
+    public override ErrorType ErrorType => ErrorType.ValidationError;
     public Dictionary<string, List<string>> ValidationErrors { get; }
 
     public ValidationException(string message) : base(message)

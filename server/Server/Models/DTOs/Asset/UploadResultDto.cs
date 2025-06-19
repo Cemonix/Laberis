@@ -1,3 +1,5 @@
+using server.Exceptions;
+
 namespace server.Models.DTOs.Asset;
 
 /// <summary>
@@ -28,5 +30,5 @@ public record class UploadResultDto
     /// <summary>
     /// Error type if upload failed
     /// </summary>
-    public string? ErrorType { get; init; }
+    public ErrorType? ErrorType { get; init; }
 }

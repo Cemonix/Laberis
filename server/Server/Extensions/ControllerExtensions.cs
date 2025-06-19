@@ -15,7 +15,7 @@ public static class ControllerExtensions
     public static ObjectResult CreateErrorResponse(
         this ControllerBase controller,
         int statusCode,
-        ErrorTypes errorType,
+        ErrorType errorType,
         string message,
         string? detail = null,
         Dictionary<string, object>? metadata = null)
@@ -23,7 +23,7 @@ public static class ControllerExtensions
         var errorResponse = new ErrorResponse
         {
             StatusCode = statusCode,
-            Type = errorType.ToStringValue(),
+            Type = errorType,
             Message = message,
             Detail = detail,
             TraceId = controller.HttpContext.TraceIdentifier,
@@ -47,7 +47,7 @@ public static class ControllerExtensions
         var errorResponse = new ErrorResponse
         {
             StatusCode = 400,
-            Type = ErrorTypes.ValidationError.ToStringValue(),
+            Type = ErrorType.ValidationError,
             Message = message,
             ValidationErrors = validationErrors,
             TraceId = controller.HttpContext.TraceIdentifier
@@ -67,7 +67,7 @@ public static class ControllerExtensions
         var errorResponse = new ErrorResponse
         {
             StatusCode = 404,
-            Type = ErrorTypes.NotFound.ToStringValue(),
+            Type = ErrorType.NotFound,
             Message = $"{resourceType} with ID '{id}' was not found.",
             TraceId = controller.HttpContext.TraceIdentifier
         };
