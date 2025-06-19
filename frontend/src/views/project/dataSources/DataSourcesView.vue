@@ -104,11 +104,23 @@ const handleCreateDataSource = async (formData: CreateDataSourceRequest) => {
     }
 };
 
-const handleAssetsImported = (dataSourceId: number, importedCount: number) => {
+const handleAssetsImported = async (dataSourceId: number, importedCount: number) => {
     // Find the data source and update its asset count
     const dataSource = dataSources.value.find(ds => ds.id === dataSourceId);
     if (dataSource) {
+        // Update the local count immediately for responsive UI
         dataSource.assetCount = (dataSource.assetCount || 0) + importedCount;
+        
+        // Refresh from server to ensure accuracy
+        try {
+            const updatedDataSource = await dataSourceService.getDataSource(dataSource.projectId, dataSourceId);
+            // Update with the server's asset count
+            dataSource.assetCount = updatedDataSource.assetCount;
+            logger.info(`Refreshed asset count for data source ${dataSourceId}: ${updatedDataSource.assetCount}`);
+        } catch (error) {
+            logger.warn(`Failed to refresh asset count from server for data source ${dataSourceId}`, error);
+            // Keep the local count if server refresh fails
+        }
     }
 };
 
