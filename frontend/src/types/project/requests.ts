@@ -13,16 +13,6 @@ export interface UpdateProjectRequest {
     annotationGuidelinesUrl?: string;
 }
 
-export interface ProjectListParams {
-    page?: number;
-    pageSize?: number;
-    status?: ProjectStatus;
-    projectType?: ProjectType;
-    search?: string;
-    sortBy?: 'name' | 'createdAt' | 'updatedAt';
-    sortOrder?: 'asc' | 'desc';
-}
-
 export interface ProjectStatsResponse {
     totalAssets: number;
     annotatedAssets: number;
