@@ -17,7 +17,7 @@ public class AnnotationConfiguration : IEntityTypeConfiguration<Annotation>
         entity.Property(ann => ann.AnnotationType)
             .HasColumnName("annotation_type")
             .IsRequired()
-            .HasColumnType("annotation_type_enum");
+            .HasColumnType("public.annotation_type_enum");
 
         entity.Property(ann => ann.Data)
             .HasColumnName("data")

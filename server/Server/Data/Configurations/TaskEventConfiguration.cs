@@ -17,7 +17,7 @@ public class TaskEventConfiguration : IEntityTypeConfiguration<TaskEvent>
         entity.Property(te => te.EventType)
             .HasColumnName("event_type")
             .IsRequired()
-            .HasColumnType("task_event_type_enum");
+            .HasColumnType("public.task_event_type_enum");
 
         entity.Property(te => te.Details)
             .HasColumnName("details")

@@ -27,7 +27,7 @@ public class DataSourceConfiguration : IEntityTypeConfiguration<DataSource>
         entity.Property(ds => ds.SourceType)
             .HasColumnName("source_type")
             .IsRequired()
-            .HasColumnType("data_source_type_enum");
+            .HasColumnType("public.data_source_type_enum");
 
         entity.Property(ds => ds.ConnectionDetails)
             .HasColumnName("connection_details")
@@ -37,7 +37,7 @@ public class DataSourceConfiguration : IEntityTypeConfiguration<DataSource>
         entity.Property(ds => ds.Status)
             .HasColumnName("status")
             .IsRequired()
-            .HasColumnType("data_source_status_enum");
+            .HasColumnType("public.data_source_status_enum");
 
         entity.Property(ds => ds.IsDefault)
             .HasColumnName("is_default")

@@ -18,7 +18,7 @@ public class ProjectMemberConfiguration : IEntityTypeConfiguration<ProjectMember
         entity.Property(pm => pm.Role)
             .HasColumnName("role")
             .IsRequired()
-            .HasColumnType("project_role_enum");
+            .HasColumnType("public.project_role_enum");
 
         entity.Property(pm => pm.InvitedAt)
             .HasColumnName("invited_at")

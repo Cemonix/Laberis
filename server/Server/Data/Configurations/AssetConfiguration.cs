@@ -35,7 +35,7 @@ public class AssetConfiguration : IEntityTypeConfiguration<Asset>
         entity.Property(a => a.Status)
             .HasColumnName("status")
             .IsRequired()
-            .HasColumnType("asset_status_enum");
+            .HasColumnType("public.asset_status_enum");
 
         entity.Property(a => a.DeletedAt).HasColumnName("deleted_at").IsRequired(false);
 

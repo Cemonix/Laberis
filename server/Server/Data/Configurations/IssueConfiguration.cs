@@ -22,14 +22,14 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
         entity.Property(i => i.Status)
             .HasColumnName("status")
             .IsRequired()
-            .HasColumnType("issue_status_enum");
+            .HasColumnType("public.issue_status_enum");
 
         entity.Property(i => i.Priority).HasColumnName("priority").IsRequired().HasDefaultValue(0);
 
         entity.Property(i => i.IssueType)
             .HasColumnName("issue_type")
             .IsRequired(false)
-            .HasColumnType("issue_type_enum");
+            .HasColumnType("public.issue_type_enum");
 
         entity.Property(i => i.ResolutionDetails).HasColumnName("resolution_details").IsRequired(false);
         entity.Property(i => i.ResolvedAt).HasColumnName("resolved_at").IsRequired(false);
