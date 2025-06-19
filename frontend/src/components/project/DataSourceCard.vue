@@ -20,15 +20,15 @@
                         View Assets
                     </Button>
                 </router-link>
-                <Button variant="secondary" @click="openImportModal">Import</Button>
+                <Button variant="secondary" @click="openUploadModal">Upload</Button>
                 <Button variant="secondary">Export</Button>
             </div>
         </template>
-        
-        <ImportImagesModal 
-            v-model:isOpen="isImportModalOpen"
+
+        <UploadImagesModal
+            v-model:isOpen="isUploadModalOpen"
             :dataSource="dataSource"
-            @import-complete="handleImportComplete"
+            @upload-complete="handleUploadComplete"
         />
     </Card>
 </template>
@@ -38,7 +38,7 @@ import { computed, ref } from "vue";
 import type { DataSource } from "@/types/dataSource/dataSource";
 import Card from "@/components/common/Card.vue";
 import Button from "@/components/common/Button.vue";
-import ImportImagesModal from "./ImportImagesModal.vue";
+import UploadImagesModal from "./UploadImagesModal.vue";
 
 const props = defineProps<{
     dataSource: DataSource;
@@ -48,7 +48,7 @@ const emit = defineEmits<{
     'assets-imported': [count: number];
 }>();
 
-const isImportModalOpen = ref(false);
+const isUploadModalOpen = ref(false);
 
 const explorerUrl = computed(() => `/projects/${props.dataSource.projectId}/data-sources/${props.dataSource.id}`);
 
@@ -60,13 +60,13 @@ const formattedDate = computed(() => {
     });
 });
 
-// Import modal handlers
-const openImportModal = () => {
-    isImportModalOpen.value = true;
+// Upload modal handlers
+const openUploadModal = () => {
+    isUploadModalOpen.value = true;
 };
 
-const handleImportComplete = (count: number) => {
-    isImportModalOpen.value = false;
+const handleUploadComplete = (count: number) => {
+    isUploadModalOpen.value = false;
     emit('assets-imported', count);
 };
 </script>
