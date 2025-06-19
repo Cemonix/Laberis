@@ -6,7 +6,7 @@ namespace server.Exceptions;
 public class ConflictException : AppException
 {
     public override int StatusCode => 409;
-    public override ErrorTypes ErrorType => ErrorTypes.Conflict;
+    public override ErrorType ErrorType => ErrorType.Conflict;
 
     public ConflictException(string message) : base(message) { }
 }

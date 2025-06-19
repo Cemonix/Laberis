@@ -6,7 +6,7 @@ namespace server.Exceptions;
 public class DatabaseException : AppException
 {
     public override int StatusCode => 500;
-    public override ErrorTypes ErrorType => ErrorTypes.DatabaseError;
+    public override ErrorType ErrorType => ErrorType.DatabaseError;
 
     public DatabaseException(string message) : base(message) { }
     public DatabaseException(string message, Exception innerException) : base(message, innerException) { }

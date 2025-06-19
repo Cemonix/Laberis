@@ -47,17 +47,17 @@ public class ExceptionHandlingMiddleware
             ArgumentException argEx => CreateValidationErrorResponse(argEx, context),
             UnauthorizedAccessException => CreateErrorResponse(
                 401, 
-                ErrorTypes.Unauthorized, 
+                ErrorType.Unauthorized, 
                 "Access denied", 
                 context),
             NotImplementedException => CreateErrorResponse(
                 501, 
-                ErrorTypes.ServiceUnavailable, 
+                ErrorType.ServiceUnavailable, 
                 "This feature is not yet implemented", 
                 context),
             TimeoutException => CreateErrorResponse(
                 408, 
-                ErrorTypes.ServiceUnavailable, 
+                ErrorType.ServiceUnavailable, 
                 "The request timed out", 
                 context),
             _ => CreateGenericErrorResponse(exception, context)
@@ -79,7 +79,7 @@ public class ExceptionHandlingMiddleware
         var response = new ErrorResponse
         {
             StatusCode = appException.StatusCode,
-            Type = appException.ErrorTypeString,
+            Type = appException.ErrorType,
             Message = appException.Message,
             TraceId = context.TraceIdentifier,
             Metadata = appException.Metadata
@@ -105,14 +105,14 @@ public class ExceptionHandlingMiddleware
 
     private static ErrorResponse CreateErrorResponse(
         int statusCode, 
-        ErrorTypes errorType, 
+        ErrorType errorType, 
         string message, 
         HttpContext context)
     {
         var response = new ErrorResponse
         {
             StatusCode = statusCode,
-            Type = errorType.ToStringValue(),
+            Type = errorType,
             Message = message,
             TraceId = context.TraceIdentifier
         };
@@ -130,7 +130,7 @@ public class ExceptionHandlingMiddleware
         var response = new ErrorResponse
         {
             StatusCode = 400,
-            Type = ErrorTypes.ValidationError.ToStringValue(),
+            Type = ErrorType.ValidationError,
             Message = "Validation failed",
             ValidationErrors = validationErrors,
             TraceId = context.TraceIdentifier
@@ -154,7 +154,7 @@ public class ExceptionHandlingMiddleware
         var response = new ErrorResponse
         {
             StatusCode = statusCode,
-            Type = ErrorTypes.InternalServerError.ToStringValue(),
+            Type = ErrorType.InternalServerError,
             Message = message,
             TraceId = context.TraceIdentifier
         };

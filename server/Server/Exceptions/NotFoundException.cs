@@ -6,7 +6,7 @@ namespace server.Exceptions;
 public class NotFoundException : AppException
 {
     public override int StatusCode => 404;
-    public override ErrorTypes ErrorType => ErrorTypes.NotFound;
+    public override ErrorType ErrorType => ErrorType.NotFound;
 
     public NotFoundException(string message) : base(message) { }
     

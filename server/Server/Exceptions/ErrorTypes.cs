@@ -3,7 +3,7 @@ namespace server.Exceptions;
 /// <summary>
 /// Enumeration of standard error types used across the application
 /// </summary>
-public enum ErrorTypes
+public enum ErrorType
 {
     ValidationError,
     NotFound,
@@ -27,22 +27,22 @@ public static class ErrorTypesExtensions
     /// <summary>
     /// Converts ErrorTypes enum to string representation
     /// </summary>
-    public static string ToStringValue(this ErrorTypes errorType)
+    public static string ToStringValue(this ErrorType errorType)
     {
         return errorType switch
         {
-            ErrorTypes.ValidationError => "validation_error",
-            ErrorTypes.NotFound => "not_found",
-            ErrorTypes.Unauthorized => "unauthorized",
-            ErrorTypes.Forbidden => "forbidden",
-            ErrorTypes.Conflict => "conflict",
-            ErrorTypes.InternalServerError => "internal_server_error",
-            ErrorTypes.BadRequest => "bad_request",
-            ErrorTypes.ServiceUnavailable => "service_unavailable",
-            ErrorTypes.FileTooLarge => "file_too_large",
-            ErrorTypes.UnsupportedFileType => "unsupported_file_type",
-            ErrorTypes.StorageError => "storage_error",
-            ErrorTypes.DatabaseError => "database_error",
+            ErrorType.ValidationError => "validation_error",
+            ErrorType.NotFound => "not_found",
+            ErrorType.Unauthorized => "unauthorized",
+            ErrorType.Forbidden => "forbidden",
+            ErrorType.Conflict => "conflict",
+            ErrorType.InternalServerError => "internal_server_error",
+            ErrorType.BadRequest => "bad_request",
+            ErrorType.ServiceUnavailable => "service_unavailable",
+            ErrorType.FileTooLarge => "file_too_large",
+            ErrorType.UnsupportedFileType => "unsupported_file_type",
+            ErrorType.StorageError => "storage_error",
+            ErrorType.DatabaseError => "database_error",
             _ => "unknown_error"
         };
     }
