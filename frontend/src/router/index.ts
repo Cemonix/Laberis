@@ -85,6 +85,19 @@ const routes: Array<RouteRecordRaw> = [
                 props: true,
             },
         ],
+    },
+    {
+        path: '/error',
+        redirect: '/error/general',
+    },
+    {
+        path: '/error/:type',
+        name: 'Error',
+        component: () => import('@/views/ErrorView.vue'),
+        props: true,
+        meta: {
+            layout: DefaultLayout,
+        }
     }
 ];
 
