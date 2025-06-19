@@ -1,27 +1,27 @@
 <template>
-    <ModalWindow :isOpen="isOpen" title="Import Images" @close="handleModalClose">
-        <div class="import-container">
-            <!-- Import Type Selection -->
-            <div class="import-type-section">
-                <h4>Import Type</h4>
-                <div class="import-type-options">
-                    <label class="import-option">
+    <ModalWindow :isOpen="isOpen" title="Upload Images" @close="handleModalClose">
+        <div class="upload-container">
+            <!-- Upload Type Selection -->
+            <div class="upload-type-section">
+                <h4>Upload Type</h4>
+                <div class="upload-type-options">
+                    <label class="upload-option">
                         <input 
                             type="radio" 
-                            v-model="importType" 
+                            v-model="uploadType" 
                             value="files"
-                            name="importType"
+                            name="uploadType"
                         >
                         <span>Select Individual Images</span>
                     </label>
-                    <label class="import-option">
+                    <label class="upload-option">
                         <input 
                             type="radio" 
-                            v-model="importType" 
+                            v-model="uploadType" 
                             value="folder"
-                            name="importType"
+                            name="uploadType"
                         >
-                        <span>Import Folder</span>
+                        <span>Upload Folder</span>
                     </label>
                 </div>
             </div>
@@ -39,8 +39,8 @@
                     <input
                         ref="fileInput"
                         type="file"
-                        :multiple="importType === 'files'"
-                        :webkitdirectory="importType === 'folder'"
+                        :multiple="uploadType === 'files'"
+                        :webkitdirectory="uploadType === 'folder'"
                         accept="image/*"
                         @change="handleFileSelection"
                         class="hidden-input"
@@ -51,7 +51,7 @@
                             <path fill="currentColor" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
                         </svg>
                         <p class="dropzone-text">
-                            <span v-if="importType === 'files'">
+                            <span v-if="uploadType === 'files'">
                                 Drag and drop images here, or click to select files
                             </span>
                             <span v-else>
@@ -107,26 +107,26 @@
                 </div>
             </div>
 
-            <!-- Import Progress -->
-            <div v-if="isImporting" class="import-progress-section">
-                <h4>Import Progress</h4>
+            <!-- Upload Progress -->
+            <div v-if="isUploading" class="upload-progress-section">
+                <h4>Upload Progress</h4>
                 <div class="progress-bar">
                     <div 
                         class="progress-fill" 
-                        :style="{ width: `${importProgress}%` }"
+                        :style="{ width: `${uploadProgress}%` }"
                     ></div>
                 </div>
                 <p class="progress-text">
-                    Importing {{ currentFileIndex }} of {{ selectedFiles.length }} files...
+                    Uploading {{ currentFileIndex }} of {{ selectedFiles.length }} files...
                 </p>
             </div>
 
             <!-- Error Display -->
-            <div v-if="importErrors.length > 0" class="import-errors-section">
-                <h4>Import Errors</h4>
+            <div v-if="uploadErrors.length > 0" class="upload-errors-section">
+                <h4>Upload Errors</h4>
                 <div class="error-list">
                     <div 
-                        v-for="(error, index) in importErrors" 
+                        v-for="(error, index) in uploadErrors" 
                         :key="index"
                         class="error-item"
                     >
@@ -142,17 +142,17 @@
                 <Button 
                     variant="secondary" 
                     @click="handleModalClose"
-                    :disabled="isImporting"
+                    :disabled="isUploading"
                 >
                     Cancel
                 </Button>
                 <Button 
                     variant="primary" 
-                    @click="startImport"
-                    :disabled="selectedFiles.length === 0 || isImporting"
-                    :loading="isImporting"
+                    @click="startUpload"
+                    :disabled="selectedFiles.length === 0 || isUploading"
+                    :loading="isUploading"
                 >
-                    Import {{ selectedFiles.length }} {{ selectedFiles.length === 1 ? 'Image' : 'Images' }}
+                    Upload {{ selectedFiles.length }} {{ selectedFiles.length === 1 ? 'Image' : 'Images' }}
                 </Button>
             </div>
         </template>
@@ -179,7 +179,7 @@ import { AppLogger } from '@/utils/logger';
 import { useAlert } from '@/composables/useAlert';
 import assetService from '@/services/api/assetService';
 
-const logger = AppLogger.createServiceLogger('ImportImagesModal');
+const logger = AppLogger.createServiceLogger('UploadImagesModal');
 
 // Use alert composable
 const { isAlertOpen, alertTitle, alertMessage, showAlert, handleConfirm } = useAlert();
@@ -191,17 +191,17 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     'update:isOpen': [value: boolean];
-    'import-complete': [count: number];
+    'upload-complete': [count: number];
 }>();
 
-// Import state
-const importType = ref<'files' | 'folder'>('files');
+// Upload state
+const uploadType = ref<'files' | 'folder'>('files');
 const selectedFiles = ref<File[]>([]);
 const isDragOver = ref(false);
-const isImporting = ref(false);
-const importProgress = ref(0);
+const isUploading = ref(false);
+const uploadProgress = ref(0);
 const currentFileIndex = ref(0);
-const importErrors = ref<Array<{ fileName: string; message: string }>>([]);
+const uploadErrors = ref<Array<{ fileName: string; message: string }>>([]);
 
 // File input reference
 const fileInput = ref<HTMLInputElement>();
@@ -219,7 +219,7 @@ const triggerFileInput = () => {
 
 // Helper function to add files with duplicate checking
 const addFilesToSelection = (newImageFiles: File[]) => {
-    if (importType.value === 'files') {
+    if (uploadType.value === 'files') {
         // For individual files, check for duplicates and add only new ones
         const newFiles: File[] = [];
         const duplicateFiles: string[] = [];
@@ -256,7 +256,7 @@ const addFilesToSelection = (newImageFiles: File[]) => {
             logger.info(`Added ${newFiles.length} new file(s) to selection`);
         }
     } else {
-        // For folder import, replace selection
+        // For folder upload, replace selection
         selectedFiles.value = newImageFiles;
     }
 };
@@ -344,22 +344,22 @@ const formatFileSize = (bytes: number): string => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-const handleImportError = (error: unknown) => {
-    logger.error('Import process failed', error);
+const handleUploadError = (error: unknown) => {
+    logger.error('Upload process failed', error);
     
     if (error instanceof NoFilesProvidedError) {
-        showAlert('No Files Selected', 'Please select at least one image file to import.');
+        showAlert('No Files Selected', 'Please select at least one image file to upload.');
         return;
     }
 
     if (error instanceof ServerError) {
         const statusText = error.statusCode ? ` (${error.statusCode})` : '';
-        showAlert('Server Error', `The server encountered an error during import${statusText}. Please try again.`);
+        showAlert('Server Error', `The server encountered an error during upload${statusText}. Please try again.`);
         return;
     }
 
     if (error instanceof NetworkError) {
-        showAlert('Network Error', 'A network error occurred during import. Please check your connection and try again.');
+        showAlert('Network Error', 'A network error occurred during upload. Please check your connection and try again.');
         return;
     }
 
@@ -374,23 +374,23 @@ const handleImportError = (error: unknown) => {
     }
     
     // Default fallback for any other error
-    showAlert('Import Failed', 'The import process failed unexpectedly. Please try again.');
+    showAlert('Upload Failed', 'The upload process failed unexpectedly. Please try again.');
 };
 
-const startImport = async () => {
+const startUpload = async () => {
     if (selectedFiles.value.length === 0) {
-        logger.warn('Import attempted with no files selected');
-        showAlert('No Files Selected', 'Please select at least one image file to import.');
+        logger.warn('Upload attempted with no files selected');
+        showAlert('No Files Selected', 'Please select at least one image file to upload.');
         return;
     }
     
-    isImporting.value = true;
-    importProgress.value = 0;
+    isUploading.value = true;
+    uploadProgress.value = 0;
     currentFileIndex.value = 0;
-    importErrors.value = [];
+    uploadErrors.value = [];
     
     try {
-        logger.info(`Starting import of ${selectedFiles.value.length} files to data source ${props.dataSource.id}`);
+        logger.info(`Starting upload of ${selectedFiles.value.length} files to data source ${props.dataSource.id}`);
         
         // Use bulk upload for better performance and user experience
         const result = await assetService.uploadAssets(
@@ -399,48 +399,48 @@ const startImport = async () => {
             selectedFiles.value,
             undefined, // TODO: No additional metadata for now
             (progress) => {
-                importProgress.value = progress;
+                uploadProgress.value = progress;
             }
         );
         
         // Process results
         const failedUploads = result.results.filter(r => !r.success);
-        importErrors.value = failedUploads.map(r => ({
+        uploadErrors.value = failedUploads.map(r => ({
             fileName: r.filename,
             message: r.errorMessage || 'Unknown error'
         }));
         
-        logger.info(`Import completed. ${result.successfulUploads} files imported successfully, ${result.failedUploads} errors`);
+        logger.info(`Upload completed. ${result.successfulUploads} files uploaded successfully, ${result.failedUploads} errors`);
         
         if (result.allSuccessful) {
-            const title = 'Import Successful';
+            const title = 'Upload Successful';
             const message = result.successfulUploads === 1 
-                ? '1 image was imported successfully.'
-                : `${result.successfulUploads} images were imported successfully.`;
+                ? '1 image was uploaded successfully.'
+                : `${result.successfulUploads} images were uploaded successfully.`;
             
             showAlert(title, message);
             
-            emit('import-complete', result.successfulUploads);
+            emit('upload-complete', result.successfulUploads);
             closeModal();
         } else {
-            const title = 'Import Completed with Errors';
-            const message = `${result.successfulUploads} images imported successfully.\n${result.failedUploads} images failed to import.\n\nError details:\n${importErrors.value.map(e => `${e.fileName}: ${e.message}`).join('\n')}`;
+            const title = 'Upload Completed with Errors';
+            const message = `${result.successfulUploads} images uploaded successfully.\n${result.failedUploads} images failed to upload.\n\nError details:\n${uploadErrors.value.map(e => `${e.fileName}: ${e.message}`).join('\n')}`;
             
             showAlert(title, message);
             
             // Still emit the successful count for refreshing the UI
-            emit('import-complete', result.successfulUploads);
+            emit('upload-complete', result.successfulUploads);
         }
         
     } catch (error) {
-        handleImportError(error);
+        handleUploadError(error);
     } finally {
-        isImporting.value = false;
+        isUploading.value = false;
     }
 };
 
 const handleModalClose = () => {
-    if (!isImporting.value) {
+    if (!isUploading.value) {
         closeModal();
     }
 };
@@ -448,8 +448,8 @@ const handleModalClose = () => {
 const closeModal = () => {
     // Clear all state
     selectedFiles.value = [];
-    importErrors.value = [];
-    importProgress.value = 0;
+    uploadErrors.value = [];
+    uploadProgress.value = 0;
     currentFileIndex.value = 0;
     if (fileInput.value) {
         fileInput.value.value = '';
@@ -462,25 +462,25 @@ const closeModal = () => {
 <style lang="scss" scoped>
 @use "@/styles/variables" as vars;
 
-.import-container {
+.upload-container {
     display: flex;
     flex-direction: column;
     gap: vars.$gap-large;
 }
 
-.import-type-section {
+.upload-type-section {
     h4 {
         margin: 0 0 vars.$gap-medium 0;
         color: vars.$theme-text;
     }
 }
 
-.import-type-options {
+.upload-type-options {
     display: flex;
     gap: vars.$gap-large;
 }
 
-.import-option {
+.upload-option {
     display: flex;
     align-items: center;
     gap: vars.$gap-small;
@@ -623,7 +623,7 @@ const closeModal = () => {
     }
 }
 
-.import-progress-section {
+.upload-progress-section {
     h4 {
         margin: 0 0 vars.$gap-medium 0;
         color: vars.$theme-text;
@@ -651,7 +651,7 @@ const closeModal = () => {
     }
 }
 
-.import-errors-section {
+.upload-errors-section {
     h4 {
         margin: 0 0 vars.$gap-medium 0;
         color: vars.$color-error;
