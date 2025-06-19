@@ -63,7 +63,7 @@ const fetchProjects = async () => {
     
     try {
         const response = await projectService.getProjects({
-            sortBy: 'updatedAt',
+            sortBy: 'name',
             sortOrder: 'desc'
         });
         projects.value = response.data;

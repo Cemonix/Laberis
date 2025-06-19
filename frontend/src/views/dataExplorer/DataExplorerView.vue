@@ -18,8 +18,8 @@
                 <Button variant="secondary" @click="refreshAssets" :disabled="isLoading">
                     Refresh
                 </Button>
-                <Button variant="primary" @click="openImportModal">
-                    Import Assets
+                <Button variant="primary" @click="openUploadModal">
+                    Upload Assets
                 </Button>
             </div>
         </header>
@@ -38,8 +38,8 @@
                 <div v-if="assets.length === 0" class="empty-state">
                     <h3>No assets found</h3>
                     <p>This data source doesn't contain any assets yet.</p>
-                    <Button variant="primary" @click="openImportModal">
-                        Import Your First Asset
+                    <Button variant="primary" @click="openUploadModal">
+                        Upload Your First Asset
                     </Button>
                 </div>
                 
@@ -56,7 +56,7 @@
                     <div class="asset-grid">
                         <AssetThumbnail 
                             v-for="asset in assets" 
-                            :key="asset.assetId"
+                            :key="asset.id"
                             :asset="asset"
                         />
                     </div>
@@ -74,8 +74,8 @@
             </div>
         </main>
 
-        <!-- Import Modal placeholder -->
-        <!-- <ImportModal v-if="isImportModalOpen" @close="closeImportModal" /> -->
+        <!-- Upload Modal placeholder -->
+        <!-- <UploadModal v-if="isUploadModalOpen" @close="closeUploadModal" /> -->
     </div>
 </template>
 
@@ -106,7 +106,7 @@ const assets = ref<Asset[]>([]);
 const isLoading = ref(false);
 const isLoadingMore = ref(false);
 const error = ref<string | null>(null);
-const isImportModalOpen = ref(false);
+const isUploadModalOpen = ref(false);
 
 // Pagination state
 const currentPage = ref(1);
@@ -153,7 +153,7 @@ const loadAssets = async (page: number = 1, append: boolean = false) => {
             pageSize: pageSize.value,
             dataSourceId: dataSourceId,
             sortBy: 'createdAt',
-            isAscending: false
+            sortOrder: 'desc'
         };
 
         const response = await assetService.getAssets(projectId, params);
@@ -199,10 +199,10 @@ const refreshAssets = async () => {
     await loadAssets(1, false);
 };
 
-const openImportModal = () => {
-    isImportModalOpen.value = true;
-    // TODO: Implement import modal
-    logger.info('Import modal would open here');
+const openUploadModal = () => {
+    isUploadModalOpen.value = true;
+    // TODO: Implement upload modal
+    logger.info('Upload modal would open here');
 };
 
 // Lifecycle
