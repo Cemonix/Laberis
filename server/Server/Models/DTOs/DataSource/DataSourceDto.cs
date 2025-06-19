@@ -12,4 +12,5 @@ public record class DataSourceDto
     public bool IsDefault { get; init; }
     public DateTime CreatedAt { get; init; }
     public int ProjectId { get; init; }
+    public int AssetCount { get; init; }
 }

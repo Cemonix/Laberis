@@ -10,7 +10,7 @@ public record class CreateAssetDto
     public string ExternalId { get; init; } = string.Empty;
 
     [StringLength(255)]
-    public string? Filename { get; init; }
+    public string Filename { get; init; } = string.Empty;
 
     public string? MimeType { get; init; }
 

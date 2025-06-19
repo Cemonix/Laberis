@@ -6,7 +6,7 @@ public record class Asset
 {
     public int AssetId { get; init; }
     public string ExternalId { get; init; } = string.Empty;
-    public string? Filename { get; init; }
+    public string Filename { get; init; } = string.Empty;
     public string? MimeType { get; init; }
     public long? SizeBytes { get; init; }
     public int? Width { get; init; }

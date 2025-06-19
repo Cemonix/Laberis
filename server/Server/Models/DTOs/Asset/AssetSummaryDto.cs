@@ -2,10 +2,13 @@ using server.Models.Domain.Enums;
 
 namespace server.Models.DTOs.Asset;
 
-public record class AssetDto
+/// <summary>
+/// A reduced asset DTO for frontend consumption that excludes sensitive internal details
+/// </summary>
+public record class AssetSummaryDto
 {
     public int Id { get; init; }
-    public string Filename { get; init; } = string.Empty;
+    public string? Filename { get; init; }
     public string? MimeType { get; init; }
     public long? SizeBytes { get; init; }
     public int? Width { get; init; }
