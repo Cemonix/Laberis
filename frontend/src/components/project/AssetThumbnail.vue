@@ -1,20 +1,35 @@
 <template>
-    <router-link :to="workspaceUrl" class="asset-thumbnail-link">
+    <router-link v-if="asset" :to="workspaceUrl" class="asset-thumbnail-link">
         <Card class="asset-card">
             <div class="asset-image-wrapper">
-                <img :src="asset.thumbnailUrl" :alt="`Thumbnail for ${asset.name}`" class="asset-image" loading="lazy" />
+                <img :src="asset.externalId" :alt="`Thumbnail for ${asset.filename}`" class="asset-image" loading="lazy" />
                 <div class="image-overlay">
                     <span class="overlay-text">Annotate</span>
                 </div>
             </div>
             <template #footer>
                 <div class="asset-info">
-                    <span class="asset-name" :title="asset.name">{{ asset.name }}</span>
+                    <span class="asset-name" :title="asset.filename">{{ asset.filename }}</span>
                     <span class="asset-status" :class="`status-${asset.status}`">{{ asset.status.replace('_', ' ') }}</span>
                 </div>
             </template>
         </Card>
     </router-link>
+    <div v-else class="asset-thumbnail-error">
+        <Card class="asset-card">
+            <div class="asset-image-wrapper">
+                <div class="error-placeholder">
+                    <span>Asset not available</span>
+                </div>
+            </div>
+            <template #footer>
+                <div class="asset-info">
+                    <span class="asset-name">Unknown Asset</span>
+                    <span class="asset-status">Error</span>
+                </div>
+            </template>
+        </Card>
+    </div>
 </template>
 
 <script setup lang="ts">
@@ -24,13 +39,18 @@ import type { Asset } from '@/types/asset/asset';
 import Card from '@/components/common/Card.vue';
 
 const props = defineProps<{
-    asset: Asset;
+    asset?: Asset | null;
 }>();
 
 const route = useRoute();
 const projectId = route.params.projectId;
 
-const workspaceUrl = computed(() => `/workspace/project/${projectId}/asset/${props.asset.assetId}`);
+const workspaceUrl = computed(() => {
+    if (!props.asset?.assetId) {
+        return '#';
+    }
+    return `/workspace/project/${projectId}/asset/${props.asset.assetId}`;
+});
 </script>
 
 <style lang="scss" scoped>
@@ -42,6 +62,22 @@ const workspaceUrl = computed(() => `/workspace/project/${projectId}/asset/${pro
     text-decoration: none;
     color: inherit;
     height: 100%;
+}
+
+.asset-thumbnail-error {
+    display: block;
+    height: 100%;
+}
+
+.error-placeholder {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    background-color: vars.$color-gray-100;
+    color: vars.$color-gray-600;
+    font-style: italic;
 }
 
 .asset-card {
