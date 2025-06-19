@@ -8,10 +8,10 @@ import type { LabelResponse } from '@/types/label/responses';
 import type {
     CreateLabelRequest,
     UpdateLabelRequest,
-    GetLabelsQuery
 } from '@/types/label/requests';
 import type { Label } from '@/types/label/label';
 import type { PaginatedResponse } from '@/types/api/paginatedResponse';
+import type { BaseListParams } from '@/types/api';
 
 const logger = AppLogger.createServiceLogger('LabelService');
 
@@ -40,21 +40,21 @@ class LabelService {
      * Retrieves all labels for a specific label scheme with optional filtering and pagination.
      * @param projectId - The unique identifier of the project.
      * @param schemeId - The unique identifier of the label scheme.
-     * @param query - Optional query parameters for filtering, sorting, and pagination.
+     * @param query_params - Optional query parameters for filtering, sorting, and pagination.
      * @returns A promise resolving to a paginated response of labels.
      */
     async getLabelsForScheme(
         projectId: number,
         schemeId: number,
-        query: GetLabelsQuery = {}
+        query_params: BaseListParams = {}
     ): Promise<PaginatedResponse<Label>> {
-        const { pageNumber = 1, pageSize = 25 } = query;
-        logger.info('Fetching labels for scheme', { projectId, schemeId, query });
+        const { pageNumber = 1, pageSize = 25 } = query_params;
+        logger.info('Fetching labels for scheme', { projectId, schemeId, query: query_params });
 
         try {
             const response = await apiClient.get<PaginatedResponse<LabelResponse>>(
                 `/projects/${projectId}/labelschemes/${schemeId}/labels`,
-                { params: query }
+                { params: query_params }
             );
 
             if (
@@ -68,7 +68,7 @@ class LabelService {
                 logger.warn('Invalid paginated response structure received for labels', {
                     projectId,
                     schemeId,
-                    query,
+                    query: query_params,
                     responseData: response?.data
                 });
                 return {
@@ -98,7 +98,7 @@ class LabelService {
                 totalItems: response.data.totalItems
             };
         } catch (error) {
-            logger.error('Failed to fetch labels for scheme', { error, projectId, schemeId, query });
+            logger.error('Failed to fetch labels for scheme', { error, projectId, schemeId, query: query_params });
             throw error;
         }
     }
