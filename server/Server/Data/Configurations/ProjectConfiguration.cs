@@ -27,12 +27,12 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         entity.Property(p => p.ProjectType)
             .HasColumnName("project_type")
             .IsRequired()
-            .HasColumnType("project_type_enum");
+            .HasColumnType("public.project_type_enum");
 
         entity.Property(p => p.Status)
             .HasColumnName("status")
             .IsRequired()
-            .HasColumnType("project_status_enum");
+            .HasColumnType("public.project_status_enum");
 
         entity.Property(p => p.OwnerId)
             .HasColumnName("owner_id")
