@@ -1,10 +1,8 @@
 using System;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel.Args;
 using Minio.Exceptions;
-using server.Configs;
 using server.Exceptions;
 using server.Models.Domain.Enums;
 using server.Services.Interfaces;
