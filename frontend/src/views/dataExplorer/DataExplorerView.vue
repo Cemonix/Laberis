@@ -3,67 +3,214 @@
         <header class="explorer-header">
             <div class="header-left">
                 <nav class="breadcrumbs">
-                    <router-link :to="`/projects/${projectId}`">Projects</router-link>
-                    <span>/</span>
-                    <router-link :to="`/projects/${projectId}/data-sources`">Data Sources</router-link>
-                    <span>/</span>
+                    <Button 
+                        variant="secondary" 
+                        @click="navigateToProject"
+                        class="home-button"
+                        aria-label="Back to Project"
+                    >
+                        <font-awesome-icon :icon="faHome" />
+                    </Button>
                     <span class="current-source-name">{{ dataSourceName }}</span>
                 </nav>
             </div>
             <div class="header-right">
-                <Button variant="primary">Upload Assets</Button>
+                <Button variant="secondary" @click="refreshAssets" :disabled="isLoading">
+                    Refresh
+                </Button>
+                <Button variant="primary" @click="openImportModal">
+                    Import Assets
+                </Button>
             </div>
         </header>
 
         <main class="explorer-main-content">
-            <div class="asset-grid">
-                <AssetThumbnail 
-                    v-for="asset in assets" 
-                    :key="asset.assetId"
-                    :asset="asset"
-                />
+            <div v-if="isLoading" class="loading-container">
+                <div class="loading-message">Loading assets...</div>
             </div>
-            <div class="load-more-container">
-                <Button variant="secondary">Load More</Button>
+            
+            <div v-else-if="error" class="error-container">
+                <div class="error-message">{{ error }}</div>
+                <Button variant="secondary" @click="loadAssets">Try Again</Button>
+            </div>
+            
+            <div v-else class="content-container">
+                <div v-if="assets.length === 0" class="empty-state">
+                    <h3>No assets found</h3>
+                    <p>This data source doesn't contain any assets yet.</p>
+                    <Button variant="primary" @click="openImportModal">
+                        Import Your First Asset
+                    </Button>
+                </div>
+                
+                <div v-else>
+                    <div class="assets-header">
+                        <div class="assets-count">
+                            {{ paginationInfo.totalItems }} asset{{ paginationInfo.totalItems !== 1 ? 's' : '' }}
+                        </div>
+                        <div class="view-controls">
+                            <!-- Add sorting/filtering controls here later -->
+                        </div>
+                    </div>
+                    
+                    <div class="asset-grid">
+                        <AssetThumbnail 
+                            v-for="asset in assets" 
+                            :key="asset.assetId"
+                            :asset="asset"
+                        />
+                    </div>
+                    
+                    <div v-if="hasMoreAssets" class="load-more-container">
+                        <Button 
+                            variant="secondary" 
+                            @click="loadMoreAssets"
+                            :disabled="isLoadingMore"
+                        >
+                            {{ isLoadingMore ? 'Loading...' : 'Load More' }}
+                        </Button>
+                    </div>
+                </div>
             </div>
         </main>
+
+        <!-- Import Modal placeholder -->
+        <!-- <ImportModal v-if="isImportModalOpen" @close="closeImportModal" /> -->
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
-import type { Asset } from '@/types/asset/asset';
-import { AssetStatus } from '@/types/asset/asset';
+import { ref, onMounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { faHome } from '@fortawesome/free-solid-svg-icons';
+import type { Asset, AssetListParams } from '@/types/asset';
 import AssetThumbnail from '@/components/project/AssetThumbnail.vue';
 import Button from '@/components/common/Button.vue';
+import assetService from '@/services/api/assetService';
+import { dataSourceService } from '@/services/api/dataSourceService';
+import { useAlert } from '@/composables/useAlert';
+import { AppLogger } from '@/utils/logger';
 
+const logger = AppLogger.createServiceLogger('DataExplorerView');
 const route = useRoute();
-const projectId = route.params.projectId as string;
+const router = useRouter();
+const { showAlert } = useAlert();
+
+const projectId = Number(route.params.projectId);
 const dataSourceId = Number(route.params.dataSourceId);
 
+// Reactive state
 const dataSourceName = ref('Loading...');
 const assets = ref<Asset[]>([]);
+const isLoading = ref(false);
+const isLoadingMore = ref(false);
+const error = ref<string | null>(null);
+const isImportModalOpen = ref(false);
 
-const mockDataSources = [
-    { id: 1, name: 'default-source' },
-    { id: 2, name: 'archive-2024-images' },
-];
+// Pagination state
+const currentPage = ref(1);
+const pageSize = ref(25);
+const paginationInfo = ref({
+    totalItems: 0,
+    totalPages: 0,
+    currentPage: 1
+});
 
-const mockAssets: Asset[] = [
-    { assetId: 101, dataSourceId: 1, name: 'image_001.jpg', path: '/', thumbnailUrl: 'https://picsum.photos/400/250?random=1', status: AssetStatus.IMPORTED, annotationsCount: 0, createdAt: '2025-06-01T10:00:00Z' },
-    { assetId: 102, dataSourceId: 1, name: 'image_002.png', path: '/', thumbnailUrl: 'https://picsum.photos/400/250?random=2', status: AssetStatus.ANNOTATED, annotationsCount: 3, createdAt: '2025-06-01T10:05:00Z' },
-    { assetId: 103, dataSourceId: 1, name: 'photo-of-a-very-long-file-name-to-test-ellipsis.tiff', path: '/', thumbnailUrl: 'https://picsum.photos/400/250?random=3', status: AssetStatus.REVIEW_IN_PROGRESS, annotationsCount: 5, createdAt: '2025-06-02T11:00:00Z' },
-    { assetId: 104, dataSourceId: 1, name: 'image_004.jpg', path: '/', thumbnailUrl: 'https://picsum.photos/400/250?random=4', status: AssetStatus.REVIEW_ACCEPTED, annotationsCount: 5, createdAt: '2025-06-03T14:00:00Z' },
-];
+// Computed properties
+const hasMoreAssets = computed(() => 
+    paginationInfo.value.currentPage < paginationInfo.value.totalPages
+);
 
-onMounted(() => {
-    // Simulate fetching data
-    const currentSource = mockDataSources.find(ds => ds.id === dataSourceId);
-    dataSourceName.value = currentSource ? currentSource.name : 'Unknown Data Source';
-    
-    // Simulate fetching assets for the current data source
-    assets.value = mockAssets.filter(asset => asset.dataSourceId === dataSourceId || asset.dataSourceId === 1); // Show some assets for demo
+// Methods
+const navigateToProject = () => {
+    router.push(`/projects/${projectId}`);
+};
+
+const loadDataSource = async () => {
+    try {
+        const dataSource = await dataSourceService.getDataSource(projectId, dataSourceId);
+        dataSourceName.value = dataSource.name;
+        logger.info(`Loaded data source: ${dataSource.name}`);
+    } catch (err) {
+        logger.error('Failed to load data source', err);
+        dataSourceName.value = 'Unknown Data Source';
+        await showAlert('Error', 'Failed to load data source information.');
+    }
+};
+
+const loadAssets = async (page: number = 1, append: boolean = false) => {
+    if (!append) {
+        isLoading.value = true;
+        error.value = null;
+    } else {
+        isLoadingMore.value = true;
+    }
+
+    try {
+        const params: AssetListParams = {
+            pageNumber: page,
+            pageSize: pageSize.value,
+            dataSourceId: dataSourceId,
+            sortBy: 'createdAt',
+            isAscending: false
+        };
+
+        const response = await assetService.getAssets(projectId, params);
+
+        // TODO: Handle empty response gracefully
+
+        if (append) {
+            assets.value.push(...response.data);
+        } else {
+            assets.value = response.data;
+        }
+
+        paginationInfo.value = {
+            totalItems: response.totalItems,
+            totalPages: response.totalPages,
+            currentPage: response.currentPage
+        };
+
+        currentPage.value = response.currentPage;
+        
+        logger.info(`Loaded ${response.data.length} assets (page ${page})`);
+    } catch (err) {
+        logger.error('Failed to load assets', err);
+        error.value = 'Failed to load assets. Please try again.';
+        
+        if (!append) {
+            await showAlert('Error', 'Failed to load assets. Please try again.');
+        }
+    } finally {
+        isLoading.value = false;
+        isLoadingMore.value = false;
+    }
+};
+
+const loadMoreAssets = async () => {
+    if (hasMoreAssets.value && !isLoadingMore.value) {
+        await loadAssets(currentPage.value + 1, true);
+    }
+};
+
+const refreshAssets = async () => {
+    currentPage.value = 1;
+    await loadAssets(1, false);
+};
+
+const openImportModal = () => {
+    isImportModalOpen.value = true;
+    // TODO: Implement import modal
+    logger.info('Import modal would open here');
+};
+
+// Lifecycle
+onMounted(async () => {
+    await Promise.all([
+        loadDataSource(),
+        loadAssets()
+    ]);
 });
 </script>
 
@@ -73,7 +220,7 @@ onMounted(() => {
 .explorer-container {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: 100vh;
     background-color: vars.$color-gray-100;
 }
 
@@ -85,6 +232,7 @@ onMounted(() => {
     background-color: vars.$color-white;
     border-bottom: vars.$border-width solid vars.$theme-border;
     flex-shrink: 0;
+    box-shadow: vars.$shadow-sm;
 }
 
 .breadcrumbs {
@@ -92,6 +240,15 @@ onMounted(() => {
     align-items: center;
     gap: vars.$gap-small;
     font-size: vars.$font_size_large;
+
+    .home-button {
+        min-width: 32px;
+        height: 32px;
+        padding: 0;
+        margin-right: vars.$margin-small;
+        font-size: 1.2rem;
+        font-weight: bold;
+    }
 
     a {
         color: vars.$color-primary;
@@ -101,14 +258,20 @@ onMounted(() => {
         }
     }
     
-    span {
+    .separator {
         color: vars.$theme-text-light;
+        margin: 0 vars.$margin-tiny;
     }
 
     .current-source-name {
         color: vars.$theme-text;
-        font-weight: bold;
+        font-weight: 600;
     }
+}
+
+.header-right {
+    display: flex;
+    gap: vars.$gap-medium;
 }
 
 .explorer-main-content {
@@ -117,15 +280,101 @@ onMounted(() => {
     padding: vars.$padding-large;
 }
 
+.loading-container,
+.error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    gap: vars.$gap-medium;
+}
+
+.loading-message {
+    font-size: vars.$font_size_large;
+    color: vars.$theme-text-light;
+}
+
+.error-message {
+    font-size: vars.$font_size_large;
+    color: vars.$color-error;
+    text-align: center;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    gap: vars.$gap-large;
+    text-align: center;
+
+    h3 {
+        font-size: vars.$font_size_xlarge;
+        color: vars.$theme-text;
+        margin: 0;
+    }
+
+    p {
+        font-size: vars.$font_size_large;
+        color: vars.$theme-text-light;
+        margin: 0;
+        max-width: 50ch;
+    }
+}
+
+.assets-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: vars.$margin-large;
+    padding-bottom: vars.$padding-medium;
+    border-bottom: vars.$border-width solid vars.$theme-border;
+}
+
+.assets-count {
+    font-size: vars.$font_size_large;
+    font-weight: 600;
+    color: vars.$theme-text;
+}
+
 .asset-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: vars.$gap-large;
+    margin-bottom: vars.$margin-xlarge;
 }
 
 .load-more-container {
     display: flex;
     justify-content: center;
     padding: vars.$padding-large 0;
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+    .explorer-header {
+        flex-direction: column;
+        gap: vars.$gap-medium;
+        align-items: stretch;
+    }
+
+    .breadcrumbs {
+        font-size: vars.$font_size_medium;
+    }
+
+    .header-right {
+        justify-content: center;
+    }
+
+    .asset-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: vars.$gap-medium;
+    }
+
+    .explorer-main-content {
+        padding: vars.$padding-medium;
+    }
 }
 </style>
