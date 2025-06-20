@@ -1,32 +1,53 @@
 <template>
     <div class="annotation-workspace-container">
-        <div class="workspace-top-bar">
-            <div class="workspace-top-bar-left">
-                <router-link to="/home">Home</router-link>
-            </div>
-            <div class="workspace-top-bar-center">
-                <Button>Previous</Button>
-                <span>122 / 150</span>
-                <Button>Next</Button>
-            </div>
-            <div class="workspace-top-bar-right">
-                <span class="zoom-display"
-                    >Zoom: {{ zoomPercentageDisplay }}</span
-                >
-                <span>{{ displayedTime }}</span>
+        <!-- Loading overlay -->
+        <div v-if="isLoading" class="loading-overlay">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <p>Loading asset...</p>
             </div>
         </div>
-        <div class="workspace-main-area">
-            <div class="workspace-tools-left">
-                <ToolsLeftPanel />
-            </div>
-            <div class="workspace-canvas-area">
-                <AnnotationCanvas :image-url="imageUrlFromStore" />
-            </div>
-            <div class="workspace-annotations-right">
-                Right Annotations/Issues Panel
+
+        <!-- Error overlay -->
+        <div v-else-if="error" class="error-overlay">
+            <div class="error-content">
+                <h3>Failed to load asset</h3>
+                <p>{{ error }}</p>
+                <Button @click="retryLoading">Retry</Button>
+                <router-link to="/home" class="error-link">Go back to Home</router-link>
             </div>
         </div>
+
+        <!-- Main workspace content -->
+        <template v-else>
+            <div class="workspace-top-bar">
+                <div class="workspace-top-bar-left">
+                    <router-link to="/home">Home</router-link>
+                </div>
+                <div class="workspace-top-bar-center">
+                    <Button>Previous</Button>
+                    <span>122 / 150</span>
+                    <Button>Next</Button>
+                </div>
+                <div class="workspace-top-bar-right">
+                    <span class="zoom-display"
+                        >Zoom: {{ zoomPercentageDisplay }}</span
+                    >
+                    <span>{{ displayedTime }}</span>
+                </div>
+            </div>
+            <div class="workspace-main-area">
+                <div class="workspace-tools-left">
+                    <ToolsLeftPanel />
+                </div>
+                <div class="workspace-canvas-area">
+                    <AnnotationCanvas :image-url="imageUrlFromStore" />
+                </div>
+                <div class="workspace-annotations-right">
+                    <LabelsPanel />
+                </div>
+            </div>
+        </template>
     </div>
 </template>
 
@@ -36,6 +57,7 @@ import AnnotationCanvas from "@/components/annotationWorkspace/AnnotationCanvas.
 import Button from "@/components/common/Button.vue";
 import { useWorkspaceStore } from "@/stores/workspaceStore";
 import ToolsLeftPanel from "@/components/annotationWorkspace/ToolsLeftPanel.vue";
+import LabelsPanel from "@/components/annotationWorkspace/LabelsPanel.vue";
 
 const props = defineProps({
     projectId: {
@@ -50,12 +72,19 @@ const props = defineProps({
 
 const workspaceStore = useWorkspaceStore();
 
+const isLoading = computed(() => workspaceStore.getLoadingState);
+const error = computed(() => workspaceStore.getError);
 const imageUrlFromStore = computed(() => workspaceStore.currentImageUrl);
 const displayedTime = computed(() => workspaceStore.elapsedTimeDisplay);
 const zoomPercentageDisplay = computed(() => {
     const zoomLevel = workspaceStore.zoomLevel;
     return `${(zoomLevel * 100).toFixed(0)}%`;
 });
+
+const retryLoading = async () => {
+    workspaceStore.clearError();
+    await workspaceStore.loadAsset(props.projectId, props.assetId);
+};
 
 onMounted(async () => {
     console.log(
@@ -66,7 +95,9 @@ onMounted(async () => {
     );
     await workspaceStore.loadAsset(props.projectId, props.assetId);
     console.log(
-        "[WorkspaceView] loadAsset action dispatched. Image URL from store should be updated now."
+        "[WorkspaceView] loadAsset action dispatched. Image URL from store should be updated now.",
+        "Image URL:",
+        workspaceStore.currentImageUrl
     );
 });
 
@@ -180,9 +211,78 @@ onUnmounted(() => {
 .workspace-annotations-right {
     width: 200px;
     background-color: vars.$color-dark-blue-2;
-    padding: vars.$padding-small;
+    padding: 0;
     border-left: vars.$border-width solid vars.$color-accent-blue;
     flex-shrink: 0;
     overflow-y: auto;
+}
+
+.loading-overlay,
+.error-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(vars.$color-black, 0.8);
+    z-index: 1000;
+}
+
+.loading-content,
+.error-content {
+    text-align: center;
+    color: vars.$color-white;
+    padding: vars.$padding-large;
+    border-radius: vars.$border-radius;
+    background-color: vars.$color-dark-blue-2;
+    border: 1px solid vars.$color-accent-blue;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid vars.$color-gray-600;
+    border-top: 4px solid vars.$color-primary;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto vars.$margin-medium;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.error-content {
+    h3 {
+        color: vars.$color-error;
+        margin-bottom: vars.$margin-medium;
+    }
+
+    p {
+        margin-bottom: vars.$margin-medium;
+        color: vars.$color-gray-300;
+    }
+
+    .error-link {
+        display: inline-block;
+        margin-top: vars.$margin-small;
+        color: vars.$color-primary;
+        text-decoration: none;
+        
+        &:hover {
+            color: vars.$color-link-hover;
+            text-decoration: underline;
+        }
+    }
+}
+
+.asset-name {
+    margin-left: vars.$margin-medium;
+    color: vars.$color-gray-300;
+    font-style: italic;
 }
 </style>

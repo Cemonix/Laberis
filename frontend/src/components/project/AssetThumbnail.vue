@@ -11,7 +11,7 @@
                     @error="handleImageError"
                 />
                 <div v-else class="error-placeholder">
-                    <span>No image available</span>
+                    <span>Image processing...</span>
                 </div>
                 <div class="image-overlay">
                     <span class="overlay-text">Annotate</span>
@@ -152,7 +152,7 @@ const handleImageError = () => {
 }
 
 .asset-name {
-    font-size: vars.$font_size_small;
+    font-size: vars.$font-size-small;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

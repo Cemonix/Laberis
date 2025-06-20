@@ -446,7 +446,6 @@ watch(() => workspaceStore.canvasDisplayDimensions, () => {
     position: relative;
     background-color: vars.$color-dark-blue-3;
     overflow: hidden;
-    background-color: vars.$color-dark-blue-3;
 }
 
 .main-canvas {
