@@ -239,7 +239,7 @@ onMounted(async () => {
     display: flex;
     align-items: center;
     gap: vars.$gap-small;
-    font-size: vars.$font_size_large;
+    font-size: vars.$font-size-large;
 
     .home-button {
         min-width: 32px;
@@ -291,12 +291,12 @@ onMounted(async () => {
 }
 
 .loading-message {
-    font-size: vars.$font_size_large;
+    font-size: vars.$font-size-large;
     color: vars.$theme-text-light;
 }
 
 .error-message {
-    font-size: vars.$font_size_large;
+    font-size: vars.$font-size-large;
     color: vars.$color-error;
     text-align: center;
 }
@@ -311,13 +311,13 @@ onMounted(async () => {
     text-align: center;
 
     h3 {
-        font-size: vars.$font_size_xlarge;
+        font-size: vars.$font-size-xlarge;
         color: vars.$theme-text;
         margin: 0;
     }
 
     p {
-        font-size: vars.$font_size_large;
+        font-size: vars.$font-size-large;
         color: vars.$theme-text-light;
         margin: 0;
         max-width: 50ch;
@@ -334,7 +334,7 @@ onMounted(async () => {
 }
 
 .assets-count {
-    font-size: vars.$font_size_large;
+    font-size: vars.$font-size-large;
     font-weight: 600;
     color: vars.$theme-text;
 }
@@ -361,7 +361,7 @@ onMounted(async () => {
     }
 
     .breadcrumbs {
-        font-size: vars.$font_size_medium;
+        font-size: vars.$font-size-medium;
     }
 
     .header-right {

@@ -97,7 +97,7 @@ onMounted(() => {
     text-align: center;
     
     p {
-        font-size: vars.$font_size_large;
+        font-size: vars.$font-size-large;
         color: vars.$theme-text-light;
     }
 }
@@ -113,7 +113,7 @@ onMounted(() => {
         color: vars.$theme-text;
     }
     .project-description {
-        font-size: vars.$font_size_large;
+        font-size: vars.$font-size-large;
         color: vars.$theme-text-light;
         margin-top: vars.$margin-small;
     }

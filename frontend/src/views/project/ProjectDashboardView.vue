@@ -46,7 +46,7 @@ import Card from '@/components/common/Card.vue';
     }
 
     h3 {
-        font-size: vars.$font_size_large;
+        font-size: vars.$font-size-large;
         margin-bottom: vars.$margin-medium;
     }
 

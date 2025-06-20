@@ -67,7 +67,7 @@ onUnmounted(() => {
 @use "@/styles/variables" as vars;
 
 .alert-message {
-    font-size: vars.$font_size_medium;
+    font-size: vars.$font-size-medium;
     color: vars.$theme-text;
     line-height: vars.$line-height-base;
 }

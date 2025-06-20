@@ -27,7 +27,7 @@ const textColor = computed(() => props.label.color);
     display: inline-block;
     padding: 0.25em 0.75em;
     border-radius: 1em;
-    font-size: vars.$font_size_small;
+    font-size: vars.$font-size-small;
     font-weight: vars.$font_weight_heading;
     white-space: nowrap;
 }

@@ -196,7 +196,7 @@ const goHome = () => {
 }
 
 .error-title {
-  font-size: vars.$font_size_xxlarge;
+  font-size: vars.$font-size-xxlarge;
   font-weight: vars.$font-weight-heading;
   margin-bottom: vars.$margin-medium;
   color: vars.$color-text-primary;
@@ -204,7 +204,7 @@ const goHome = () => {
 }
 
 .error-message {
-  font-size: vars.$font_size_large;
+  font-size: vars.$font-size-large;
   line-height: vars.$line-height-base;
   margin-bottom: vars.$margin-large;
   color: vars.$color-text-secondary;
@@ -213,7 +213,7 @@ const goHome = () => {
 
 .error-code {
   font-family: monospace;
-  font-size: vars.$font_size_small;
+  font-size: vars.$font-size-small;
   color: vars.$color-error;
   background: vars.$color-error-light;
   padding: vars.$padding-small vars.$padding-medium;
@@ -241,7 +241,7 @@ const goHome = () => {
   border: none;
   color: vars.$color-primary;
   cursor: pointer;
-  font-size: vars.$font_size_small;
+  font-size: vars.$font-size-small;
   text-decoration: underline;
   padding: vars.$padding-small;
   font-family: vars.$font-family-body;
@@ -260,7 +260,7 @@ const goHome = () => {
 }
 
 .details-content pre {
-  font-size: vars.$font_size_xsmall;
+  font-size: vars.$font-size-xsmall;
   color: vars.$color-text-primary;
   margin: 0;
   white-space: pre-wrap;
@@ -279,7 +279,7 @@ const goHome = () => {
   }
   
   .error-title {
-    font-size: vars.$font_size_xlarge;
+    font-size: vars.$font-size-xlarge;
   }
   
   .error-actions {

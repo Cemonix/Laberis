@@ -75,11 +75,11 @@ const handleUploadComplete = (count: number) => {
 @use "@/styles/variables" as vars;
 
 .data-source-name {
-    font-size: vars.$font_size_large;
+    font-size: vars.$font-size-large;
 }
 
 .asset-count {
-    font-size: vars.$font_size_small;
+    font-size: vars.$font-size-small;
     font-weight: bold;
     color: vars.$theme-text-light;
     background-color: vars.$color-gray-200;
@@ -88,7 +88,7 @@ const handleUploadComplete = (count: number) => {
 }
 
 .data-source-description {
-    font-size: vars.$font_size_medium;
+    font-size: vars.$font-size-medium;
     margin: 0;
     flex-grow: 1;
 }
