@@ -117,7 +117,25 @@ public class AssetService : IAssetService
             return null;
         }
 
-        return MapToDto(asset);
+        // Generate presigned URL for the asset
+        string? imageUrl = null;
+        try
+        {
+            // Get the data source to determine the bucket name
+            var dataSource = await _dataSourceRepository.GetByIdAsync(asset.DataSourceId);
+            if (dataSource != null)
+            {
+                var bucketName = _storageService.GenerateBucketName(asset.ProjectId, dataSource.Name);
+                imageUrl = await _storageService.GetPresignedUrlAsync(bucketName, asset.ExternalId, 3600); // 1 hour expiry
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate URL for asset {AssetId}", assetId);
+            // Continue without URL rather than failing the entire request
+        }
+
+        return MapToDto(asset, imageUrl);
     }
 
     public async Task<AssetDto> CreateAssetAsync(int projectId, CreateAssetDto createDto)
