@@ -113,7 +113,7 @@ onMounted(() => {
 }
 
 .page-title {
-    font-size: vars.$font_size_xxlarge;
+    font-size: vars.$font-size-xxlarge;
     margin-bottom: vars.$margin-large;
     color: vars.$theme-text;
 }

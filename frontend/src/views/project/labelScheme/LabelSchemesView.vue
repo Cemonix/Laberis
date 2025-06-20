@@ -148,7 +148,7 @@ onMounted(async () => {
 .page-header {
     margin-bottom: vars.$margin-xlarge;
     h1 {
-        font-size: vars.$font_size_xlarge;
+        font-size: vars.$font-size-xlarge;
         margin-bottom: vars.$padding-tiny;
     }
     p {

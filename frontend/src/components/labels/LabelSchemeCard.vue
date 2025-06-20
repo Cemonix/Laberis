@@ -126,7 +126,7 @@ onMounted(fetchLabels);
 @use "@/styles/variables" as vars;
 
 .scheme-name {
-    font-size: vars.$font_size_large;
+    font-size: vars.$font-size-large;
 }
 
 .card-actions {
@@ -148,12 +148,12 @@ onMounted(fetchLabels);
 
 .loading-labels {
     color: vars.$theme-text-light;
-    font-size: vars.$font_size_small;
+    font-size: vars.$font-size-small;
     font-style: italic;
 }
 
 .no-labels {
     color: vars.$theme-text-light;
-    font-size: vars.$font_size_small;
+    font-size: vars.$font-size-small;
 }
 </style>

@@ -93,7 +93,7 @@ const selectLabel = (labelId: number) => {
 }
 
 .section-title {
-    font-size: vars.$font_size_small;
+    font-size: vars.$font-size-small;
     font-weight: vars.$font-weight-heading;
     color: vars.$color-white;
     text-transform: uppercase;
@@ -134,7 +134,7 @@ const selectLabel = (labelId: number) => {
     }
 
     .tool-icon {
-        font-size: vars.$font_size_large;
+        font-size: vars.$font-size-large;
     }
 }
 
@@ -155,7 +155,7 @@ const selectLabel = (labelId: number) => {
     border-radius: vars.$border-radius;
     cursor: pointer;
     text-align: left;
-    font-size: vars.$font_size_small;
+    font-size: vars.$font-size-small;
     transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out;
 
     &:hover {
@@ -191,7 +191,7 @@ const selectLabel = (labelId: number) => {
 }
 
 .no-labels-message {
-    font-size: vars.$font_size_small;
+    font-size: vars.$font-size-small;
     color: color.adjust(vars.$color-white, $lightness: 20%);
     padding: vars.$padding-small;
     text-align: center;

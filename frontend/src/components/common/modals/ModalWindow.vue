@@ -110,7 +110,7 @@ watch(() => props.isOpen, (newValue) => {
     align-items: center;
 
     h2 {
-        font-size: vars.$font_size_large;
+        font-size: vars.$font-size-large;
         color: vars.$theme-text;
     }
 }
@@ -118,7 +118,7 @@ watch(() => props.isOpen, (newValue) => {
 .close-button {
     background: none;
     border: none;
-    font-size: vars.$font_size_xxlarge;
+    font-size: vars.$font-size-xxlarge;
     font-weight: 300;
     line-height: 1;
     cursor: pointer;

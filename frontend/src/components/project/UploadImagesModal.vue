@@ -535,14 +535,14 @@ const closeModal = () => {
         }
         
         .dropzone-text {
-            font-size: vars.$font_size_large;
+            font-size: vars.$font-size-large;
             font-weight: 500;
             color: vars.$theme-text;
             margin: 0;
         }
         
         .dropzone-subtext {
-            font-size: vars.$font_size_small;
+            font-size: vars.$font-size-small;
             color: vars.$theme-text-light;
             margin: 0;
         }
@@ -616,7 +616,7 @@ const closeModal = () => {
             }
             
             .file-size {
-                font-size: vars.$font_size_small;
+                font-size: vars.$font-size-small;
                 color: vars.$theme-text-light;
             }
         }
@@ -646,7 +646,7 @@ const closeModal = () => {
     
     .progress-text {
         margin: 0;
-        font-size: vars.$font_size_small;
+        font-size: vars.$font-size-small;
         color: vars.$theme-text-light;
     }
 }
@@ -670,7 +670,7 @@ const closeModal = () => {
         background-color: vars.$color-gray-200;
         border: 1px solid vars.$color-error;
         border-radius: vars.$border-radius-sm;
-        font-size: vars.$font_size_small;
+        font-size: vars.$font-size-small;
         
         .error-file {
             font-weight: 500;

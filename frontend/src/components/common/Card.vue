@@ -49,7 +49,7 @@
     justify-content: space-between;
     align-items: center;
     gap: vars.$gap-medium;
-    font-size: vars.$font_size_small;
+    font-size: vars.$font-size-small;
     text-transform: capitalize;
     padding: vars.$padding-medium;
     border-top: vars.$border-width solid vars.$theme-border;

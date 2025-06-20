@@ -67,7 +67,7 @@ const formattedDate = computed(() => {
 }
 
 .project-name {
-    font-size: vars.$font_size_large;
+    font-size: vars.$font-size-large;
     font-weight: vars.$font-weight-heading;
     margin: 0;
     margin-right: vars.$margin-small;
@@ -76,7 +76,7 @@ const formattedDate = computed(() => {
 .project-status {
     display: inline-block;
     padding: 0.25em 0.6em;
-    font-size: vars.$font_size_small;
+    font-size: vars.$font-size-small;
     font-weight: vars.$font-weight-heading;
     border-radius: vars.$border-radius;
     text-transform: capitalize;
@@ -98,7 +98,7 @@ const formattedDate = computed(() => {
 }
 
 .project-description {
-    font-size: vars.$font_size_medium;
+    font-size: vars.$font-size-medium;
     margin: 0;
     flex-grow: 1;
 }
