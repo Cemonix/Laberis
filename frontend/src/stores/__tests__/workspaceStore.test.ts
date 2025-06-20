@@ -9,14 +9,15 @@ import type { LabelScheme } from "@/types/label/labelScheme";
 
 // Mock the annotation service
 vi.mock("@/services/api/annotationService", () => ({
-    fetchAnnotations: vi.fn(),
-    saveAnnotation: vi.fn(),
+    default: {
+        getAnnotationsForAsset: vi.fn(),
+        createAnnotation: vi.fn(),
+        updateAnnotation: vi.fn(),
+        deleteAnnotation: vi.fn(),
+    }
 }));
 
-import {
-    fetchAnnotations,
-    saveAnnotation,
-} from "@/services/api/annotationService";
+import annotationService from "@/services/api/annotationService";
 
 // Mock the timer utility
 vi.mock("@/utils/timer", () => ({
@@ -240,7 +241,7 @@ describe("Workspace Store", () => {
 
     describe("Asset Loading", () => {
         it("should load asset successfully", async () => {
-            vi.mocked(fetchAnnotations).mockResolvedValue({
+            vi.mocked(annotationService.getAnnotationsForAsset).mockResolvedValue({
                 data: [mockAnnotation],
                 currentPage: 1,
                 pageSize: 25,
@@ -269,7 +270,7 @@ describe("Workspace Store", () => {
             const consoleError = vi
                 .spyOn(console, "error")
                 .mockImplementation(() => {});
-            vi.mocked(fetchAnnotations).mockRejectedValue(
+            vi.mocked(annotationService.getAnnotationsForAsset).mockRejectedValue(
                 new Error("Network error")
             );
 
@@ -333,12 +334,12 @@ describe("Workspace Store", () => {
 
         it("should add annotation successfully", async () => {
             const savedAnnotation = { ...mockAnnotation, annotationId: 2 };
-            vi.mocked(saveAnnotation).mockResolvedValue(savedAnnotation);
+            vi.mocked(annotationService.createAnnotation).mockResolvedValue(savedAnnotation);
 
             await workspaceStore.addAnnotation(mockAnnotation);
 
             expect(workspaceStore.annotations).toHaveLength(1);
-            expect(saveAnnotation).toHaveBeenCalledWith(mockAnnotation);
+            expect(annotationService.createAnnotation).toHaveBeenCalledWith(mockAnnotation);
             expect(workspaceStore.annotations[0]).toEqual(savedAnnotation);
         });
 
@@ -346,7 +347,7 @@ describe("Workspace Store", () => {
             const consoleError = vi
                 .spyOn(console, "error")
                 .mockImplementation(() => {});
-            vi.mocked(saveAnnotation).mockRejectedValue(
+            vi.mocked(annotationService.createAnnotation).mockRejectedValue(
                 new Error("Save failed")
             );
 
