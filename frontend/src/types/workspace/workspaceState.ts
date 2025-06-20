@@ -4,10 +4,12 @@ import type { Point } from "@/types/common/point";
 import type { Tool, ToolName } from "@/types/workspace/tools";
 import type { Annotation } from '@/types/workspace/annotation';
 import type { LabelScheme } from '@/types/label/labelScheme';
+import type { Asset } from '@/types/asset/asset';
 
 export interface WorkspaceState {
     currentProjectId: string | null;
     currentAssetId: string | null;
+    currentAssetData: Asset | null;
     currentImageUrl: string | null;
     imageNaturalDimensions: ImageDimensions | null;
     canvasDisplayDimensions: ImageDimensions | null;
@@ -22,4 +24,6 @@ export interface WorkspaceState {
     currentLabelId: number | null;
     currentLabelScheme: LabelScheme | null;
     currentTaskId: number | null;
+    isLoading: boolean;
+    error: string | null;
 }

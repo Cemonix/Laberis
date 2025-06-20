@@ -213,6 +213,47 @@ class AssetService {
         }
     }
 
+    /**
+     * Gets a specific asset by ID
+     * @param projectId The project ID
+     * @param assetId The asset ID
+     * @returns Promise resolving to the asset
+     */
+    async getAssetById(projectId: number, assetId: number): Promise<Asset> {
+        logger.info(`Fetching asset ${assetId} for project ${projectId}`);
+
+        try {
+            const response = await apiClient.get<Asset>(
+                `${this.baseUrl}/${projectId}/assets/${assetId}`
+            );
+
+            if (response && response.data && response.data.id) {
+                logger.info(`Fetched asset ${assetId} for project ${projectId}`, response.data);
+                return response.data;
+            } else {
+                logger.error(`Invalid response structure for asset ${assetId} in project ${projectId}`, response);
+                throw new ApiResponseError('Invalid response structure from API for asset.');
+            }
+        } catch (error) {
+            const apiError = error as ApiError;
+            logger.error(`Failed to fetch asset ${assetId} for project ${projectId}`, apiError.response?.data || apiError.message);
+            
+            if (apiError.response) {
+                throw new ServerError(
+                    apiError.response.data?.message || `Asset ${assetId} not found`,
+                    apiError.response.status,
+                    apiError.response.data
+                );
+            }
+            
+            if (apiError.code === 'NETWORK_ERROR' || apiError.request) {
+                throw new NetworkError(apiError.message, apiError);
+            }
+
+            throw new NetworkError(apiError.message || 'Unknown error while fetching asset', apiError);
+        }
+    }
+
 }
 
 export default new AssetService();
