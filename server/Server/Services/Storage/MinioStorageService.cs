@@ -148,7 +148,7 @@ public class MinioStorageService : IStorageService, IFileStorageService
             var response = await _minioClient.PutObjectAsync(putObjectArgs, cancellationToken);
 
             _logger.LogInformation("Successfully uploaded file to MinIO: {BucketName}/{ObjectName}", bucketName, objectName);
-            return $"{bucketName}/{objectName}";
+            return objectName;
         }
         catch (MinioException ex)
         {
