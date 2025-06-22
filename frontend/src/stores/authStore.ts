@@ -3,8 +3,9 @@ import type {
     User,
     AuthTokens,
     LoginCredentials,
-} from "@/types/auth/auth";
-import { authService } from "@/services/auth/authService";
+    RegisterCredentials,
+} from "@/types/auth/backendAuth";
+import { backendAuthService } from "@/services/auth/backendAuthService";
 
 const AUTH_STORAGE_KEY = 'auth_tokens';
 
@@ -13,6 +14,7 @@ export const useAuthStore = defineStore("auth", {
         user: null as User | null,
         tokens: null as AuthTokens | null,
         isLoading: false,
+        isInitialized: false,
     }),
     getters: {
         isAuthenticated(state): boolean {
@@ -34,16 +36,32 @@ export const useAuthStore = defineStore("auth", {
             }
             return state.tokens?.accessToken || null;
         },
+        // Helper to determine if we have valid tokens in storage
+        hasValidStoredTokens(state): boolean {
+            return !!(state.tokens && this.isTokenValid);
+        }
     },
     actions: {
-        initializeAuth(): void {
+        async initializeAuth(): Promise<void> {
+            if (this.isInitialized) {
+                return;
+            }
+            
             const storedTokens = this.loadTokensFromStorage();
             if (storedTokens) {
                 this.tokens = storedTokens;
-                this.getCurrentUser().catch(() => {
-                    this.logout();
-                });
+                try {
+                    await this.getCurrentUser();
+                } catch (error) {
+                    console.warn("Failed to get current user during initialization:", error);
+                    // Clear invalid tokens but don't call logout to avoid infinite loops
+                    this.user = null;
+                    this.tokens = null;
+                    this.removeTokensFromStorage();
+                }
             }
+            
+            this.isInitialized = true;
         },
         saveTokensToStorage(authTokens: AuthTokens): void {
             try {
@@ -81,7 +99,7 @@ export const useAuthStore = defineStore("auth", {
         async login(credentials: LoginCredentials): Promise<void> {
             this.isLoading = true;
             try {
-                const response = await authService.login(credentials);
+                const response = await backendAuthService.login(credentials);
 
                 this.user = response.user;
                 this.tokens = response.tokens;
@@ -94,17 +112,32 @@ export const useAuthStore = defineStore("auth", {
                 this.isLoading = false;
             }
         },
+        async register(credentials: RegisterCredentials): Promise<void> {
+            this.isLoading = true;
+            try {
+                const response = await backendAuthService.register(credentials);
+
+                this.user = response.user;
+                this.tokens = response.tokens;
+
+                this.saveTokensToStorage(response.tokens);
+            } catch (error) {
+                console.error("Registration failed:", error);
+                throw error;
+            } finally {
+                this.isLoading = false;
+            }
+        },
         async logout(): Promise<void> {
             this.isLoading = true;
             try {
-                if (this.tokens) {
-                    await authService.logout(this.tokens.refreshToken);
-                }
+                await backendAuthService.logout();
             } catch (error) {
                 console.error("Logout request failed:", error);
             } finally {
                 this.user = null;
                 this.tokens = null;
+                this.isInitialized = false;
                 this.removeTokensFromStorage();
                 this.isLoading = false;
             }
@@ -114,11 +147,11 @@ export const useAuthStore = defineStore("auth", {
                 return false;
             }
             try {
-                const response = await authService.refreshToken(
+                const tokens = await backendAuthService.refreshToken(
                     this.tokens.refreshToken
                 );
-                this.tokens = response.tokens;
-                this.saveTokensToStorage(response.tokens);
+                this.tokens = tokens;
+                this.saveTokensToStorage(tokens);
                 return true;
             } catch (error) {
                 console.error("Token refresh failed:", error);
@@ -131,7 +164,7 @@ export const useAuthStore = defineStore("auth", {
                 throw new Error("No access token available");
             }
             try {
-                const userData = await authService.getCurrentUser();
+                const userData = await backendAuthService.getCurrentUser();
                 this.user = userData;
             } catch (error) {
                 console.error("Failed to get current user:", error);
