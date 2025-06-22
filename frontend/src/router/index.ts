@@ -4,6 +4,7 @@ import AnnotationWorkspace from '@/views/AnnotationWorkspace.vue';
 import DefaultLayout from '@/layouts/DefaultLayout.vue';
 import WorkspaceLayout from '@/layouts/WorkspaceLayout.vue';
 import DataExplorerLayout from '@/layouts/DataExplorerLayout.vue';
+import { useAuthStore } from '@/stores/authStore';
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -35,6 +36,7 @@ const routes: Array<RouteRecordRaw> = [
             layout: DefaultLayout,
         }
     },
+    // Workspace and project routes
     {
         
         path: '/workspace/project/:projectId/asset/:assetId',
@@ -121,6 +123,29 @@ const routes: Array<RouteRecordRaw> = [
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes,
+});
+
+// Navigation guards
+router.beforeEach(async (to, _from, next) => {
+    const authStore = useAuthStore();
+    
+    // Ensure auth store is initialized on page refresh
+    if (!authStore.isInitialized) {
+        await authStore.initializeAuth();
+    }
+    
+    const publicRoutes = ['Login', 'Register', 'Home'];    
+    const authRoutes = ['Login', 'Register'];
+    
+    if (authRoutes.includes(to.name as string) && authStore.isAuthenticated) {
+        // If user is already authenticated and trying to access auth pages, redirect to home
+        next({ name: 'Home' });
+    } else if (!publicRoutes.includes(to.name as string) && !authStore.isAuthenticated) {
+        // If user is not authenticated and trying to access protected routes, redirect to login
+        next({ name: 'Login' });
+    } else {
+        next();
+    }
 });
 
 export default router;
