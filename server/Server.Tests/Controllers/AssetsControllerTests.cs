@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -25,6 +26,14 @@ namespace Server.Tests.Controllers
             _mockAssetService = new Mock<IAssetService>();
             _mockLogger = new Mock<ILogger<AssetsController>>();
             _controller = new AssetsController(_mockAssetService.Object, _mockLogger.Object);
+            
+            // Set up HTTP context for the controller
+            var mockHttpContext = new Mock<HttpContext>();
+            mockHttpContext.Setup(c => c.TraceIdentifier).Returns("test-trace-id");
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = mockHttpContext.Object
+            };
         }
 
         #region Constructor Tests
@@ -59,25 +68,21 @@ namespace Server.Tests.Controllers
                 new()
                 {
                     Id = 1,
-                    ExternalId = "asset-1",
                     Filename = "test1.jpg",
                     MimeType = "image/jpeg",
                     SizeBytes = 1024,
                     Status = AssetStatus.IMPORTED,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    ProjectId = projectId
                 },
                 new() {
                     Id = 2,
-                    ExternalId = "asset-2",
                     Filename = "test2.png",
                     MimeType = "image/png",
                     SizeBytes = 2048,
                     Status = AssetStatus.READY_FOR_ANNOTATION,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    ProjectId = projectId
                 }
             };
 
@@ -91,7 +96,8 @@ namespace Server.Tests.Controllers
             };
 
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
-                projectId, null, null, null, true, 1, 25)
+                projectId, null, null, null, true, 1, 25, true, 3600
+            )
             ).ReturnsAsync(expectedAssets);
 
             // Act
@@ -105,7 +111,10 @@ namespace Server.Tests.Controllers
             Assert.Equal(expectedAssets.Data, paginatedResponse.Data);
 
             _mockAssetService.Verify(s => s.GetAssetsForProjectAsync(
-                projectId, null, null, null, true, 1, 25), Times.Once);
+                projectId, null, null, null, true, 1, 25, true, 3600
+            ),
+            Times.Once
+            );
         }
 
         [Fact]
@@ -126,10 +135,8 @@ namespace Server.Tests.Controllers
                 [
                     new() {
                         Id = 1,
-                        ExternalId = "asset-1",
                         Filename = "test1.jpg",
                         Status = AssetStatus.IMPORTED,
-                        ProjectId = projectId,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     }
@@ -141,8 +148,8 @@ namespace Server.Tests.Controllers
             };
 
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
-                projectId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize))
-                .ReturnsAsync(expectedAssets);
+                projectId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize, true, 3600)
+            ).ReturnsAsync(expectedAssets);
 
             // Act
             var result = await _controller.GetAssetsForProject(
@@ -154,8 +161,12 @@ namespace Server.Tests.Controllers
             Assert.Single(paginatedResponse.Data);
             Assert.Equal(1, paginatedResponse.TotalItems);
 
-            _mockAssetService.Verify(s => s.GetAssetsForProjectAsync(
-                projectId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize), Times.Once);
+            _mockAssetService.Verify(
+                s => s.GetAssetsForProjectAsync(
+                    projectId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize, true, 3600
+                ),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -173,8 +184,8 @@ namespace Server.Tests.Controllers
             };
 
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
-                projectId, null, null, null, true, 1, 25))
-                .ReturnsAsync(expectedAssets);
+                projectId, null, null, null, true, 1, 25, true, 3600
+            )).ReturnsAsync(expectedAssets);
 
             // Act
             var result = await _controller.GetAssetsForProject(projectId);
@@ -187,22 +198,18 @@ namespace Server.Tests.Controllers
         }
 
         [Fact]
-        public async Task GetAssetsForProject_Should_ReturnInternalServerError_WhenExceptionThrown()
+        public async Task GetAssetsForProject_Should_ThrowException_WhenServiceThrowsException()
         {
             // Arrange
             var projectId = 1;
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
-                It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), 
-                It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<int>(), It.IsAny<int>()))
-                .ThrowsAsync(new Exception("Database error"));
+                projectId, null, null, null, true, 1, 25, true, 3600
+            )).ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.GetAssetsForProject(projectId);
-
-            // Assert
-            var statusResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusResult.StatusCode);
-            Assert.Equal("An unexpected error occurred. Please try again later.", statusResult.Value);
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<Exception>(() => 
+                _controller.GetAssetsForProject(projectId));
+            Assert.Equal("Database error", exception.Message);
         }
 
         #endregion
@@ -218,14 +225,12 @@ namespace Server.Tests.Controllers
             var expectedAsset = new AssetDto
             {
                 Id = assetId,
-                ExternalId = "asset-1",
                 Filename = "test.jpg",
                 MimeType = "image/jpeg",
                 SizeBytes = 1024,
                 Status = AssetStatus.IMPORTED,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                ProjectId = projectId
             };
 
             _mockAssetService.Setup(s => s.GetAssetByIdAsync(assetId))
@@ -258,13 +263,15 @@ namespace Server.Tests.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            Assert.Equal($"Asset with ID {assetId} not found.", notFoundResult.Value);
+            var errorResponse = Assert.IsType<ErrorResponse>(notFoundResult.Value);
+            Assert.Equal(404, errorResponse.StatusCode);
+            Assert.Contains($"Asset with ID '{assetId}' was not found", errorResponse.Message);
 
             _mockAssetService.Verify(s => s.GetAssetByIdAsync(assetId), Times.Once);
         }
 
         [Fact]
-        public async Task GetAssetById_Should_ReturnInternalServerError_WhenExceptionThrown()
+        public async Task GetAssetById_Should_ThrowException_WhenServiceThrowsException()
         {
             // Arrange
             var projectId = 1;
@@ -273,13 +280,10 @@ namespace Server.Tests.Controllers
             _mockAssetService.Setup(s => s.GetAssetByIdAsync(assetId))
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.GetAssetById(projectId, assetId);
-
-            // Assert
-            var statusResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusResult.StatusCode);
-            Assert.Equal("An unexpected error occurred. Please try again later.", statusResult.Value);
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<Exception>(() => 
+                _controller.GetAssetById(projectId, assetId));
+            Assert.Equal("Database error", exception.Message);
         }
 
         #endregion
@@ -293,18 +297,17 @@ namespace Server.Tests.Controllers
             var projectId = 1;
             var createAssetDto = new CreateAssetDto
             {
-                ExternalId = "new-asset-id",
                 Filename = "new-asset.jpg",
                 MimeType = "image/jpeg",
                 SizeBytes = 1024,
                 Width = 800,
-                Height = 600
+                Height = 600,
+                DataSourceId = 1
             };
 
             var createdAsset = new AssetDto
             {
                 Id = 1,
-                ExternalId = createAssetDto.ExternalId,
                 Filename = createAssetDto.Filename,
                 MimeType = createAssetDto.MimeType,
                 SizeBytes = createAssetDto.SizeBytes,
@@ -313,7 +316,6 @@ namespace Server.Tests.Controllers
                 Status = AssetStatus.PENDING_IMPORT,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                ProjectId = projectId
             };
 
             _mockAssetService.Setup(s => s.CreateAssetAsync(projectId, createAssetDto))
@@ -330,32 +332,28 @@ namespace Server.Tests.Controllers
 
             var asset = Assert.IsType<AssetDto>(createdResult.Value);
             Assert.Equal(createdAsset.Id, asset.Id);
-            Assert.Equal(createdAsset.ExternalId, asset.ExternalId);
 
             _mockAssetService.Verify(s => s.CreateAssetAsync(projectId, createAssetDto), Times.Once);
         }
 
         [Fact]
-        public async Task CreateAsset_Should_ReturnInternalServerError_WhenExceptionThrown()
+        public async Task CreateAsset_Should_ThrowException_WhenServiceThrowsException()
         {
             // Arrange
             var projectId = 1;
             var createAssetDto = new CreateAssetDto
             {
-                ExternalId = "new-asset-id",
-                Filename = "new-asset.jpg"
+                Filename = "new-asset.jpg",
+                DataSourceId = 1
             };
 
             _mockAssetService.Setup(s => s.CreateAssetAsync(projectId, createAssetDto))
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.CreateAsset(projectId, createAssetDto);
-
-            // Assert
-            var statusResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusResult.StatusCode);
-            Assert.Equal("An unexpected error occurred. Please try again later.", statusResult.Value);
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<Exception>(() => 
+                _controller.CreateAsset(projectId, createAssetDto));
+            Assert.Equal("Database error", exception.Message);
         }
 
         #endregion
@@ -366,7 +364,6 @@ namespace Server.Tests.Controllers
         public async Task UpdateAsset_Should_ReturnOkResult_WhenAssetUpdatedSuccessfully()
         {
             // Arrange
-            var projectId = 1;
             var assetId = 1;
             var updateAssetDto = new UpdateAssetDto
             {
@@ -379,14 +376,12 @@ namespace Server.Tests.Controllers
             var updatedAsset = new AssetDto
             {
                 Id = assetId,
-                ExternalId = "existing-asset-id",
                 Filename = updateAssetDto.Filename,
                 MimeType = updateAssetDto.MimeType,
                 SizeBytes = updateAssetDto.SizeBytes,
                 Status = updateAssetDto.Status,
                 CreatedAt = DateTime.UtcNow.AddDays(-1),
                 UpdatedAt = DateTime.UtcNow,
-                ProjectId = projectId
             };
 
             _mockAssetService.Setup(s => s.UpdateAssetAsync(assetId, updateAssetDto))
@@ -424,13 +419,15 @@ namespace Server.Tests.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            Assert.Equal($"Asset with ID {assetId} not found.", notFoundResult.Value);
+            var errorResponse = Assert.IsType<ErrorResponse>(notFoundResult.Value);
+            Assert.Equal(404, errorResponse.StatusCode);
+            Assert.Contains($"Asset with ID '{assetId}' was not found", errorResponse.Message);
 
             _mockAssetService.Verify(s => s.UpdateAssetAsync(assetId, updateAssetDto), Times.Once);
         }
 
         [Fact]
-        public async Task UpdateAsset_Should_ReturnInternalServerError_WhenExceptionThrown()
+        public async Task UpdateAsset_Should_ThrowException_WhenServiceThrowsException()
         {
             // Arrange
             var assetId = 1;
@@ -443,13 +440,10 @@ namespace Server.Tests.Controllers
             _mockAssetService.Setup(s => s.UpdateAssetAsync(assetId, updateAssetDto))
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.UpdateAsset(assetId, updateAssetDto);
-
-            // Assert
-            var statusResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusResult.StatusCode);
-            Assert.Equal("An unexpected error occurred. Please try again later.", statusResult.Value);
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<Exception>(() => 
+                _controller.UpdateAsset(assetId, updateAssetDto));
+            Assert.Equal("Database error", exception.Message);
         }
 
         #endregion
@@ -488,13 +482,15 @@ namespace Server.Tests.Controllers
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            Assert.Equal($"Asset with ID {assetId} not found.", notFoundResult.Value);
+            var errorResponse = Assert.IsType<ErrorResponse>(notFoundResult.Value);
+            Assert.Equal(404, errorResponse.StatusCode);
+            Assert.Contains($"Asset with ID '{assetId}' was not found", errorResponse.Message);
 
             _mockAssetService.Verify(s => s.DeleteAssetAsync(assetId), Times.Once);
         }
 
         [Fact]
-        public async Task DeleteAsset_Should_ReturnInternalServerError_WhenExceptionThrown()
+        public async Task DeleteAsset_Should_ThrowException_WhenServiceThrowsException()
         {
             // Arrange
             var assetId = 1;
@@ -502,13 +498,10 @@ namespace Server.Tests.Controllers
             _mockAssetService.Setup(s => s.DeleteAssetAsync(assetId))
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
-            var result = await _controller.DeleteAsset(assetId);
-
-            // Assert
-            var statusResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusResult.StatusCode);
-            Assert.Equal("An unexpected error occurred. Please try again later.", statusResult.Value);
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<Exception>(() => 
+                _controller.DeleteAsset(assetId));
+            Assert.Equal("Database error", exception.Message);
         }
 
         #endregion

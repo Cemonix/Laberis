@@ -53,6 +53,7 @@ namespace Server.Tests.Services
                 SizeBytes = 1024,
                 Status = AssetStatus.IMPORTED,
                 ProjectId = 1,
+                DataSourceId = 1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -95,10 +96,10 @@ namespace Server.Tests.Services
             var projectId = 1;
             var createDto = new CreateAssetDto
             {
-                ExternalId = "test-external-id",
                 Filename = "new-asset.jpg",
                 MimeType = "image/jpeg",
-                SizeBytes = 1024
+                SizeBytes = 1024,
+                DataSourceId = 1
             };
 
             _mockAssetRepository.Setup(r => r.AddAsync(It.IsAny<Asset>()))
@@ -111,14 +112,12 @@ namespace Server.Tests.Services
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(createDto.ExternalId, result.ExternalId);
             Assert.Equal(createDto.Filename, result.Filename);
             Assert.Equal(createDto.MimeType, result.MimeType);
-            Assert.Equal(projectId, result.ProjectId);
             Assert.Equal(AssetStatus.PENDING_IMPORT, result.Status);
             
             _mockAssetRepository.Verify(r => r.AddAsync(It.Is<Asset>(a => 
-                a.ExternalId == createDto.ExternalId &&
+                !string.IsNullOrEmpty(a.ExternalId) &&
                 a.Filename == createDto.Filename &&
                 a.ProjectId == projectId)), Times.Once
             );
