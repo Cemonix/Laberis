@@ -16,11 +16,4 @@ export type {
     AnnotationDto,
     CreateAnnotationDto,
     UpdateAnnotationDto,
-} from './dto';
-
-// Annotation request types
-export type {
-    AnnotationListParams,
-    CreateAnnotationRequest,
-    UpdateAnnotationRequest,
-} from './requests';
+} from './annotationDto';

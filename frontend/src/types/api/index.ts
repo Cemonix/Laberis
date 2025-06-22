@@ -10,7 +10,7 @@ export type {
     FilterParams,
     SortParams,
     DateRangeParams,
-    BaseListParams,
+    QueryParams,
 } from './requests';
 
 // Utility functions

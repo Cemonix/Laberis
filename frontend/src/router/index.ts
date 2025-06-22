@@ -18,6 +18,23 @@ const routes: Array<RouteRecordRaw> = [
             layout: DefaultLayout,
         }
     },
+    // Authentication routes
+    {
+        path: '/login',
+        name: 'Login',
+        component: () => import('@/views/auth/LoginPage.vue'),
+        meta: {
+            layout: DefaultLayout,
+        }
+    },
+    {
+        path: '/register',
+        name: 'Register',
+        component: () => import('@/views/auth/RegisterPage.vue'),
+        meta: {
+            layout: DefaultLayout,
+        }
+    },
     {
         
         path: '/workspace/project/:projectId/asset/:assetId',
@@ -64,7 +81,7 @@ const routes: Array<RouteRecordRaw> = [
                 props: true,
             },
             {
-                path: 'data-sources/:dataSourceId',
+                path: 'data-explorer/:dataSourceId',
                 name: 'DataExplorer',
                 component: () => import('@/views/dataExplorer/DataExplorerView.vue'),
                 props: true,

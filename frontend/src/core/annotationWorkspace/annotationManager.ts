@@ -14,7 +14,7 @@ export class AnnotationManager {
         this.toolHandlers = new Map();
 
         this.toolHandlers.set(ToolName.POINT, new PointToolHandler());
-        // this.toolHandlers.set(ToolName.BOUNDING_BOX, new BoundingBoxToolHandler()); // Example for later
+        // TODO: this.toolHandlers.set(ToolName.BOUNDING_BOX, new BoundingBoxToolHandler()); // Example for later
         // Add other handlers here...
     }
 

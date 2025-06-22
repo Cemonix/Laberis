@@ -33,7 +33,7 @@ export interface DateRangeParams {
 /**
  * Combined base query parameters that most list endpoints support
  */
-export interface BaseListParams extends PaginationParams, FilterParams, SortParams {}
+export interface QueryParams extends PaginationParams, FilterParams, SortParams {}
 
 /**
  * Utility function to build URLSearchParams from API request parameters
