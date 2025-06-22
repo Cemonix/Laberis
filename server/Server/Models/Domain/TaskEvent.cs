@@ -18,7 +18,7 @@ public record class TaskEvent
 
     // Navigation Properties
     public virtual Task? Task { get; init; }
-    public virtual IdentityUser? User { get; init; }
+    public virtual ApplicationUser? User { get; init; }
     public virtual WorkflowStage? FromWorkflowStage { get; init; }
     public virtual WorkflowStage? ToWorkflowStage { get; init; }
 }

@@ -12,7 +12,7 @@ public class DataSeeder
     {
         var logger = serviceProvider.GetRequiredService<ILogger<DataSeeder>>();
         var adminUserSettings = serviceProvider.GetRequiredService<IOptions<AdminUserSettings>>().Value;
-        var userManager = serviceProvider.GetRequiredService<UserManager<IdentityUser>>();
+        var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
         // Ensure the database is created.
@@ -30,7 +30,7 @@ public class DataSeeder
         }
 
         // Define Admin User
-        var adminUserToCreate = new IdentityUser
+        var adminUserToCreate = new ApplicationUser
         {
             Id = adminUserSettings.Id,
             UserName = adminUserSettings.Username,

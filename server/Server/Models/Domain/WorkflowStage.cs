@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using server.Models.Domain.Enums;
 
 namespace server.Models.Domain;
@@ -28,4 +29,7 @@ public record class WorkflowStage
 
     // Tasks currently at this stage
     public virtual ICollection<Task> TasksAtThisStage { get; init; } = [];
+
+    // Many-to-many relationship with ApplicationUser
+    public virtual ICollection<ApplicationUser> AssignedUsers { get; init; } = [];
 }
