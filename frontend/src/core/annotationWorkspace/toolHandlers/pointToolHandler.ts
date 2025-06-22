@@ -2,20 +2,23 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Annotation, PointAnnotationData } from '@/types/workspace/annotation';
 import type { ToolHandler } from './toolHandler';
 import type { useWorkspaceStore } from '@/stores/workspaceStore';
+import { StoreError, ToolError } from '@/types/common/errors';
 
 type WorkspaceStore = ReturnType<typeof useWorkspaceStore>;
 
 export class PointToolHandler implements ToolHandler {
     onMouseDown(event: MouseEvent, store: WorkspaceStore): void {
         if (store.getSelectedLabelId === null) {
-            alert("Please select a label first.");
-            return;
+            throw new ToolError("Cannot create point: No label is selected.");
         }
-        if (store.currentAssetId === null || store.currentTaskId === null) {
-            console.error("Cannot create point: Asset ID or Task ID is missing.");
-            alert("Error: Asset or Task information is missing.");
-            return;
+        
+        if (store.currentAssetId === null) {
+            throw new StoreError("Cannot create point: Asset ID is missing.");
         }
+        if (store.currentTaskId === null) {
+            throw new StoreError("Cannot create point: Task ID is missing.");
+        }
+
 
         const canvasX = event.offsetX;
         const canvasY = event.offsetY;
