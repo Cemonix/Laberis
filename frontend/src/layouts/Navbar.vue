@@ -3,23 +3,39 @@
         <div class="navbar-brand">
             <router-link to="/home">Laberis</router-link>
         </div>
-        <div class="navbar-links">
+        <div class="navbar-links" v-if="authStore.isAuthenticated">
             <router-link to="/home">Home</router-link>
             <router-link to="/projects">Projects</router-link>
             <router-link to="/workspace/project/1/asset/1">Workspace</router-link> <!-- TODO: Hardcoded link for dev -->
         </div>
         <div class="navbar-auth">
-            <!-- TODO: Add authentication logic -->
-            <router-link to="/login" class="auth-link">Login</router-link>
-            <router-link to="/register" class="auth-link btn-outline">Register</router-link>
+            <template v-if="authStore.isAuthenticated">
+                <span class="welcome-text">Welcome, {{ authStore.currentUser?.userName }}!</span>
+                <button @click="handleLogout" class="auth-link logout-btn">Logout</button>
+            </template>
+            <template v-else>
+                <router-link to="/login" class="auth-link">Login</router-link>
+                <router-link to="/register" class="auth-link btn-outline">Register</router-link>
+            </template>
         </div>
     </nav>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/authStore";
 
-useRouter();
+const router = useRouter();
+const authStore = useAuthStore();
+
+const handleLogout = async () => {
+    try {
+        await authStore.logout();
+        router.push('/login');
+    } catch (error) {
+        console.error('Logout failed:', error);
+    }
+};
 </script>
 
 <style lang="scss" scoped>
@@ -84,6 +100,19 @@ useRouter();
         display: flex;
         gap: vars.$gap-medium;
         align-items: center;
+
+        .welcome-text {
+            color: navbar.$navbar-text;
+            font-size: vars.$font-size-medium;
+        }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: inherit;
+            font-family: inherit;
+        }
 
         .auth-link {
             color: navbar.$navbar-text;
