@@ -42,5 +42,10 @@ const { isAlertOpen, alertTitle, alertMessage, handleConfirm } = useAlert();
     flex-grow: 1;
     padding: vars.$padding-medium;
     background-color: vars.$color-white;
+
+    // Override padding for auth pages to provide full-screen experience
+    &:has(.auth-container) {
+        padding: 0;
+    }
 }
 </style>
