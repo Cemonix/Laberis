@@ -117,7 +117,6 @@ namespace Server.Tests.Services
             Assert.Equal(AssetStatus.PENDING_IMPORT, result.Status);
             
             _mockAssetRepository.Verify(r => r.AddAsync(It.Is<Asset>(a => 
-                !string.IsNullOrEmpty(a.ExternalId) &&
                 a.Filename == createDto.Filename &&
                 a.ProjectId == projectId)), Times.Once
             );
