@@ -12,6 +12,13 @@
         ></canvas>
         <div v-if="isLoading" class="loading-overlay" role="status" aria-live="polite">Loading Image...</div>
         <div v-if="errorLoadingImage" class="error-overlay">Error loading image.</div>
+
+        <AlertModal
+            :is-open="isAlertOpen"
+            :title="alertTitle"
+            :message="alertMessage"
+            @confirm="handleConfirm"
+        />
     </div>
 </template>
 
@@ -22,6 +29,11 @@ import type { Point } from "@/types/common/point";
 import { ToolName } from "@/types/workspace/tools";
 import { drawPoint, drawBoundingBox } from '@/core/annotationWorkspace/annotationDrawer';
 import { AnnotationManager } from "@/core/annotationWorkspace/annotationManager";
+import { StoreError, ToolError } from "@/types/common/errors";
+import AlertModal from "../common/modals/AlertModal.vue";
+import { useAlert } from "@/composables/useAlert";
+
+const { isAlertOpen, alertTitle, alertMessage, showAlert, handleConfirm } = useAlert();
 
 interface Props {
     imageUrl: string | null;
@@ -293,7 +305,17 @@ const handleMouseDown = (event: MouseEvent) => {
         isPanning.value = true;
         lastPanMousePosition.value = { x: event.offsetX, y: event.offsetY };
     } else {
-        annotationManager.onMouseDown(event);
+        try {
+            annotationManager.onMouseDown(event);
+        }
+        catch (error) {
+            if (error instanceof StoreError || error instanceof ToolError) {
+                showAlert(error.alertTitle, error.message);
+            }
+            else {
+                showAlert("Unexpected Error", "An unexpected error occurred while processing your action. Please try again.");
+            }
+        }
     }
 };
 

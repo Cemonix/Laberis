@@ -219,21 +219,22 @@ onUnmounted(() => {
 
 .loading-overlay,
 .error-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    height: 100%;
     background-color: rgba(vars.$color-black, 0.8);
     z-index: 1000;
 }
 
 .loading-content,
 .error-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     text-align: center;
+    align-items: center;
+    justify-content: center;
     color: vars.$color-white;
     padding: vars.$padding-large;
     border-radius: vars.$border-radius;
@@ -260,16 +261,20 @@ onUnmounted(() => {
     h3 {
         color: vars.$color-error;
         margin-bottom: vars.$margin-medium;
+        grid-column: span 2;
     }
 
     p {
         margin-bottom: vars.$margin-medium;
         color: vars.$color-gray-300;
+        grid-column: span 2;
+    }
+
+    Button {
+        margin-inline: vars.$margin-medium;
     }
 
     .error-link {
-        display: inline-block;
-        margin-top: vars.$margin-small;
         color: vars.$color-primary;
         text-decoration: none;
         
