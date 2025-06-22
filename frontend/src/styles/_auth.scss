@@ -71,6 +71,19 @@
     }
 }
 
+// Error banner styling
+.error-banner {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    padding: vars.$padding-small vars.$padding-medium;
+    margin-bottom: vars.$margin-medium;
+    color: rgba(239, 68, 68, 0.9);
+    font-size: vars.$font-size-small;
+    text-align: center;
+    backdrop-filter: blur(10px);
+}
+
 // Form styling
 .auth-form {
     :deep(.form-group) {
