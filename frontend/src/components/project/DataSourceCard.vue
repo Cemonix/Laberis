@@ -50,7 +50,7 @@ const emit = defineEmits<{
 
 const isUploadModalOpen = ref(false);
 
-const explorerUrl = computed(() => `/projects/${props.dataSource.projectId}/data-sources/${props.dataSource.id}`);
+const explorerUrl = computed(() => `/projects/${props.dataSource.projectId}/data-explorer/${props.dataSource.id}`);
 
 const formattedDate = computed(() => {
     return new Date(props.dataSource.createdAt).toLocaleDateString("en-US", {
