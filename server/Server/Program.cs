@@ -142,6 +142,7 @@ public class Program
         builder.Services.AddScoped<ITaskEventService, TaskEventService>();
         builder.Services.AddScoped<IWorkflowService, WorkflowService>();
         builder.Services.AddScoped<IWorkflowStageService, WorkflowStageService>();
+        builder.Services.AddScoped<IAuthManager, AuthManager>();
 
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>();
         if (jwtSettings == null)
@@ -263,11 +264,14 @@ public class Program
 
         var app = builder.Build();
 
-        // Ensure the database is created and migrations are applied
-        await StartupValidator.ValidateStorageServiceAsync(app.Services);
-
-        using (var scope = app.Services.CreateScope())
+        // Skip startup validation and DataSeeder during testing to avoid database provider conflicts
+        if (!app.Environment.IsEnvironment("Testing"))
         {
+            // Ensure the database is created and migrations are applied
+            await StartupValidator.ValidateStorageServiceAsync(app.Services);
+
+            using var scope = app.Services.CreateScope();
+            
             var services = scope.ServiceProvider;
             try
             {
