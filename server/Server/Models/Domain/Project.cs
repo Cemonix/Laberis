@@ -18,7 +18,7 @@ public record class Project
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
 
-    public virtual IdentityUser? Owner { get; init; }
+    public virtual ApplicationUser? Owner { get; init; }
 
     public virtual ICollection<LabelScheme> LabelSchemes { get; init; } = [];
     public virtual ICollection<DataSource> DataSources { get; init; } = [];

@@ -9,7 +9,7 @@ using Task = server.Models.Domain.Task;
 
 namespace server.Data;
 
-public class LaberisDbContext : IdentityDbContext<IdentityUser>
+public class LaberisDbContext : IdentityDbContext<ApplicationUser>
 {
     public const string IdentitySchema = "identity";
 
@@ -61,7 +61,7 @@ public class LaberisDbContext : IdentityDbContext<IdentityUser>
         modelBuilder.ApplyConfiguration(new Configurations.IssueConfiguration());
 
         // Identity schema configuration
-        modelBuilder.Entity<IdentityUser>(entity =>
+        modelBuilder.Entity<ApplicationUser>(entity =>
         {
             entity.ToTable("AspNetUsers", IdentitySchema);
         });

@@ -27,8 +27,8 @@ public record class Task
     public virtual Project Project { get; init; } = null!;
     public virtual Workflow Workflow { get; init; } = null!;
     public virtual WorkflowStage CurrentWorkflowStage { get; init; } = null!;
-    public virtual IdentityUser? AssignedToUser { get; init; }
-    public virtual IdentityUser? LastWorkedOnByUser { get; init; }
+    public virtual ApplicationUser? AssignedToUser { get; init; }
+    public virtual ApplicationUser? LastWorkedOnByUser { get; init; }
 
     public virtual ICollection<Annotation> Annotations { get; init; } = [];
     public virtual ICollection<TaskEvent> TaskEvents { get; init; } = [];

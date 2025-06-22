@@ -19,5 +19,5 @@ public record class ProjectMember
 
     // Navigation Properties
     public virtual Project Project { get; init; } = null!;
-    public virtual IdentityUser User { get; init; } = null!;
+    public virtual ApplicationUser User { get; init; } = null!;
 }
