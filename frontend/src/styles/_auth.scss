@@ -1,0 +1,244 @@
+// Shared authentication page styles
+// This file contains the glass morphism design for auth pages
+
+@use "@/styles/variables" as vars;
+
+// Auth container - full screen gradient background
+.auth-container {
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #667eea 0%, #9c42f6 100%);
+    position: relative;
+    overflow: hidden;
+    
+    // Floating particles (dots)
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 1px, transparent 2px),
+            radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.08) 1px, transparent 2px),
+            radial-gradient(circle at 40% 70%, rgba(255, 255, 255, 0.12) 1px, transparent 2px),
+            radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.06) 1px, transparent 2px),
+            radial-gradient(circle at 10% 90%, rgba(255, 255, 255, 0.1) 1px, transparent 2px),
+            radial-gradient(circle at 60% 10%, rgba(255, 255, 255, 0.09) 1px, transparent 2px),
+            radial-gradient(circle at 30% 80%, rgba(255, 255, 255, 0.07) 1px, transparent 2px);
+        background-size: 100px 100px, 150px 150px, 80px 80px, 200px 200px, 120px 120px, 180px 180px, 110px 110px;
+        animation: particles 20s linear infinite;
+        pointer-events: none;
+    }
+}
+
+// Glass morphism card
+.auth-glass-box {
+    position: relative;
+    min-width: 450px;
+    max-width: 500px;
+    width: 90%;
+    padding: vars.$padding-xlarge;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    z-index: 1;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+    &:hover {
+        box-shadow: 
+            0 12px 40px rgba(0, 0, 0, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    h1 {
+        text-align: center;
+        margin-bottom: vars.$margin-large;
+        color: vars.$color-white;
+        font-size: vars.$font-size-xlarge;
+        font-weight: 600;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+}
+
+// Form styling
+.auth-form {
+    :deep(.form-group) {
+        margin-bottom: vars.$margin-medium;
+
+        label {
+            color: vars.$color-white;
+            font-weight: 500;
+            margin-bottom: vars.$margin-tiny;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            display: block;
+        }
+
+        input {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: vars.$padding-medium;
+            color: vars.$color-white;
+            font-size: vars.$font-size-medium;
+            transition: all 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+
+            &::placeholder {
+                color: rgba(255, 255, 255, 0.7);
+            }
+
+            &:focus {
+                outline: none;
+                border-color: rgba(255, 255, 255, 0.4);
+                background: rgba(255, 255, 255, 0.2);
+                box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+                transform: translateY(-1px);
+            }
+
+            &:hover {
+                border-color: rgba(255, 255, 255, 0.3);
+            }
+
+            &.error {
+                border-color: rgba(239, 68, 68, 0.8);
+                background: rgba(239, 68, 68, 0.1);
+            }
+        }
+
+        .error-message {
+            color: rgba(239, 68, 68, 0.9);
+            font-size: vars.$font-size-xsmall;
+            margin-top: 4px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+    }
+
+    :deep(.form-actions) {
+        margin-top: vars.$margin-large;
+        
+        .btn {
+            width: 100%;
+            padding: vars.$padding-medium vars.$padding-large;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            color: vars.$color-white;
+            font-weight: 600;
+            font-size: vars.$font-size-medium;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.25);
+                border-color: rgba(255, 255, 255, 0.4);
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            &:active {
+                transform: translateY(0);
+            }
+
+            &:focus {
+                outline: none;
+                box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+            }
+        }
+    }
+}
+
+// Auth footer
+.auth-footer {
+    margin-top: vars.$margin-large;
+    text-align: center;
+
+    p {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: vars.$font-size-small;
+        margin: 0;
+    }
+
+    .auth-link {
+        color: vars.$color-white;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        position: relative;
+
+        &::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 1px;
+            bottom: -2px;
+            left: 50%;
+            background-color: vars.$color-white;
+            transition: width 0.3s ease, left 0.3s ease;
+        }
+
+        &:hover {
+            color: rgba(255, 255, 255, 0.9);
+            
+            &::after {
+                width: 100%;
+                left: 0;
+            }
+        }
+    }
+}
+
+// Animations
+@keyframes particles {
+    0% {
+        transform: translateX(0) translateY(0);
+    }
+    33% {
+        transform: translateX(-20px) translateY(-20px);
+    }
+    66% {
+        transform: translateX(20px) translateY(-10px);
+    }
+    100% {
+        transform: translateX(0) translateY(0);
+    }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+    .auth-glass-box {
+        min-width: 350px;
+        padding: vars.$padding-large;
+        margin: vars.$margin-medium;
+    }
+}
+
+@media (max-width: 480px) {
+    .auth-glass-box {
+        min-width: 300px;
+        padding: vars.$padding-medium;
+        border-radius: 16px;
+    }
+}
+
+// Performance optimization for animations
+@media (prefers-reduced-motion: reduce) {
+    .auth-container {
+        &::after {
+            animation: none !important;
+        }
+    }
+}
