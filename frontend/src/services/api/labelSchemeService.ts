@@ -11,7 +11,7 @@ import type {
 } from '@/types/label/requests';
 import type { LabelScheme } from '@/types/label/labelScheme';
 import type { PaginatedResponse } from '@/types/api/paginatedResponse';
-import type { BaseListParams } from '@/types/api';
+import type { QueryParams } from '@/types/api';
 
 const logger = AppLogger.createServiceLogger('LabelSchemeService');
 
@@ -44,7 +44,7 @@ class LabelSchemeService {
      */
     async getLabelSchemesForProject(
         projectId: number,
-        query_params: BaseListParams = {}
+        query_params: QueryParams = {}
     ): Promise<PaginatedResponse<LabelScheme>> {
         const { pageNumber = 1, pageSize = 25 } = query_params;
 

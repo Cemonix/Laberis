@@ -1,5 +1,5 @@
-import type { BaseListParams } from '../api';
+import type { QueryParams } from '../api';
 
-export interface AssetListParams extends BaseListParams {
+export interface AssetListParams extends QueryParams {
     dataSourceId?: number;
 }

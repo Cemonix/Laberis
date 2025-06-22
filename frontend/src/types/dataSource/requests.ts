@@ -1,5 +1,5 @@
 import type { DataSourceType, DataSourceStatus } from './dataSource';
-import type { BaseListParams } from '../api';
+import type { QueryParams } from '../api';
 
 export interface CreateDataSourceRequest {
     name: string;
@@ -15,7 +15,7 @@ export interface UpdateDataSourceRequest {
     connectionDetails?: string;
 }
 
-export interface DataSourceListParams extends BaseListParams {
+export interface DataSourceListParams extends QueryParams {
     projectId?: number;
     status?: DataSourceStatus;
     sourceType?: DataSourceType;

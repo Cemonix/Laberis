@@ -1,11 +1,10 @@
 import apiClient from './apiClient';
-import type { ApiError, PaginatedResponse } from '@/types/api';
+import type { ApiError, PaginatedResponse, QueryParams } from '@/types/api';
 import type { 
     Annotation, 
     AnnotationDto, 
     CreateAnnotationDto, 
-    UpdateAnnotationDto, 
-    AnnotationListParams 
+    UpdateAnnotationDto
 } from '@/types/annotation';
 import { ApiResponseError, ServerError, NetworkError } from '@/types/common/errors';
 import { AppLogger } from '@/utils/logger';
@@ -74,7 +73,7 @@ class AnnotationService {
      */
     async getAnnotationsForAsset(
         assetId: number,
-        options: AnnotationListParams = {}
+        options: QueryParams = {}
     ): Promise<PaginatedResponse<Annotation>> {
         logger.info(`Fetching annotations for asset ${assetId}`, options);
 
