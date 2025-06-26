@@ -94,12 +94,12 @@ const selectLabel = (labelId: number) => {
 
 .section-title {
     font-size: vars.$font-size-small;
-    font-weight: vars.$font-weight-heading;
+    font-weight: vars.$font-weight-xlarge;
     color: vars.$color-white;
     text-transform: uppercase;
-    margin-bottom: vars.$margin-tiny;
+    margin-bottom: vars.$margin-xsmall;
     border-bottom: 1px solid color.adjust(vars.$color-accent-blue, $lightness: 10%);
-    padding-bottom: vars.$padding-tiny;
+    padding-bottom: vars.$padding-xsmall;
 }
 
 .tools-grid {
@@ -167,7 +167,7 @@ const selectLabel = (labelId: number) => {
         background-color: vars.$color-primary;
         color: vars.$color-white;
         border-color: color.adjust(vars.$color-primary, $lightness: -10%);
-        font-weight: vars.$font-weight-heading;
+        font-weight: vars.$font-weight-xlarge;
 
         .label-color-swatch {
             border-color: rgba(vars.$color-white, 0.7);

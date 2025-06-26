@@ -25,7 +25,7 @@ defineEmits(["submit"]);
 :deep(.form-group) {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-tiny;
+    gap: vars.$gap-xsmall;
 
     label {
         font-weight: bold;

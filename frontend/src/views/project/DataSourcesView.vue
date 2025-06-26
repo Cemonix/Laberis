@@ -136,7 +136,7 @@ onMounted(() => {
     margin-bottom: vars.$margin-xlarge;
     h1 {
         font-size: vars.$font-size-xlarge;
-        margin-bottom: vars.$padding-tiny;
+        margin-bottom: vars.$padding-xsmall;
     }
     p {
         color: vars.$theme-text-light;

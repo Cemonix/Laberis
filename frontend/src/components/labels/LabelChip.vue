@@ -25,10 +25,10 @@ const textColor = computed(() => props.label.color);
 
 .label-chip {
     display: inline-block;
-    padding: 0.25em 0.75em;
+    padding: vars.$padding-xsmall vars.$padding-small;
     border-radius: 1em;
     font-size: vars.$font-size-small;
-    font-weight: vars.$font_weight_heading;
+    font-weight: vars.$font_weight_large;
     white-space: nowrap;
 }
 </style>

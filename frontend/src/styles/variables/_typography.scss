@@ -1,9 +1,21 @@
+// Font families
 $font-family-heading: 'Montserrat', sans-serif;
 $font-family-body: 'Roboto', sans-serif;
 
-$font-weight-body: 400;
-$font-weight-heading: 700;
-$line-height-base: 1.5;
+// Font Weights
+$font-weight-xsmall: 300;
+$font-weight-small: 400;
+$font-weight-medium: 500;
+$font-weight-large: 600;
+$font-weight-xlarge: 700;
+
+// Font line heights
+$line-height-xsmall: 1.2;
+$line-height-small: 1.3;
+$line-height-medium: 1.4;
+$line-height-large: 1.5;
+$line-height-xlarge: 1.6;
+$line-height-xxlarge: 1.7;
 
 // Font Sizes
 $font-size-xsmall: 0.75rem;

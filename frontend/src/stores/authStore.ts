@@ -4,8 +4,9 @@ import type {
     AuthTokens,
     LoginCredentials,
     RegisterCredentials,
-} from "@/types/auth/backendAuth";
-import { backendAuthService } from "@/services/auth/backendAuthService";
+} from "@/types/auth/auth";
+import { authService } from "@/services/auth/authService";
+import { env } from "@/config/env";
 
 const AUTH_STORAGE_KEY = 'auth_tokens';
 
@@ -45,6 +46,21 @@ export const useAuthStore = defineStore("auth", {
         async initializeAuth(): Promise<void> {
             if (this.isInitialized) {
                 return;
+            }
+            
+            // In development mode, try auto-login first if no stored tokens exist
+            if (env.IS_DEVELOPMENT) {
+                const storedTokens = this.loadTokensFromStorage();
+                if (!storedTokens) {
+                    try {
+                        await this.autoLoginDev();
+                        this.isInitialized = true;
+                        return;
+                    } catch (error) {
+                        console.warn("Auto-login failed in development mode:", error);
+                        // Continue with normal initialization if auto-login fails
+                    }
+                }
             }
             
             const storedTokens = this.loadTokensFromStorage();
@@ -99,7 +115,7 @@ export const useAuthStore = defineStore("auth", {
         async login(credentials: LoginCredentials): Promise<void> {
             this.isLoading = true;
             try {
-                const response = await backendAuthService.login(credentials);
+                const response = await authService.login(credentials);
 
                 this.user = response.user;
                 this.tokens = response.tokens;
@@ -115,7 +131,7 @@ export const useAuthStore = defineStore("auth", {
         async register(credentials: RegisterCredentials): Promise<void> {
             this.isLoading = true;
             try {
-                const response = await backendAuthService.register(credentials);
+                const response = await authService.register(credentials);
 
                 this.user = response.user;
                 this.tokens = response.tokens;
@@ -131,7 +147,7 @@ export const useAuthStore = defineStore("auth", {
         async logout(): Promise<void> {
             this.isLoading = true;
             try {
-                await backendAuthService.logout();
+                await authService.logout();
             } catch (error) {
                 console.error("Logout request failed:", error);
             } finally {
@@ -147,7 +163,7 @@ export const useAuthStore = defineStore("auth", {
                 return false;
             }
             try {
-                const tokens = await backendAuthService.refreshToken(
+                const tokens = await authService.refreshToken(
                     this.tokens.refreshToken
                 );
                 this.tokens = tokens;
@@ -160,15 +176,62 @@ export const useAuthStore = defineStore("auth", {
             }
         },
         async getCurrentUser(): Promise<void> {
+            // In development mode, we can call the service directly without tokens
+            if (env.IS_DEVELOPMENT && (!this.tokens?.accessToken || this.tokens.accessToken === "dev-fake-token")) {
+                try {
+                    const userData = await authService.getCurrentUser();
+                    this.user = userData;
+                    return;
+                } catch (error) {
+                    console.error("Failed to get current user in development mode:", error);
+                    throw error;
+                }
+            }
+            
             if (!this.tokens?.accessToken) {
                 throw new Error("No access token available");
             }
             try {
-                const userData = await backendAuthService.getCurrentUser();
+                const userData = await authService.getCurrentUser();
                 this.user = userData;
             } catch (error) {
                 console.error("Failed to get current user:", error);
                 throw error;
+            }
+        },
+        
+        /**
+         * Auto-login for development mode using fake authentication
+         */
+        async autoLoginDev(): Promise<void> {
+            if (!env.IS_DEVELOPMENT) {
+                throw new Error("Auto-login is only available in development mode");
+            }
+            
+            this.isLoading = true;
+            try {
+                // Create fake tokens for frontend compatibility first
+                const fakeTokens: AuthTokens = {
+                    accessToken: "dev-fake-token",
+                    refreshToken: "dev-fake-refresh-token",
+                    expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+                };
+                
+                this.tokens = fakeTokens;
+                
+                // Now get the current user (which will work with fake auth in dev mode)
+                await this.getCurrentUser();
+                
+                // Don't save fake tokens to storage as they're not real
+                console.info("Auto-login successful in development mode as:", this.user?.email);
+            } catch (error) {
+                console.error("Auto-login failed:", error);
+                // Clean up on failure
+                this.user = null;
+                this.tokens = null;
+                throw error;
+            } finally {
+                this.isLoading = false;
             }
         },
     },

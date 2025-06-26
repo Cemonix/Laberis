@@ -607,7 +607,7 @@ const closeModal = () => {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            gap: vars.$gap-tiny;
+            gap: vars.$gap-xsmall;
             
             .file-name {
                 font-weight: 500;

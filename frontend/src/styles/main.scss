@@ -14,10 +14,10 @@ html {
 
 body {
     font-family: vars.$font-family-body;
-	font-weight: vars.$font-weight-body;
+	font-weight: vars.$font-weight-medium;
 	font-size: vars.$font-size-medium;
 	background-color: vars.$theme-background;
 	color: vars.$theme-text;
-	line-height: vars.$line-height-base;
+	line-height: vars.$line-height-large;
 	min-height: 100%;
 }

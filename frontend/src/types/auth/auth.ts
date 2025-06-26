@@ -1,12 +1,39 @@
-export interface User {
-    id: number;
+export interface LoginDto {
     email: string;
-    firstName: string;
-    lastName: string;
-    role: UserRole;
-    isActive: boolean;
+    password: string;
+}
+
+export interface RegisterDto {
+    email: string;
+    userName: string;
+    password: string;
+    confirmPassword: string;
+}
+
+export interface UserDto {
+    id: string;
+    userName: string;
+    email: string;
     createdAt: string;
-    updatedAt: string;
+}
+
+export interface AuthResponseDto {
+    token: string;
+    refreshToken: string;
+    expiresAt: string;
+    user: UserDto;
+}
+
+export interface User {
+    id: string;
+    email: string;
+    userName: string;
+    firstName?: string;
+    lastName?: string;
+    role?: UserRole;
+    isActive?: boolean;
+    createdAt: string;
+    updatedAt?: string;
 }
 
 export enum UserRole {
@@ -27,6 +54,13 @@ export interface LoginCredentials {
     password: string;
 }
 
+export interface RegisterCredentials {
+    email: string;
+    userName: string;
+    password: string;
+    confirmPassword: string;
+}
+
 export interface AuthState {
     user: User | null;
     tokens: AuthTokens | null;
@@ -35,6 +69,11 @@ export interface AuthState {
 }
 
 export interface LoginResponse {
+    user: User;
+    tokens: AuthTokens;
+}
+
+export interface RegisterResponse {
     user: User;
     tokens: AuthTokens;
 }
