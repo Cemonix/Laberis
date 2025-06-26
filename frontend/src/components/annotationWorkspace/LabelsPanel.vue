@@ -114,7 +114,7 @@ const selectLabel = (labelId: number) => {
     flex-direction: column;
     padding: vars.$padding-small;
     margin-bottom: vars.$margin-small;
-    border-radius: vars.$border-radius;
+    border-radius: vars.$border-radius-md;
     background-color: vars.$color-dark-blue-3;
     border: 2px solid transparent;
     cursor: pointer;

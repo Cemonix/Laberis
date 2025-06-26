@@ -237,7 +237,7 @@ onUnmounted(() => {
     justify-content: center;
     color: vars.$color-white;
     padding: vars.$padding-large;
-    border-radius: vars.$border-radius;
+    border-radius: vars.$border-radius-md;
     background-color: vars.$color-dark-blue-2;
     border: 1px solid vars.$color-accent-blue;
 }

@@ -91,7 +91,7 @@ const handleSubmit = async () => {
         width: 100%;
         padding: vars.$padding-medium;
         border: 1px solid vars.$theme-border;
-        border-radius: vars.$border-radius;
+        border-radius: vars.$border-radius-md;
         font-size: vars.$font-size-medium;
         
         &:focus {

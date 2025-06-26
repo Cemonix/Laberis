@@ -149,7 +149,7 @@ const handleCancel = () => {
         width: 100%;
         padding: vars.$padding-medium;
         border: 1px solid vars.$theme-border;
-        border-radius: vars.$border-radius;
+        border-radius: vars.$border-radius-md;
         font-size: vars.$font-size-medium;
         
         &:focus {
@@ -182,7 +182,7 @@ const handleCancel = () => {
         height: 40px;
         padding: 0;
         border: 1px solid vars.$theme-border;
-        border-radius: vars.$border-radius;
+        border-radius: vars.$border-radius-md;
         cursor: pointer;
         
         &::-webkit-color-swatch-wrapper {
@@ -191,7 +191,7 @@ const handleCancel = () => {
         
         &::-webkit-color-swatch {
             border: none;
-            border-radius: calc(vars.$border-radius - 1px);
+            border-radius: calc(vars.$border-radius-md - 1px);
         }
     }
 
@@ -205,7 +205,7 @@ const handleCancel = () => {
     margin: vars.$margin-large 0;
     padding: vars.$padding-large;
     background-color: vars.$color-gray-200;
-    border-radius: vars.$border-radius;
+    border-radius: vars.$border-radius-md;
 
     h4 {
         margin-bottom: vars.$margin-medium;

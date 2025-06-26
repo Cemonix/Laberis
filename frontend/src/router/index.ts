@@ -103,7 +103,7 @@ const routes: Array<RouteRecordRaw> = [
             {
                 path: 'workflows',
                 name: 'ProjectWorkflows',
-                component: { template: '<div>Workflows Management Page</div>' },
+                component: () => import('@/views/project/WorkflowsView.vue'),
                 props: true,
             },
             {
