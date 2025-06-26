@@ -83,7 +83,7 @@ const handleSubmit = async () => {
     label {
         display: block;
         margin-bottom: vars.$margin-small;
-        font-weight: vars.$font-weight-heading;
+        font-weight: vars.$font-weight-xlarge;
         color: vars.$theme-text;
     }
 

@@ -68,7 +68,7 @@ const formattedDate = computed(() => {
 
 .project-name {
     font-size: vars.$font-size-large;
-    font-weight: vars.$font-weight-heading;
+    font-weight: vars.$font-weight-xlarge;
     margin: 0;
     margin-right: vars.$margin-small;
 }
@@ -77,7 +77,7 @@ const formattedDate = computed(() => {
     display: inline-block;
     padding: 0.25em 0.6em;
     font-size: vars.$font-size-small;
-    font-weight: vars.$font-weight-heading;
+    font-weight: vars.$font-weight-xlarge;
     border-radius: vars.$border-radius;
     text-transform: capitalize;
     white-space: nowrap;

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import { useAuthStore } from "../authStore";
-import type { AuthTokens, User, LoginCredentials } from "@/types/auth/auth";
-import { UserRole } from "@/types/auth/auth";
+import type { AuthTokens, User, LoginCredentials } from "@/types/auth/auth.ts"
+import { UserRole } from "@/types/auth/auth.ts";
 
 vi.mock("@/services/auth/authService", () => ({
     authService: {
@@ -13,17 +13,16 @@ vi.mock("@/services/auth/authService", () => ({
     },
 }));
 
-import { authService } from "@/services/auth/authService";
+import { authService } from "@/services/auth/authService.ts";
 
 describe("Auth Store", () => {
     let authStore: ReturnType<typeof useAuthStore>;
 
     // Mock data
     const mockUser: User = {
-        id: 1,
+        id: "123",
         email: "test@example.com",
-        firstName: "Test",
-        lastName: "User",
+        userName: "testuser",
         role: UserRole.ADMIN,
         isActive: true,
         createdAt: "2024-01-01T00:00:00Z",
@@ -243,7 +242,9 @@ describe("Auth Store", () => {
 
             authStore.tokens = mockTokens;
             vi.mocked(authService.refreshToken).mockResolvedValue({
-                tokens: newTokens,
+                accessToken: newTokens.accessToken,
+                refreshToken: newTokens.refreshToken,
+                expiresAt: newTokens.expiresAt,
             });
 
             const result = await authStore.refreshTokens();

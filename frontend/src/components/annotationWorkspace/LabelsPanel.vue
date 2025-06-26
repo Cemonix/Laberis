@@ -143,7 +143,7 @@ const selectLabel = (labelId: number) => {
 .label-name {
     color: vars.$color-gray-200;
     font-weight: bold;
-    margin-bottom: vars.$margin-tiny;
+    margin-bottom: vars.$margin-xsmall;
 }
 
 .label-description {
@@ -157,7 +157,7 @@ const selectLabel = (labelId: number) => {
     padding-top: vars.$padding-small;
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-tiny;
+    gap: vars.$gap-xsmall;
 }
 
 .scheme-name {

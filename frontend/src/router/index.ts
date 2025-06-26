@@ -23,7 +23,7 @@ const routes: Array<RouteRecordRaw> = [
     {
         path: '/login',
         name: 'Login',
-        component: () => import('@/views/auth/LoginPage.vue'),
+        component: () => import('@/views/auth/LoginView.vue'),
         meta: {
             layout: DefaultLayout,
         }
@@ -31,7 +31,16 @@ const routes: Array<RouteRecordRaw> = [
     {
         path: '/register',
         name: 'Register',
-        component: () => import('@/views/auth/RegisterPage.vue'),
+        component: () => import('@/views/auth/RegisterView.vue'),
+        meta: {
+            layout: DefaultLayout,
+        }
+    },
+    // Account management routes
+    {
+        path: '/account',
+        name: 'Account',
+        component: () => import('@/views/AccountView.vue'),
         meta: {
             layout: DefaultLayout,
         }
@@ -50,7 +59,7 @@ const routes: Array<RouteRecordRaw> = [
     {
         path: '/projects',
         name: 'ProjectList',
-        component: () => import('@/views/project/ProjectListView.vue'),
+        component: () => import('@/views/ProjectView.vue'),
         meta: {
             layout: DefaultLayout,
         }
@@ -73,13 +82,13 @@ const routes: Array<RouteRecordRaw> = [
             {
                 path: 'label-schemes',
                 name: 'ProjectLabels',
-                component: () => import('@/views/project/labelScheme/LabelSchemesView.vue'),
+                component: () => import('@/views/project/LabelSchemesView.vue'),
                 props: true,
             },
             {
                 path: 'data-sources',
                 name: 'ProjectDataSources',
-                component: () => import('@/views/project/dataSources/DataSourcesView.vue'),
+                component: () => import('@/views/project/DataSourcesView.vue'),
                 props: true,
             },
             {

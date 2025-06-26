@@ -69,6 +69,6 @@ onUnmounted(() => {
 .alert-message {
     font-size: vars.$font-size-medium;
     color: vars.$theme-text;
-    line-height: vars.$line-height-base;
+    line-height: vars.$line-height-large;
 }
 </style>

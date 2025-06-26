@@ -197,7 +197,7 @@ const goHome = () => {
 
 .error-title {
   font-size: vars.$font-size-xxlarge;
-  font-weight: vars.$font-weight-heading;
+  font-weight: vars.$font-weight-xlarge;
   margin-bottom: vars.$margin-medium;
   color: vars.$color-text-primary;
   font-family: vars.$font-family-heading;
@@ -205,7 +205,7 @@ const goHome = () => {
 
 .error-message {
   font-size: vars.$font-size-large;
-  line-height: vars.$line-height-base;
+  line-height: vars.$line-height-large;
   margin-bottom: vars.$margin-large;
   color: vars.$color-text-secondary;
   font-family: vars.$font-family-body;

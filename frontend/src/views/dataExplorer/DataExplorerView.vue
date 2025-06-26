@@ -260,7 +260,7 @@ onMounted(async () => {
     
     .separator {
         color: vars.$theme-text-light;
-        margin: 0 vars.$margin-tiny;
+        margin: 0 vars.$margin-xsmall;
     }
 
     .current-source-name {

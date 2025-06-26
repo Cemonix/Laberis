@@ -96,7 +96,7 @@ const handleUploadComplete = (count: number) => {
 .card-meta {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-tiny;
+    gap: vars.$gap-xsmall;
     text-transform: capitalize;
 }
 
