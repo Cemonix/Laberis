@@ -78,7 +78,7 @@ const formattedDate = computed(() => {
     padding: 0.25em 0.6em;
     font-size: vars.$font-size-small;
     font-weight: vars.$font-weight-xlarge;
-    border-radius: vars.$border-radius;
+    border-radius: vars.$border-radius-md;
     text-transform: capitalize;
     white-space: nowrap;
     flex-shrink: 0;

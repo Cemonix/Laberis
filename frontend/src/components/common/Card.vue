@@ -23,7 +23,7 @@
     flex-grow: 1;
     background-color: vars.$theme-surface;
     border: vars.$border-width solid vars.$theme-border;
-    border-radius: vars.$border-radius;
+    border-radius: vars.$border-radius-md;
     box-shadow: vars.$shadow-sm;
     text-decoration: none;
     color: inherit;

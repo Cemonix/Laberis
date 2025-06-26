@@ -578,7 +578,7 @@ const closeModal = () => {
         gap: vars.$gap-medium;
         padding: vars.$gap-small;
         border: 1px solid vars.$color-gray-200;
-        border-radius: vars.$border-radius;
+        border-radius: vars.$border-radius-md;
         background-color: vars.$color-gray-100;
         
         .file-preview {
