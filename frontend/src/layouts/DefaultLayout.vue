@@ -8,22 +8,37 @@
         </main>
         <Footer />
 
+        <ConfirmModal
+            :is-open="isConfirmOpen"
+            :title="confirmTitle"
+            :message="confirmMessage"
+            @confirm="handleConfirm"
+            @cancel="handleCancel"
+        />
+
         <AlertModal
             :is-open="isAlertOpen"
             :title="alertTitle"
             :message="alertMessage"
-            @confirm="handleConfirm"
+            @confirm="handleAlertConfirm"
         />
+
+        <ToastContainer />
     </div>
 </template>
 
 <script setup lang="ts">
 import Navbar from '@/layouts/Navbar.vue';
 import Footer from '@/layouts/Footer.vue';
-import AlertModal from '@/components/common/modals/AlertModal.vue';
+import AlertModal from '@/components/common/modal/AlertModal.vue';
+import ConfirmModal from '@/components/common/modal/ConfirmModal.vue';
+import ToastContainer from '@/components/common/toast/ToastContainer.vue';
 import { useAlert } from '@/composables/useAlert';
+import { useConfirm } from '@/composables/useConfirm';
 
-const { isAlertOpen, alertTitle, alertMessage, handleConfirm } = useAlert();
+const { isAlertOpen, alertTitle, alertMessage, handleAlertConfirm } = useAlert();
+const { isConfirmOpen, confirmTitle, confirmMessage, handleConfirm, handleCancel } = useConfirm();
+
 </script>
 
 <style lang="scss" scoped>
