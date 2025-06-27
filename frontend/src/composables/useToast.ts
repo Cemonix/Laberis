@@ -16,7 +16,7 @@ export function useToast() {
         options: ToastOptions = {}
     ): string => {
         const {
-            duration = type === 'error' ? 6000 : 4000,
+            duration = type === 'error' ? 6000 : 5000,
             persistent = false
         } = options;
 
