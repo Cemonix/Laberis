@@ -1,6 +1,5 @@
 import apiClient from './apiClient';
 import type { PaginatedResponse } from '@/types/api/paginatedResponse';
-import type { ApiError } from '@/types/api/error';
 import type { Project } from '@/types/project/project';
 import type { 
     CreateProjectRequest, 
@@ -9,6 +8,13 @@ import type {
 } from '@/types/project/requests';
 import type { QueryParams } from '@/types/api';
 import { AppLogger } from '@/utils/logger';
+import { ApiResponseError } from '@/types/common/errors';
+import {
+    transformApiError,
+    isValidApiResponse,
+    isValidPaginatedResponse,
+    isValidBlobResponse
+} from '@/services/utils';
 
 const logger = AppLogger.createServiceLogger('ProjectService');
 
@@ -24,17 +30,16 @@ class ProjectService {
         logger.info(`Fetching projects...`, params);
         try {
             const response = await apiClient.get<PaginatedResponse<Project>>(this.baseUrl, { params });
-            if (response && response.data && Array.isArray(response.data.data)) {
+            if (isValidPaginatedResponse(response)) {
                 logger.info(`Fetched ${response.data.data.length} projects (total: ${response.data.totalItems}).`, response.data);
                 return response.data;
             } else {
-                logger.error(`Invalid response structure for projects.`, response);
-                throw new Error('Invalid response structure from API for projects.');
+                logger.error(`Invalid response structure for projects.`, response?.data);
+                throw new ApiResponseError('Invalid response structure from API for projects.');
             }
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to fetch projects.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            logger.error(`Failed to fetch projects.`, error);
+            throw transformApiError(error, 'Failed to fetch projects');
         }
     }
 
@@ -47,17 +52,16 @@ class ProjectService {
         logger.info(`Fetching project ${projectId}...`);
         try {
             const response = await apiClient.get<Project>(`${this.baseUrl}/${projectId}`);
-            if (response && response.data && response.data.id) {
+            if (isValidApiResponse(response)) {
                 logger.info(`Fetched project: ${response.data.name} (ID: ${response.data.id}).`, response.data);
                 return response.data;
             } else {
-                logger.error(`Invalid response structure for project ${projectId}.`, response);
-                throw new Error('Invalid response structure from API for single project.');
+                logger.error(`Invalid response structure for project ${projectId}.`, response?.data);
+                throw new ApiResponseError('Invalid response structure from API for single project.');
             }
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to fetch project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            logger.error(`Failed to fetch project ${projectId}.`, error);
+            throw transformApiError(error, `Failed to fetch project ${projectId}`);
         }
     }
 
@@ -70,17 +74,16 @@ class ProjectService {
         logger.info(`Creating project...`, projectData);
         try {
             const response = await apiClient.post<Project>(this.baseUrl, projectData);
-            if (response && response.data && response.data.id) {
+            if (isValidApiResponse(response)) {
                 logger.info(`Created project: ${response.data.name} (ID: ${response.data.id}).`, response.data);
                 return response.data;
             } else {
-                logger.error(`Invalid response structure after creating project.`, response);
-                throw new Error('Invalid response structure from API after creating project.');
+                logger.error(`Invalid response structure after creating project.`, response?.data);
+                throw new ApiResponseError('Invalid response structure from API after creating project.');
             }
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to create project.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            logger.error(`Failed to create project.`, error);
+            throw transformApiError(error, 'Failed to create project');
         }
     }
 
@@ -94,17 +97,16 @@ class ProjectService {
         logger.info(`Updating project ${projectId}...`, projectData);
         try {
             const response = await apiClient.put<Project>(`${this.baseUrl}/${projectId}`, projectData);
-            if (response && response.data && response.data.id) {
+            if (isValidApiResponse(response)) {
                 logger.info(`Updated project: ${response.data.name} (ID: ${projectId}).`, response.data);
                 return response.data;
             } else {
-                logger.error(`Invalid response structure after updating project ${projectId}.`, response);
-                throw new Error('Invalid response structure from API after updating project.');
+                logger.error(`Invalid response structure after updating project ${projectId}.`, response?.data);
+                throw new ApiResponseError('Invalid response structure from API after updating project.');
             }
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to update project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            logger.error(`Failed to update project ${projectId}.`, error);
+            throw transformApiError(error, `Failed to update project ${projectId}`);
         }
     }
 
@@ -120,12 +122,11 @@ class ProjectService {
                 logger.info(`Deleted project ${projectId} successfully.`);
             } else {
                 logger.error(`Unexpected status code after deleting project ${projectId}.`, response);
-                throw new Error('Unexpected response from API after deleting project.');
+                throw new ApiResponseError('Unexpected response from API after deleting project.');
             }
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to delete project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            logger.error(`Failed to delete project ${projectId}.`, error);
+            throw transformApiError(error, `Failed to delete project ${projectId}`);
         }
     }
 
@@ -138,17 +139,16 @@ class ProjectService {
         logger.info(`Archiving project ${projectId}...`);
         try {
             const response = await apiClient.patch<Project>(`${this.baseUrl}/${projectId}/archive`);
-            if (response && response.data && response.data.id) {
+            if (isValidApiResponse(response)) {
                 logger.info(`Archived project: ${response.data.name} (ID: ${projectId}).`, response.data);
                 return response.data;
             } else {
-                logger.error(`Invalid response structure after archiving project ${projectId}.`, response);
-                throw new Error('Invalid response structure from API after archiving project.');
+                logger.error(`Invalid response structure after archiving project ${projectId}.`, response?.data);
+                throw new ApiResponseError('Invalid response structure from API after archiving project.');
             }
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to archive project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            logger.error(`Failed to archive project ${projectId}.`, error);
+            throw transformApiError(error, `Failed to archive project ${projectId}`);
         }
     }
 
@@ -161,17 +161,16 @@ class ProjectService {
         logger.info(`Restoring project ${projectId}...`);
         try {
             const response = await apiClient.patch<Project>(`${this.baseUrl}/${projectId}/restore`);
-            if (response && response.data && response.data.id) {
+            if (isValidApiResponse(response)) {
                 logger.info(`Restored project: ${response.data.name} (ID: ${projectId}).`, response.data);
                 return response.data;
             } else {
-                logger.error(`Invalid response structure after restoring project ${projectId}.`, response);
-                throw new Error('Invalid response structure from API after restoring project.');
+                logger.error(`Invalid response structure after restoring project ${projectId}.`, response?.data);
+                throw new ApiResponseError('Invalid response structure from API after restoring project.');
             }
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to restore project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            logger.error(`Failed to restore project ${projectId}.`, error);
+            throw transformApiError(error, `Failed to restore project ${projectId}`);
         }
     }
 
@@ -184,17 +183,16 @@ class ProjectService {
         logger.info(`Fetching stats for project ${projectId}...`);
         try {
             const response = await apiClient.get<ProjectStatsResponse>(`${this.baseUrl}/${projectId}/stats`);
-            if (response && response.data) { 
+            if (isValidApiResponse(response)) { 
                 logger.info(`Fetched stats for project ${projectId}.`, response.data);
                 return response.data;
             } else {
-                logger.error(`Invalid response structure for project stats ${projectId}.`, response);
-                throw new Error('Invalid response structure from API for project stats.');
+                logger.error(`Invalid response structure for project stats ${projectId}.`, response?.data);
+                throw new ApiResponseError('Invalid response structure from API for project stats.');
             }
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to fetch stats for project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            logger.error(`Failed to fetch stats for project ${projectId}.`, error);
+            throw transformApiError(error, `Failed to fetch stats for project ${projectId}`);
         }
     }
 
@@ -208,17 +206,16 @@ class ProjectService {
         logger.info(`Duplicating project ${projectId} with name: ${newName}...`);
         try {
             const response = await apiClient.post<Project>(`${this.baseUrl}/${projectId}/duplicate`, { name: newName });
-            if (response && response.data && response.data.id) {
+            if (isValidApiResponse(response)) {
                 logger.info(`Duplicated project: ${response.data.name} (ID: ${response.data.id}).`, response.data);
                 return response.data;
             } else {
-                logger.error(`Invalid response structure after duplicating project ${projectId}.`, response);
-                throw new Error('Invalid response structure from API after duplicating project.');
+                logger.error(`Invalid response structure after duplicating project ${projectId}.`, response?.data);
+                throw new ApiResponseError('Invalid response structure from API after duplicating project.');
             }
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to duplicate project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            logger.error(`Failed to duplicate project ${projectId}.`, error);
+            throw transformApiError(error, `Failed to duplicate project ${projectId}`);
         }
     }
 
@@ -235,17 +232,16 @@ class ProjectService {
                 params: { format },
                 responseType: 'blob'
             });
-            if (response && response.data) { // Blob data might not have specific properties to check beyond existence
+            if (isValidBlobResponse(response)) {
                 logger.info(`Exported project ${projectId} in ${format} format successfully.`);
                 return response.data;
             } else {
-                logger.error(`Invalid response structure for project export ${projectId}.`, response);
-                throw new Error('Invalid response structure from API for project export.');
+                logger.error(`Invalid response structure for project export ${projectId}.`, response?.data);
+                throw new ApiResponseError('Invalid response structure from API for project export.');
             }
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to export project ${projectId} in ${format} format.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            logger.error(`Failed to export project ${projectId} in ${format} format.`, error);
+            throw transformApiError(error, `Failed to export project ${projectId} in ${format} format`);
         }
     }
 }
