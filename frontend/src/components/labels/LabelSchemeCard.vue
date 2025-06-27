@@ -48,7 +48,7 @@ import type { LabelScheme } from '@/types/label/labelScheme';
 import type { Label } from '@/types/label/label';
 import type { CreateLabelRequest } from '@/types/label/requests';
 import { labelService } from '@/services/api/labelService';
-import { useAlert } from '@/composables/useAlert';
+import { useToast } from '@/composables/useToast';
 import LabelChip from './LabelChip.vue';
 import CreateLabelForm from './CreateLabelForm.vue';
 import Button from '@/components/common/Button.vue';
@@ -63,7 +63,7 @@ const labels = ref<Label[]>([]);
 const isLoadingLabels = ref(false);
 const isAddLabelModalOpen = ref(false);
 
-const { showAlert } = useAlert();
+const { showCreateSuccess, showError } = useToast();
 
 const openAddLabelModal = () => {
     isAddLabelModalOpen.value = true;
@@ -87,9 +87,9 @@ const handleCreateLabel = async (formData: CreateLabelRequest) => {
         labels.value.push(newLabel);
         
         // Don't close modal - let user create multiple labels
-        await showAlert('Success', 'Label created successfully!');
+        showCreateSuccess('Label');
     } catch (error) {
-        await showAlert('Error', 'Failed to create label. Please try again.');
+        showError('Error', 'Failed to create label. Please try again.');
         console.error('Failed to create label:', error);
     } finally {
         isLoadingLabels.value = false;

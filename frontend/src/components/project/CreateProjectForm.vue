@@ -29,9 +29,9 @@ import { ref } from 'vue';
 import Form from '@/components/common/Form.vue';
 import Button from '@/components/common/Button.vue';
 import { ProjectType } from '@/types/project/project';
-import { useAlert } from '@/composables/useAlert';
+import { useToast } from '@/composables/useToast';
 
-const { showAlert } = useAlert();
+const { showWarning } = useToast();
 
 const emit = defineEmits<{
     (e: 'save', formData: { name: string; description: string; projectType: ProjectType }): void;
@@ -43,12 +43,12 @@ const projectTypes = Object.values(ProjectType);
 const formData = ref({
     name: '',
     description: '',
-    projectType: ProjectType.OTHER, // Default to OTHER type
+    projectType: ProjectType.OTHER,
 });
 
 const handleSubmit = async () => {
     if (!formData.value.name || !formData.value.projectType) {
-        await showAlert('Missing Information', 'Please fill in all required fields.');
+        showWarning('Missing Information', 'Please fill in all required fields.');
         return;
     }
     emit('save', { ...formData.value });

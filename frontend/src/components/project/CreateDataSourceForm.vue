@@ -34,12 +34,10 @@ import { ref, onMounted } from 'vue';
 import Form from '@/components/common/Form.vue';
 import Button from '@/components/common/Button.vue';
 import { DataSourceType, type CreateDataSourceRequest } from '@/types/dataSource';
-import { useAlert } from '@/composables/useAlert';
+import { useToast } from '@/composables/useToast';
 import { dataSourceService } from '@/services/api/dataSourceService';
-import { AppLogger } from '@/utils/logger';
 
-const { showAlert } = useAlert();
-const log = AppLogger.createServiceLogger('CreateDataSourceForm');
+const { showWarning, showError, showApiError } = useToast();
 
 const props = defineProps<{
     projectId: number;
@@ -68,8 +66,7 @@ const fetchAvailableTypes = async () => {
             formData.value.sourceType = availableDataSourceTypes.value[0];
         }
     } catch (error) {
-        log.error('Failed to fetch available data source types', error);
-        await showAlert('Error', 'Failed to load available data source types');
+        showApiError(error, 'Failed to load data source types');
     } finally {
         loading.value = false;
     }
@@ -81,12 +78,12 @@ onMounted(() => {
 
 const handleSubmit = async () => {
     if (!formData.value.name) {
-        await showAlert('Missing Information', 'Data Source Name is required.');
+        showWarning('Missing Information', 'Please provide a name for the data source.');
         return;
     }
     
     if (availableDataSourceTypes.value.length === 0) {
-        await showAlert('No Data Source Types', 'No data source types are available. Please contact your administrator.');
+        showError('No Data Source Types', 'No data source types are available. Please contact your administrator.');
         return;
     }
     

@@ -49,12 +49,14 @@ import { useAlert } from '@/composables/useAlert';
 import { AppLogger } from '@/utils/logger';
 import { useConfirm } from '@/composables/useConfirm';
 import { useToast } from '@/composables/useToast';
+import { useErrorHandler } from '@/composables/useErrorHandler';
 
 const logger = AppLogger.createServiceLogger('WorkflowsView');
 const route = useRoute();
 const { showAlert } = useAlert();
 const { showConfirm } = useConfirm();
-const { showCreateSuccess, showDeleteSuccess, showError, showApiError } = useToast();
+const { showCreateSuccess, showDeleteSuccess, showError } = useToast();
+const { handleError } = useErrorHandler();
 
 const workflows = ref<Workflow[]>([]);
 const isModalOpen = ref(false);
@@ -78,8 +80,7 @@ const loadWorkflows = async () => {
         workflows.value = response;
         logger.info(`Loaded ${response.length} workflows for project ${projectId}`);
     } catch (error) {
-        logger.error('Failed to load workflows', error);
-        await showAlert('Error', 'Failed to load workflows. Please try again.');
+        handleError(error, 'Failed to load workflows');
     } finally {
         isLoading.value = false;
     }
@@ -111,8 +112,7 @@ const handleCreateWorkflow = async (formData: CreateWorkflowRequest) => {
         closeModal();
         showCreateSuccess("Workflow", newWorkflow.name);
     } catch (error) {
-        logger.error('Failed to create workflow', error);
-        showApiError(error, 'Failed to create workflow');
+        handleError(error, 'Failed to create workflow');
     } finally {
         isCreating.value = false;
     }
@@ -135,8 +135,7 @@ const handleDeleteWorkflow = async (workflow: Workflow) => {
         logger.info(`Deleted workflow: ${workflow.name} (ID: ${workflow.id})`);
         showDeleteSuccess("Workflow", workflow.name);
     } catch (error) {
-        logger.error('Failed to delete workflow', error);
-        showApiError(error, 'Failed to delete workflow');
+        handleError(error, 'Failed to delete workflow');
     }
 };
 

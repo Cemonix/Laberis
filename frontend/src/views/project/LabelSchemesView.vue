@@ -56,9 +56,11 @@ import type { LabelScheme, FormPayloadLabelScheme } from '@/types/label/labelSch
 import { labelSchemeService } from '@/services/api/labelSchemeService';
 import { labelService } from '@/services/api/labelService';
 import { useAlert } from '@/composables/useAlert';
+import { useToast } from '@/composables/useToast';
 
 const route = useRoute();
 const { showAlert } = useAlert();
+const { showCreateSuccess, showWarning, showError } = useToast();
 
 const labelSchemes = ref<LabelScheme[]>([]);
 const isModalOpen = ref(false);
@@ -93,7 +95,7 @@ const handleCreateScheme = async (formData: FormPayloadLabelScheme) => {
     const projectId = Number(route.params.projectId);
 
     if (labelSchemes.value.some(scheme => scheme.name.toLowerCase() === formData.name.toLowerCase())) {
-        await showAlert('Duplicate Scheme', 'This label scheme already exists.');
+        showWarning('Duplicate Scheme', 'This label scheme already exists.');
         return;
     }
 
@@ -127,9 +129,9 @@ const handleCreateScheme = async (formData: FormPayloadLabelScheme) => {
         await fetchLabelSchemes();
         
         closeModal();
-        await showAlert('Success', 'Label scheme created successfully!');
+        showCreateSuccess('Label Scheme');
     } catch (error) {
-        await showAlert('Error', 'Failed to create label scheme. Please try again.');
+        showError('Error', 'Failed to create label scheme. Please try again.');
         console.error('Failed to create label scheme:', error);
     } finally {
         isLoading.value = false;
