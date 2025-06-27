@@ -1,10 +1,10 @@
 import apiClient from './apiClient';
-import type { ApiError, PaginatedResponse } from '@/types/api';
+import { transformApiError, isValidApiResponse, isValidPaginatedResponse } from '@/services/utils';
+import type { PaginatedResponse } from '@/types/api';
 import { buildQueryParams } from '@/types/api';
 import type { Asset, AssetListParams } from '@/types/asset';
 import type { UploadResult, BulkUploadResult } from '@/types/asset';
-import {  NoFilesProvidedError } from '@/types/asset';
-import { ApiResponseError, ServerError, NetworkError } from '@/types/common/errors';
+import { NoFilesProvidedError } from '@/types/asset';
 import { AppLogger } from '@/utils/logger';
 
 const logger = AppLogger.createServiceLogger('AssetService');
@@ -50,34 +50,15 @@ class AssetService {
                 }
             );
 
-            if (response && response.data) {
-                logger.info(`Successfully uploaded asset: ${file.name}`, response.data);
-                return response.data;
-            } else {
-                logger.error(`Invalid response structure for asset upload`, response);
-                throw new ApiResponseError('Invalid response structure from API for asset upload.');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to upload asset - Invalid response format');
             }
+
+            logger.info(`Successfully uploaded asset: ${file.name}`, response.data);
+            return response.data;
         } catch (error) {
-            if (error instanceof ApiResponseError) {
-                throw error;
-            }
-
-            const apiError = error as ApiError;
-            logger.error(`Failed to upload asset: ${file.name}`, apiError.response?.data || apiError.message);
-            
-            if (apiError.response) {
-                throw new ServerError(
-                    apiError.response.data?.message || 'Server error occurred',
-                    apiError.response.status,
-                    apiError.response.data
-                );
-            }
-            
-            if (apiError.code === 'NETWORK_ERROR' || apiError.request) {
-                throw new NetworkError(apiError.message, apiError);
-            }
-
-            throw new NetworkError(apiError.message || 'Unknown upload error', apiError);
+            throw transformApiError(error, `Failed to upload asset: ${file.name}`);
         }
     }
 
@@ -136,34 +117,18 @@ class AssetService {
                 }
             );
 
-            if (response && response.data) {
-                logger.info(`Successfully uploaded ${response.data.successfulUploads} of ${files.length} assets`, response.data);
-                return response.data;
-            } else {
-                logger.error(`Invalid response structure for bulk asset upload`, response);
-                throw new ApiResponseError('Invalid response structure from API for bulk asset upload.');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to upload assets - Invalid response format');
             }
+
+            logger.info(`Successfully uploaded ${response.data.successfulUploads} of ${files.length} assets`, response.data);
+            return response.data;
         } catch (error) {
-            if (error instanceof NoFilesProvidedError || error instanceof ApiResponseError) {
+            if (error instanceof NoFilesProvidedError) {
                 throw error;
             }
-
-            const apiError = error as ApiError;
-            logger.error(`Failed to upload assets`, apiError.response?.data || apiError.message);
-            
-            if (apiError.response) {
-                throw new ServerError(
-                    apiError.response.data?.message || 'Server error occurred during bulk upload',
-                    apiError.response.status,
-                    apiError.response.data
-                );
-            }
-            
-            if (apiError.code === 'NETWORK_ERROR' || apiError.request) {
-                throw new NetworkError(apiError.message, apiError);
-            }
-
-            throw new NetworkError(apiError.message || 'Unknown bulk upload error', apiError);
+            throw transformApiError(error, 'Failed to upload assets');
         }
     }
 
@@ -186,30 +151,15 @@ class AssetService {
                 `${this.baseUrl}/${projectId}/assets?${queryParams.toString()}`
             );
 
-            if (response && response.data && Array.isArray(response.data.data)) {
-                logger.info(`Fetched ${response.data.data.length} assets for project ${projectId}`, response.data);
-                return response.data;
-            } else {
-                logger.error(`Invalid response structure for assets for project ${projectId}`, response);
-                throw new ApiResponseError('Invalid response structure from API for assets.');
-            }
-        } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to fetch assets for project ${projectId}`, apiError.response?.data || apiError.message);
-            
-            if (apiError.response) {
-                throw new ServerError(
-                    apiError.response.data?.message || 'Server error occurred while fetching assets',
-                    apiError.response.status,
-                    apiError.response.data
-                );
-            }
-            
-            if (apiError.code === 'NETWORK_ERROR' || apiError.request) {
-                throw new NetworkError(apiError.message, apiError);
+            if (!isValidPaginatedResponse(response)) {
+                throw transformApiError(new Error('Invalid paginated response structure'), 
+                    'Failed to fetch assets - Invalid response format');
             }
 
-            throw new NetworkError(apiError.message || 'Unknown error while fetching assets', apiError);
+            logger.info(`Fetched ${response.data.data.length} assets for project ${projectId}`, response.data);
+            return response.data;
+        } catch (error) {
+            throw transformApiError(error, 'Failed to fetch assets');
         }
     }
 
@@ -227,30 +177,15 @@ class AssetService {
                 `${this.baseUrl}/${projectId}/assets/${assetId}`
             );
 
-            if (response && response.data && response.data.id) {
-                logger.info(`Fetched asset ${assetId} for project ${projectId}`, response.data);
-                return response.data;
-            } else {
-                logger.error(`Invalid response structure for asset ${assetId} in project ${projectId}`, response);
-                throw new ApiResponseError('Invalid response structure from API for asset.');
-            }
-        } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to fetch asset ${assetId} for project ${projectId}`, apiError.response?.data || apiError.message);
-            
-            if (apiError.response) {
-                throw new ServerError(
-                    apiError.response.data?.message || `Asset ${assetId} not found`,
-                    apiError.response.status,
-                    apiError.response.data
-                );
-            }
-            
-            if (apiError.code === 'NETWORK_ERROR' || apiError.request) {
-                throw new NetworkError(apiError.message, apiError);
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to fetch asset - Invalid response format');
             }
 
-            throw new NetworkError(apiError.message || 'Unknown error while fetching asset', apiError);
+            logger.info(`Fetched asset ${assetId} for project ${projectId}`, response.data);
+            return response.data;
+        } catch (error) {
+            throw transformApiError(error, `Failed to fetch asset ${assetId}`);
         }
     }
 
