@@ -49,7 +49,7 @@
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import LabelSchemeCard from '@/components/labels/LabelSchemeCard.vue';
-import ModalWindow from '@/components/common/modals/ModalWindow.vue';
+import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateLabelSchemeForm from '@/components/labels/CreateLabelSchemeForm.vue';
 import Button from '@/components/common/Button.vue';
 import type { LabelScheme, FormPayloadLabelScheme } from '@/types/label/labelScheme';

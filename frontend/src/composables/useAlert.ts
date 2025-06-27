@@ -64,7 +64,7 @@ export function useAlert() {
         });
     };
 
-    const handleConfirm = () => {
+    const handleAlertConfirm = () => {
         if (isAlertOpen.value) {
             closeAlertAndSettlePromise(true);
         }
@@ -76,6 +76,6 @@ export function useAlert() {
         alertTitle: readonly(alertTitle),
         alertMessage: readonly(alertMessage),
         showAlert,
-        handleConfirm,
+        handleAlertConfirm
     };
 }

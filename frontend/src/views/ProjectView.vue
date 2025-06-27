@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import ProjectCard from '@/components/project/ProjectCard.vue';
-import ModalWindow from '@/components/common/modals/ModalWindow.vue';
+import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateProjectForm from '@/components/project/CreateProjectForm.vue';
 import Button from '@/components/common/Button.vue';
 import type { Project } from '@/types/project/project';
