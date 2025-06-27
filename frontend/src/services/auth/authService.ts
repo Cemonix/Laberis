@@ -1,5 +1,5 @@
 import apiClient from "../api/apiClient";
-import type { ApiError } from "@/types/api/error";
+import { transformApiError, isValidApiResponse } from '@/services/utils';
 import type { 
     LoginDto, 
     RegisterDto, 
@@ -13,7 +13,6 @@ import type {
     AuthTokens
 } from "@/types/auth/auth";
 import { AppLogger } from "@/utils/logger";
-import { env } from "@/config/env";
 
 const logger = AppLogger.createServiceLogger('BackendAuthService');
 
@@ -54,30 +53,15 @@ class AuthService {
                 loginDto
             );
             
-            if (response?.data) {
-                logger.info(`Login successful for user: ${credentials.email}`);
-                return this.mapAuthResponse(response.data);
-            } else {
-                logger.error(`Invalid response structure during login for user: ${credentials.email}`);
-                throw new Error('Invalid response structure from API during login.');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to login - Invalid response format');
             }
+
+            logger.info(`Login successful for user: ${credentials.email}`);
+            return this.mapAuthResponse(response.data);
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Login failed for user: ${credentials.email}`, apiError.response?.data || apiError.message);
-            
-            // Handle specific backend error messages
-            if (apiError.response?.status === 401) {
-                throw new Error('Invalid email or password');
-            } else if (apiError.response?.status === 400) {
-                const validationErrors = apiError.response.data?.errors;
-                if (validationErrors) {
-                    const errorMessages = Object.values(validationErrors).flat().join(', ');
-                    throw new Error(errorMessages);
-                }
-                throw new Error('Invalid request. Please check your input.');
-            }
-            
-            throw new Error('Login failed. Please try again later.');
+            throw transformApiError(error, 'Failed to login');
         }
     }
 
@@ -97,30 +81,15 @@ class AuthService {
                 registerDto
             );
             
-            if (response?.data) {
-                logger.info(`Registration successful for user: ${credentials.email}`);
-                return this.mapAuthResponse(response.data);
-            } else {
-                logger.error(`Invalid response structure during registration for user: ${credentials.email}`);
-                throw new Error('Invalid response structure from API during registration.');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to register - Invalid response format');
             }
+
+            logger.info(`Registration successful for user: ${credentials.email}`);
+            return this.mapAuthResponse(response.data);
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Registration failed for user: ${credentials.email}`, apiError.response?.data || apiError.message);
-            
-            // Handle specific backend error messages
-            if (apiError.response?.status === 400) {
-                const validationErrors = apiError.response.data?.errors;
-                if (validationErrors) {
-                    const errorMessages = Object.values(validationErrors).flat().join(', ');
-                    throw new Error(errorMessages);
-                }
-                throw new Error('Invalid request. Please check your input.');
-            } else if (apiError.response?.status === 409) {
-                throw new Error('User with this email already exists');
-            }
-            
-            throw new Error('Registration failed. Please try again later.');
+            throw transformApiError(error, 'Failed to register');
         }
     }
 
@@ -130,36 +99,23 @@ class AuthService {
         try {
             const response = await apiClient.get<UserDto>(`${this.baseUrl}/me`);
             
-            if (response?.data) {
-                logger.info('Successfully fetched current user information');
-                
-                const user: User = {
-                    id: response.data.id,
-                    email: response.data.email,
-                    userName: response.data.userName,
-                    createdAt: response.data.createdAt
-                };
-                
-                return user;
-            } else {
-                logger.error('Invalid response structure when fetching current user');
-                throw new Error('Invalid response structure from API when fetching current user.');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to fetch current user - Invalid response format');
             }
+
+            logger.info('Successfully fetched current user information');
+            
+            const user: User = {
+                id: response.data.id,
+                email: response.data.email,
+                userName: response.data.userName,
+                createdAt: response.data.createdAt
+            };
+            
+            return user;
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error('Failed to fetch current user information', apiError.response?.data || apiError.message);
-            
-            // In development mode, if we get 401, it might be because fake auth is enabled
-            // but we don't have the proper setup, so provide more helpful error message
-            if (apiError.response?.status === 401) {
-                if (env.IS_DEVELOPMENT) {
-                    throw new Error('Authentication required. Make sure fake authentication is enabled in backend for development mode.');
-                } else {
-                    throw new Error('Authentication required');
-                }
-            }
-            
-            throw new Error('Failed to fetch user information');
+            throw transformApiError(error, 'Failed to fetch current user');
         }
     }
 
