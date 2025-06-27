@@ -1,10 +1,12 @@
 <template>
     <div class="data-explorer-layout">
         <slot />
+        <ToastContainer />
     </div>
 </template>
 
 <script setup lang="ts">
+import ToastContainer from '@/components/common/toast/ToastContainer.vue';
 </script>
 
 <style lang="scss" scoped>

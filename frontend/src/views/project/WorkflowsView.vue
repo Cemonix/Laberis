@@ -40,17 +40,21 @@
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import WorkflowCard from '@/components/project/WorkflowCard.vue';
-import ModalWindow from '@/components/common/modals/ModalWindow.vue';
+import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateWorkflowForm from '@/components/project/CreateWorkflowForm.vue';
 import Button from '@/components/common/Button.vue';
 import { type Workflow, type CreateWorkflowRequest } from '@/types/workflow';
 import { workflowService } from '@/services/api/workflowService';
 import { useAlert } from '@/composables/useAlert';
 import { AppLogger } from '@/utils/logger';
+import { useConfirm } from '@/composables/useConfirm';
+import { useToast } from '@/composables/useToast';
 
 const logger = AppLogger.createServiceLogger('WorkflowsView');
 const route = useRoute();
 const { showAlert } = useAlert();
+const { showConfirm } = useConfirm();
+const { showCreateSuccess, showDeleteSuccess, showError, showApiError } = useToast();
 
 const workflows = ref<Workflow[]>([]);
 const isModalOpen = ref(false);
@@ -85,7 +89,17 @@ const handleCreateWorkflow = async (formData: CreateWorkflowRequest) => {
     const projectId = Number(route.params.projectId);
     if (!projectId || isNaN(projectId)) {
         logger.error('Invalid project ID in route params', route.params.projectId);
-        await showAlert('Error', 'Invalid project ID');
+        showError('Error', 'Invalid project ID');
+        return;
+    }
+
+    // Check if workflow with same name already exists
+    const existingWorkflow = workflows.value.find(w => 
+        w.name.toLowerCase().trim() === formData.name.toLowerCase().trim()
+    );
+    
+    if (existingWorkflow) {
+        showError('Duplicate Name', `A workflow named "${formData.name}" already exists. Please choose a different name.`);
         return;
     }
 
@@ -95,10 +109,10 @@ const handleCreateWorkflow = async (formData: CreateWorkflowRequest) => {
         workflows.value.push(newWorkflow);
         logger.info(`Created workflow: ${newWorkflow.name} (ID: ${newWorkflow.id})`);
         closeModal();
-        await showAlert('Success', `Workflow "${newWorkflow.name}" created successfully!`);
+        showCreateSuccess("Workflow", newWorkflow.name);
     } catch (error) {
         logger.error('Failed to create workflow', error);
-        await showAlert('Error', `Failed to create workflow: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        showApiError(error, 'Failed to create workflow');
     } finally {
         isCreating.value = false;
     }
@@ -111,8 +125,7 @@ const handleEditWorkflow = async (workflow: Workflow) => {
 };
 
 const handleDeleteWorkflow = async (workflow: Workflow) => {
-    const confirmed = confirm(`Are you sure you want to delete the workflow "${workflow.name}"? This action cannot be undone.`);
-    
+    const confirmed = await showConfirm('Confirm Deletion', `Are you sure you want to delete the workflow "${workflow.name}"? This action cannot be undone.`);
     if (!confirmed) return;
 
     const projectId = Number(route.params.projectId);
@@ -120,10 +133,10 @@ const handleDeleteWorkflow = async (workflow: Workflow) => {
         await workflowService.deleteWorkflow(projectId, workflow.id);
         workflows.value = workflows.value.filter(w => w.id !== workflow.id);
         logger.info(`Deleted workflow: ${workflow.name} (ID: ${workflow.id})`);
-        await showAlert('Success', `Workflow "${workflow.name}" deleted successfully!`);
+        showDeleteSuccess("Workflow", workflow.name);
     } catch (error) {
         logger.error('Failed to delete workflow', error);
-        await showAlert('Error', `Failed to delete workflow: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        showApiError(error, 'Failed to delete workflow');
     }
 };
 
