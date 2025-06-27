@@ -7,7 +7,6 @@ export class AppError extends Error {
         super(message);
         this.name = 'AppError';
         
-        // Maintain proper stack trace for where our error was thrown (only available on V8)
         if (Error.captureStackTrace) {
             Error.captureStackTrace(this, AppError);
         }
@@ -23,10 +22,17 @@ abstract class AlertError extends AppError {
     }
 }
 
+export class UserVisibleError extends AlertError {
+    constructor(title: string, message: string, cause?: Error) {
+        super(message, title, cause);
+        this.name = 'UserVisibleError';
+    }
+}
+
 // Network-related errors
 export class NetworkError extends AppError {
-    constructor(message: string, cause?: Error) {
-        super(`Network error: ${message}`, cause);
+    constructor(message: string = 'A network error occurred. Please check your connection.', cause?: Error) {
+        super(message, cause);
         this.name = 'NetworkError';
     }
 }
@@ -45,7 +51,7 @@ export class ServerError extends AppError {
         public readonly statusCode?: number,
         public readonly serverResponse?: any
     ) {
-        super(`Server error: ${message}`);
+        super(message);
         this.name = 'ServerError';
     }
 }
@@ -58,9 +64,6 @@ export class ValidationError extends AppError {
     }
 }
 
-// Authentication and authorization errors
-// TODO: Implement specific auth errors if needed
-
 // Store-related errors
 export class StoreError extends AlertError {
     constructor(message: string, public readonly action?: string) {
@@ -69,9 +72,53 @@ export class StoreError extends AlertError {
     }
 }
 
+// Tool-specific errors in the workspace
 export class ToolError extends AlertError {
     constructor(message: string, public readonly toolName?: string) {
         super(message, 'Tool Error');
         this.name = 'ToolError';
     }
 }
+
+// Type guards for error classification
+/**
+ * Type guard to check if an error is an API response error
+ */
+export const isApiResponseError = (error: unknown): error is ApiResponseError => {
+    return error instanceof ApiResponseError;
+};
+
+/**
+ * Type guard to check if an error is a validation error
+ */
+export const isValidationError = (error: unknown): error is ValidationError => {
+    return error instanceof ValidationError;
+};
+
+/**
+ * Type guard to check if an error is a server error
+ */
+export const isServerError = (error: unknown): error is ServerError => {
+    return error instanceof ServerError;
+};
+
+/**
+ * Type guard to check if an error is a network error
+ */
+export const isNetworkError = (error: unknown): error is NetworkError => {
+    return error instanceof NetworkError;
+};
+
+/**
+ * Type guard to check if an error is a user visible error
+ */
+export const isUserVisibleError = (error: unknown): error is UserVisibleError => {
+    return error instanceof UserVisibleError;
+};
+
+/**
+ * Type guard to check if an error is a tool error
+ */
+export const isToolError = (error: unknown): error is ToolError => {
+    return error instanceof ToolError;
+};
