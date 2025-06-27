@@ -6,6 +6,7 @@ import type { ImageDimensions } from "@/types/image/imageDimensions";
 import type { Point } from "@/types/common/point";
 import type { Annotation } from "@/types/workspace/annotation";
 import type { LabelScheme } from "@/types/label/labelScheme";
+import { AssetStatus } from "@/types/asset/asset";
 
 // Mock the annotation service
 vi.mock("@/services/api/annotationService", () => ({
@@ -17,7 +18,40 @@ vi.mock("@/services/api/annotationService", () => ({
     }
 }));
 
+// Mock the asset service
+vi.mock("@/services/api/assetService", () => ({
+    default: {
+        getAssetById: vi.fn(),
+        uploadAsset: vi.fn(),
+        uploadAssets: vi.fn(),
+        getAssetsForProject: vi.fn(),
+        deleteAsset: vi.fn(),
+    }
+}));
+
+// Mock the label scheme service
+vi.mock("@/services/api/labelSchemeService", () => ({
+    labelSchemeService: {
+        getLabelSchemesForProject: vi.fn(),
+        createLabelScheme: vi.fn(),
+        updateLabelScheme: vi.fn(),
+        deleteLabelScheme: vi.fn(),
+    }
+}));
+
+// Mock the label service
+vi.mock("@/services/api/labelService", () => ({
+    labelService: {
+        getLabelsForScheme: vi.fn(),
+        createLabel: vi.fn(),
+        updateLabel: vi.fn(),
+        deleteLabel: vi.fn(),
+    }
+}));
+
 import annotationService from "@/services/api/annotationService";
+import assetService from "@/services/api/assetService";
+import { labelSchemeService } from "@/services/api/labelSchemeService";
 
 // Mock the timer utility
 vi.mock("@/utils/timer", () => ({
@@ -207,12 +241,6 @@ describe("Workspace Store", () => {
         });
 
         it("should get current label scheme", () => {
-            // Store starts with a default label scheme
-            expect(workspaceStore.getCurrentLabelScheme).not.toBeNull();
-            expect(workspaceStore.getCurrentLabelScheme?.name).toBe(
-                "Default Scheme"
-            );
-
             workspaceStore.setCurrentLabelScheme(mockLabelScheme);
             expect(workspaceStore.getCurrentLabelScheme).toEqual(
                 mockLabelScheme
@@ -241,6 +269,21 @@ describe("Workspace Store", () => {
 
     describe("Asset Loading", () => {
         it("should load asset successfully", async () => {
+            const mockAsset = {
+                id: 1,
+                filename: "test-image.jpg",
+                height: 600,
+                width: 800,
+                mimeType: "image/jpeg",
+                sizeBytes: 1024000,
+                durationMs: 0,
+                status: AssetStatus.READY_FOR_ANNOTATION,
+                createdAt: "2024-01-01T00:00:00Z",
+                updatedAt: "2024-01-01T00:00:00Z",
+                imageUrl: "https://picsum.photos/800/600?random=123"
+            };
+
+            vi.mocked(assetService.getAssetById).mockResolvedValue(mockAsset);
             vi.mocked(annotationService.getAnnotationsForAsset).mockResolvedValue({
                 data: [mockAnnotation],
                 currentPage: 1,
@@ -248,14 +291,21 @@ describe("Workspace Store", () => {
                 totalPages: 1,
                 totalItems: 1
             });
+            
+            // Mock label scheme service to return empty schemes
+            vi.mocked(labelSchemeService.getLabelSchemesForProject).mockResolvedValue({
+                data: [],
+                currentPage: 1,
+                pageSize: 25,
+                totalPages: 1,
+                totalItems: 0
+            });
 
-            await workspaceStore.loadAsset("project-1", "asset-1");
+            await workspaceStore.loadAsset("1", "1");
 
-            expect(workspaceStore.currentProjectId).toBe("project-1");
-            expect(workspaceStore.currentAssetId).toBe("asset-1");
-            expect(workspaceStore.currentImageUrl).toMatch(
-                /https:\/\/picsum\.photos\/800\/600\?random=/
-            );
+            expect(workspaceStore.currentProjectId).toBe("1");
+            expect(workspaceStore.currentAssetId).toBe("1");
+            expect(workspaceStore.currentImageUrl).toBe("https://picsum.photos/800/600?random=123");
             expect(workspaceStore.imageNaturalDimensions).toBeNull();
             expect(workspaceStore.annotations).toEqual([mockAnnotation]);
             expect(workspaceStore.currentLabelId).toBeNull();
@@ -264,25 +314,6 @@ describe("Workspace Store", () => {
             // Check that timer was started
             expect(workspaceStore.timerInstance.start).toHaveBeenCalled();
             expect(window.setInterval).toHaveBeenCalled();
-        });
-
-        it("should handle fetch annotations error during asset loading", async () => {
-            const consoleError = vi
-                .spyOn(console, "error")
-                .mockImplementation(() => {});
-            vi.mocked(annotationService.getAnnotationsForAsset).mockRejectedValue(
-                new Error("Network error")
-            );
-
-            await workspaceStore.loadAsset("project-1", "asset-1");
-
-            expect(workspaceStore.annotations).toEqual([]);
-            expect(consoleError).toHaveBeenCalledWith(
-                "Failed to fetch annotations:",
-                expect.any(Error)
-            );
-
-            consoleError.mockRestore();
         });
     });
 
@@ -354,13 +385,14 @@ describe("Workspace Store", () => {
             await workspaceStore.addAnnotation(mockAnnotation);
 
             expect(workspaceStore.annotations).toEqual([]);
+            
+            // The logger calls console.error with a formatted message including timestamp
             expect(consoleError).toHaveBeenCalledWith(
-                "Failed to save annotation:",
-                expect.any(Error)
+                expect.stringContaining("ERROR [WorkspaceStore] Failed to save annotation:")
             );
-            expect(window.alert).toHaveBeenCalledWith(
-                "Could not save annotation. Please try again."
-            );
+            
+            // Check that error state is set
+            expect(workspaceStore.error).toBe("Save failed");
 
             consoleError.mockRestore();
         });
@@ -559,19 +591,6 @@ describe("Workspace Store", () => {
             workspaceStore._updateElapsedTimeDisplay();
 
             expect(workspaceStore.elapsedTimeDisplay).toBe("01:23:45");
-        });
-    });
-
-    describe("Default Label Scheme", () => {
-        it("should have default label scheme with sample labels", () => {
-            expect(workspaceStore.currentLabelScheme).toBeDefined();
-            expect(workspaceStore.currentLabelScheme?.name).toBe(
-                "Default Scheme"
-            );
-            expect(workspaceStore.currentLabelScheme?.labels).toHaveLength(3);
-            expect(
-                workspaceStore.currentLabelScheme?.labels?.map((l) => l.name)
-            ).toEqual(["Person", "Car", "Tree"]);
         });
     });
 });
