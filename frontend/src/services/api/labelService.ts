@@ -4,6 +4,7 @@
 
 import apiClient from './apiClient';
 import { AppLogger } from '@/utils/logger';
+import { transformApiError, isValidApiResponse, isValidPaginatedResponse } from '@/services/utils';
 import type { LabelResponse } from '@/types/label/responses';
 import type {
     CreateLabelRequest,
@@ -48,7 +49,6 @@ class LabelService {
         schemeId: number,
         query_params: QueryParams = {}
     ): Promise<PaginatedResponse<Label>> {
-        const { pageNumber = 1, pageSize = 25 } = query_params;
         logger.info('Fetching labels for scheme', { projectId, schemeId, query: query_params });
 
         try {
@@ -57,27 +57,9 @@ class LabelService {
                 { params: query_params }
             );
 
-            if (
-                !response?.data ||
-                typeof response.data.data === 'undefined' ||
-                !Array.isArray(response.data.data) ||
-                typeof response.data.currentPage !== 'number' ||
-                typeof response.data.pageSize !== 'number' ||
-                typeof response.data.totalPages !== 'number'
-            ) {
-                logger.warn('Invalid paginated response structure received for labels', {
-                    projectId,
-                    schemeId,
-                    query: query_params,
-                    responseData: response?.data
-                });
-                return {
-                    data: [],
-                    currentPage: pageNumber,
-                    pageSize: pageSize,
-                    totalPages: 0,
-                    totalItems: 0
-                };
+            if (!isValidPaginatedResponse(response)) {
+                throw transformApiError(new Error('Invalid paginated response structure'), 
+                    'Failed to fetch labels - Invalid response format');
             }
 
             const labels = response.data.data.map(transformLabelResponse);
@@ -98,8 +80,7 @@ class LabelService {
                 totalItems: response.data.totalItems
             };
         } catch (error) {
-            logger.error('Failed to fetch labels for scheme', { error, projectId, schemeId, query: query_params });
-            throw error;
+            throw transformApiError(error, 'Failed to fetch labels');
         }
     }
 
@@ -122,9 +103,9 @@ class LabelService {
                 `/projects/${projectId}/labelschemes/${schemeId}/labels/${labelId}`
             );
 
-            if (!response?.data) {
-                logger.warn('Empty response data received for getLabelById', { projectId, schemeId, labelId });
-                throw new Error('Invalid data received for label');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to fetch label - Invalid response format');
             }
 
             const label = transformLabelResponse(response.data);
@@ -138,8 +119,7 @@ class LabelService {
 
             return label;
         } catch (error) {
-            logger.error('Failed to fetch label by ID', { error, projectId, schemeId, labelId });
-            throw error;
+            throw transformApiError(error, `Failed to fetch label ${labelId}`);
         }
     }
 
@@ -163,9 +143,9 @@ class LabelService {
                 data
             );
 
-            if (!response?.data) {
-                logger.warn('Empty response data received for createLabel', { projectId, schemeId, name: data.name });
-                throw new Error('Invalid data received after creating label');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to create label - Invalid response format');
             }
 
             const label = transformLabelResponse(response.data);
@@ -179,8 +159,7 @@ class LabelService {
 
             return label;
         } catch (error) {
-            logger.error('Failed to create label', { error, projectId, schemeId, requestData: data });
-            throw error;
+            throw transformApiError(error, 'Failed to create label');
         }
     }
 
@@ -206,9 +185,9 @@ class LabelService {
                 data
             );
 
-            if (!response?.data) {
-                logger.warn('Empty response data received for updateLabel', { projectId, schemeId, labelId });
-                throw new Error('Invalid data received after updating label');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to update label - Invalid response format');
             }
 
             const label = transformLabelResponse(response.data);
@@ -222,8 +201,7 @@ class LabelService {
 
             return label;
         } catch (error) {
-            logger.error('Failed to update label', { error, projectId, schemeId, labelId, requestData: data });
-            throw error;
+            throw transformApiError(error, `Failed to update label ${labelId}`);
         }
     }
 
@@ -247,8 +225,7 @@ class LabelService {
             );
             logger.info('Successfully deleted label', { projectId, schemeId, labelId });
         } catch (error) {
-            logger.error('Failed to delete label', { error, projectId, schemeId, labelId });
-            throw error;
+            throw transformApiError(error, `Failed to delete label ${labelId}`);
         }
     }
 }
