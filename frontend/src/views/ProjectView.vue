@@ -45,9 +45,9 @@ import type { Project } from '@/types/project/project';
 import { ProjectType } from '@/types/project/project';
 import { projectService } from '@/services/api/projectService';
 import type { CreateProjectRequest } from '@/types/project/requests';
-import { useAlert } from '@/composables/useAlert';
+import { useToast } from '@/composables/useToast';
 
-const { showAlert } = useAlert();
+const { showCreateSuccess, showError } = useToast();
 
 const isModalOpen = ref(false);
 const projects = ref<Project[]>([]);
@@ -87,10 +87,10 @@ const handleCreateProject = async (formData: { name: string; description: string
         projects.value.unshift(newProject);
         closeModal();
         
-        await showAlert('Success', 'Project created successfully!');
+        showCreateSuccess('Project');
     } catch (err) {
         console.error('Error creating project:', err);
-        await showAlert('Error', 'Failed to create project. Please try again.');
+        showError('Error', 'Failed to create project. Please try again.');
     }
 };
 

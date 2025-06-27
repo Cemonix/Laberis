@@ -156,33 +156,25 @@
                 </Button>
             </div>
         </template>
-        
-        <!-- Alert Modal -->
-        <AlertModal 
-            :is-open="isAlertOpen"
-            :title="alertTitle"
-            :message="alertMessage"
-            @confirm="handleAlertConfirm"
-        />
     </ModalWindow>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
-import AlertModal from '@/components/common/modal/AlertModal.vue';
 import Button from '@/components/common/Button.vue';
 import type { DataSource } from '@/types/dataSource/dataSource';
 import { NoFilesProvidedError, UploadError } from '@/types/asset';
 import { ApiResponseError, ServerError, NetworkError } from '@/types/common/errors';
 import { AppLogger } from '@/utils/logger';
 import { useAlert } from '@/composables/useAlert';
+import { useToast } from '@/composables/useToast';
 import assetService from '@/services/api/assetService';
 
 const logger = AppLogger.createServiceLogger('UploadImagesModal');
 
-// Use alert composable
-const { isAlertOpen, alertTitle, alertMessage, showAlert, handleAlertConfirm } = useAlert();
+const { showAlert } = useAlert();
+const { showSuccess, showWarning, showError } = useToast();
 
 const props = defineProps<{
     dataSource: DataSource;
@@ -247,7 +239,7 @@ const addFilesToSelection = (newImageFiles: File[]) => {
                 ? `"${duplicateFiles[0]}" is already selected.`
                 : `${duplicateFiles.length} files are already selected:\n${duplicateFiles.join(', ')}`;
             
-            showAlert(title, message);
+            showError(title, message);
             logger.warn(`${duplicateFiles.length} file(s) already selected: ${duplicateFiles.join(', ')}`);
         }
         
@@ -278,7 +270,7 @@ const handleFileSelection = (event: Event) => {
                 ? 'One file was skipped because it is not an image.'
                 : `${nonImageCount} files were skipped because they are not images.`;
             
-            showAlert(title, message);
+            showWarning(title, message);
             logger.warn(`Filtered out ${nonImageCount} non-image files`);
         }
     }
@@ -313,7 +305,7 @@ const handleDrop = (event: DragEvent) => {
                 ? 'One file was skipped because it is not an image.'
                 : `${nonImageCount} files were skipped because they are not images.`;
             
-            showAlert(title, message);
+            showWarning(title, message);
             logger.warn(`Filtered out ${nonImageCount} non-image files`);
         }
     }
@@ -417,16 +409,18 @@ const startUpload = async () => {
             const message = result.successfulUploads === 1 
                 ? '1 image was uploaded successfully.'
                 : `${result.successfulUploads} images were uploaded successfully.`;
-            
-            showAlert(title, message);
-            
+
+            showSuccess(title, message);
+
             emit('upload-complete', result.successfulUploads);
             closeModal();
         } else {
             const title = 'Upload Completed with Errors';
-            const message = `${result.successfulUploads} images uploaded successfully.\n${result.failedUploads} images failed to upload.\n\nError details:\n${uploadErrors.value.map(e => `${e.fileName}: ${e.message}`).join('\n')}`;
+            const message = `${result.successfulUploads} images uploaded successfully.\n` +
+                `${result.failedUploads} images failed to upload.\n\n` +
+                `Error details:\n${uploadErrors.value.map(e => `${e.fileName}: ${e.message}`).join('\n')}`;
             
-            showAlert(title, message);
+            showWarning(title, message);
             
             // Still emit the successful count for refreshing the UI
             emit('upload-complete', result.successfulUploads);
