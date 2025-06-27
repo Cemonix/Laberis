@@ -4,6 +4,7 @@
 
 import apiClient from './apiClient';
 import { AppLogger } from '@/utils/logger';
+import { transformApiError, isValidApiResponse, isValidPaginatedResponse } from '@/services/utils';
 import type { LabelSchemeResponse } from '@/types/label/responses';
 import type {
     CreateLabelSchemeRequest,
@@ -46,8 +47,6 @@ class LabelSchemeService {
         projectId: number,
         query_params: QueryParams = {}
     ): Promise<PaginatedResponse<LabelScheme>> {
-        const { pageNumber = 1, pageSize = 25 } = query_params;
-
         logger.info('Fetching label schemes for project', { projectId, query: query_params });
 
         try {
@@ -56,26 +55,9 @@ class LabelSchemeService {
                 { params: query_params }
             );
 
-            if (
-                !response?.data ||
-                typeof response.data.data === 'undefined' ||
-                !Array.isArray(response.data.data) ||
-                typeof response.data.currentPage !== 'number' ||
-                typeof response.data.pageSize !== 'number' ||
-                typeof response.data.totalPages !== 'number'
-            ) {
-                logger.warn('Invalid paginated response structure received for label schemes', {
-                    projectId,
-                    query: query_params,
-                    responseData: response?.data
-                });
-                return {
-                    data: [],
-                    currentPage: pageNumber,
-                    pageSize: pageSize,
-                    totalPages: 0,
-                    totalItems: 0
-                };
+            if (!isValidPaginatedResponse(response)) {
+                throw transformApiError(new Error('Invalid paginated response structure'), 
+                    'Failed to fetch label schemes - Invalid response format');
             }
 
             const schemes = response.data.data.map(transformLabelSchemeResponse);
@@ -95,8 +77,7 @@ class LabelSchemeService {
                 totalItems: response.data.totalItems
             };
         } catch (error) {
-            logger.error('Failed to fetch label schemes', { error, projectId, query: query_params });
-            throw error;
+            throw transformApiError(error, 'Failed to fetch label schemes');
         }
     }
 
@@ -114,9 +95,9 @@ class LabelSchemeService {
                 `/projects/${projectId}/labelschemes/${schemeId}`
             );
 
-            if (!response?.data) {
-                logger.warn('Empty response data received for getLabelSchemeById', { projectId, schemeId });
-                throw new Error('Invalid data received for label scheme');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to fetch label scheme - Invalid response format');
             }
             
             const scheme = transformLabelSchemeResponse(response.data);
@@ -124,8 +105,7 @@ class LabelSchemeService {
             logger.info('Successfully fetched label scheme', { projectId, schemeId, name: scheme.name });
             return scheme;
         } catch (error) {
-            logger.error('Failed to fetch label scheme by ID', { error, projectId, schemeId });
-            throw error;
+            throw transformApiError(error, `Failed to fetch label scheme ${schemeId}`);
         }
     }
 
@@ -147,9 +127,9 @@ class LabelSchemeService {
                 data
             );
 
-            if (!response?.data) {
-                logger.warn('Empty response data received for createLabelScheme', { projectId, name: data.name });
-                throw new Error('Invalid data received after creating label scheme');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to create label scheme - Invalid response format');
             }
 
             const scheme = transformLabelSchemeResponse(response.data);
@@ -162,8 +142,7 @@ class LabelSchemeService {
 
             return scheme;
         } catch (error) {
-            logger.error('Failed to create label scheme', { error, projectId, requestData: data });
-            throw error;
+            throw transformApiError(error, 'Failed to create label scheme');
         }
     }
 
@@ -187,9 +166,9 @@ class LabelSchemeService {
                 data
             );
 
-            if (!response?.data) {
-                logger.warn('Empty response data received for updateLabelScheme', { projectId, schemeId });
-                throw new Error('Invalid data received after updating label scheme');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to update label scheme - Invalid response format');
             }
             
             const scheme = transformLabelSchemeResponse(response.data);
@@ -202,8 +181,7 @@ class LabelSchemeService {
 
             return scheme;
         } catch (error) {
-            logger.error('Failed to update label scheme', { error, projectId, schemeId, requestData: data });
-            throw error;
+            throw transformApiError(error, `Failed to update label scheme ${schemeId}`);
         }
     }
 
@@ -220,8 +198,7 @@ class LabelSchemeService {
             await apiClient.delete(`/projects/${projectId}/labelschemes/${schemeId}`);
             logger.info('Successfully deleted label scheme', { projectId, schemeId });
         } catch (error) {
-            logger.error('Failed to delete label scheme', { error, projectId, schemeId });
-            throw error;
+            throw transformApiError(error, `Failed to delete label scheme ${schemeId}`);
         }
     }
 }
