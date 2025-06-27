@@ -1,15 +1,17 @@
 import apiClient from './apiClient';
-import type { ApiError, PaginatedResponse, QueryParams } from '@/types/api';
+import { transformApiError, isValidApiResponse, isValidPaginatedResponse } from '@/services/utils';
+import type { PaginatedResponse, QueryParams } from '@/types/api';
 import type { 
     Annotation, 
     AnnotationDto, 
     CreateAnnotationDto, 
     UpdateAnnotationDto
 } from '@/types/annotation';
-import { ApiResponseError, ServerError, NetworkError } from '@/types/common/errors';
 import { AppLogger } from '@/utils/logger';
 
 const logger = AppLogger.createServiceLogger('AnnotationService');
+
+// TODO: Refactor this service
 
 class AnnotationService {
     private readonly baseUrl = '/annotations';
@@ -23,12 +25,13 @@ class AnnotationService {
             coordinates = JSON.parse(dto.data);
         } catch (error) {
             logger.error('Failed to parse annotation coordinates:', dto.data);
-            throw new ApiResponseError('Invalid annotation coordinates format');
+            throw transformApiError(new Error('Invalid annotation coordinates format'), 
+                'Failed to transform annotation - Invalid coordinates format');
         }
 
         return {
             annotationId: dto.id,
-            annotationType: dto.annotationType as any, // Type assertion for now
+            annotationType: dto.annotationType as any, // TODO: Type assertion for now
             coordinates,
             labelId: dto.labelId,
             assetId: dto.assetId,
@@ -83,41 +86,22 @@ class AnnotationService {
                 { params: options }
             );
 
-            if (response && response.data && Array.isArray(response.data.data)) {
-                logger.info(`Fetched ${response.data.data.length} annotations for asset ${assetId}`, response.data);
-                
-                // Transform backend DTOs to frontend types
-                const transformedAnnotations = response.data.data.map(dto => this.transformAnnotation(dto));
-                
-                return {
-                    ...response.data,
-                    data: transformedAnnotations
-                };
-            } else {
-                logger.error(`Invalid response structure for annotations for asset ${assetId}`, response);
-                throw new ApiResponseError('Invalid response structure from API for annotations.');
+            if (!isValidPaginatedResponse(response)) {
+                throw transformApiError(new Error('Invalid paginated response structure'), 
+                    'Failed to fetch annotations - Invalid response format');
             }
+
+            logger.info(`Fetched ${response.data.data.length} annotations for asset ${assetId}`, response.data);
+            
+            // Transform backend DTOs to frontend types
+            const transformedAnnotations = response.data.data.map(dto => this.transformAnnotation(dto));
+            
+            return {
+                ...response.data,
+                data: transformedAnnotations
+            };
         } catch (error) {
-            if (error instanceof ApiResponseError) {
-                throw error;
-            }
-
-            const apiError = error as ApiError;
-            logger.error(`Failed to fetch annotations for asset ${assetId}`, apiError.response?.data || apiError.message);
-            
-            if (apiError.response) {
-                throw new ServerError(
-                    apiError.response.data?.message || 'Server error occurred while fetching annotations',
-                    apiError.response.status,
-                    apiError.response.data
-                );
-            }
-            
-            if (apiError.code === 'NETWORK_ERROR' || apiError.request) {
-                throw new NetworkError(apiError.message, apiError);
-            }
-
-            throw new NetworkError(apiError.message || 'Unknown error while fetching annotations', apiError);
+            throw transformApiError(error, 'Failed to fetch annotations');
         }
     }
 
@@ -133,34 +117,15 @@ class AnnotationService {
             const backendPayload = this.transformAnnotationForSave(annotation);
             const response = await apiClient.post<AnnotationDto>(this.baseUrl, backendPayload);
             
-            if (response && response.data && response.data.id) {
-                logger.info(`Annotation created successfully!`, response.data);
-                return this.transformAnnotation(response.data);
-            } else {
-                logger.error(`Invalid response structure after creating annotation`, response);
-                throw new ApiResponseError('Invalid response structure from API after creating annotation.');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to create annotation - Invalid response format');
             }
+
+            logger.info(`Annotation created successfully!`, response.data);
+            return this.transformAnnotation(response.data);
         } catch (error) {
-            if (error instanceof ApiResponseError) {
-                throw error;
-            }
-
-            const apiError = error as ApiError;
-            logger.error(`Failed to create annotation`, apiError.response?.data || apiError.message);
-            
-            if (apiError.response) {
-                throw new ServerError(
-                    apiError.response.data?.message || 'Server error occurred while creating annotation',
-                    apiError.response.status,
-                    apiError.response.data
-                );
-            }
-            
-            if (apiError.code === 'NETWORK_ERROR' || apiError.request) {
-                throw new NetworkError(apiError.message, apiError);
-            }
-
-            throw new NetworkError(apiError.message || 'Unknown error while creating annotation', apiError);
+            throw transformApiError(error, 'Failed to create annotation');
         }
     }
 
@@ -179,34 +144,15 @@ class AnnotationService {
         try {
             const response = await apiClient.put<AnnotationDto>(`${this.baseUrl}/${annotationId}`, annotationData);
             
-            if (response && response.data && response.data.id) {
-                logger.info(`Annotation ${annotationId} updated successfully!`, response.data);
-                return this.transformAnnotation(response.data);
-            } else {
-                logger.error(`Invalid response structure after updating annotation ${annotationId}`, response);
-                throw new ApiResponseError('Invalid response structure from API after updating annotation.');
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to update annotation - Invalid response format');
             }
+
+            logger.info(`Annotation ${annotationId} updated successfully!`, response.data);
+            return this.transformAnnotation(response.data);
         } catch (error) {
-            if (error instanceof ApiResponseError) {
-                throw error;
-            }
-
-            const apiError = error as ApiError;
-            logger.error(`Failed to update annotation ${annotationId}`, apiError.response?.data || apiError.message);
-            
-            if (apiError.response) {
-                throw new ServerError(
-                    apiError.response.data?.message || 'Server error occurred while updating annotation',
-                    apiError.response.status,
-                    apiError.response.data
-                );
-            }
-            
-            if (apiError.code === 'NETWORK_ERROR' || apiError.request) {
-                throw new NetworkError(apiError.message, apiError);
-            }
-
-            throw new NetworkError(apiError.message || 'Unknown error while updating annotation', apiError);
+            throw transformApiError(error, `Failed to update annotation ${annotationId}`);
         }
     }
 
@@ -219,35 +165,10 @@ class AnnotationService {
         logger.info(`Deleting annotation ${annotationId}`);
 
         try {
-            const response = await apiClient.delete(`${this.baseUrl}/${annotationId}`);
-            
-            if (response.status === 204 || response.status === 200) {
-                logger.info(`Annotation ${annotationId} deleted successfully!`);
-            } else {
-                logger.error(`Unexpected status code after deleting annotation ${annotationId}`, response);
-                throw new ApiResponseError('Unexpected response from API after deleting annotation.');
-            }
+            await apiClient.delete(`${this.baseUrl}/${annotationId}`);
+            logger.info(`Annotation ${annotationId} deleted successfully!`);
         } catch (error) {
-            if (error instanceof ApiResponseError) {
-                throw error;
-            }
-
-            const apiError = error as ApiError;
-            logger.error(`Failed to delete annotation ${annotationId}`, apiError.response?.data || apiError.message);
-            
-            if (apiError.response) {
-                throw new ServerError(
-                    apiError.response.data?.message || 'Server error occurred while deleting annotation',
-                    apiError.response.status,
-                    apiError.response.data
-                );
-            }
-            
-            if (apiError.code === 'NETWORK_ERROR' || apiError.request) {
-                throw new NetworkError(apiError.message, apiError);
-            }
-
-            throw new NetworkError(apiError.message || 'Unknown error while deleting annotation', apiError);
+            throw transformApiError(error, `Failed to delete annotation ${annotationId}`);
         }
     }
 }
