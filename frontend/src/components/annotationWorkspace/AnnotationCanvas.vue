@@ -17,7 +17,7 @@
             :is-open="isAlertOpen"
             :title="alertTitle"
             :message="alertMessage"
-            @confirm="handleConfirm"
+            @confirm="handleAlertConfirm"
         />
     </div>
 </template>
@@ -30,10 +30,10 @@ import { ToolName } from "@/types/workspace/tools";
 import { drawPoint, drawBoundingBox } from '@/core/annotationWorkspace/annotationDrawer';
 import { AnnotationManager } from "@/core/annotationWorkspace/annotationManager";
 import { StoreError, ToolError } from "@/types/common/errors";
-import AlertModal from "../common/modals/AlertModal.vue";
+import AlertModal from "../common/modal/AlertModal.vue";
 import { useAlert } from "@/composables/useAlert";
 
-const { isAlertOpen, alertTitle, alertMessage, showAlert, handleConfirm } = useAlert();
+const { isAlertOpen, alertTitle, alertMessage, showAlert, handleAlertConfirm } = useAlert();
 
 interface Props {
     imageUrl: string | null;

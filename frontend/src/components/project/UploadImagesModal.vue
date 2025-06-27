@@ -162,15 +162,15 @@
             :is-open="isAlertOpen"
             :title="alertTitle"
             :message="alertMessage"
-            @confirm="handleConfirm"
+            @confirm="handleAlertConfirm"
         />
     </ModalWindow>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import ModalWindow from '@/components/common/modals/ModalWindow.vue';
-import AlertModal from '@/components/common/modals/AlertModal.vue';
+import ModalWindow from '@/components/common/modal/ModalWindow.vue';
+import AlertModal from '@/components/common/modal/AlertModal.vue';
 import Button from '@/components/common/Button.vue';
 import type { DataSource } from '@/types/dataSource/dataSource';
 import { NoFilesProvidedError, UploadError } from '@/types/asset';
@@ -182,7 +182,7 @@ import assetService from '@/services/api/assetService';
 const logger = AppLogger.createServiceLogger('UploadImagesModal');
 
 // Use alert composable
-const { isAlertOpen, alertTitle, alertMessage, showAlert, handleConfirm } = useAlert();
+const { isAlertOpen, alertTitle, alertMessage, showAlert, handleAlertConfirm } = useAlert();
 
 const props = defineProps<{
     dataSource: DataSource;

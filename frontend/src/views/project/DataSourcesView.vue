@@ -38,7 +38,7 @@
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import DataSourceCard from '@/components/project/DataSourceCard.vue';
-import ModalWindow from '@/components/common/modals/ModalWindow.vue';
+import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateDataSourceForm from '@/components/project/CreateDataSourceForm.vue';
 import Button from '@/components/common/Button.vue';
 import { type DataSource, type CreateDataSourceRequest } from '@/types/dataSource';

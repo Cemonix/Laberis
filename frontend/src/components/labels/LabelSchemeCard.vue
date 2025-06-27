@@ -53,7 +53,7 @@ import LabelChip from './LabelChip.vue';
 import CreateLabelForm from './CreateLabelForm.vue';
 import Button from '@/components/common/Button.vue';
 import Card from '@/components/common/Card.vue';
-import ModalWindow from '@/components/common/modals/ModalWindow.vue';
+import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 
 const props = defineProps<{
     scheme: LabelScheme;

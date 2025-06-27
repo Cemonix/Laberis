@@ -16,7 +16,7 @@
 
 <script setup lang="ts">
 import { watch, ref, onUnmounted } from 'vue';
-import ModalWindow from '@/components/common/modals/ModalWindow.vue';
+import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import Button from '@/components/common/Button.vue';
 
 const props = defineProps<{
@@ -63,7 +63,6 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@use "sass:map";
 @use "@/styles/variables" as vars;
 
 .alert-message {
