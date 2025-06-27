@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
+import { transformApiError, isValidApiResponse, isValidPaginatedResponse } from '@/services/utils';
 import type { PaginatedResponse } from '@/types/api/paginatedResponse';
-import type { ApiError } from '@/types/api/error';
 import type { DataSource, DataSourceType } from '@/types/dataSource/dataSource';
 import type { 
     CreateDataSourceRequest, 
@@ -24,17 +24,16 @@ class DataSourceService {
         logger.info(`Fetching available data source types for project ${projectId}`);
         try {
             const response = await apiClient.get<DataSourceType[]>(`${this.baseUrl}/${projectId}/datasources/types/available`);
-            if (response && response.data) {
-                logger.info(`Found ${response.data.length} available data source types for project ${projectId}.`, response.data);
-                return response.data;
-            } else {
-                logger.error(`Invalid response structure for available types for project ${projectId}.`, response);
-                throw new Error('Invalid response structure from API for available data source types.');
+            
+            if (!isValidApiResponse(response, 'array')) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to fetch data source types - Invalid response format');
             }
+            
+            logger.info(`Found ${response.data.length} available data source types for project ${projectId}.`, response.data);
+            return response.data;
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to fetch available data source types for project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            throw transformApiError(error, 'Failed to fetch data source types');
         }
     }
 
@@ -51,17 +50,15 @@ class DataSourceService {
                 params: queryParams
             });
 
-            if (response && response.data && Array.isArray(response.data.data)) {
-                logger.info(`Fetched ${response.data.data.length} data sources (total: ${response.data.totalItems}) for project ${projectId}.`, response.data);
-                return response.data;
-            } else {
-                logger.error(`Invalid response structure for data sources for project ${projectId}.`, response);
-                throw new Error('Invalid response structure from API for data sources.');
+            if (!isValidPaginatedResponse(response)) {
+                throw transformApiError(new Error('Invalid paginated response structure'), 
+                    'Failed to fetch data sources - Invalid response format');
             }
+
+            logger.info(`Fetched ${response.data.data.length} data sources (total: ${response.data.totalItems}) for project ${projectId}.`, response.data);
+            return response.data;
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to fetch data sources for project ${params.projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            throw transformApiError(error, 'Failed to fetch data sources');
         }
     }
 
@@ -75,17 +72,16 @@ class DataSourceService {
         logger.info(`Fetching data source ${dataSourceId} from project ${projectId}`);
         try {
             const response = await apiClient.get<DataSource>(`${this.baseUrl}/${projectId}/datasources/${dataSourceId}`);
-            if (response && response.data && response.data.id) {
-                logger.info(`Fetched data source: ${response.data.name} (ID: ${response.data.id}) from project ${projectId}.`, response.data);
-                return response.data;
-            } else {
-                logger.error(`Invalid response structure for data source ${dataSourceId} from project ${projectId}.`, response);
-                throw new Error('Invalid response structure from API for single data source.');
+            
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to fetch data source - Invalid response format');
             }
+            
+            logger.info(`Fetched data source: ${response.data.name} (ID: ${response.data.id}) from project ${projectId}.`, response.data);
+            return response.data;
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to fetch data source ${dataSourceId} from project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            throw transformApiError(error, `Failed to fetch data source ${dataSourceId}`);
         }
     }
 
@@ -99,17 +95,16 @@ class DataSourceService {
         logger.info(`Creating data source in project ${projectId}`, data);
         try {
             const response = await apiClient.post<DataSource>(`${this.baseUrl}/${projectId}/datasources`, data);
-            if (response && response.data && response.data.id) {
-                logger.info(`Created data source: ${response.data.name} (ID: ${response.data.id}) in project ${projectId}.`, response.data);
-                return response.data;
-            } else {
-                logger.error(`Invalid response structure after creating data source in project ${projectId}.`, response);
-                throw new Error('Invalid response structure from API after creating data source.');
+            
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to create data source - Invalid response format');
             }
+            
+            logger.info(`Created data source: ${response.data.name} (ID: ${response.data.id}) in project ${projectId}.`, response.data);
+            return response.data;
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to create data source in project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            throw transformApiError(error, 'Failed to create data source');
         }
     }
 
@@ -124,17 +119,16 @@ class DataSourceService {
         logger.info(`Updating data source ${dataSourceId} in project ${projectId}`, data);
         try {
             const response = await apiClient.put<DataSource>(`${this.baseUrl}/${projectId}/datasources/${dataSourceId}`, data);
-            if (response && response.data && response.data.id) {
-                logger.info(`Updated data source: ${response.data.name} (ID: ${response.data.id}) in project ${projectId}.`, response.data);
-                return response.data;
-            } else {
-                logger.error(`Invalid response structure after updating data source ${dataSourceId} in project ${projectId}.`, response);
-                throw new Error('Invalid response structure from API after updating data source.');
+            
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to update data source - Invalid response format');
             }
+            
+            logger.info(`Updated data source: ${response.data.name} (ID: ${response.data.id}) in project ${projectId}.`, response.data);
+            return response.data;
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to update data source ${dataSourceId} in project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            throw transformApiError(error, `Failed to update data source ${dataSourceId}`);
         }
     }
 
@@ -146,17 +140,10 @@ class DataSourceService {
     async deleteDataSource(projectId: number, dataSourceId: number): Promise<void> {
         logger.info(`Deleting data source ${dataSourceId} from project ${projectId}`);
         try {
-            const response = await apiClient.delete(`${this.baseUrl}/${projectId}/datasources/${dataSourceId}`);
-            if (response.status === 204 || response.status === 200) {
-                logger.info(`Deleted data source ${dataSourceId} from project ${projectId} successfully.`);
-            } else {
-                logger.error(`Unexpected status code after deleting data source ${dataSourceId} from project ${projectId}.`, response);
-                throw new Error('Unexpected response from API after deleting data source.');
-            }
+            await apiClient.delete(`${this.baseUrl}/${projectId}/datasources/${dataSourceId}`);
+            logger.info(`Deleted data source ${dataSourceId} from project ${projectId} successfully.`);
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to delete data source ${dataSourceId} from project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            throw transformApiError(error, `Failed to delete data source ${dataSourceId}`);
         }
     }
 
@@ -169,17 +156,16 @@ class DataSourceService {
         logger.info(`Fetching data source stats for project ${projectId}`);
         try {
             const response = await apiClient.get<DataSourceStatsResponse>(`${this.baseUrl}/${projectId}/datasources/stats`);
-            if (response && response.data) { // Add more specific checks if needed based on DataSourceStatsResponse structure
-                logger.info(`Fetched stats for project ${projectId}: ${response.data.totalDataSources} total data sources.`, response.data);
-                return response.data;
-            } else {
-                logger.error(`Invalid response structure for data source stats for project ${projectId}.`, response);
-                throw new Error('Invalid response structure from API for data source stats.');
+            
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to fetch data source stats - Invalid response format');
             }
+            
+            logger.info(`Fetched stats for project ${projectId}: ${response.data.totalDataSources} total data sources.`, response.data);
+            return response.data;
         } catch (error) {
-            const apiError = error as ApiError;
-            logger.error(`Failed to fetch data source stats for project ${projectId}.`, apiError.response?.data || apiError.message);
-            throw apiError;
+            throw transformApiError(error, 'Failed to fetch data source stats');
         }
     }
 }
