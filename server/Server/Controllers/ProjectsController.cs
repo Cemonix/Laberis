@@ -45,10 +45,19 @@ namespace server.Controllers
             [FromQuery] int pageSize = 25
         )
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(userRole))
+            {
+                return Unauthorized("User identity not found in token.");
+            }
+
             try
             {
                 var projects = await _projectService.GetAllProjectsAsync(
-                    filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
+                    userId, userRole, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize
+                );
                 return Ok(projects);
             }
             catch (Exception ex)

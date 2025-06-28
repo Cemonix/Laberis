@@ -9,6 +9,8 @@ public interface IProjectService
     /// <summary>
     /// Retrieves all projects, optionally filtered and sorted, with pagination information.
     /// </summary>
+    /// <param name="userId">The ID of the user requesting the projects.</param>
+    /// <param name="userRole">The role of the user.</param>
     /// <param name="filterOn">The field to filter on (e.g., "name", "owner").</param>
     /// <param name="filterQuery">The query string to filter by.</param>
     /// <param name="sortBy">The field to sort by (e.g., "name", "createdDate").</param>
@@ -17,8 +19,8 @@ public interface IProjectService
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A task that represents the asynchronous operation, containing a paginated response of ProjectDto.</returns>
     Task<PaginatedResponse<ProjectDto>> GetAllProjectsAsync(
-        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
-        bool isAscending = true, int pageNumber = 1, int pageSize = 25
+        string userId, string userRole, string? filterOn = null, string? filterQuery = null,
+        string? sortBy = null, bool isAscending = true, int pageNumber = 1, int pageSize = 25
     );
 
     /// <summary>

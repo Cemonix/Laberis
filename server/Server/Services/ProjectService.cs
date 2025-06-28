@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Text.Json;
 using server.Data;
 using server.Models.Common;
@@ -32,12 +33,38 @@ public class ProjectService : IProjectService
     }
 
     public async Task<PaginatedResponse<ProjectDto>> GetAllProjectsAsync(
-        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
-        bool isAscending = true, int pageNumber = 1, int pageSize = 25
+        string userId,
+        string userRole,
+        string? filterOn = null,
+        string? filterQuery = null,
+        string? sortBy = null,
+        bool isAscending = true,
+        int pageNumber = 1,
+        int pageSize = 25
     )
     {
-        _logger.LogInformation("Fetching all projects.");
+        _logger.LogInformation("Fetching projects for user {UserId} with role {UserRole}.", userId, userRole);
+
+        Expression<Func<Project, bool>>? filter = null;
+
+        if (userRole == "Admin")
+        {
+            // Admins see all projects, so the filter remains null
+            _logger.LogInformation("User is Admin, fetching all projects.");
+        }
+        else if (userRole == "Manager")
+        {
+            // Managers see projects they own or are a member of
+            filter = p => p.OwnerId == userId || p.ProjectMembers.Any(pm => pm.UserId == userId);
+        }
+        else
+        {
+            // Other roles see only projects they are a member of
+            filter = p => p.ProjectMembers.Any(pm => pm.UserId == userId);
+        }
+
         var (projects, totalCount) = await _projectRepository.GetAllWithCountAsync(
+            filter: filter,
             filterOn: filterOn,
             filterQuery: filterQuery,
             sortBy: sortBy,
@@ -45,27 +72,11 @@ public class ProjectService : IProjectService
             pageNumber: pageNumber,
             pageSize: pageSize
         );
-        _logger.LogInformation("Fetched {Count} projects out of {TotalCount} total.", projects.Count(), totalCount);
 
-        if (projects == null || !projects.Any())
-        {
-            _logger.LogWarning("No projects found.");
-            return new PaginatedResponse<ProjectDto>
-            {
-                Data = [],
-                PageSize = pageSize,
-                CurrentPage = pageNumber,
-                TotalPages = 0,
-                TotalItems = 0
-            };
-        }
-
-        _logger.LogInformation("Mapping projects to DTOs.");
+        _logger.LogInformation("User {UserId} has access to {Count} projects.", userId, totalCount);
 
         var projectDtos = projects.Select(MapToDto).ToArray();
-
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-
         return new PaginatedResponse<ProjectDto>
         {
             Data = projectDtos,

@@ -19,6 +19,7 @@ using Minio;
 using System.Text.Json.Serialization;
 using System.Text.Json;
 using server.Extensions;
+using server.Models.Domain.Enums;
 
 namespace server;
 
@@ -142,7 +143,7 @@ public class Program
         builder.Services.AddScoped<ITaskEventService, TaskEventService>();
         builder.Services.AddScoped<IWorkflowService, WorkflowService>();
         builder.Services.AddScoped<IWorkflowStageService, WorkflowStageService>();
-        builder.Services.AddScoped<IAuthManager, AuthManager>();
+        builder.Services.AddScoped<IAuthService, AuthService>();
 
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>();
         if (jwtSettings == null)
@@ -195,6 +196,13 @@ public class Program
             {
                 policy.RequireAuthenticatedUser();
                 policy.RequireRole("Admin");
+            })
+            .AddPolicy("CanManageProjectMembers", policy =>
+            {
+                policy.AddRequirements(new ProjectRoleRequirement(
+                    ProjectRole.ADMIN,
+                    ProjectRole.MANAGER
+                ));
             });
 
         builder.Services.AddControllers()
