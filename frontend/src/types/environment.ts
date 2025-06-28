@@ -8,4 +8,5 @@ export interface Environment {
     readonly APP_NAME: string;
     readonly APP_VERSION: string;
     readonly LOGGING: LogConfig;
+    readonly AUTO_LOGIN_DEV: boolean;
 }
