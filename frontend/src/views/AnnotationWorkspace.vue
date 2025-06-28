@@ -108,6 +108,7 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 @use "@/styles/variables" as vars;
+@use "@/styles/mixins/underline-animation" as mixins;
 
 .annotation-workspace-container {
     display: flex;
@@ -138,30 +139,8 @@ onUnmounted(() => {
             color: vars.$color-gray-200;
             text-decoration: none;
             padding: vars.$padding-small 0;
-            position: relative;
-            transition: color 0.2s ease-in-out;
 
-            &::after {
-                content: "";
-                position: absolute;
-                width: 0;
-                height: 2px;
-                bottom: 0;
-                left: 50%;
-                background-color: vars.$color-primary;
-                transition: width 0.3s ease, left 0.3s ease;
-            }
-
-            &:hover,
-            &.router-link-exact-active {
-                color: vars.$color-link-hover;
-            }
-
-            &:hover::after,
-            &.router-link-exact-active::after {
-                width: 100%;
-                left: 0;
-            }
+            @include mixins.underline-animation();
         }
     }
     .workspace-top-bar-center {

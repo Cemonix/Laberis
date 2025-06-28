@@ -10,9 +10,7 @@
         </div>
         <div class="navbar-auth">
             <template v-if="authStore.isAuthenticated">
-                <span class="welcome-text">
-                    Welcome <router-link to="/account" class="username-link">{{ authStore.currentUser?.userName }}</router-link>
-                </span>
+                <router-link to="/account" class="username-link">Account</router-link>
                 <button @click="handleLogout" class="auth-link logout-btn">Logout</button>
             </template>
             <template v-else>
@@ -43,14 +41,14 @@ const handleLogout = async () => {
 <style lang="scss" scoped>
 @use "@/styles/variables" as vars;
 @use "@/styles/layout/navbar" as navbar;
+@use "@/styles/mixins/underline-animation" as mixins;
 
 
 .navbar {
     display: grid;
     grid-template-columns: auto 1fr;
-    align-items: baseline;
     background-color: navbar.$navbar-bg;
-    padding: vars.$padding-small vars.$padding-medium;
+    padding: vars.$padding-medium;
     color: navbar.$navbar-text;
     box-shadow: vars.$shadow-sm;
 
@@ -65,42 +63,18 @@ const handleLogout = async () => {
                 text-decoration: none;
                 font-weight: vars.$font-weight-xlarge;
                 font-size: vars.$font-size-xlarge;
-                line-height: vars.$line-height-xsmall;
             }
         }
     
         .navbar-links {
             a {
-                position: relative;
                 padding: vars.$padding-xsmall 0;
-                transition: color 0.2s ease-in-out;
                 color: navbar.$navbar-text;
                 text-decoration: none;
                 font-weight: vars.$font-weight-medium;
                 font-size: vars.$font-size-medium;
-                line-height: vars.$line-height-xsmall;
-    
-                &::after {
-                    content: "";
-                    position: absolute;
-                    width: 0;
-                    height: 2px;
-                    bottom: 0;
-                    left: 50%;
-                    background-color: vars.$color-primary;
-                    transition: width 0.3s ease, left 0.3s ease;
-                }
-    
-                &:hover,
-                &.router-link-exact-active {
-                    color: vars.$color-link-hover;
-                }
-    
-                &:hover::after,
-                &.router-link-exact-active::after {
-                    width: 100%;
-                    left: 0;
-                }
+
+                @include mixins.underline-animation();
             }
         }
     }
@@ -108,84 +82,38 @@ const handleLogout = async () => {
 
     .navbar-auth {
         display: flex;
-        align-items: baseline;
+        align-items: center;
         justify-content: flex-end;
         gap: vars.$gap-medium;
 
-        
         .auth-link {
             color: navbar.$navbar-text;
             text-decoration: none;
-            padding: vars.$padding-small vars.$padding-medium;
-            border-radius: vars.$border-radius-sm;
-            transition: all 0.2s ease-in-out;
-            font-size: vars.$font-size-small;
-            font-weight: vars.$font-weight-medium;
-            line-height: vars.$line-height-xsmall;
-            
-            &:hover {
-                color: vars.$color-link-hover;
-            }
-            
-            &.btn-outline {
-                border: 1px solid vars.$color-primary;
-                color: vars.$color-primary;
-                
-                &:hover {
-                    background-color: vars.$color-primary;
-                    color: vars.$color-white;
-                }
-            }
-        }
-        
-        .welcome-text {
-            color: navbar.$navbar-text;
             font-size: vars.$font-size-medium;
             font-weight: vars.$font-weight-medium;
-            line-height: vars.$line-height-xsmall;
 
-            .username-link {
-                color: navbar.$navbar-text;
-                position: relative;
-                padding: vars.$padding-xsmall 0;
-                text-decoration: none;
-                font-weight: inherit;
-                font-size: inherit;
-                line-height: inherit;
-                transition: color 0.2s ease-in-out;
+            @include mixins.underline-animation();
+        }
 
-                &::after {
-                    content: "";
-                    position: absolute;
-                    width: 0;
-                    height: 2px;
-                    bottom: 0;
-                    left: 50%;
-                    background-color: vars.$color-primary;
-                    transition: width 0.3s ease, left 0.3s ease;
-                }
-    
-                &:hover,
-                &.router-link-exact-active {
-                    color: vars.$color-link-hover;
-                }
-    
-                &:hover::after,
-                &.router-link-exact-active::after {
-                    width: 100%;
-                    left: 0;
-                }
-            }
+        .username-link {
+            color: navbar.$navbar-text;
+            text-decoration: none;
+            font-size: vars.$font-size-medium;
+            font-weight: vars.$font-weight-medium;
+
+            @include mixins.underline-animation();
         }
 
         .logout-btn {
             background: none;
             border: none;
             cursor: pointer;
+            font-family: inherit;
+            color: navbar.$navbar-text;
             font-size: vars.$font-size-medium;
             font-weight: vars.$font-weight-medium;
-            line-height: vars.$line-height-xsmall;
-            font-family: inherit;
+
+            @include mixins.underline-animation();
         }
     }
 }
