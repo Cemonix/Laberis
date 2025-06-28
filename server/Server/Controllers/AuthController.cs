@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using server.Models.DTOs.Auth;
-using server.Services;
+using server.Services.Interfaces;
 
 namespace server.Controllers;
 
@@ -9,10 +11,10 @@ namespace server.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly IAuthManager _authManager;
+    private readonly IAuthService _authManager;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthManager authManager, ILogger<AuthController> logger)
+    public AuthController(IAuthService authManager, ILogger<AuthController> logger)
     {
         _authManager = authManager ?? throw new ArgumentNullException(nameof(authManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -69,6 +71,47 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Refresh an expired access token using a valid refresh token.
+    /// </summary>
+    /// <param name="request">The refresh token request.</param>
+    /// <returns>A new set of authentication tokens.</returns>
+    [HttpPost("refresh-token")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<AuthResponseDto>> RefreshToken([FromBody] RefreshTokenRequestDto request)
+    {
+        try
+        {
+            var response = await _authManager.RefreshTokenAsync(request.Token);
+            return Ok(response);
+        }
+        catch (SecurityTokenException ex)
+        {
+            _logger.LogWarning(ex, "Refresh token validation failed.");
+            return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Logout the current user and revoke their refresh token.
+    /// </summary>
+    [HttpPost("logout")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+
+        await _authManager.RevokeRefreshTokenAsync(userId);
+        return NoContent();
+    }
+
+    /// <summary>
     /// Get current user information
     /// </summary>
     /// <returns>Current user data</returns>
@@ -76,9 +119,9 @@ public class AuthController : ControllerBase
     [Authorize]
     public ActionResult<UserDto> GetCurrentUser()
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        var userName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
-        var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userName = User.FindFirst(ClaimTypes.Name)?.Value;
+        var email = User.FindFirst(ClaimTypes.Email)?.Value;
 
         if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(email))
         {
@@ -90,7 +133,7 @@ public class AuthController : ControllerBase
             Id = userId,
             UserName = userName,
             Email = email,
-            CreatedAt = DateTime.UtcNow // TODO: Get actual creation date from database if needed
+            Roles = [.. User.FindAll(ClaimTypes.Role).Select(role => role.Value)]
         };
 
         return Ok(userDto);

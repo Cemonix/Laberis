@@ -18,9 +18,9 @@ namespace Server.Tests.Services
     {
         private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
         private readonly Mock<IOptions<JwtSettings>> _mockJwtOptions;
-        private readonly Mock<ILogger<AuthManager>> _mockLogger;
+        private readonly Mock<ILogger<AuthService>> _mockLogger;
         private readonly JwtSettings _jwtSettings;
-        private readonly AuthManager _authManager;
+        private readonly AuthService _authManager;
 
         public AuthManagerTests()
         {
@@ -61,9 +61,9 @@ namespace Server.Tests.Services
             _mockJwtOptions = new Mock<IOptions<JwtSettings>>();
             _mockJwtOptions.Setup(x => x.Value).Returns(_jwtSettings);
 
-            _mockLogger = new Mock<ILogger<AuthManager>>();
+            _mockLogger = new Mock<ILogger<AuthService>>();
 
-            _authManager = new AuthManager(
+            _authManager = new AuthService(
                 _mockUserManager.Object,
                 _mockJwtOptions.Object,
                 _mockLogger.Object
@@ -77,7 +77,7 @@ namespace Server.Tests.Services
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthManager(null!, _mockJwtOptions.Object, _mockLogger.Object));
+                new AuthService(null!, _mockJwtOptions.Object, _mockLogger.Object));
         }
 
         [Fact]
@@ -85,7 +85,7 @@ namespace Server.Tests.Services
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthManager(_mockUserManager.Object, null!, _mockLogger.Object));
+                new AuthService(_mockUserManager.Object, null!, _mockLogger.Object));
         }
 
         [Fact]
@@ -93,7 +93,7 @@ namespace Server.Tests.Services
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthManager(_mockUserManager.Object, _mockJwtOptions.Object, null!));
+                new AuthService(_mockUserManager.Object, _mockJwtOptions.Object, null!));
         }
 
         #endregion
