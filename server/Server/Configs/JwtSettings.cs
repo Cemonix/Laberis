@@ -19,5 +19,8 @@ public class JwtSettings
     [Required(AllowEmptyStrings = false, ErrorMessage = "JWT:ValidAudience is required and cannot be empty.")]
     public string ValidAudience { get; set; } = string.Empty;
 
+    [Range(1, 365, ErrorMessage = "JWT:RefreshTokenExpiration must be between 1 and 365 days.")]
+    public int RefreshTokenExpiration { get; set; } = 7; // Default to 7 days
+
     public string? Authority { get; set; }
 }

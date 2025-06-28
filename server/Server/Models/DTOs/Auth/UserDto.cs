@@ -5,5 +5,5 @@ public record class UserDto
     public string Id { get; init; } = string.Empty;
     public string UserName { get; init; } = string.Empty;
     public string Email { get; init; } = string.Empty;
-    public DateTime CreatedAt { get; init; }
+    public IList<string> Roles { get; init; } = [];
 }

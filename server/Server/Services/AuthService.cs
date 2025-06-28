@@ -1,25 +1,28 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using server.Configs;
 using server.Exceptions;
+using server.Models.Domain.Enums;
 using server.Models.DTOs.Auth;
+using server.Services.Interfaces;
 
 namespace server.Services;
 
-public class AuthManager : IAuthManager
+public class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly JwtSettings _jwtSettings;
-    private readonly ILogger<AuthManager> _logger;
+    private readonly ILogger<AuthService> _logger;
 
-    public AuthManager(
+    public AuthService(
         UserManager<ApplicationUser> userManager,
         IOptions<JwtSettings> jwtSettings,
-        ILogger<AuthManager> logger)
+        ILogger<AuthService> logger)
     {
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         _jwtSettings = (jwtSettings ?? throw new ArgumentNullException(nameof(jwtSettings))).Value;
@@ -51,7 +54,7 @@ public class AuthManager : IAuthManager
         {
             UserName = registerDto.UserName,
             Email = registerDto.Email,
-            EmailConfirmed = true // TODO: For now, we'll auto-confirm emails
+            EmailConfirmed = true, // TODO: For now, we'll auto-confirm emails
         };
 
         var result = await _userManager.CreateAsync(user, registerDto.Password);
@@ -66,19 +69,23 @@ public class AuthManager : IAuthManager
         _logger.LogInformation("User {Email} registered successfully with ID: {UserId}", user.Email, user.Id);
 
         // Generate token
-        var token = await GenerateTokenAsync(user);
+        var accesstoken = await GenerateTokenAsync(user);
+
+        var refreshToken = GenerateRefreshToken();
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiration);
+        await _userManager.UpdateAsync(user);
 
         return new AuthResponseDto
         {
-            Token = token,
-            RefreshToken = string.Empty, // TODO: Implement refresh tokens if needed
+            Token = accesstoken,
+            RefreshToken = refreshToken,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.Expiration),
             User = new UserDto
             {
                 Id = user.Id,
                 UserName = user.UserName!,
-                Email = user.Email!,
-                CreatedAt = DateTime.UtcNow
+                Email = user.Email!
             }
         };
     }
@@ -88,6 +95,7 @@ public class AuthManager : IAuthManager
         _logger.LogInformation("Attempting to login user with email: {Email}", loginDto.Email);
 
         var user = await _userManager.FindByEmailAsync(loginDto.Email);
+
         if (user == null)
         {
             _logger.LogWarning("Login failed: User with email {Email} not found", loginDto.Email);
@@ -103,20 +111,60 @@ public class AuthManager : IAuthManager
 
         _logger.LogInformation("User {Email} logged in successfully", user.Email);
 
-        // Generate token
-        var token = await GenerateTokenAsync(user);
+        // Generate Access Token
+        var accessToken = await GenerateTokenAsync(user);
+
+        // Generate and Save Refresh Token
+        var refreshToken = GenerateRefreshToken();
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiration);
+        await _userManager.UpdateAsync(user);
 
         return new AuthResponseDto
         {
-            Token = token,
-            RefreshToken = string.Empty, // TODO: Implement refresh tokens if needed
+            Token = accessToken,
+            RefreshToken = refreshToken,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.Expiration),
             User = new UserDto
             {
                 Id = user.Id,
                 UserName = user.UserName!,
                 Email = user.Email!,
-                CreatedAt = DateTime.UtcNow
+                Roles = await _userManager.GetRolesAsync(user)
+            }
+        };
+    }
+
+    public async Task<AuthResponseDto> RefreshTokenAsync(string token)
+    {
+        var user = _userManager.Users.SingleOrDefault(u => u.RefreshToken == token);
+
+        if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+        {
+            _logger.LogWarning("Invalid or expired refresh token attempt.");
+            throw new SecurityTokenException("Invalid refresh token");
+        }
+
+        // Generate new tokens
+        var newAccessToken = await GenerateTokenAsync(user);
+        var newRefreshToken = GenerateRefreshToken();
+
+        // Update user with the new refresh token (Token Rotation)
+        user.RefreshToken = newRefreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiration);
+        await _userManager.UpdateAsync(user);
+
+        return new AuthResponseDto
+        {
+            Token = newAccessToken,
+            RefreshToken = newRefreshToken,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.Expiration),
+            User = new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                UserName = user.UserName!,
+                Roles = await _userManager.GetRolesAsync(user)
             }
         };
     }
@@ -149,5 +197,30 @@ public class AuthManager : IAuthManager
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public async Task RevokeRefreshTokenAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            _logger.LogWarning("Logout failed: User with ID {UserId} not found for token revocation.", userId);
+            return;
+        }
+
+        // Nullify the refresh token and its expiry
+        user.RefreshToken = null;
+        user.RefreshTokenExpiryTime = null;
+
+        await _userManager.UpdateAsync(user);
+        _logger.LogInformation("Refresh token for user {UserId} has been revoked.", userId);
+    }
+    
+    private static string GenerateRefreshToken()
+    {
+        var randomNumber = new byte[128];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomNumber);
+        return Convert.ToBase64String(randomNumber);
     }
 }
