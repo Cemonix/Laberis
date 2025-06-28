@@ -39,6 +39,7 @@ function createEnv(): Environment {
         APP_NAME: import.meta.env.VITE_APP_NAME || "Laberis",
         APP_VERSION: import.meta.env.VITE_APP_VERSION || "0.1.0",
         LOGGING: createLogConfig(),
+        AUTO_LOGIN_DEV: import.meta.env.VITE_AUTO_LOGIN_DEV === 'true'
     } as const;
 
     validateEnv(environment);
