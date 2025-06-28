@@ -1,9 +1,10 @@
 import { defineStore } from "pinia";
 import type {
-    User,
     AuthTokens,
     LoginCredentials,
+    ProjectRole,
     RegisterCredentials,
+    UserDto,
 } from "@/types/auth/auth";
 import { authService } from "@/services/auth/authService";
 import { env } from "@/config/env";
@@ -12,7 +13,7 @@ const AUTH_STORAGE_KEY = 'auth_tokens';
 
 export const useAuthStore = defineStore("auth", {
     state: () => ({
-        user: null as User | null,
+        user: null as UserDto | null,
         tokens: null as AuthTokens | null,
         isLoading: false,
         isInitialized: false,
@@ -21,11 +22,11 @@ export const useAuthStore = defineStore("auth", {
         isAuthenticated(state): boolean {
             return !!(state.user && state.tokens && this.isTokenValid);
         },
-        currentUser(state): User | null {
+        currentUser(state): UserDto | null {
             return state.user;
         },
-        hasRole(state): (role: string) => boolean {
-            return (role: string) => state.user?.role === role;
+        hasRole(state): (role: ProjectRole) => boolean {
+            return (role: ProjectRole) => state.user?.roles?.includes(role) || false;
         },
         isTokenValid(state): boolean {
             if (!state.tokens) return false;
@@ -49,7 +50,7 @@ export const useAuthStore = defineStore("auth", {
             }
             
             // In development mode, try auto-login first if no stored tokens exist
-            if (env.IS_DEVELOPMENT) {
+            if (env.IS_DEVELOPMENT && env.AUTO_LOGIN_DEV) {
                 const storedTokens = this.loadTokensFromStorage();
                 if (!storedTokens) {
                     try {
@@ -62,6 +63,9 @@ export const useAuthStore = defineStore("auth", {
                     }
                 }
             }
+            else if (!env.IS_DEVELOPMENT && env.AUTO_LOGIN_DEV) {
+                this.$logWarn("Auto-login is only available in development mode. Skipping auto-login.");
+            }
             
             const storedTokens = this.loadTokensFromStorage();
             if (storedTokens) {
@@ -69,7 +73,7 @@ export const useAuthStore = defineStore("auth", {
                 try {
                     await this.getCurrentUser();
                 } catch (error) {
-                    console.warn("Failed to get current user during initialization:", error);
+                    this.$logError("Failed to get current user during initialization", error);
                     // Clear invalid tokens but don't call logout to avoid infinite loops
                     this.user = null;
                     this.tokens = null;
@@ -83,7 +87,7 @@ export const useAuthStore = defineStore("auth", {
             try {
                 localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authTokens));
             } catch (error) {
-                console.error("Failed to save tokens to localStorage:", error);
+                this.$logError("Failed to save tokens to localStorage", error);
             }
         },
         loadTokensFromStorage(): AuthTokens | null {
@@ -100,7 +104,7 @@ export const useAuthStore = defineStore("auth", {
 
                 return parsed;
             } catch (error) {
-                console.error("Failed to load tokens from localStorage:", error);
+                this.$logError("Failed to load tokens from localStorage", error);
                 this.removeTokensFromStorage();
                 return null;
             }
@@ -109,7 +113,7 @@ export const useAuthStore = defineStore("auth", {
             try {
                 localStorage.removeItem(AUTH_STORAGE_KEY);
             } catch (error) {
-                console.error("Failed to remove tokens from localStorage:", error);
+                this.$logError("Failed to remove tokens from localStorage", error);
             }
         },
         async login(credentials: LoginCredentials): Promise<void> {
@@ -122,7 +126,7 @@ export const useAuthStore = defineStore("auth", {
 
                 this.saveTokensToStorage(response.tokens);
             } catch (error) {
-                console.error("Login failed:", error);
+                this.$logError("Login failed", error);
                 throw error;
             } finally {
                 this.isLoading = false;
@@ -138,7 +142,7 @@ export const useAuthStore = defineStore("auth", {
 
                 this.saveTokensToStorage(response.tokens);
             } catch (error) {
-                console.error("Registration failed:", error);
+                this.$logError("Registration failed", error);
                 throw error;
             } finally {
                 this.isLoading = false;
@@ -149,7 +153,7 @@ export const useAuthStore = defineStore("auth", {
             try {
                 await authService.logout();
             } catch (error) {
-                console.error("Logout request failed:", error);
+                this.$logError("Logout request failed", error);
             } finally {
                 this.user = null;
                 this.tokens = null;
@@ -162,28 +166,23 @@ export const useAuthStore = defineStore("auth", {
             if (!this.tokens?.refreshToken) {
                 return false;
             }
-            try {
-                const tokens = await authService.refreshToken(
-                    this.tokens.refreshToken
-                );
-                this.tokens = tokens;
-                this.saveTokensToStorage(tokens);
-                return true;
-            } catch (error) {
-                console.error("Token refresh failed:", error);
-                await this.logout();
-                return false;
-            }
+
+            const tokens = await authService.refreshToken(
+                this.tokens.refreshToken
+            );
+            this.tokens = tokens;
+            this.saveTokensToStorage(tokens);
+            return true;
         },
         async getCurrentUser(): Promise<void> {
-            // In development mode, we can call the service directly without tokens
-            if (env.IS_DEVELOPMENT && (!this.tokens?.accessToken || this.tokens.accessToken === "dev-fake-token")) {
+            // In development mode with auto-login enabled, we can use fake tokens
+            if (env.IS_DEVELOPMENT && env.AUTO_LOGIN_DEV && (!this.tokens?.accessToken || this.tokens.accessToken === "dev-fake-token")) {
                 try {
                     const userData = await authService.getCurrentUser();
                     this.user = userData;
                     return;
                 } catch (error) {
-                    console.error("Failed to get current user in development mode:", error);
+                    this.$logError("Failed to get current user in development mode", error);
                     throw error;
                 }
             }
@@ -191,11 +190,12 @@ export const useAuthStore = defineStore("auth", {
             if (!this.tokens?.accessToken) {
                 throw new Error("No access token available");
             }
+
             try {
                 const userData = await authService.getCurrentUser();
                 this.user = userData;
             } catch (error) {
-                console.error("Failed to get current user:", error);
+                this.$logError("Failed to get current user", error);
                 throw error;
             }
         },
@@ -223,9 +223,9 @@ export const useAuthStore = defineStore("auth", {
                 await this.getCurrentUser();
                 
                 // Don't save fake tokens to storage as they're not real
-                console.info("Auto-login successful in development mode as:", this.user?.email);
+                this.$logInfo("Auto-login successful in development mode as:", this.user?.email);
             } catch (error) {
-                console.error("Auto-login failed:", error);
+                this.$logError("Auto-login failed:", error);
                 // Clean up on failure
                 this.user = null;
                 this.tokens = null;

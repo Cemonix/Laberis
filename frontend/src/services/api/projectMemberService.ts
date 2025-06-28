@@ -1,0 +1,51 @@
+import apiClient from './apiClient';
+import { transformApiError, isValidPaginatedResponse } from '@/services/utils';
+import type { PaginatedResponse } from '@/types/api';
+import type { ProjectRole } from '@/types/auth/auth';
+import type { ProjectMember, InviteMemberRequest } from '@/types/projectMember';
+
+class ProjectMemberService {
+    private getBaseUrl(projectId: number) {
+        return `/projects/${projectId}/members`;
+    }
+
+    async getProjectMembers(projectId: number): Promise<ProjectMember[]> {
+        try {
+            const response = await apiClient.get<PaginatedResponse<ProjectMember>>(this.getBaseUrl(projectId));
+            if (!isValidPaginatedResponse(response)) {
+                throw new Error('Invalid response for project members.');
+            }
+            return response.data.data;
+        } catch (error) {
+            throw transformApiError(error, 'Failed to fetch project members');
+        }
+    }
+
+    async inviteMember(projectId: number, data: InviteMemberRequest): Promise<ProjectMember> {
+        try {
+            const response = await apiClient.post<ProjectMember>(`${this.getBaseUrl(projectId)}/invite`, data);
+            return response.data;
+        } catch (error) {
+            throw transformApiError(error, 'Failed to invite member');
+        }
+    }
+
+    async removeMember(projectId: number, userId: string): Promise<void> {
+        try {
+            await apiClient.delete(`${this.getBaseUrl(projectId)}/by-user/${userId}`);
+        } catch (error) {
+            throw transformApiError(error, 'Failed to remove member');
+        }
+    }
+
+    async updateMemberRole(projectId: number, userId: string, role: ProjectRole): Promise<ProjectMember> {
+         try {
+            const response = await apiClient.put<ProjectMember>(`${this.getBaseUrl(projectId)}/by-user/${userId}`, { role });
+            return response.data;
+        } catch (error) {
+            throw transformApiError(error, 'Failed to update member role');
+        }
+    }
+}
+
+export const projectMemberService = new ProjectMemberService();

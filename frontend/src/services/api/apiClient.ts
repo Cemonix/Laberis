@@ -73,19 +73,12 @@ export function setupInterceptors(authStore: ReturnType<typeof useAuthStore>): v
                 isRefreshing = true;
 
                 try {
-                    const refreshed = await authStore.refreshTokens();
-                    if (refreshed) {
-                        const newToken = authStore.getAccessToken;
-                        processQueue(null, newToken); // Process the queue with the new token
-                        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-                        return apiClient(originalRequest); // Retry the original request
-                    } else {
-                        // If refresh fails, reject all queued requests and the current one.
-                        const refreshError = new Error('Token refresh failed');
-                        processQueue(refreshError, null);
-                        await authStore.logout(); // Ensure user is logged out
-                        return Promise.reject(refreshError);
-                    }
+                    await authStore.refreshTokens(); 
+
+                    const newToken = authStore.getAccessToken;
+                    processQueue(null, newToken);
+                    originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                    return apiClient(originalRequest);
                 } catch (refreshError: any) {
                     processQueue(refreshError, null);
                     await authStore.logout();
