@@ -1,0 +1,28 @@
+@use "@/styles/variables" as vars;
+
+@mixin underline-animation($color: vars.$color-primary, $height: 2px) {
+    position: relative;
+    transition: color 0.2s ease-in-out;
+
+    &::after {
+        content: "";
+        position: absolute;
+        width: 0;
+        height: $height;
+        bottom: -4px;
+        left: 50%;
+        background-color: $color;
+        transition: width 0.3s ease, left 0.3s ease;
+    }
+
+    &:hover,
+    &.router-link-exact-active {
+        color: vars.$color-link-hover;
+    }
+
+    &:hover::after,
+    &.router-link-exact-active::after {
+        width: 100%;
+        left: 0;
+    }
+}
