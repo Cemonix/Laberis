@@ -134,6 +134,7 @@ public class ProjectMembersController : ControllerBase
     /// <response code="400">If the project member data is invalid.</response>
     /// <response code="500">If an unexpected error occurs.</response>
     [HttpPost("invite")]
+    [Authorize(Policy = "CanManageProjectMembers")]
     [ProducesResponseType(typeof(ProjectMemberDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -176,6 +177,7 @@ public class ProjectMembersController : ControllerBase
     /// <response code="404">If the project member is not found.</response>
     /// <response code="500">If an unexpected error occurs.</response>
     [HttpPut("by-user/{userId}")]
+    [Authorize(Policy = "CanManageProjectMembers")]
     [ProducesResponseType(typeof(ProjectMemberDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -218,6 +220,7 @@ public class ProjectMembersController : ControllerBase
     /// <response code="404">If the project member is not found.</response>
     /// <response code="500">If an unexpected error occurs.</response>
     [HttpDelete("by-user/{userId}")]
+    [Authorize(Policy = "CanManageProjectMembers")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
