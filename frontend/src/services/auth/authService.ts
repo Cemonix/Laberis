@@ -5,7 +5,6 @@ import type {
     RegisterDto, 
     AuthResponseDto, 
     UserDto,
-    User,
     LoginCredentials,
     RegisterCredentials,
     LoginResponse,
@@ -14,7 +13,7 @@ import type {
 } from "@/types/auth/auth";
 import { AppLogger } from "@/utils/logger";
 
-const logger = AppLogger.createServiceLogger('BackendAuthService');
+const logger = AppLogger.createServiceLogger('AuthService');
 
 class AuthService {
     private readonly baseUrl = "/auth";
@@ -29,11 +28,11 @@ class AuthService {
             expiresAt: new Date(backendResponse.expiresAt).getTime()
         };
 
-        const user: User = {
+        const user: UserDto = {
             id: backendResponse.user.id,
             email: backendResponse.user.email,
             userName: backendResponse.user.userName,
-            createdAt: backendResponse.user.createdAt
+            roles: backendResponse.user.roles
         };
 
         return { user, tokens };
@@ -93,9 +92,9 @@ class AuthService {
         }
     }
 
-    async getCurrentUser(): Promise<User> {
+    async getCurrentUser(): Promise<UserDto> {
         logger.info('Fetching current user information');
-        
+
         try {
             const response = await apiClient.get<UserDto>(`${this.baseUrl}/me`);
             
@@ -106,11 +105,11 @@ class AuthService {
 
             logger.info('Successfully fetched current user information');
             
-            const user: User = {
+            const user: UserDto = {
                 id: response.data.id,
                 email: response.data.email,
                 userName: response.data.userName,
-                createdAt: response.data.createdAt
+                roles: response.data.roles
             };
             
             return user;
@@ -121,14 +120,46 @@ class AuthService {
 
     async logout(): Promise<void> {
         logger.info('Attempting logout');
-        // TODO: Since the backend doesn't have a logout endpoint that requires a token,
-        // we just clear the frontend state
-        logger.info('Logout successful (client-side)');
+        
+        try {
+            await apiClient.post(`${this.baseUrl}/logout`);
+            logger.info('Logout successful - tokens revoked on server');
+        } catch (error) {
+            logger.warn('Server-side logout failed, proceeding with client-side cleanup', error);
+        }
     }
 
-    // TODO: The backend doesn't have a refresh token endpoint yet
-    async refreshToken(_refreshToken: string): Promise<AuthTokens> {
-        throw new Error('Token refresh not implemented on backend yet');
+    async refreshToken(refreshToken: string): Promise<AuthTokens> {
+        logger.info('Attempting to refresh access token');
+        
+        const refreshTokenRequest = {
+            token: refreshToken
+        };
+
+        try {
+            const response = await apiClient.post<AuthResponseDto>(
+                `${this.baseUrl}/refresh-token`,
+                refreshTokenRequest
+            );
+            
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to refresh token - Invalid response format');
+            }
+
+            logger.info('Token refresh successful');
+            
+            const tokens: AuthTokens = {
+                accessToken: response.data.token,
+                refreshToken: response.data.refreshToken,
+                expiresAt: new Date(response.data.expiresAt).getTime()
+            };
+            
+            return tokens;
+        } catch (error) {
+            logger.error('Token refresh failed', error);
+            throw transformApiError(error, 'Failed to refresh token');
+        }
     }
 }
 
