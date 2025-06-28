@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import { useAuthStore } from "../authStore";
-import type { AuthTokens, User, LoginCredentials } from "@/types/auth/auth.ts"
-import { UserRole } from "@/types/auth/auth.ts";
+import type { AuthTokens, UserDto, LoginCredentials } from "@/types/auth/auth.ts"
+import { ProjectRole } from "@/types/auth/auth.ts";
 
 vi.mock("@/services/auth/authService", () => ({
     authService: {
@@ -19,14 +19,11 @@ describe("Auth Store", () => {
     let authStore: ReturnType<typeof useAuthStore>;
 
     // Mock data
-    const mockUser: User = {
+    const mockUser: UserDto = {
         id: "123",
         email: "test@example.com",
         userName: "testuser",
-        role: UserRole.ADMIN,
-        isActive: true,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
+        roles: [ProjectRole.ADMIN],
     };
 
     const mockTokens: AuthTokens = {
@@ -101,8 +98,8 @@ describe("Auth Store", () => {
 
         it("should check user role correctly", () => {
             authStore.user = mockUser;
-            expect(authStore.hasRole(UserRole.ADMIN)).toBe(true);
-            expect(authStore.hasRole(UserRole.VIEWER)).toBe(false);
+            expect(authStore.hasRole(ProjectRole.ADMIN)).toBe(true);
+            expect(authStore.hasRole(ProjectRole.VIEWER)).toBe(false);
         });
 
         it("should validate token expiration", () => {
