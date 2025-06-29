@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import { useAuthStore } from "../authStore";
 import type { AuthTokens, UserDto, LoginCredentials } from "@/types/auth/auth.ts"
-import { ProjectRole } from "@/types/auth/auth.ts";
+import { RoleEnum } from "@/types/auth/role";
 
 vi.mock("@/services/auth/authService", () => ({
     authService: {
@@ -23,7 +23,7 @@ describe("Auth Store", () => {
         id: "123",
         email: "test@example.com",
         userName: "testuser",
-        roles: [ProjectRole.ADMIN],
+        roles: [RoleEnum.ADMIN],
     };
 
     const mockTokens: AuthTokens = {
@@ -98,8 +98,8 @@ describe("Auth Store", () => {
 
         it("should check user role correctly", () => {
             authStore.user = mockUser;
-            expect(authStore.hasRole(ProjectRole.ADMIN)).toBe(true);
-            expect(authStore.hasRole(ProjectRole.VIEWER)).toBe(false);
+            expect(authStore.hasRole(RoleEnum.ADMIN)).toBe(true);
+            expect(authStore.hasRole(RoleEnum.USER)).toBe(false);
         });
 
         it("should validate token expiration", () => {
