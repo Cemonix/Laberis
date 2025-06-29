@@ -136,9 +136,9 @@ public class ProjectInvitationService : IProjectInvitationService
         }
     }
 
-    public async Task<bool> ProcessInvitationTokenAsync(string token, string userId)
+    public async Task<bool> ProcessInvitationTokenAsync(string token, string userId, string userEmail)
     {
-        _logger.LogInformation("Processing invitation token for user {UserId}", userId);
+        _logger.LogInformation("Processing invitation token for user {UserId} with email {Email}", userId, userEmail);
 
         var invitation = await _invitationRepository.GetByTokenAsync(token);
         if (invitation == null)
@@ -158,6 +158,16 @@ public class ProjectInvitationService : IProjectInvitationService
         if (invitation.IsAccepted)
         {
             _logger.LogWarning("Invitation token {Token} has already been accepted", token);
+            return false;
+        }
+
+        // Validate that the user's email matches the invitation email
+        if (!string.Equals(invitation.Email, userEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(
+                "Email mismatch for invitation token {Token}. Expected: {ExpectedEmail}, Actual: {ActualEmail}", 
+                token, invitation.Email, userEmail
+            );
             return false;
         }
 
