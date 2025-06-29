@@ -22,4 +22,6 @@ public record class RegisterDto
     [Required(ErrorMessage = "Password confirmation is required")]
     [Compare("Password", ErrorMessage = "Password and confirmation password do not match")]
     public string ConfirmPassword { get; init; } = string.Empty;
+
+    public string? InviteToken { get; init; }
 }
