@@ -2,12 +2,12 @@ import { defineStore } from "pinia";
 import type {
     AuthTokens,
     LoginCredentials,
-    ProjectRole,
     RegisterCredentials,
     UserDto,
 } from "@/types/auth/auth";
 import { authService } from "@/services/auth/authService";
 import { env } from "@/config/env";
+import { RoleEnum } from "@/types/auth/role";
 
 const AUTH_STORAGE_KEY = 'auth_tokens';
 
@@ -17,6 +17,8 @@ export const useAuthStore = defineStore("auth", {
         tokens: null as AuthTokens | null,
         isLoading: false,
         isInitialized: false,
+        refreshAttempts: 0,
+        maxRefreshAttempts: 3,
     }),
     getters: {
         isAuthenticated(state): boolean {
@@ -25,8 +27,8 @@ export const useAuthStore = defineStore("auth", {
         currentUser(state): UserDto | null {
             return state.user;
         },
-        hasRole(state): (role: ProjectRole) => boolean {
-            return (role: ProjectRole) => state.user?.roles?.includes(role) || false;
+        hasRole(state): (role: RoleEnum) => boolean {
+            return (role: RoleEnum) => state.user?.roles?.includes(role) || false;
         },
         isTokenValid(state): boolean {
             if (!state.tokens) return false;
@@ -162,17 +164,40 @@ export const useAuthStore = defineStore("auth", {
                 this.isLoading = false;
             }
         },
+        clearAuthState(): void {
+            this.user = null;
+            this.tokens = null;
+            this.refreshAttempts = 0;
+            this.removeTokensFromStorage();
+        },
         async refreshTokens(): Promise<boolean> {
             if (!this.tokens?.refreshToken) {
                 return false;
             }
 
-            const tokens = await authService.refreshToken(
-                this.tokens.refreshToken
-            );
-            this.tokens = tokens;
-            this.saveTokensToStorage(tokens);
-            return true;
+            if (this.refreshAttempts >= this.maxRefreshAttempts) {
+                this.$logError("Max refresh attempts reached, logging out");
+                this.clearAuthState();
+                return false;
+            }
+
+            try {
+                this.refreshAttempts++;
+                const tokens = await authService.refreshToken(this.tokens.refreshToken);
+                this.tokens = tokens;
+                this.saveTokensToStorage(tokens);
+                this.refreshAttempts = 0; // Reset attempts on success
+                return true;
+            } catch (error) {
+                this.$logError("Token refresh failed", error);
+
+                if (this.refreshAttempts >= this.maxRefreshAttempts) {
+                    this.$logError("Max refresh attempts reached, logging out");
+                    this.clearAuthState();
+                }
+
+                return false;
+            }
         },
         async getCurrentUser(): Promise<void> {
             // In development mode with auto-login enabled, we can use fake tokens

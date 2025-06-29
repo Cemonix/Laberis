@@ -36,7 +36,6 @@ const processQueue = (error: Error | null, token: string | null = null) => {
  * @param authStore An instance of the authentication store.
  */
 export function setupInterceptors(authStore: ReturnType<typeof useAuthStore>): void {
-    
     // Request Interceptor: Add the JWT token to every outgoing request.
     apiClient.interceptors.request.use(
         (config) => {
@@ -59,13 +58,20 @@ export function setupInterceptors(authStore: ReturnType<typeof useAuthStore>): v
 
             // Check if the error is a 401 and we haven't retried this request yet.
             if (error.response?.status === 401 && !originalRequest._retry) {
+                if (originalRequest.url?.includes('/auth/')) {
+                    return Promise.reject(error);
+                }
+
                 if (isRefreshing) {
                     // If a refresh is already in progress, queue the request.
                     return new Promise((resolve, reject) => {
                         failedQueue.push({ resolve, reject });
                     }).then(token => {
-                        originalRequest.headers.Authorization = `Bearer ${token}`;
-                        return apiClient(originalRequest);
+                        if (token) {
+                            originalRequest.headers.Authorization = `Bearer ${token}`;
+                            return apiClient(originalRequest);
+                        }
+                        return Promise.reject(new Error('Token refresh failed'));
                     });
                 }
 
@@ -78,8 +84,7 @@ export function setupInterceptors(authStore: ReturnType<typeof useAuthStore>): v
                     if (!refreshSuccess) {
                         // If refresh failed, reject the request and clear the queue
                         processQueue(new Error('Token refresh failed'), null);
-                        await authStore.logout();
-                        return Promise.reject(new Error('Token refresh failed'));
+                        throw new Error('Token refresh failed');
                     }
 
                     const newToken = authStore.getAccessToken;
@@ -88,14 +93,12 @@ export function setupInterceptors(authStore: ReturnType<typeof useAuthStore>): v
                     return apiClient(originalRequest);
                 } catch (refreshError: any) {
                     processQueue(refreshError, null);
-                    await authStore.logout();
-                    return Promise.reject(refreshError);
+                    throw refreshError;
                 } finally {
                     isRefreshing = false;
                 }
             }
             
-            console.error('API Error:', error.response?.data || error.message);
             return Promise.reject(error);
         }
     );
