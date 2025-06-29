@@ -13,6 +13,7 @@ using server.Services.Interfaces;
 using server.Services;
 using server.Services.Storage;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using server.Authentication;
 using System.Security.Claims;
 using Minio;
@@ -212,6 +213,10 @@ public class Program
                     ProjectRole.MANAGER
                 ));
             });
+
+        // Register authorization handlers
+        builder.Services.AddScoped<IAuthorizationHandler, ProjectRoleHandler>();
+        builder.Services.AddHttpContextAccessor();
 
         builder.Services.AddControllers()
             .AddJsonOptions(options =>
