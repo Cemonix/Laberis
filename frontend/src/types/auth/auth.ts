@@ -1,10 +1,4 @@
-export enum ProjectRole {
-    ADMIN = 'ADMIN',
-    MANAGER = 'MANAGER',
-    REVIEWER = 'REVIEWER',
-    ANNOTATOR = 'ANNOTATOR',
-    VIEWER = 'VIEWER',
-}
+import type { Role } from "./role";
 
 export interface LoginDto {
     email: string;
@@ -22,7 +16,7 @@ export interface UserDto {
     id: string;
     userName: string;
     email: string;
-    roles: ProjectRole[];
+    roles: Role[];
 }
 
 export interface AuthResponseDto {
