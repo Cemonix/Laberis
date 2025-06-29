@@ -9,6 +9,7 @@ import {
     ToolError,
     UserVisibleError
 } from '@/types/common/errors';
+import { useAuthErrorHandler } from './useAuthErrorHandler';
 
 const logger = AppLogger.createServiceLogger('ErrorHandler');
 
@@ -32,6 +33,21 @@ const handleAlertableError = (error: unknown, ui: ErrorFeedbackUI): boolean => {
 };
 
 /**
+ * Handles authentication-related errors, specifically 401 Unauthorized.
+ * This is a specialized handler that uses the auth error handler composable.
+ * @returns `true` if the error was handled, `false` otherwise.
+ */
+const handleAuthError = (error: unknown): boolean => {
+    // We only care about ServerError with status 401
+    if (error instanceof ServerError && error.statusCode === 401) {
+        const authErrorHandler = useAuthErrorHandler();
+        authErrorHandler.handleAuthError(error, 'Auth Pipeline Handler');
+        return true;
+    }
+    return false;
+};
+
+/**
  * Handles errors originating from the backend server.
  * @returns `true` if the error was handled, `false` otherwise.
  */
@@ -42,9 +58,6 @@ const handleServerError = (error: unknown, ui: ErrorFeedbackUI): boolean => {
         ui.showError('Server Error', 'The server encountered a problem. Please try again later.');
     } else if (error.statusCode === 403) {
         ui.showError('Access Denied', 'You do not have permission to perform this action.');
-    } else if (error.statusCode === 401) {
-        ui.showError('Authentication Error', 'Your session may have expired. Please log in again.');
-        // TODO: Consider dispatching a logout action here.
     } else {
         ui.showError('Request Error', error.message || 'The server could not process your request.');
     }
@@ -109,6 +122,7 @@ export function useErrorHandler() {
     // The pipeline is an array of handler functions, ordered by specificity.
     const errorHandlingPipeline = [
         handleAlertableError,
+        handleAuthError,
         handleServerError,
         handleNetworkError,
         handleValidationError,
