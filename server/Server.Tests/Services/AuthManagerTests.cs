@@ -7,6 +7,7 @@ using server.Configs;
 using server.Models.DTOs.Auth;
 using server.Exceptions;
 using System.Security.Claims;
+using server.Services.Interfaces;
 
 namespace Server.Tests.Services
 {
@@ -19,6 +20,7 @@ namespace Server.Tests.Services
         private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
         private readonly Mock<IOptions<JwtSettings>> _mockJwtOptions;
         private readonly Mock<ILogger<AuthService>> _mockLogger;
+        private readonly Mock<IProjectInvitationService> _mockProjectInvitationService;
         private readonly JwtSettings _jwtSettings;
         private readonly AuthService _authManager;
 
@@ -63,10 +65,13 @@ namespace Server.Tests.Services
 
             _mockLogger = new Mock<ILogger<AuthService>>();
 
+            _mockProjectInvitationService = new Mock<IProjectInvitationService>();
+
             _authManager = new AuthService(
                 _mockUserManager.Object,
                 _mockJwtOptions.Object,
-                _mockLogger.Object
+                _mockLogger.Object,
+                _mockProjectInvitationService.Object
             );
         }
 
@@ -77,7 +82,7 @@ namespace Server.Tests.Services
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthService(null!, _mockJwtOptions.Object, _mockLogger.Object));
+                new AuthService(null!, _mockJwtOptions.Object, _mockLogger.Object, _mockProjectInvitationService.Object));
         }
 
         [Fact]
@@ -85,7 +90,7 @@ namespace Server.Tests.Services
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthService(_mockUserManager.Object, null!, _mockLogger.Object));
+                new AuthService(_mockUserManager.Object, null!, _mockLogger.Object, _mockProjectInvitationService.Object));
         }
 
         [Fact]
@@ -93,7 +98,7 @@ namespace Server.Tests.Services
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthService(_mockUserManager.Object, _mockJwtOptions.Object, null!));
+                new AuthService(_mockUserManager.Object, _mockJwtOptions.Object, null!, _mockProjectInvitationService.Object));
         }
 
         #endregion
