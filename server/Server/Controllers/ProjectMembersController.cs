@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using server.Exceptions;
+using server.Models.DTOs.ProjectInvitation;
 using server.Models.DTOs.ProjectMember;
 using server.Services.Interfaces;
 using System.Security.Claims;
@@ -12,11 +14,16 @@ namespace server.Controllers;
 public class ProjectMembersController : ControllerBase
 {
     private readonly IProjectMemberService _projectMemberService;
+    private readonly IProjectInvitationService _projectInvitationService;
     private readonly ILogger<ProjectMembersController> _logger;
 
-    public ProjectMembersController(IProjectMemberService projectMemberService, ILogger<ProjectMembersController> logger)
+    public ProjectMembersController(
+        IProjectMemberService projectMemberService, 
+        IProjectInvitationService projectInvitationService,
+        ILogger<ProjectMembersController> logger)
     {
         _projectMemberService = projectMemberService ?? throw new ArgumentNullException(nameof(projectMemberService));
+        _projectInvitationService = projectInvitationService ?? throw new ArgumentNullException(nameof(projectInvitationService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -125,20 +132,22 @@ public class ProjectMembersController : ControllerBase
     }
 
     /// <summary>
-    /// Invites a new member to a project (creates a pending membership).
+    /// Invites a user to a project by email (creates invitation for new users or adds existing users).
     /// </summary>
     /// <param name="projectId">The ID of the project to invite the member to.</param>
-    /// <param name="createProjectMemberDto">The project member invitation data.</param>
-    /// <returns>The created project member invitation.</returns>
-    /// <response code="201">Returns the newly created project member invitation.</response>
-    /// <response code="400">If the project member data is invalid.</response>
+    /// <param name="createProjectInvitationDto">The project invitation data.</param>
+    /// <returns>A success message.</returns>
+    /// <response code="200">Returns a success message.</response>
+    /// <response code="400">If the invitation data is invalid.</response>
+    /// <response code="409">If user is already a member or invitation already exists.</response>
     /// <response code="500">If an unexpected error occurs.</response>
     [HttpPost("invite")]
     [Authorize(Policy = "CanManageProjectMembers")]
-    [ProducesResponseType(typeof(ProjectMemberDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> InviteProjectMember(int projectId, [FromBody] CreateProjectMemberDto createProjectMemberDto)
+    public async Task<IActionResult> InviteProjectMember(int projectId, [FromBody] CreateProjectInvitationDto createProjectInvitationDto)
     {
         try
         {
@@ -147,13 +156,23 @@ public class ProjectMembersController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            var createdProjectMember = await _projectMemberService.AddProjectMemberAsync(projectId, createProjectMemberDto);
+            var inviterUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(inviterUserId))
+            {
+                return Unauthorized("User ID not found in token");
+            }
+
+            await _projectInvitationService.InviteUserByEmailAsync(projectId, createProjectInvitationDto, inviterUserId);
             
-            return CreatedAtAction(
-                nameof(GetProjectMemberByUserId),
-                new { projectId, userId = createProjectMemberDto.UserId },
-                createdProjectMember
-            );
+            return Ok(new { message = "Invitation sent successfully." });
+        }
+        catch (ConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
         catch (Exception ex)
         {
