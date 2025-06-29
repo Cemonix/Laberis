@@ -1,12 +1,12 @@
 import apiClient from './apiClient';
 import { transformApiError, isValidPaginatedResponse } from '@/services/utils';
 import type { PaginatedResponse } from '@/types/api';
-import type { ProjectRole } from '@/types/auth/auth';
+import type { ProjectRole } from '@/types/project';
 import type { ProjectMember, InviteMemberRequest } from '@/types/projectMember';
 
 class ProjectMemberService {
     private getBaseUrl(projectId: number) {
-        return `/projects/${projectId}/members`;
+        return `/projects/${projectId}/projectmembers`;
     }
 
     async getProjectMembers(projectId: number): Promise<ProjectMember[]> {
@@ -21,9 +21,9 @@ class ProjectMemberService {
         }
     }
 
-    async inviteMember(projectId: number, data: InviteMemberRequest): Promise<ProjectMember> {
+    async inviteMember(projectId: number, data: InviteMemberRequest): Promise<{ message: string }> {
         try {
-            const response = await apiClient.post<ProjectMember>(`${this.getBaseUrl(projectId)}/invite`, data);
+            const response = await apiClient.post<{ message: string }>(`${this.getBaseUrl(projectId)}/invite`, data);
             return response.data;
         } catch (error) {
             throw transformApiError(error, 'Failed to invite member');

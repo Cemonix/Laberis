@@ -1,4 +1,4 @@
-import type { Role } from "./role";
+import type { RoleEnum } from "./role";
 
 export interface LoginDto {
     email: string;
@@ -16,7 +16,7 @@ export interface UserDto {
     id: string;
     userName: string;
     email: string;
-    roles: Role[];
+    roles: RoleEnum[];
 }
 
 export interface AuthResponseDto {

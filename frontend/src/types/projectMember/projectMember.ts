@@ -1,4 +1,4 @@
-import type { ProjectRole } from "../auth/auth";
+import type { ProjectRole } from "../project"
 
 export interface ProjectMember {
     id: number;
@@ -13,6 +13,6 @@ export interface ProjectMember {
 }
 
 export interface InviteMemberRequest {
-    userId: string;
+    email: string;
     role: ProjectRole;
 }

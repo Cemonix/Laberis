@@ -109,7 +109,7 @@ const routes: Array<RouteRecordRaw> = [
             {
                 path: 'settings',
                 name: 'ProjectSettings',
-                component: { template: '<div>Project Settings Page</div>' },
+                component: () => import('@/views/project/ProjectSettingsView.vue'),
                 props: true,
             },
         ],
