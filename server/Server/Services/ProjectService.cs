@@ -14,6 +14,7 @@ public class ProjectService : IProjectService
 {
     private readonly IProjectRepository _projectRepository;
     private readonly IDataSourceRepository _dataSourceRepository;
+    private readonly IProjectMemberRepository _projectMemberRepository;
     private readonly IStorageServiceFactory _storageServiceFactory;
     private readonly LaberisDbContext _context;
     private readonly ILogger<ProjectService> _logger;
@@ -21,12 +22,14 @@ public class ProjectService : IProjectService
     public ProjectService(
         IProjectRepository projectRepository,
         IDataSourceRepository dataSourceRepository,
+        IProjectMemberRepository projectMemberRepository,
         IStorageServiceFactory storageServiceFactory,
         LaberisDbContext context,
         ILogger<ProjectService> logger)
     {
         _projectRepository = projectRepository ?? throw new ArgumentNullException(nameof(projectRepository));
         _dataSourceRepository = dataSourceRepository ?? throw new ArgumentNullException(nameof(dataSourceRepository));
+        _projectMemberRepository = projectMemberRepository ?? throw new ArgumentNullException(nameof(projectMemberRepository));
         _storageServiceFactory = storageServiceFactory ?? throw new ArgumentNullException(nameof(storageServiceFactory));
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -150,6 +153,22 @@ public class ProjectService : IProjectService
             await _dataSourceRepository.AddAsync(dataSource);
             await _dataSourceRepository.SaveChangesAsync();
             _logger.LogInformation("Default data source for project {ProjectId} saved to database.", project.ProjectId);
+
+            // Create a ProjectMember record for the project owner with MANAGER role
+            var projectMember = new ProjectMember
+            {
+                ProjectId = project.ProjectId,
+                UserId = ownerId,
+                Role = ProjectRole.MANAGER,
+                InvitedAt = DateTime.UtcNow,
+                JoinedAt = DateTime.UtcNow, // Owner joins immediately
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _projectMemberRepository.AddAsync(projectMember);
+            await _projectMemberRepository.SaveChangesAsync();
+            _logger.LogInformation("Project owner {OwnerId} added as MANAGER to project {ProjectId}.", ownerId, project.ProjectId);
 
             // If all steps succeed, commit the transaction
             await transaction.CommitAsync();
