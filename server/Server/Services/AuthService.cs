@@ -18,15 +18,18 @@ public class AuthService : IAuthService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly JwtSettings _jwtSettings;
     private readonly ILogger<AuthService> _logger;
+    private readonly IProjectInvitationService _projectInvitationService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         IOptions<JwtSettings> jwtSettings,
-        ILogger<AuthService> logger)
+        ILogger<AuthService> logger,
+        IProjectInvitationService projectInvitationService)
     {
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         _jwtSettings = (jwtSettings ?? throw new ArgumentNullException(nameof(jwtSettings))).Value;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _projectInvitationService = projectInvitationService ?? throw new ArgumentNullException(nameof(projectInvitationService));
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto)
@@ -63,12 +66,48 @@ public class AuthService : IAuthService
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
             _logger.LogError("Registration failed for {Email}: {Errors}", registerDto.Email, errors);
-            throw new ValidationException($"Registration failed: {errors}");
+            throw new DatabaseException($"Registration failed: {errors}");
+        }
+
+        // If user creation is successful, add them to the "User" role.
+        _logger.LogInformation("Assigning default {Role} role to {Email}", user.Email, Role.USER);
+        var roleResult = await _userManager.AddToRoleAsync(user, Role.USER.ToString());
+
+        if (!roleResult.Succeeded)
+        {
+            var roleErrors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
+            _logger.LogCritical(
+                "Could not assign default {Role} role to {Email}: {Errors}. Rolling back user creation.",
+                Role.USER,
+                user.Email,
+                roleErrors
+            );
+
+            await _userManager.DeleteAsync(user);
+            throw new DatabaseException($"Could not assign default {Role.USER} role: {roleErrors}");
         }
 
         _logger.LogInformation("User {Email} registered successfully with ID: {UserId}", user.Email, user.Id);
 
-        // Generate token
+        // Process invitation token if provided
+        if (!string.IsNullOrEmpty(registerDto.InviteToken))
+        {
+            _logger.LogInformation("Processing invitation token for user {Email}", user.Email);
+            var tokenProcessed = await _projectInvitationService.ProcessInvitationTokenAsync(registerDto.InviteToken, user.Id);
+            
+            if (!tokenProcessed)
+            {
+                _logger.LogWarning("Failed to process invitation token {Token} for user {Email}", registerDto.InviteToken, user.Email);
+                // Note: We don't throw an exception here as the user is already created
+                // The invitation failure should be handled gracefully
+            }
+            else
+            {
+                _logger.LogInformation("Successfully processed invitation token for user {Email}", user.Email);
+            }
+        }
+
+        // Generate token`
         var accesstoken = await GenerateTokenAsync(user);
 
         var refreshToken = GenerateRefreshToken();
