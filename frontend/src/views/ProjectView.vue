@@ -13,7 +13,7 @@
         
         <div v-else class="project-grid">
             <div v-if="projects.length === 0" class="no-projects">
-                No projects found. Create your first project!
+                {{ canCreateProject ? 'No projects found. Create your first project!' : 'You are not part of any project yet.' }}
             </div>
             <ProjectCard
                 v-for="project in projects"
@@ -22,8 +22,15 @@
             />
         </div>
 
-        <Button @click="openModal" class="fab" aria-label="Create new project">+</Button>
-
+        <Button 
+            v-if="canCreateProject"
+            @click="openModal" 
+            class="fab" 
+            aria-label="Create new project"
+        >
+            +
+        </Button>
+        
         <ModalWindow 
             :is-open="isModalOpen" 
             title="Create New Project" 
@@ -36,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import ProjectCard from '@/components/project/ProjectCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateProjectForm from '@/components/project/CreateProjectForm.vue';
@@ -46,13 +53,20 @@ import { ProjectType } from '@/types/project/project';
 import { projectService } from '@/services/api/projectService';
 import type { CreateProjectRequest } from '@/types/project/requests';
 import { useToast } from '@/composables/useToast';
+import { usePermissions } from '@/composables/usePermissions';
+import { RoleEnum } from '@/types/auth/role';
 
 const { showCreateSuccess, showError } = useToast();
+const { hasRole } = usePermissions();
 
 const isModalOpen = ref(false);
 const projects = ref<Project[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
+
+const canCreateProject = computed(() => {
+    return !hasRole(RoleEnum.USER); // Only allow non-users to create projects
+});
 
 const openModal = () => isModalOpen.value = true;
 const closeModal = () => isModalOpen.value = false;
