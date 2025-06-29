@@ -4,6 +4,7 @@ using Moq;
 using server.Controllers;
 using server.Models.DTOs.Auth;
 using server.Services;
+using server.Services.Interfaces;
 using server.Exceptions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
@@ -17,21 +18,21 @@ namespace Server.Tests.Controllers
     /// </summary>
     public class AuthControllerTests
     {
-        private readonly Mock<IAuthManager> _mockAuthManager;
+        private readonly Mock<IAuthService> _mockAuthService;
         private readonly Mock<ILogger<AuthController>> _mockLogger;
         private readonly AuthController _controller;
 
         public AuthControllerTests()
         {
-            _mockAuthManager = new Mock<IAuthManager>();
+            _mockAuthService = new Mock<IAuthService>();
             _mockLogger = new Mock<ILogger<AuthController>>();
-            _controller = new AuthController(_mockAuthManager.Object, _mockLogger.Object);
+            _controller = new AuthController(_mockAuthService.Object, _mockLogger.Object);
         }
 
         #region Constructor Tests
 
         [Fact]
-        public void Constructor_Should_ThrowArgumentNullException_WhenAuthManagerIsNull()
+        public void Constructor_Should_ThrowArgumentNullException_WhenAuthServiceIsNull()
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
@@ -43,7 +44,7 @@ namespace Server.Tests.Controllers
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthController(_mockAuthManager.Object, null!));
+                new AuthController(_mockAuthService.Object, null!));
         }
 
         #endregion
@@ -72,11 +73,10 @@ namespace Server.Tests.Controllers
                     Id = "user-id-123",
                     UserName = "testuser",
                     Email = "test@example.com",
-                    CreatedAt = DateTime.UtcNow
                 }
             };
 
-            _mockAuthManager.Setup(m => m.RegisterAsync(registerDto))
+            _mockAuthService.Setup(m => m.RegisterAsync(registerDto))
                 .ReturnsAsync(expectedResponse);
 
             // Act
@@ -89,8 +89,8 @@ namespace Server.Tests.Controllers
             Assert.Equal(expectedResponse.Token, authResponse.Token);
             Assert.Equal(expectedResponse.User.UserName, authResponse.User.UserName);
             Assert.Equal(expectedResponse.User.Email, authResponse.User.Email);
-            
-            _mockAuthManager.Verify(m => m.RegisterAsync(registerDto), Times.Once);
+
+            _mockAuthService.Verify(m => m.RegisterAsync(registerDto), Times.Once);
         }
 
         [Fact]
@@ -105,12 +105,12 @@ namespace Server.Tests.Controllers
                 ConfirmPassword = "Test123!"
             };
 
-            _mockAuthManager.Setup(m => m.RegisterAsync(registerDto))
+            _mockAuthService.Setup(m => m.RegisterAsync(registerDto))
                 .ThrowsAsync(new ConflictException("User with this email already exists"));
 
             // Act & Assert
             await Assert.ThrowsAsync<ConflictException>(() => _controller.Register(registerDto));
-            _mockAuthManager.Verify(m => m.RegisterAsync(registerDto), Times.Once);
+            _mockAuthService.Verify(m => m.RegisterAsync(registerDto), Times.Once);
         }
 
         [Fact]
@@ -125,12 +125,12 @@ namespace Server.Tests.Controllers
                 ConfirmPassword = "weak"
             };
 
-            _mockAuthManager.Setup(m => m.RegisterAsync(registerDto))
+            _mockAuthService.Setup(m => m.RegisterAsync(registerDto))
                 .ThrowsAsync(new ValidationException("Password does not meet requirements"));
 
             // Act & Assert
             await Assert.ThrowsAsync<ValidationException>(() => _controller.Register(registerDto));
-            _mockAuthManager.Verify(m => m.RegisterAsync(registerDto), Times.Once);
+            _mockAuthService.Verify(m => m.RegisterAsync(registerDto), Times.Once);
         }
 
         #endregion
@@ -157,11 +157,10 @@ namespace Server.Tests.Controllers
                     Id = "user-id-123",
                     UserName = "testuser",
                     Email = "test@example.com",
-                    CreatedAt = DateTime.UtcNow
                 }
             };
 
-            _mockAuthManager.Setup(m => m.LoginAsync(loginDto))
+            _mockAuthService.Setup(m => m.LoginAsync(loginDto))
                 .ReturnsAsync(expectedResponse);
 
             // Act
@@ -174,8 +173,8 @@ namespace Server.Tests.Controllers
             Assert.Equal(expectedResponse.Token, authResponse.Token);
             Assert.Equal(expectedResponse.User.UserName, authResponse.User.UserName);
             Assert.Equal(expectedResponse.User.Email, authResponse.User.Email);
-            
-            _mockAuthManager.Verify(m => m.LoginAsync(loginDto), Times.Once);
+
+            _mockAuthService.Verify(m => m.LoginAsync(loginDto), Times.Once);
         }
 
         [Fact]
@@ -188,12 +187,12 @@ namespace Server.Tests.Controllers
                 Password = "WrongPassword"
             };
 
-            _mockAuthManager.Setup(m => m.LoginAsync(loginDto))
+            _mockAuthService.Setup(m => m.LoginAsync(loginDto))
                 .ThrowsAsync(new ValidationException("Invalid email or password"));
 
             // Act & Assert
             await Assert.ThrowsAsync<ValidationException>(() => _controller.Login(loginDto));
-            _mockAuthManager.Verify(m => m.LoginAsync(loginDto), Times.Once);
+            _mockAuthService.Verify(m => m.LoginAsync(loginDto), Times.Once);
         }
 
         [Fact]
@@ -206,12 +205,12 @@ namespace Server.Tests.Controllers
                 Password = "Test123!"
             };
 
-            _mockAuthManager.Setup(m => m.LoginAsync(loginDto))
+            _mockAuthService.Setup(m => m.LoginAsync(loginDto))
                 .ThrowsAsync(new ValidationException("Invalid email or password"));
 
             // Act & Assert
             await Assert.ThrowsAsync<ValidationException>(() => _controller.Login(loginDto));
-            _mockAuthManager.Verify(m => m.LoginAsync(loginDto), Times.Once);
+            _mockAuthService.Verify(m => m.LoginAsync(loginDto), Times.Once);
         }
 
         #endregion
