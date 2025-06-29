@@ -11,7 +11,7 @@ public class ValidationException : AppException
 
     public ValidationException(string message) : base(message)
     {
-        ValidationErrors = new Dictionary<string, List<string>>();
+        ValidationErrors = [];
     }
 
     public ValidationException(Dictionary<string, List<string>> validationErrors) 

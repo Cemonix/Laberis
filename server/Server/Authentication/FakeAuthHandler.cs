@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using server.Configs;
+using server.Models.Domain.Enums;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
@@ -27,7 +28,7 @@ public class FakeAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
             new Claim(ClaimTypes.NameIdentifier, _fakeUserSettings.Id),
             new Claim(ClaimTypes.Name, _fakeUserSettings.Username),
             new Claim(ClaimTypes.Email, _fakeUserSettings.Email),
-            new Claim(ClaimTypes.Role, _fakeUserSettings.Role)
+            new Claim(ClaimTypes.Role, Role.ADMIN.ToString())
         };
 
         var identity = new ClaimsIdentity(claims, "Fake");

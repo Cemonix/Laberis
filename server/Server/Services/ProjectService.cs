@@ -47,12 +47,12 @@ public class ProjectService : IProjectService
 
         Expression<Func<Project, bool>>? filter = null;
 
-        if (userRole == "Admin")
+        if (userRole == Role.ADMIN.ToString())
         {
             // Admins see all projects, so the filter remains null
             _logger.LogInformation("User is Admin, fetching all projects.");
         }
-        else if (userRole == "Manager")
+        else if (userRole == Role.MANAGER.ToString())
         {
             // Managers see projects they own or are a member of
             filter = p => p.OwnerId == userId || p.ProjectMembers.Any(pm => pm.UserId == userId);

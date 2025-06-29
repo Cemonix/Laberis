@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using server.Configs;
 using server.Models;
+using server.Models.Domain.Enums;
 
 namespace server.Data;
 
@@ -22,11 +23,17 @@ public class DataSeeder
         logger.LogInformation("Initializing database with seed data...");
 
         // Define Admin Role
-        string adminRoleName = adminUserSettings.Role;
-        if (!await roleManager.RoleExistsAsync(adminRoleName))
+        if (!await roleManager.RoleExistsAsync(Role.ADMIN.ToString()))
         {
-            await roleManager.CreateAsync(new IdentityRole(adminRoleName));
-            logger.LogInformation("'{AdminRoleName}' role created.", adminRoleName);
+            await roleManager.CreateAsync(new IdentityRole(Role.ADMIN.ToString()));
+            logger.LogInformation("'{AdminRoleName}' role created.", Role.ADMIN);
+        }
+
+        // Define User Role
+        if (!await roleManager.RoleExistsAsync(Role.USER.ToString()))
+        {
+            await roleManager.CreateAsync(new IdentityRole(Role.USER.ToString()));
+            logger.LogInformation("'{UserRoleName}' role created.", Role.USER);
         }
 
         // Define Admin User
@@ -47,8 +54,8 @@ public class DataSeeder
             if (createUserResult.Succeeded)
             {
                 logger.LogInformation("Admin user '{AdminUserName}' created successfully.", adminUserToCreate.UserName);
-                await userManager.AddToRoleAsync(adminUserToCreate, adminRoleName);
-                logger.LogInformation("Admin user '{AdminUserName}' added to '{AdminRoleName}' role.", adminUserToCreate.UserName, adminRoleName);
+                await userManager.AddToRoleAsync(adminUserToCreate, Role.ADMIN.ToString());
+                logger.LogInformation("Admin user '{AdminUserName}' added to '{AdminRoleName}' role.", adminUserToCreate.UserName, Role.ADMIN);
             }
             else
             {
