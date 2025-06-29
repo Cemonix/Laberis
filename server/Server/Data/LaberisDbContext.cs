@@ -15,6 +15,7 @@ public class LaberisDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<Project> Projects { get; set; }
     public DbSet<ProjectMember> ProjectMembers { get; set; }
+    public DbSet<ProjectInvitation> ProjectInvitations { get; set; }
     public DbSet<DataSource> DataSources { get; set; }
     public DbSet<Asset> Assets { get; set; }
     public DbSet<LabelScheme> LabelSchemes { get; set; }
@@ -49,6 +50,7 @@ public class LaberisDbContext : IdentityDbContext<ApplicationUser>
         // Apply configurations
         modelBuilder.ApplyConfiguration(new Configurations.ProjectConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.ProjectMemberConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.ProjectInvitationConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.DataSourceConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.AssetConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.LabelSchemeConfiguration());

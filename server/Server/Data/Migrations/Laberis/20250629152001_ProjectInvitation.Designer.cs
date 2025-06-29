@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using server.Data;
@@ -12,9 +13,11 @@ using server.Models.Domain.Enums;
 namespace server.Data.Migrations.Laberis
 {
     [DbContext(typeof(LaberisDbContext))]
-    partial class LaberisDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250629152001_ProjectInvitation")]
+    partial class ProjectInvitation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -27,7 +30,7 @@ namespace server.Data.Migrations.Laberis
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "data_source_type_enum", new[] { "minio_bucket", "s3_bucket", "gsc_bucket", "azure_blob_storage", "local_directory", "database", "api", "other" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "issue_status_enum", new[] { "open", "in_progress", "resolved", "closed", "reopened", "canceled" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "issue_type_enum", new[] { "incorrect_annotation", "missing_annotation", "ambiguous_task", "asset_quality_issue", "guideline_inquiry", "other" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "project_role_enum", new[] { "manager", "reviewer", "annotator", "viewer" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "project_role_enum", new[] { "admin", "manager", "reviewer", "annotator", "viewer" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "project_status_enum", new[] { "active", "archived", "read_only", "pending_deletion" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "project_type_enum", new[] { "image_classification", "object_detection", "image_segmentation", "video_annotation", "text_annotation", "other" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "public", "task_event_type_enum", new[] { "task_created", "task_assigned", "task_unassigned", "stage_changed", "status_changed", "comment_added", "annotation_created", "annotation_updated", "annotation_deleted", "review_submitted", "issue_raised", "priority_changed", "due_date_changed", "task_completed", "task_archived" });
