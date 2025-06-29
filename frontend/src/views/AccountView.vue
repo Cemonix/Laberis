@@ -2,13 +2,14 @@
     <div class="account-view">
         <h1>Account Management</h1>
         <p>Manage your account settings and preferences here.</p>
+        <pre>{{ authStore.user }}</pre>
     </div>
 </template>
 
 <script setup lang="ts">
-// import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/stores/authStore';
 
-// const authStore = useAuthStore();
+const authStore = useAuthStore();
 </script>
 
 <style scoped>

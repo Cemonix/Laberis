@@ -15,6 +15,13 @@ export enum ProjectStatus {
     PENDING_DELETION = 'PENDING_DELETION',
 }
 
+export enum ProjectRole {
+    MANAGER = 'MANAGER',
+    ANNOTATOR = 'ANNOTATOR',
+    REVIEWER = 'REVIEWER',
+    VIEWER = 'VIEWER'
+}
+
 // Main Project interface
 export interface Project {
     id: number;

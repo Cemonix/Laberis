@@ -1,5 +1,5 @@
 export type { Project } from './project';
-export { ProjectType, ProjectStatus } from './project';
+export { ProjectType, ProjectStatus, ProjectRole } from './project';
 
 export type {
     CreateProjectRequest,
