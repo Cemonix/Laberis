@@ -1,9 +1,9 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using server.Data;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
 using server.Repositories.Interfaces;
-using System.Linq.Expressions;
 
 namespace server.Repositories;
 
@@ -18,9 +18,8 @@ public class ProjectMemberRepository : GenericRepository<ProjectMember>, IProjec
 
     protected override IQueryable<ProjectMember> ApplyIncludes(IQueryable<ProjectMember> query)
     {
-        // Include related data if needed for specific use cases
-        // Example: return query.Include(pm => pm.Project).Include(pm => pm.User);
-        return query;
+        // Include related data for project member queries
+        return query.Include(pm => pm.Project).Include(pm => pm.User);
     }
 
     protected override IQueryable<ProjectMember> ApplyFilter(IQueryable<ProjectMember> query, string? filterOn, string? filterQuery)
