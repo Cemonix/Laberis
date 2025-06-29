@@ -77,6 +77,12 @@ public class Program
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        // Configure and validate SMTP settings
+        builder.Services.AddOptions<SmtpSettings>()
+            .Bind(configuration.GetSection(SmtpSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
 
         builder.Services.AddDbContext<LaberisDbContext>(options =>
@@ -123,6 +129,7 @@ public class Program
         builder.Services.AddScoped<IAnnotationRepository, AnnotationRepository>();
         builder.Services.AddScoped<IIssueRepository, IssueRepository>();
         builder.Services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
+        builder.Services.AddScoped<IProjectInvitationRepository, ProjectInvitationRepository>();
         builder.Services.AddScoped<ITaskRepository, TaskRepository>();
         builder.Services.AddScoped<ITaskEventRepository, TaskEventRepository>();
         builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
@@ -139,11 +146,13 @@ public class Program
         builder.Services.AddScoped<IAnnotationService, AnnotationService>();
         builder.Services.AddScoped<IIssueService, IssueService>();
         builder.Services.AddScoped<IProjectMemberService, ProjectMemberService>();
+        builder.Services.AddScoped<IProjectInvitationService, ProjectInvitationService>();
         builder.Services.AddScoped<ITaskService, TaskService>();
         builder.Services.AddScoped<ITaskEventService, TaskEventService>();
         builder.Services.AddScoped<IWorkflowService, WorkflowService>();
         builder.Services.AddScoped<IWorkflowStageService, WorkflowStageService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped<IEmailService, EmailService>();
 
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>();
         if (jwtSettings == null)
@@ -195,12 +204,11 @@ public class Program
             .AddPolicy("RequireAdminRole", policy =>
             {
                 policy.RequireAuthenticatedUser();
-                policy.RequireRole("Admin");
+                policy.RequireRole(Role.ADMIN.ToString());
             })
             .AddPolicy("CanManageProjectMembers", policy =>
             {
                 policy.AddRequirements(new ProjectRoleRequirement(
-                    ProjectRole.ADMIN,
                     ProjectRole.MANAGER
                 ));
             });

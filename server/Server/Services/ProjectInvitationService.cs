@@ -122,14 +122,15 @@ public class ProjectInvitationService : IProjectInvitationService
             await _invitationRepository.SaveChangesAsync();
 
             // Send invitation email
-            var registrationUrl = $"{_webAppSettings.BaseUrl}/register?inviteToken={invitationToken}";
+            var registrationUrl = $"{_webAppSettings.ClientUrl}/register?inviteToken={invitationToken}";
             await _emailService.SendProjectInvitationEmailAsync(
                 createDto.Email,
                 project.Name,
                 createDto.Role.ToString(),
                 inviter.UserName ?? inviter.Email ?? "Someone",
                 invitationToken,
-                registrationUrl);
+                registrationUrl
+            );
 
             _logger.LogInformation("Created invitation for new user {Email} to project {ProjectId}", createDto.Email, projectId);
         }
