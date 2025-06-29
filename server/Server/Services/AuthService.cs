@@ -93,7 +93,7 @@ public class AuthService : IAuthService
         if (!string.IsNullOrEmpty(registerDto.InviteToken))
         {
             _logger.LogInformation("Processing invitation token for user {Email}", user.Email);
-            var tokenProcessed = await _projectInvitationService.ProcessInvitationTokenAsync(registerDto.InviteToken, user.Id);
+            var tokenProcessed = await _projectInvitationService.ProcessInvitationTokenAsync(registerDto.InviteToken, user.Id, user.Email);
             
             if (!tokenProcessed)
             {
