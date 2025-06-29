@@ -18,8 +18,9 @@ public interface IProjectInvitationService
     /// </summary>
     /// <param name="token">The invitation token</param>
     /// <param name="userId">The ID of the newly registered user</param>
+    /// <param name="userEmail">The email of the newly registered user</param>
     /// <returns>A task representing the asynchronous operation, returns true if processed successfully</returns>
-    Task<bool> ProcessInvitationTokenAsync(string token, string userId);
+    Task<bool> ProcessInvitationTokenAsync(string token, string userId, string userEmail);
 
     /// <summary>
     /// Gets a valid invitation by token
