@@ -83,6 +83,14 @@ public abstract class GenericRepository<T> : IGenericRepository<T> where T : cla
         return await _dbSet.Where(predicate).ToListAsync();
     }
 
+    public virtual void Detach(T entity)
+    {
+        if (_context.Entry(entity).State != EntityState.Detached)
+        {
+            _context.Entry(entity).State = EntityState.Detached;
+        }
+    }
+
     public virtual async Task AddAsync(T entity)
     {
         await _dbSet.AddAsync(entity);
