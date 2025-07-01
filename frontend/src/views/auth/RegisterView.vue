@@ -1,10 +1,24 @@
 <template>
     <div class="auth-container">
         <div class="auth-glass-box">
-            <h1>Create Account</h1>
+            <h1>{{ isInviteRegistration ? 'Complete Your Invitation' : 'Create Account' }}</h1>
             <Form @submit="handleRegister" class="auth-form">
                 <div v-if="errorMessage" class="error-banner">
                     {{ errorMessage }}
+                </div>
+                
+                <!-- Invitation Status Banner -->
+                <div v-if="isValidatingToken" class="info-banner">
+                    <span class="loading-text">Validating invitation...</span>
+                </div>
+                <div v-else-if="isInviteRegistration && invitationData" class="success-banner">
+                    <strong>You're invited!</strong> 
+                    You've been invited to join a project. Please complete your registration below.
+                    <br><small>Email: {{ invitationData.email }}</small>
+                </div>
+                <div v-else-if="isInviteRegistration" class="warning-banner">
+                    <strong>Invitation expired or invalid.</strong>
+                    You can still create an account without the invitation.
                 </div>
                 <div class="form-group">
                     <label for="userName">Username</label>
@@ -26,7 +40,12 @@
                         placeholder="Enter your email" 
                         required 
                         :disabled="isLoading"
+                        :readonly="!!(isInviteRegistration && invitationData)"
+                        :class="{ 'readonly': !!(isInviteRegistration && invitationData) }"
                     />
+                    <div v-if="isInviteRegistration && invitationData" class="field-help">
+                        Email is set from your invitation and cannot be changed.
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
@@ -69,14 +88,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
+import { useToast } from "@/composables/useToast";
+import { projectInvitationService } from "@/services/api/projectInvitationService";
 import Button from "@/components/common/Button.vue";
 import Form from "@/components/common/Form.vue";
+import type { ProjectInvitationDto } from "@/types/projectInvitation";
 
 const router = useRouter();
 const authStore = useAuthStore();
+const { showError } = useToast();
 
 const userName = ref("");
 const email = ref("");
@@ -85,17 +108,59 @@ const confirmPassword = ref("");
 const isLoading = ref(false);
 const errorMessage = ref("");
 
+// Invitation token handling
+const inviteToken = ref<string | null>(null);
+const invitationData = ref<ProjectInvitationDto | null>(null);
+const isValidatingToken = ref(false);
+
 // Form validation
 const isFormValid = computed(() => {
     return userName.value.trim() && 
-           email.value.trim() && 
-           password.value.length >= 6 && 
-           password.value === confirmPassword.value;
+            email.value.trim() && 
+            password.value.length >= 6 && 
+            password.value === confirmPassword.value;
 });
 
 const passwordsMatch = computed(() => {
     return password.value === confirmPassword.value || confirmPassword.value === "";
 });
+
+// Check if user is registering via invitation
+const isInviteRegistration = computed(() => {
+    return inviteToken.value !== null;
+});
+
+// Validate invitation token
+const validateInvitationToken = async (token: string): Promise<void> => {
+    if (!token) return;
+    
+    isValidatingToken.value = true;
+    
+    try {
+        const invitation = await projectInvitationService.validateInvitationToken(token);
+        invitationData.value = invitation;
+        
+        // Pre-fill email if invitation exists
+        if (invitation.email && !email.value) {
+            email.value = invitation.email;
+        }
+    } catch (error) {
+        showError("Invalid Invitation", "This invitation link is invalid or has expired. You can still create an account without the invitation.");
+    } finally {
+        isValidatingToken.value = false;
+    }
+};
+
+// Initialize invitation token from URL
+const initializeInviteToken = (): void => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('inviteToken');
+    
+    if (token) {
+        inviteToken.value = token;
+        validateInvitationToken(token);
+    }
+};
 
 const handleRegister = async () => {
     if (!passwordsMatch.value) {
@@ -108,6 +173,15 @@ const handleRegister = async () => {
         return;
     }
 
+    // Additional validation for invitation registration
+    if (isInviteRegistration.value && invitationData.value) {
+        // Check if email matches invitation
+        if (email.value.trim().toLowerCase() !== invitationData.value.email.toLowerCase()) {
+            errorMessage.value = `Email must match the invitation email: ${invitationData.value.email}`;
+            return;
+        }
+    }
+
     isLoading.value = true;
     errorMessage.value = "";
 
@@ -116,7 +190,8 @@ const handleRegister = async () => {
             email: email.value.trim(),
             userName: userName.value.trim(),
             password: password.value,
-            confirmPassword: confirmPassword.value
+            confirmPassword: confirmPassword.value,
+            inviteToken: inviteToken.value || undefined
         });
         
         // Redirect to home page after successful registration
@@ -128,8 +203,81 @@ const handleRegister = async () => {
         isLoading.value = false;
     }
 };
+
+// Initialize on component mount
+onMounted(() => {
+    initializeInviteToken();
+});
 </script>
 
 <style lang="scss" scoped>
 @use "@/styles/auth";
+@use "@/styles/variables" as vars;
+
+// Additional styles for invitation banners
+.info-banner {
+    padding: vars.$padding-small vars.$padding-medium;
+    margin-bottom: vars.$margin-medium;
+    background-color: vars.$color-info-light;
+    border: vars.$border-width solid vars.$color-info;
+    border-radius: vars.$border-radius-lg;
+    color: vars.$color-info-dark;
+    font-size: vars.$font-size-small;
+    
+    .loading-text {
+        display: flex;
+        align-items: center;
+        gap: vars.$gap-small;
+        
+        &::before {
+            content: '⏳';
+        }
+    }
+}
+
+.success-banner {
+    padding: vars.$padding-small vars.$padding-medium;
+    margin-bottom: vars.$margin-medium;
+    background-color: vars.$color-success-light;
+    border: vars.$border-width solid vars.$color-success;
+    border-radius: vars.$border-radius-lg;
+    color: vars.$color-success-dark;
+    font-size: vars.$font-size-small;
+    
+    strong {
+        font-weight: vars.$font-weight-large;
+    }
+    
+    small {
+        font-size: vars.$font-size-xsmall;
+        opacity: 0.8;
+    }
+}
+
+.warning-banner {
+    padding: vars.$padding-small vars.$padding-medium;
+    margin-bottom: vars.$margin-medium;
+    background-color: vars.$color-warning-light;
+    border: vars.$border-width solid vars.$color-warning;
+    border-radius: vars.$border-radius-lg;
+    color: vars.$color-warning-dark;
+    font-size: vars.$font-size-small;
+    text-align: center;
+    
+    strong {
+        font-weight: vars.$font-weight-large;
+    }
+}
+
+.readonly {
+    background-color: vars.$color-gray-600 !important;
+    cursor: not-allowed;
+}
+
+.field-help {
+    margin-top: vars.$margin-xsmall;
+    font-size: vars.$font-size-xsmall;
+    color: vars.$color-gray-800;
+    font-style: italic;
+}
 </style>
