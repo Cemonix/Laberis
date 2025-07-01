@@ -60,8 +60,9 @@ public class EmailService : IEmailService
         message.To.Add(new MailboxAddress("", email));
         message.Subject = $"You've been invited to join '{projectName}' on Laberis";
 
-        var bodyBuilder = new BodyBuilder();
-        bodyBuilder.HtmlBody = $@"
+        var bodyBuilder = new BodyBuilder
+        {
+            HtmlBody = $@"
             <h2>Hello!</h2>
             <p>{inviterName} has invited you to join the project <strong>{projectName}</strong> on Laberis.</p>
             <p>Your role in this project will be: <strong>{role}</strong></p>
@@ -71,7 +72,8 @@ public class EmailService : IEmailService
             <p>If you have any questions, please contact {inviterName}.</p>
             <br>
             <p>Thanks,</p>
-            <p>The Laberis Team</p>";
+            <p>The Laberis Team</p>"
+        };
 
         message.Body = bodyBuilder.ToMessageBody();
 
@@ -87,6 +89,47 @@ public class EmailService : IEmailService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send project invitation email to {EmailAddress}", email);
+            throw;
+        }
+    }
+
+    public async Task SendProjectInvitationToExistingUserEmailAsync(string email, string projectName, string role, string inviterName, string invitationToken, string loginUrl)
+    {
+        var message = new MimeMessage();
+        message.From.Add(new MailboxAddress(_smtpSettings.FromName, _smtpSettings.FromAddress));
+        message.To.Add(new MailboxAddress("", email));
+        message.Subject = $"You've been invited to join '{projectName}' on Laberis";
+
+        var bodyBuilder = new BodyBuilder
+        {
+            HtmlBody = $@"
+            <h2>Hello!</h2>
+            <p>{inviterName} has invited you to join the project <strong>{projectName}</strong> on Laberis.</p>
+            <p>Your role in this project will be: <strong>{role}</strong></p>
+            <p>Since you already have a Laberis account, please log in to accept this invitation:</p>
+            <a href='{loginUrl}' style='display: inline-block; padding: 12px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0;'>Login & Accept Invitation</a>
+            <p>After logging in, you'll be automatically redirected to accept the invitation.</p>
+            <p>This invitation will expire in 7 days.</p>
+            <p>If you have any questions, please contact {inviterName}.</p>
+            <br>
+            <p>Thanks,</p>
+            <p>The Laberis Team</p>"
+        };
+
+        message.Body = bodyBuilder.ToMessageBody();
+
+        try
+        {
+            using var client = new SmtpClient();
+            await client.ConnectAsync(_smtpSettings.Host, _smtpSettings.Port, MailKit.Security.SecureSocketOptions.StartTls);
+            await client.AuthenticateAsync(_smtpSettings.Username, _smtpSettings.Password);
+            await client.SendAsync(message);
+            await client.DisconnectAsync(true);
+            _logger.LogInformation("Project invitation email sent to existing user {EmailAddress} for project {ProjectName}", email, projectName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send project invitation email to existing user {EmailAddress}", email);
             throw;
         }
     }
