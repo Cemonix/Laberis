@@ -6,7 +6,6 @@ import type {
     AuthResponseDto, 
     UserDto,
     LoginCredentials,
-    RegisterCredentials,
     LoginResponse,
     RegisterResponse,
     AuthTokens
@@ -64,15 +63,8 @@ class AuthService {
         }
     }
 
-    async register(credentials: RegisterCredentials): Promise<RegisterResponse> {
-        logger.info(`Attempting registration for user: ${credentials.email}`);
-        
-        const registerDto: RegisterDto = {
-            email: credentials.email,
-            userName: credentials.userName,
-            password: credentials.password,
-            confirmPassword: credentials.confirmPassword
-        };
+    async register(registerDto: RegisterDto): Promise<RegisterResponse> {
+        logger.info(`Attempting registration for user: ${registerDto.email}`);
 
         try {
             const response = await apiClient.post<AuthResponseDto>(
@@ -85,7 +77,7 @@ class AuthService {
                     'Failed to register - Invalid response format');
             }
 
-            logger.info(`Registration successful for user: ${credentials.email}`);
+            logger.info(`Registration successful for user: ${registerDto.email}`);
             return this.mapAuthResponse(response.data);
         } catch (error) {
             throw transformApiError(error, 'Failed to register');
