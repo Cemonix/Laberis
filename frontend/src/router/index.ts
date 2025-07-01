@@ -36,6 +36,14 @@ const routes: Array<RouteRecordRaw> = [
             layout: DefaultLayout,
         }
     },
+    {
+        path: '/invite/accept/:token',
+        name: 'InviteAccept',
+        component: () => import('@/views/auth/InviteAcceptView.vue'),
+        meta: {
+            layout: DefaultLayout,
+        }
+    },
     // Account management routes
     {
         path: '/account',
@@ -143,7 +151,7 @@ router.beforeEach(async (to, _from, next) => {
         await authStore.initializeAuth();
     }
     
-    const publicRoutes = ['Login', 'Register', 'Home'];    
+    const publicRoutes = ['Login', 'Register', 'Home', 'InviteAccept'];    
     const authRoutes = ['Login', 'Register'];
     
     if (authRoutes.includes(to.name as string) && authStore.isAuthenticated) {
