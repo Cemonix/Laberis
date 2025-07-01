@@ -92,4 +92,43 @@ public class InvitationsController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while validating the invitation");
         }
     }
+
+    /// <summary>
+    /// Accept an invitation with a token (for existing users)
+    /// </summary>
+    /// <param name="token">The invitation token</param>
+    /// <returns>Success response</returns>
+    [HttpPost("~/api/invitations/accept/{token}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AcceptInvitation(string token)
+    {
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userEmail = User.FindFirstValue(ClaimTypes.Email);
+            
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(userEmail))
+            {
+                return Unauthorized("User information not found in token");
+            }
+
+            var success = await _invitationService.ProcessInvitationTokenAsync(token, userId, userEmail);
+            
+            if (!success)
+            {
+                return BadRequest("Invalid, expired, or already accepted invitation token");
+            }
+
+            return Ok(new { message = "Invitation accepted successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error accepting invitation with token {Token}", token);
+            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while accepting the invitation");
+        }
+    }
 }
