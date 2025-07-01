@@ -10,6 +10,7 @@ export interface RegisterDto {
     userName: string;
     password: string;
     confirmPassword: string;
+    inviteToken?: string; // Optional for registration via invite
 }
 
 export interface UserDto {
@@ -35,13 +36,6 @@ export interface AuthTokens {
 export interface LoginCredentials {
     email: string;
     password: string;
-}
-
-export interface RegisterCredentials {
-    email: string;
-    userName: string;
-    password: string;
-    confirmPassword: string;
 }
 
 export interface AuthState {
