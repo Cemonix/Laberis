@@ -99,7 +99,6 @@ public class AuthService : IAuthService
             {
                 _logger.LogWarning("Failed to process invitation token {Token} for user {Email}", registerDto.InviteToken, user.Email);
                 // Note: We don't throw an exception here as the user is already created
-                // The invitation failure should be handled gracefully
             }
             else
             {
