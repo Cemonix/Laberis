@@ -69,59 +69,52 @@ public class ProjectInvitationService : IProjectInvitationService
             {
                 throw new ConflictException($"User with email {createDto.Email} is already a member of this project");
             }
+        }
 
-            // Add them directly to the project
-            var projectMember = new ProjectMember
-            {
-                ProjectId = projectId,
-                UserId = existingUser.Id,
-                Role = createDto.Role,
-                InvitedAt = DateTime.UtcNow,
-                JoinedAt = DateTime.UtcNow, // They join immediately
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+        // Check if there's already a pending invitation
+        var existingInvitation = await _invitationRepository.GetByEmailAndProjectAsync(createDto.Email, projectId);
+        if (existingInvitation != null)
+        {
+            throw new ConflictException($"An invitation has already been sent to {createDto.Email} for this project");
+        }
 
-            await _projectMemberRepository.AddAsync(projectMember);
-            await _projectMemberRepository.SaveChangesAsync();
+        // Create invitation for both existing and new users
+        var invitationToken = GenerateSecureToken();
+        var invitation = new ProjectInvitation
+        {
+            ProjectId = projectId,
+            Email = createDto.Email,
+            Role = createDto.Role,
+            InvitationToken = invitationToken,
+            ExpiresAt = DateTime.UtcNow.AddDays(7), // 7 days expiry
+            IsAccepted = false,
+            InvitedByUserId = inviterUserId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
 
-            // Send notification email
-            await _emailService.SendProjectMemberAddedEmailAsync(
+        await _invitationRepository.AddAsync(invitation);
+        await _invitationRepository.SaveChangesAsync();
+
+        // Send appropriate email based on whether user exists
+        if (existingUser != null)
+        {
+            // User exists - send invitation email with login URL that includes the invitation token
+            var loginUrl = $"{_webAppSettings.ClientUrl}/login?inviteToken={invitationToken}";
+            await _emailService.SendProjectInvitationToExistingUserEmailAsync(
                 createDto.Email,
                 project.Name,
                 createDto.Role.ToString(),
-                inviter.UserName ?? inviter.Email ?? "Someone");
+                inviter.UserName ?? inviter.Email ?? "Someone",
+                invitationToken,
+                loginUrl
+            );
 
-            _logger.LogInformation("Added existing user {Email} to project {ProjectId}", createDto.Email, projectId);
+            _logger.LogInformation("Sent invitation to existing user {Email} for project {ProjectId}", createDto.Email, projectId);
         }
         else
         {
-            // User doesn't exist - create invitation
-            // Check if there's already a pending invitation
-            var existingInvitation = await _invitationRepository.GetByEmailAndProjectAsync(createDto.Email, projectId);
-            if (existingInvitation != null)
-            {
-                throw new ConflictException($"An invitation has already been sent to {createDto.Email} for this project");
-            }
-
-            var invitationToken = GenerateSecureToken();
-            var invitation = new ProjectInvitation
-            {
-                ProjectId = projectId,
-                Email = createDto.Email,
-                Role = createDto.Role,
-                InvitationToken = invitationToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(7), // 7 days expiry
-                IsAccepted = false,
-                InvitedByUserId = inviterUserId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            await _invitationRepository.AddAsync(invitation);
-            await _invitationRepository.SaveChangesAsync();
-
-            // Send invitation email
+            // User doesn't exist - send invitation email with registration URL
             var registrationUrl = $"{_webAppSettings.ClientUrl}/register?inviteToken={invitationToken}";
             await _emailService.SendProjectInvitationEmailAsync(
                 createDto.Email,
@@ -132,7 +125,7 @@ public class ProjectInvitationService : IProjectInvitationService
                 registrationUrl
             );
 
-            _logger.LogInformation("Created invitation for new user {Email} to project {ProjectId}", createDto.Email, projectId);
+            _logger.LogInformation("Sent invitation to new user {Email} for project {ProjectId}", createDto.Email, projectId);
         }
     }
 
@@ -192,7 +185,9 @@ public class ProjectInvitationService : IProjectInvitationService
             UpdatedAt = DateTime.UtcNow
         };
 
-        _invitationRepository.Update(updatedInvitation);
+        _invitationRepository.Detach(invitation);
+
+        _invitationRepository.Update(updatedInvitation); 
         
         await _invitationRepository.SaveChangesAsync();
 
