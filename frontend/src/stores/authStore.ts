@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import type {
     AuthTokens,
     LoginCredentials,
-    RegisterCredentials,
+    RegisterDto,
     UserDto,
 } from "@/types/auth/auth";
 import { authService } from "@/services/auth/authService";
@@ -134,10 +134,10 @@ export const useAuthStore = defineStore("auth", {
                 this.isLoading = false;
             }
         },
-        async register(credentials: RegisterCredentials): Promise<void> {
+        async register(registerDto: RegisterDto): Promise<void> {
             this.isLoading = true;
             try {
-                const response = await authService.register(credentials);
+                const response = await authService.register(registerDto);
 
                 this.user = response.user;
                 this.tokens = response.tokens;
