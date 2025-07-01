@@ -21,8 +21,20 @@ public interface IGenericRepository<T> where T : class
 
     Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
 
+    /// <summary>
+    /// Detaches an entity from the context.
+    /// This is useful for entities that are being tracked but you want to stop tracking them.
+    /// </summary>
+    /// <param name="entity">The entity to detach.</param>
+    void Detach(T entity);
+
     Task AddAsync(T entity);
 
+    /// <summary>
+    /// Updates an entity in the repository.
+    /// This method is used for mutable entities.
+    /// </summary>
+    /// <param name="entity">The entity to update.</param>
     void Update(T entity);
 
     void Remove(T entity);
