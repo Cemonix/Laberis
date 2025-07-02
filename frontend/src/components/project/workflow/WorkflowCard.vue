@@ -2,9 +2,6 @@
     <div class="workflow-card">
         <div class="workflow-header">
             <h3 class="workflow-name">{{ workflow.name }}</h3>
-            <div class="workflow-badges">
-                <span v-if="workflow.isDefault" class="badge default-badge">Default</span>
-            </div>
         </div>
         
         <p class="workflow-description">
@@ -35,16 +32,15 @@
                 variant="primary" 
                 size="small" 
                 @click="$emit('manage-stages', workflow)"
-                aria-label="Manage workflow stages"
+                aria-label="View workflow pipeline"
             >
-                Manage Stages
+                View Pipeline
             </Button>
             <Button 
                 variant="secondary" 
                 size="small" 
                 @click="$emit('delete', workflow)"
                 aria-label="Delete workflow"
-                :disabled="workflow.isDefault"
                 class="delete-btn"
             >
                 Delete

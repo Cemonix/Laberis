@@ -38,10 +38,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import WorkflowCard from '@/components/project/WorkflowCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
-import CreateWorkflowForm from '@/components/project/CreateWorkflowForm.vue';
+import CreateWorkflowForm from '@/components/project/workflow/CreateWorkflowForm.vue';
 import Button from '@/components/common/Button.vue';
 import { type Workflow, type CreateWorkflowRequest } from '@/types/workflow';
 import { workflowService } from '@/services/api/workflowService';
@@ -53,6 +53,7 @@ import { useErrorHandler } from '@/composables/useErrorHandler';
 
 const logger = AppLogger.createServiceLogger('WorkflowsView');
 const route = useRoute();
+const router = useRouter();
 const { showAlert } = useAlert();
 const { showConfirm } = useConfirm();
 const { showCreateSuccess, showDeleteSuccess, showError } = useToast();
@@ -140,10 +141,14 @@ const handleDeleteWorkflow = async (workflow: Workflow) => {
 };
 
 const handleManageStages = async (workflow: Workflow) => {
-    // TODO: Navigate to workflow stages management
-    logger.info(`Manage stages requested for workflow: ${workflow.name}`);
-    // For now, we'll show an info message. Later we'll navigate to a stages management page
-    await showAlert('Info', 'Workflow stages management coming soon!');
+    logger.info(`Navigating to pipeline view for workflow: ${workflow.name}`);
+    await router.push({
+        name: 'WorkflowPipeline',
+        params: {
+            projectId: route.params.projectId,
+            workflowId: workflow.id
+        }
+    });
 };
 
 onMounted(() => {
