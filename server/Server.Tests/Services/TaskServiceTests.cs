@@ -62,7 +62,6 @@ namespace Server.Tests.Services
             Assert.Equal(task.Priority, result.Priority);
             Assert.Equal(task.ProjectId, result.ProjectId);
             Assert.Equal(task.AssetId, result.AssetId);
-            Assert.Equal(task.AssignedToUserId, result.AssignedToUserId);
             
             _mockTaskRepository.Verify(r => r.GetByIdAsync(taskId), Times.Once);
         }
@@ -111,7 +110,6 @@ namespace Server.Tests.Services
             Assert.Equal(createDto.Priority, result.Priority);
             Assert.Equal(createDto.AssetId, result.AssetId);
             Assert.Equal(createDto.WorkflowId, result.WorkflowId);
-            Assert.Equal(createDto.AssignedToUserId, result.AssignedToUserId);
             Assert.Equal(projectId, result.ProjectId);
             
             _mockTaskRepository.Verify(r => r.AddAsync(It.Is<LaberisTask>(t => 

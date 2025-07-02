@@ -17,6 +17,6 @@ public record class AnnotationDto
     public int TaskId { get; init; }
     public int AssetId { get; init; }
     public int LabelId { get; init; }
-    public string AnnotatorUserId { get; init; } = string.Empty;
+    public string AnnotatorEmail { get; init; } = string.Empty;
     public long? ParentAnnotationId { get; init; }
 }

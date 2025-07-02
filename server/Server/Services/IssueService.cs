@@ -191,8 +191,8 @@ public class IssueService : IIssueService
             TaskId = issue.TaskId,
             AssetId = issue.AssetId,
             AnnotationId = issue.AnnotationId,
-            ReportedByUserId = issue.ReportedByUserId,
-            AssignedToUserId = issue.AssignedToUserId
+            ReportedByEmail = issue.ReportedByUser?.Email ?? string.Empty,
+            AssignedToEmail = issue.AssignedToUser?.Email
         };
     }
 }

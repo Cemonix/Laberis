@@ -8,9 +8,8 @@ public record class ProjectInvitationDto
     public int ProjectId { get; init; }
     public string Email { get; init; } = string.Empty;
     public ProjectRole Role { get; init; }
-    public string InvitationToken { get; init; } = string.Empty;
     public DateTime ExpiresAt { get; init; }
     public bool IsAccepted { get; init; }
-    public string? InvitedByUserId { get; init; }
+    public string? InvitedByEmail { get; init; }
     public DateTime CreatedAt { get; init; }
 }

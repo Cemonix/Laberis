@@ -117,13 +117,12 @@ public class AuthService : IAuthService
         return new AuthResponseDto
         {
             Token = accesstoken,
-            RefreshToken = refreshToken,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.Expiration),
             User = new UserDto
             {
-                Id = user.Id,
                 UserName = user.UserName!,
-                Email = user.Email!
+                Email = user.Email!,
+                Roles = await _userManager.GetRolesAsync(user)
             }
         };
     }
@@ -161,11 +160,9 @@ public class AuthService : IAuthService
         return new AuthResponseDto
         {
             Token = accessToken,
-            RefreshToken = refreshToken,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.Expiration),
             User = new UserDto
             {
-                Id = user.Id,
                 UserName = user.UserName!,
                 Email = user.Email!,
                 Roles = await _userManager.GetRolesAsync(user)
@@ -195,11 +192,9 @@ public class AuthService : IAuthService
         return new AuthResponseDto
         {
             Token = newAccessToken,
-            RefreshToken = newRefreshToken,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.Expiration),
             User = new UserDto
             {
-                Id = user.Id,
                 Email = user.Email!,
                 UserName = user.UserName!,
                 Roles = await _userManager.GetRolesAsync(user)

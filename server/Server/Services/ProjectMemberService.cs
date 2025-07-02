@@ -178,8 +178,10 @@ public class ProjectMemberService : IProjectMemberService
             InvitedAt = member.InvitedAt,
             JoinedAt = member.JoinedAt,
             CreatedAt = member.CreatedAt,
+            UpdatedAt = member.UpdatedAt,
             ProjectId = member.ProjectId,
-            UserId = member.UserId
+            Email = member.User?.Email ?? string.Empty,
+            UserName = member.User?.UserName
         };
     }
 }
