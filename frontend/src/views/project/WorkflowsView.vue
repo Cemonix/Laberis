@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import WorkflowCard from '@/components/project/WorkflowCard.vue';
+import WorkflowCard from '@/components/project/workflow/WorkflowCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateWorkflowForm from '@/components/project/workflow/CreateWorkflowForm.vue';
 import Button from '@/components/common/Button.vue';

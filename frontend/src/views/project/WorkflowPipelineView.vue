@@ -61,7 +61,7 @@
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Button from '@/components/common/Button.vue';
-import WorkflowPipelineViewer from '@/components/project/WorkflowPipelineViewer.vue';
+import WorkflowPipelineViewer from '@/components/project/workflow/WorkflowPipelineViewer.vue';
 import type { WorkflowStagePipeline } from '@/types/workflow';
 import { WorkflowStageType } from '@/types/workflow';
 
