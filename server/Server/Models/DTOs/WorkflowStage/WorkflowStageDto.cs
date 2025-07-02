@@ -16,4 +16,11 @@ public record class WorkflowStageDto
     public int WorkflowId { get; init; }
     public int? InputDataSourceId { get; init; }
     public int? TargetDataSourceId { get; init; }
+    
+    // Pipeline relationships
+    public ICollection<WorkflowStageConnectionDto> IncomingConnections { get; init; } = [];
+    public ICollection<WorkflowStageConnectionDto> OutgoingConnections { get; init; } = [];
+    
+    // User assignments
+    public ICollection<WorkflowStageAssignmentDto> Assignments { get; init; } = [];
 }

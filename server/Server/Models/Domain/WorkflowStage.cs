@@ -27,9 +27,13 @@ public record class WorkflowStage
     public virtual DataSource? InputDataSource { get; init; }
     public virtual DataSource? TargetDataSource { get; init; }
 
+    // Stage Pipeline Relationships via connections
+    public virtual ICollection<WorkflowStageConnection> IncomingConnections { get; init; } = [];
+    public virtual ICollection<WorkflowStageConnection> OutgoingConnections { get; init; } = [];
+
     // Tasks currently at this stage
     public virtual ICollection<Task> TasksAtThisStage { get; init; } = [];
 
-    // Many-to-many relationship with ApplicationUser
-    public virtual ICollection<ApplicationUser> AssignedUsers { get; init; } = [];
+    // User assignments with roles for this stage
+    public virtual ICollection<WorkflowStageAssignment> StageAssignments { get; init; } = [];
 }
