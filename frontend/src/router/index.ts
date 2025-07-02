@@ -115,6 +115,12 @@ const routes: Array<RouteRecordRaw> = [
                 props: true,
             },
             {
+                path: 'workflows/:workflowId/pipeline',
+                name: 'WorkflowPipeline',
+                component: () => import('@/views/project/WorkflowPipelineView.vue'),
+                props: true,
+            },
+            {
                 path: 'settings',
                 name: 'ProjectSettings',
                 component: () => import('@/views/project/ProjectSettingsView.vue'),
