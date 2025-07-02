@@ -66,11 +66,9 @@ namespace Server.Tests.Controllers
             var expectedResponse = new AuthResponseDto
             {
                 Token = "mock-jwt-token",
-                RefreshToken = "mock-refresh-token",
                 ExpiresAt = DateTime.UtcNow.AddHours(1),
                 User = new UserDto
                 {
-                    Id = "user-id-123",
                     UserName = "testuser",
                     Email = "test@example.com",
                 }
@@ -150,11 +148,9 @@ namespace Server.Tests.Controllers
             var expectedResponse = new AuthResponseDto
             {
                 Token = "mock-jwt-token",
-                RefreshToken = "mock-refresh-token",
                 ExpiresAt = DateTime.UtcNow.AddHours(1),
                 User = new UserDto
                 {
-                    Id = "user-id-123",
                     UserName = "testuser",
                     Email = "test@example.com",
                 }
@@ -246,7 +242,6 @@ namespace Server.Tests.Controllers
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var userDto = Assert.IsType<UserDto>(okResult.Value);
             
-            Assert.Equal("user-id-123", userDto.Id);
             Assert.Equal("testuser", userDto.UserName);
             Assert.Equal("test@example.com", userDto.Email);
         }

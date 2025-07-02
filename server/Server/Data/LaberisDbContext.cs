@@ -22,6 +22,8 @@ public class LaberisDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Label> Labels { get; set; }
     public DbSet<Workflow> Workflows { get; set; }
     public DbSet<WorkflowStage> WorkflowStages { get; set; }
+    public DbSet<WorkflowStageConnection> WorkflowStageConnections { get; set; }
+    public DbSet<WorkflowStageAssignment> WorkflowStageAssignments { get; set; }
     public DbSet<Task> Tasks { get; set; }
     public DbSet<TaskEvent> TaskEvents { get; set; }
     public DbSet<Annotation> Annotations { get; set; }
@@ -57,6 +59,8 @@ public class LaberisDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.ApplyConfiguration(new Configurations.LabelConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.WorkflowConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.WorkflowStageConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.WorkflowStageConnectionConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.WorkflowStageAssignmentConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.TaskConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.TaskEventConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.AnnotationConfiguration());

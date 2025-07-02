@@ -104,21 +104,6 @@ namespace server.Data.Migrations.Laberis
                     b.ToTable("AspNetUsers", "identity");
                 });
 
-            modelBuilder.Entity("ApplicationUserWorkflowStage", b =>
-                {
-                    b.Property<string>("AssignedUsersId")
-                        .HasColumnType("text");
-
-                    b.Property<int>("WorkflowStagesWorkflowStageId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("AssignedUsersId", "WorkflowStagesWorkflowStageId");
-
-                    b.HasIndex("WorkflowStagesWorkflowStageId");
-
-                    b.ToTable("ApplicationUserWorkflowStage");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -1046,6 +1031,9 @@ namespace server.Data.Migrations.Laberis
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("WorkflowStageId"));
 
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -1106,6 +1094,8 @@ namespace server.Data.Migrations.Laberis
 
                     b.HasKey("WorkflowStageId");
 
+                    b.HasIndex("ApplicationUserId");
+
                     b.HasIndex("InputDataSourceId");
 
                     b.HasIndex("TargetDataSourceId");
@@ -1119,19 +1109,87 @@ namespace server.Data.Migrations.Laberis
                     b.ToTable("workflow_stages", (string)null);
                 });
 
-            modelBuilder.Entity("ApplicationUserWorkflowStage", b =>
+            modelBuilder.Entity("server.Models.Domain.WorkflowStageAssignment", b =>
                 {
-                    b.HasOne("ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("AssignedUsersId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Property<int>("WorkflowStageAssignmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("workflow_stage_assignment_id");
 
-                    b.HasOne("server.Models.Domain.WorkflowStage", null)
-                        .WithMany()
-                        .HasForeignKey("WorkflowStagesWorkflowStageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("WorkflowStageAssignmentId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("ProjectMemberId")
+                        .HasColumnType("integer")
+                        .HasColumnName("project_member_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("WorkflowStageId")
+                        .HasColumnType("integer")
+                        .HasColumnName("workflow_stage_id");
+
+                    b.HasKey("WorkflowStageAssignmentId");
+
+                    b.HasIndex("ProjectMemberId");
+
+                    b.HasIndex("WorkflowStageId", "ProjectMemberId")
+                        .IsUnique();
+
+                    b.ToTable("workflow_stage_assignments", (string)null);
+                });
+
+            modelBuilder.Entity("server.Models.Domain.WorkflowStageConnection", b =>
+                {
+                    b.Property<int>("WorkflowStageConnectionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("workflow_stage_connection_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("WorkflowStageConnectionId"));
+
+                    b.Property<string>("Condition")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("condition");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("FromStageId")
+                        .HasColumnType("integer")
+                        .HasColumnName("from_stage_id");
+
+                    b.Property<int>("ToStageId")
+                        .HasColumnType("integer")
+                        .HasColumnName("to_stage_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("WorkflowStageConnectionId");
+
+                    b.HasIndex("ToStageId");
+
+                    b.HasIndex("FromStageId", "ToStageId", "Condition")
+                        .IsUnique();
+
+                    b.ToTable("workflow_stage_connections", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -1460,6 +1518,10 @@ namespace server.Data.Migrations.Laberis
 
             modelBuilder.Entity("server.Models.Domain.WorkflowStage", b =>
                 {
+                    b.HasOne("ApplicationUser", null)
+                        .WithMany("WorkflowStages")
+                        .HasForeignKey("ApplicationUserId");
+
                     b.HasOne("server.Models.Domain.DataSource", "InputDataSource")
                         .WithMany()
                         .HasForeignKey("InputDataSourceId")
@@ -1481,6 +1543,49 @@ namespace server.Data.Migrations.Laberis
                     b.Navigation("TargetDataSource");
 
                     b.Navigation("Workflow");
+                });
+
+            modelBuilder.Entity("server.Models.Domain.WorkflowStageAssignment", b =>
+                {
+                    b.HasOne("server.Models.Domain.ProjectMember", "ProjectMember")
+                        .WithMany("WorkflowStageAssignments")
+                        .HasForeignKey("ProjectMemberId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("server.Models.Domain.WorkflowStage", "WorkflowStage")
+                        .WithMany("StageAssignments")
+                        .HasForeignKey("WorkflowStageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProjectMember");
+
+                    b.Navigation("WorkflowStage");
+                });
+
+            modelBuilder.Entity("server.Models.Domain.WorkflowStageConnection", b =>
+                {
+                    b.HasOne("server.Models.Domain.WorkflowStage", "FromStage")
+                        .WithMany("OutgoingConnections")
+                        .HasForeignKey("FromStageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("server.Models.Domain.WorkflowStage", "ToStage")
+                        .WithMany("IncomingConnections")
+                        .HasForeignKey("ToStageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FromStage");
+
+                    b.Navigation("ToStage");
+                });
+
+            modelBuilder.Entity("ApplicationUser", b =>
+                {
+                    b.Navigation("WorkflowStages");
                 });
 
             modelBuilder.Entity("server.Models.Domain.Annotation", b =>
@@ -1527,6 +1632,11 @@ namespace server.Data.Migrations.Laberis
                     b.Navigation("Workflows");
                 });
 
+            modelBuilder.Entity("server.Models.Domain.ProjectMember", b =>
+                {
+                    b.Navigation("WorkflowStageAssignments");
+                });
+
             modelBuilder.Entity("server.Models.Domain.Task", b =>
                 {
                     b.Navigation("Annotations");
@@ -1545,6 +1655,12 @@ namespace server.Data.Migrations.Laberis
 
             modelBuilder.Entity("server.Models.Domain.WorkflowStage", b =>
                 {
+                    b.Navigation("IncomingConnections");
+
+                    b.Navigation("OutgoingConnections");
+
+                    b.Navigation("StageAssignments");
+
                     b.Navigation("TasksAtThisStage");
                 });
 #pragma warning restore 612, 618
