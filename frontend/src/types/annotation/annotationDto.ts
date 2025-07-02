@@ -12,7 +12,7 @@ export interface AnnotationDto {
     taskId: number;
     assetId: number;
     labelId: number;
-    annotatorUserId: string;
+    annotatorEmail: string;
     parentAnnotationId?: number;
 }
 
@@ -27,7 +27,7 @@ export interface CreateAnnotationDto {
     taskId: number;
     assetId: number;
     labelId: number;
-    annotatorUserId?: string;
+    annotatorEmail?: string;
     parentAnnotationId?: number;
 }
 

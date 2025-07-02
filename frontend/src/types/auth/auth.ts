@@ -14,7 +14,6 @@ export interface RegisterDto {
 }
 
 export interface UserDto {
-    id: string;
     userName: string;
     email: string;
     roles: RoleEnum[];
