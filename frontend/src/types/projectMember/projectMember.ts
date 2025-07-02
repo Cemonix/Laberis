@@ -6,10 +6,10 @@ export interface ProjectMember {
     invitedAt: string;
     joinedAt?: string;
     createdAt: string;
+    updatedAt: string;
     projectId: number;
-    userId: string;
-    userName?: string; 
-    email?: string;
+    email: string;
+    userName?: string;
 }
 
 export interface InviteMemberRequest {

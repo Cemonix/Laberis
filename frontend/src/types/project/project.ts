@@ -31,6 +31,6 @@ export interface Project {
     status: ProjectStatus;
     createdAt: string;
     updatedAt: string;
-    ownerId?: string;
+    ownerEmail?: string;
     annotationGuidelinesUrl?: string;
 }

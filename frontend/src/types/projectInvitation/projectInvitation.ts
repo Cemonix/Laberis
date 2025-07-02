@@ -5,9 +5,8 @@ export interface ProjectInvitationDto {
     projectId: number;
     email: string;
     role: ProjectRole;
-    invitationToken: string;
     expiresAt: string;
     isAccepted: boolean;
-    invitedByUserId?: string;
+    invitedByEmail?: string;
     createdAt: string;
 }

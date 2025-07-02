@@ -1,8 +1,16 @@
+import type { ProjectMember } from '../projectMember/projectMember';
+
+// Export pipeline-specific types
+export type {
+    Connection,
+    PipelineLayout,
+    StagePosition,
+} from './pipeline';
+
 export interface Workflow {
     id: number;
     name: string;
     description?: string;
-    isDefault: boolean;
     createdAt: string;
     updatedAt: string;
     projectId: number;
@@ -22,7 +30,45 @@ export interface WorkflowStage {
     workflowId: number;
     inputDataSourceId?: number;
     targetDataSourceId?: number;
-    assignedUsers?: WorkflowUser[];
+    
+    // Pipeline relationships
+    incomingConnections: WorkflowStageConnection[];
+    outgoingConnections: WorkflowStageConnection[];
+    
+    // User assignments
+    assignments: WorkflowStageAssignment[];
+}
+
+export interface WorkflowStageConnection {
+    id: number;
+    fromStageId: number;
+    toStageId: number;
+    condition?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface WorkflowStageAssignment {
+    id: number;
+    workflowStageId: number;
+    projectMember: ProjectMember;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface WorkflowStagePipeline {
+    id: number;
+    name: string;
+    description?: string;
+    stageOrder: number;
+    stageType?: WorkflowStageType;
+    isInitialStage: boolean;
+    isFinalStage: boolean;
+    previousStageIds: number[];
+    nextStageIds: number[];
+    assignedUserCount: number;
+    positionX?: number;
+    positionY?: number;
 }
 
 export interface WorkflowUser {
@@ -32,26 +78,22 @@ export interface WorkflowUser {
 }
 
 export enum WorkflowStageType {
-    INITIAL_IMPORT = "INITIAL_IMPORT",
-    PREPROCESSING = "PREPROCESSING",
     ANNOTATION = "ANNOTATION",
+    SUSPENDED = "SUSPENDED",
+    DEFERRED = "DEFERRED",
     REVIEW = "REVIEW",
-    QUALITY_ASSURANCE = "QUALITY_ASSURANCE",
-    AUTO_LABELING = "AUTO_LABELING",
-    EXPORT = "EXPORT",
-    FINAL_ACCEPTANCE = "FINAL_ACCEPTANCE"
+    REQUIRES_CHANGES = "REQUIRES_CHANGES",
+    ACCEPTED = "ACCEPTED"
 }
 
 export interface CreateWorkflowRequest {
     name: string;
     description?: string;
-    isDefault?: boolean;
 }
 
 export interface UpdateWorkflowRequest {
     name?: string;
     description?: string;
-    isDefault?: boolean;
 }
 
 export interface CreateWorkflowStageRequest {
@@ -76,6 +118,17 @@ export interface UpdateWorkflowStageRequest {
     targetDataSourceId?: number;
 }
 
+export interface CreateWorkflowStageConnectionRequest {
+    fromStageId: number;
+    toStageId: number;
+    condition?: string;
+}
+
+export interface CreateWorkflowStageAssignmentRequest {
+    workflowStageId: number;
+    projectMemberId: number;
+}
+
 // Helper types for API responses
 export interface WorkflowWithStages extends Workflow {
     stages: WorkflowStage[];
@@ -87,14 +140,12 @@ export interface WorkflowStageWithUsers extends WorkflowStage {
 
 // Utility functions for stage types
 export const WorkflowStageTypeLabels: Record<WorkflowStageType, string> = {
-    [WorkflowStageType.INITIAL_IMPORT]: "Initial Import",
-    [WorkflowStageType.PREPROCESSING]: "Preprocessing",
     [WorkflowStageType.ANNOTATION]: "Annotation",
+    [WorkflowStageType.SUSPENDED]: "Suspended",
+    [WorkflowStageType.DEFERRED]: "Deferred",
     [WorkflowStageType.REVIEW]: "Review",
-    [WorkflowStageType.QUALITY_ASSURANCE]: "Quality Assurance",
-    [WorkflowStageType.AUTO_LABELING]: "Auto Labeling",
-    [WorkflowStageType.EXPORT]: "Export",
-    [WorkflowStageType.FINAL_ACCEPTANCE]: "Final Acceptance"
+    [WorkflowStageType.REQUIRES_CHANGES]: "Requires Changes",
+    [WorkflowStageType.ACCEPTED]: "Accepted"
 };
 
 export const formatStageType = (type: WorkflowStageType): string => {

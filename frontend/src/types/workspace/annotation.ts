@@ -62,5 +62,5 @@ export interface Annotation {
     version?: number;
     createdAt?: string;
     updatedAt?: string;
-    annotatorUserId?: string;
+    annotatorEmail?: string;
 }
