@@ -246,7 +246,7 @@ public class ProjectService : IProjectService
             Description = project.Description,
             CreatedAt = project.CreatedAt,
             UpdatedAt = project.UpdatedAt,
-            OwnerId = project.OwnerId,
+            OwnerEmail = project.Owner?.Email,
             ProjectType = project.ProjectType,
             Status = project.Status,
             AnnotationGuidelinesUrl = project.AnnotationGuidelinesUrl

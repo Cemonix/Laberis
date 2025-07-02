@@ -98,7 +98,7 @@ public class TaskEventService : ITaskEventService
             Details = taskEvent.Details,
             CreatedAt = taskEvent.CreatedAt,
             TaskId = taskEvent.TaskId,
-            UserId = taskEvent.UserId,
+            UserEmail = taskEvent.User?.Email,
             FromWorkflowStageId = taskEvent.FromWorkflowStageId,
             ToWorkflowStageId = taskEvent.ToWorkflowStageId
         };

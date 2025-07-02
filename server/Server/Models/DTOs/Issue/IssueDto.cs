@@ -16,6 +16,6 @@ public record class IssueDto
     public int? TaskId { get; init; }
     public int AssetId { get; init; }
     public long? AnnotationId { get; init; }
-    public string ReportedByUserId { get; init; } = string.Empty;
-    public string? AssignedToUserId { get; init; }
+    public string ReportedByEmail { get; init; } = string.Empty;
+    public string? AssignedToEmail { get; init; }
 }

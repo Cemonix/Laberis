@@ -9,9 +9,9 @@ public interface IWorkflowService
     /// Retrieves all workflows for a specific project, optionally filtered and sorted.
     /// </summary>
     /// <param name="projectId">The ID of the project to retrieve workflows for.</param>
-    /// <param name="filterOn">The field to filter on (e.g., "name", "is_default").</param>
+    /// <param name="filterOn">The field to filter on (e.g., "name").</param>
     /// <param name="filterQuery">The query string to filter by.</param>
-    /// <param name="sortBy">The field to sort by (e.g., "name", "created_at", "is_default").</param>
+    /// <param name="sortBy">The field to sort by (e.g., "name", "created_at").</param>
     /// <param name="isAscending">True for ascending order, false for descending.</param>
     /// <param name="pageNumber">The page number for pagination (1-based index).</param>
     /// <param name="pageSize">The number of items per page.</param>

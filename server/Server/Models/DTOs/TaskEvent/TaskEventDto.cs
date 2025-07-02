@@ -9,7 +9,7 @@ public record class TaskEventDto
     public string? Details { get; init; }
     public DateTime CreatedAt { get; init; }
     public int TaskId { get; init; }
-    public string? UserId { get; init; }
+    public string? UserEmail { get; init; }
     public int? FromWorkflowStageId { get; init; }
     public int? ToWorkflowStageId { get; init; }
 }

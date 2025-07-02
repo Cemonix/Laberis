@@ -272,8 +272,8 @@ public class TaskService : ITaskService
             ProjectId = task.ProjectId,
             WorkflowId = task.WorkflowId,
             CurrentWorkflowStageId = task.CurrentWorkflowStageId,
-            AssignedToUserId = task.AssignedToUserId,
-            LastWorkedOnByUserId = task.LastWorkedOnByUserId
+            AssignedToEmail = task.AssignedToUser?.Email,
+            LastWorkedOnByEmail = task.LastWorkedOnByUser?.Email
         };
     }
 }

@@ -13,6 +13,6 @@ public record class TaskDto
     public int ProjectId { get; init; }
     public int WorkflowId { get; init; }
     public int CurrentWorkflowStageId { get; init; }
-    public string? AssignedToUserId { get; init; }
-    public string? LastWorkedOnByUserId { get; init; }
+    public string? AssignedToEmail { get; init; }
+    public string? LastWorkedOnByEmail { get; init; }
 }

@@ -209,10 +209,9 @@ public class ProjectInvitationService : IProjectInvitationService
             ProjectId = invitation.ProjectId,
             Email = invitation.Email,
             Role = invitation.Role,
-            InvitationToken = invitation.InvitationToken,
             ExpiresAt = invitation.ExpiresAt,
             IsAccepted = invitation.IsAccepted,
-            InvitedByUserId = invitation.InvitedByUserId,
+            InvitedByEmail = invitation.InvitedByUser?.Email,
             CreatedAt = invitation.CreatedAt
         };
     }

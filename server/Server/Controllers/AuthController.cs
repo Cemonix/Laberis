@@ -130,7 +130,6 @@ public class AuthController : ControllerBase
 
         var userDto = new UserDto
         {
-            Id = userId,
             UserName = userName,
             Email = email,
             Roles = [.. User.FindAll(ClaimTypes.Role).Select(role => role.Value)]

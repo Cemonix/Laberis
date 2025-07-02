@@ -193,7 +193,7 @@ public class AnnotationService : IAnnotationService
             TaskId = annotation.TaskId,
             AssetId = annotation.AssetId,
             LabelId = annotation.LabelId,
-            AnnotatorUserId = annotation.AnnotatorUserId,
+            AnnotatorEmail = annotation.AnnotatorUser?.Email ?? string.Empty,
             ParentAnnotationId = annotation.ParentAnnotationId,
             CreatedAt = annotation.CreatedAt,
             UpdatedAt = annotation.UpdatedAt
