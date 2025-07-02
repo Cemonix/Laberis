@@ -91,7 +91,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue';
 import Button from '@/components/common/Button.vue';
-import WorkflowStage from './workflow/WorkflowStage.vue';
+import WorkflowStage from './WorkflowStage.vue';
 import type { WorkflowStagePipeline } from '@/types/workflow';
 import type { Connection } from '@/types/workflow/pipeline';
 

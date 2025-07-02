@@ -293,7 +293,7 @@ const stageStyle = computed(() => {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: vars.$font-size-xxsmall;
+        font-size: vars.$font-size-xsmall;
         font-weight: vars.$font-weight-medium;
     }
 }
@@ -327,7 +327,7 @@ const stageStyle = computed(() => {
         
         .stage-stats {
             grid-template-columns: 1fr 1fr;
-            gap: vars.$gap-xxsmall;
+            gap: vars.$gap-xsmall;
         }
     }
 }
