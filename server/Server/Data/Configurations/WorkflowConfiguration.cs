@@ -24,11 +24,6 @@ public class WorkflowConfiguration : IEntityTypeConfiguration<Workflow>
             .HasColumnName("description")
             .IsRequired(false);
 
-        entity.Property(w => w.IsDefault)
-            .HasColumnName("is_default")
-            .IsRequired()
-            .HasDefaultValue(false);
-
         entity.Property(w => w.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired()

@@ -74,7 +74,6 @@ public class WorkflowService : IWorkflowService
         {
             Name = createDto.Name,
             Description = createDto.Description,
-            IsDefault = createDto.IsDefault,
             ProjectId = projectId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -104,7 +103,6 @@ public class WorkflowService : IWorkflowService
         {
             Name = updateDto.Name,
             Description = updateDto.Description,
-            IsDefault = updateDto.IsDefault,
             UpdatedAt = DateTime.UtcNow
         };
 
@@ -143,7 +141,6 @@ public class WorkflowService : IWorkflowService
             Id = workflow.WorkflowId,
             Name = workflow.Name,
             Description = workflow.Description,
-            IsDefault = workflow.IsDefault,
             CreatedAt = workflow.CreatedAt,
             UpdatedAt = workflow.UpdatedAt,
             ProjectId = workflow.ProjectId
