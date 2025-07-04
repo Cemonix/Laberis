@@ -51,4 +51,12 @@ public interface IWorkflowService
     /// <param name="workflowId">The ID of the workflow to delete.</param>
     /// <returns>A task that represents the asynchronous operation, returning true if the workflow was successfully deleted, otherwise false.</returns>
     Task<bool> DeleteWorkflowAsync(int workflowId);
+
+    /// <summary>
+    /// Validates if a workflow belongs to the specified project.
+    /// </summary>
+    /// <param name="workflowId">The ID of the workflow.</param>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <returns>A task that represents the asynchronous operation, returning true if the workflow belongs to the project, otherwise false.</returns>
+    Task<bool> ValidateWorkflowBelongsToProjectAsync(int workflowId, int projectId);
 }

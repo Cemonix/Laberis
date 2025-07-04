@@ -134,6 +134,23 @@ public class WorkflowService : IWorkflowService
         return true;
     }
 
+    public async Task<bool> ValidateWorkflowBelongsToProjectAsync(int workflowId, int projectId)
+    {
+        _logger.LogInformation("Validating if workflow {WorkflowId} belongs to project {ProjectId}", workflowId, projectId);
+
+        var workflow = await _workflowRepository.GetByIdAsync(workflowId);
+        if (workflow == null)
+        {
+            _logger.LogWarning("Workflow with ID {WorkflowId} not found", workflowId);
+            return false;
+        }
+
+        var isValid = workflow.ProjectId == projectId;
+        _logger.LogInformation("Workflow {WorkflowId} belongs to project {ProjectId}: {IsValid}", workflowId, projectId, isValid);
+        
+        return isValid;
+    }
+
     private static WorkflowDto MapToDto(Workflow workflow)
     {
         return new WorkflowDto

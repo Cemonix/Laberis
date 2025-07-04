@@ -5,23 +5,29 @@ using server.Services.Interfaces;
 
 namespace server.Controllers;
 
-[Route("api/workflows/{workflowId:int}/[controller]")]
+[Route("api/projects/{projectId:int}/workflows/{workflowId:int}/stages")]
 [ApiController]
 [Authorize]
 public class WorkflowStagesController : ControllerBase
 {
     private readonly IWorkflowStageService _workflowStageService;
+    private readonly IWorkflowService _workflowService;
     private readonly ILogger<WorkflowStagesController> _logger;
 
-    public WorkflowStagesController(IWorkflowStageService workflowStageService, ILogger<WorkflowStagesController> logger)
+    public WorkflowStagesController(
+        IWorkflowStageService workflowStageService,
+        IWorkflowService workflowService,
+        ILogger<WorkflowStagesController> logger)
     {
         _workflowStageService = workflowStageService ?? throw new ArgumentNullException(nameof(workflowStageService));
+        _workflowService = workflowService ?? throw new ArgumentNullException(nameof(workflowService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
     /// Gets all workflow stages for a specific workflow with optional filtering, sorting, and pagination.
     /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
     /// <param name="workflowId">The ID of the workflow to get stages for.</param>
     /// <param name="filterOn">The field to filter on (e.g., "name", "is_final").</param>
     /// <param name="filterQuery">The value to filter by.</param>
@@ -36,6 +42,7 @@ public class WorkflowStagesController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<WorkflowStageDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetWorkflowStagesForWorkflow(
+        int projectId,
         int workflowId,
         [FromQuery] string? filterOn = null,
         [FromQuery] string? filterQuery = null,
@@ -47,8 +54,18 @@ public class WorkflowStagesController : ControllerBase
     {
         try
         {
+            // Validate that the workflow belongs to the project
+            var isValidWorkflow = await _workflowService.ValidateWorkflowBelongsToProjectAsync(workflowId, projectId);
+            if (!isValidWorkflow)
+            {
+                return BadRequest($"Workflow {workflowId} does not belong to project {projectId}.");
+            }
+
+            // For pipeline visualization, we typically want all stages with connections
+            // But we should respect pagination parameters for API consistency
             var workflowStages = await _workflowStageService.GetWorkflowStagesAsync(
-                workflowId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
+                workflowId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize
+            );
             return Ok(workflowStages);
         }
         catch (Exception ex)
@@ -64,21 +81,35 @@ public class WorkflowStagesController : ControllerBase
     /// <summary>
     /// Gets a specific workflow stage by its unique ID.
     /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
     /// <param name="workflowId">The ID of the workflow the stage belongs to.</param>
     /// <param name="stageId">The ID of the workflow stage.</param>
     /// <returns>The requested workflow stage.</returns>
     [HttpGet("{stageId:int}")]
     [ProducesResponseType(typeof(WorkflowStageDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetWorkflowStageById(int workflowId, int stageId)
+    public async Task<IActionResult> GetWorkflowStageById(int projectId, int workflowId, int stageId)
     {
         try
         {
+            // Validate that the workflow belongs to the project
+            var isValidWorkflow = await _workflowService.ValidateWorkflowBelongsToProjectAsync(workflowId, projectId);
+            if (!isValidWorkflow)
+            {
+                return BadRequest($"Workflow {workflowId} does not belong to project {projectId}.");
+            }
+
             var workflowStage = await _workflowStageService.GetWorkflowStageByIdAsync(stageId);
 
             if (workflowStage == null)
             {
                 return NotFound($"Workflow stage with ID {stageId} not found.");
+            }
+
+            // Validate that the stage belongs to the specified workflow
+            if (workflowStage.WorkflowId != workflowId)
+            {
+                return BadRequest($"Stage {stageId} does not belong to workflow {workflowId}.");
             }
 
             return Ok(workflowStage);
@@ -96,6 +127,7 @@ public class WorkflowStagesController : ControllerBase
     /// <summary>
     /// Creates a new workflow stage for a workflow.
     /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
     /// <param name="workflowId">The ID of the workflow to create the stage for.</param>
     /// <param name="createWorkflowStageDto">The workflow stage creation data.</param>
     /// <returns>The created workflow stage.</returns>
@@ -106,7 +138,7 @@ public class WorkflowStagesController : ControllerBase
     [ProducesResponseType(typeof(WorkflowStageDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CreateWorkflowStage(int workflowId, [FromBody] CreateWorkflowStageDto createWorkflowStageDto)
+    public async Task<IActionResult> CreateWorkflowStage(int projectId, int workflowId, [FromBody] CreateWorkflowStageDto createWorkflowStageDto)
     {
         try
         {
@@ -115,11 +147,18 @@ public class WorkflowStagesController : ControllerBase
                 return BadRequest(ModelState);
             }
 
+            // Validate that the workflow belongs to the project
+            var isValidWorkflow = await _workflowService.ValidateWorkflowBelongsToProjectAsync(workflowId, projectId);
+            if (!isValidWorkflow)
+            {
+                return BadRequest($"Workflow {workflowId} does not belong to project {projectId}.");
+            }
+
             var createdWorkflowStage = await _workflowStageService.CreateWorkflowStageAsync(workflowId, createWorkflowStageDto);
             
             return CreatedAtAction(
                 nameof(GetWorkflowStageById),
-                new { workflowId, stageId = createdWorkflowStage.Id },
+                new { projectId, workflowId, stageId = createdWorkflowStage.Id },
                 createdWorkflowStage
             );
         }
@@ -136,6 +175,8 @@ public class WorkflowStagesController : ControllerBase
     /// <summary>
     /// Updates an existing workflow stage.
     /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="workflowId">The ID of the workflow.</param>
     /// <param name="stageId">The ID of the workflow stage to update.</param>
     /// <param name="updateWorkflowStageDto">The workflow stage update data.</param>
     /// <returns>The updated workflow stage.</returns>
@@ -149,7 +190,7 @@ public class WorkflowStagesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateWorkflowStage(
-        int stageId, [FromBody] UpdateWorkflowStageDto updateWorkflowStageDto
+        int projectId, int workflowId, int stageId, [FromBody] UpdateWorkflowStageDto updateWorkflowStageDto
     )
     {
         try
@@ -157,6 +198,20 @@ public class WorkflowStagesController : ControllerBase
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
+            }
+
+            // Validate that the workflow belongs to the project
+            var isValidWorkflow = await _workflowService.ValidateWorkflowBelongsToProjectAsync(workflowId, projectId);
+            if (!isValidWorkflow)
+            {
+                return BadRequest($"Workflow {workflowId} does not belong to project {projectId}.");
+            }
+
+            // Validate that the stage belongs to the specified workflow
+            var isValidStage = await _workflowStageService.ValidateStageBelongsToWorkflowAsync(stageId, workflowId);
+            if (!isValidStage)
+            {
+                return BadRequest($"Stage {stageId} does not belong to workflow {workflowId}.");
             }
 
             var updatedWorkflowStage = await _workflowStageService.UpdateWorkflowStageAsync(stageId, updateWorkflowStageDto);
@@ -181,6 +236,8 @@ public class WorkflowStagesController : ControllerBase
     /// <summary>
     /// Deletes a workflow stage.
     /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="workflowId">The ID of the workflow.</param>
     /// <param name="stageId">The ID of the workflow stage to delete.</param>
     /// <returns>A success message.</returns>
     /// <response code="200">Returns a success message.</response>
@@ -190,10 +247,24 @@ public class WorkflowStagesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DeleteWorkflowStage(int stageId)
+    public async Task<IActionResult> DeleteWorkflowStage(int projectId, int workflowId, int stageId)
     {
         try
         {
+            // Validate that the workflow belongs to the project
+            var isValidWorkflow = await _workflowService.ValidateWorkflowBelongsToProjectAsync(workflowId, projectId);
+            if (!isValidWorkflow)
+            {
+                return BadRequest($"Workflow {workflowId} does not belong to project {projectId}.");
+            }
+
+            // Validate that the stage belongs to the specified workflow
+            var isValidStage = await _workflowStageService.ValidateStageBelongsToWorkflowAsync(stageId, workflowId);
+            if (!isValidStage)
+            {
+                return BadRequest($"Stage {stageId} does not belong to workflow {workflowId}.");
+            }
+
             var result = await _workflowStageService.DeleteWorkflowStageAsync(stageId);
 
             if (!result)
@@ -216,6 +287,7 @@ public class WorkflowStagesController : ControllerBase
     /// <summary>
     /// Reorders workflow stages within a workflow.
     /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
     /// <param name="workflowId">The ID of the workflow to reorder stages for.</param>
     /// <param name="stageIds">The list of stage IDs in the new order.</param>
     /// <returns>A success message.</returns>
@@ -226,13 +298,30 @@ public class WorkflowStagesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> ReorderWorkflowStages(int workflowId, [FromBody] List<int> stageIds)
+    public async Task<IActionResult> ReorderWorkflowStages(int projectId, int workflowId, [FromBody] List<int> stageIds)
     {
         try
         {
             if (stageIds == null || stageIds.Count == 0)
             {
                 return BadRequest("Stage IDs list cannot be empty.");
+            }
+
+            // Validate that the workflow belongs to the project
+            var isValidWorkflow = await _workflowService.ValidateWorkflowBelongsToProjectAsync(workflowId, projectId);
+            if (!isValidWorkflow)
+            {
+                return BadRequest($"Workflow {workflowId} does not belong to project {projectId}.");
+            }
+
+            // Validate that all stages belong to the specified workflow
+            foreach (var stageId in stageIds)
+            {
+                var isValidStage = await _workflowStageService.ValidateStageBelongsToWorkflowAsync(stageId, workflowId);
+                if (!isValidStage)
+                {
+                    return BadRequest($"Stage {stageId} does not belong to workflow {workflowId}.");
+                }
             }
 
             // Convert List<int> to Dictionary<int, int> where key is stageId and value is new order
@@ -246,6 +335,40 @@ public class WorkflowStagesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "An error occurred while reordering workflow stages for workflow {WorkflowId}.", workflowId);
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                "An unexpected error occurred. Please try again later."
+            );
+        }
+    }
+
+    /// <summary>
+    /// Gets all workflow stages with connections for pipeline visualization.
+    /// This endpoint returns all stages without pagination for building the workflow graph.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="workflowId">The ID of the workflow to get stages for.</param>
+    /// <returns>A list of workflow stages with connection information.</returns>
+    [HttpGet("pipeline")]
+    [ProducesResponseType(typeof(IEnumerable<WorkflowStageDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetWorkflowStagesForPipeline(int projectId, int workflowId)
+    {
+        try
+        {
+            // Validate that the workflow belongs to the project
+            var isValidWorkflow = await _workflowService.ValidateWorkflowBelongsToProjectAsync(workflowId, projectId);
+            if (!isValidWorkflow)
+            {
+                return BadRequest($"Workflow {workflowId} does not belong to project {projectId}.");
+            }
+
+            var workflowStages = await _workflowStageService.GetWorkflowStagesWithConnectionsAsync(workflowId);
+            return Ok(workflowStages);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while fetching pipeline stages for workflow {WorkflowId}.", workflowId);
             return StatusCode(
                 StatusCodes.Status500InternalServerError,
                 "An unexpected error occurred. Please try again later."

@@ -59,4 +59,19 @@ public interface IWorkflowStageService
     /// <param name="stageOrderMap">A dictionary mapping stage IDs to their new order positions.</param>
     /// <returns>A task that represents the asynchronous operation, returning true if the reordering was successful, otherwise false.</returns>
     Task<bool> ReorderWorkflowStagesAsync(int workflowId, Dictionary<int, int> stageOrderMap);
+
+    /// <summary>
+    /// Gets workflow stages with their connections populated for pipeline visualization.
+    /// </summary>
+    /// <param name="workflowId">The ID of the workflow to get stages for.</param>
+    /// <returns>A task that represents the asynchronous operation, containing workflow stages with connection information.</returns>
+    Task<IEnumerable<WorkflowStageDto>> GetWorkflowStagesWithConnectionsAsync(int workflowId);
+
+    /// <summary>
+    /// Validates if a workflow stage belongs to the specified workflow.
+    /// </summary>
+    /// <param name="stageId">The ID of the workflow stage.</param>
+    /// <param name="workflowId">The ID of the workflow.</param>
+    /// <returns>A task that represents the asynchronous operation, returning true if the stage belongs to the workflow, otherwise false.</returns>
+    Task<bool> ValidateStageBelongsToWorkflowAsync(int stageId, int workflowId);
 }
