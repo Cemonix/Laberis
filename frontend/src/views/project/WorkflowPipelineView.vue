@@ -38,7 +38,6 @@
             />
         </div>
 
-        <!-- Placeholder modals - will implement these next -->
         <div v-if="showCreateStageModal" class="modal-overlay" @click="showCreateStageModal = false">
             <div class="modal-content" @click.stop>
                 <h3>Add New Stage</h3>
@@ -68,83 +67,56 @@ import { WorkflowStageType } from '@/types/workflow';
 const route = useRoute();
 const router = useRouter();
 
-// Get workflow ID from route params
 const workflowId = ref<number>(parseInt(route.params.workflowId as string));
 const workflowName = ref<string>('Sample Workflow');
-
-// Modal states
 const showCreateStageModal = ref(false);
 const showConnectionModal = ref(false);
 
-// Mock data for demonstration
 const pipelineStages = ref<WorkflowStagePipeline[]>([
     {
         id: 1,
-        name: 'Data Import',
-        description: 'Import raw data from source',
-        stageOrder: 1,
-        stageType: WorkflowStageType.ANNOTATION,
-        isInitialStage: true,
-        isFinalStage: false,
-        previousStageIds: [],
-        nextStageIds: [2],
-        assignedUserCount: 2,
-        positionX: 50,
-        positionY: 100
-    },
-    {
-        id: 2,
         name: 'Annotation',
         description: 'Annotate imported data',
-        stageOrder: 2,
+        stageOrder: 1,
         stageType: WorkflowStageType.ANNOTATION,
         isInitialStage: false,
         isFinalStage: false,
         previousStageIds: [1],
-        nextStageIds: [3],
+        nextStageIds: [2],
         assignedUserCount: 5,
-        positionX: 350,
-        positionY: 100
     },
     {
-        id: 3,
+        id: 2,
         name: 'Review',
         description: 'Review annotated data for quality',
-        stageOrder: 3,
+        stageOrder: 2,
         stageType: WorkflowStageType.REVIEW,
         isInitialStage: false,
         isFinalStage: false,
-        previousStageIds: [2],
-        nextStageIds: [4, 2], // Can go to final acceptance or back to annotation
+        previousStageIds: [1],
+        nextStageIds: [3, 1],
         assignedUserCount: 2,
-        positionX: 650,
-        positionY: 100
     },
     {
-        id: 4,
+        id: 3,
         name: 'Final Acceptance',
         description: 'Final acceptance of reviewed data',
-        stageOrder: 4,
+        stageOrder: 3,
         stageType: WorkflowStageType.ACCEPTED,
         isInitialStage: false,
         isFinalStage: true,
-        previousStageIds: [3],
+        previousStageIds: [2],
         nextStageIds: [],
         assignedUserCount: 1,
-        positionX: 950,
-        positionY: 100
     }
 ]);
 
-// Methods
 const loadPipelineData = async () => {
-    // TODO: Load actual data from API
     console.log('Loading pipeline data for workflow:', workflowId.value);
 };
 
 const handleEditPipeline = () => {
     console.log('Edit pipeline requested');
-    // TODO: Implement pipeline editing functionality
 };
 
 const goBackToWorkflows = () => {
@@ -154,7 +126,6 @@ const goBackToWorkflows = () => {
     });
 };
 
-// Lifecycle
 onMounted(() => {
     loadPipelineData();
 });
@@ -166,12 +137,13 @@ onMounted(() => {
 .workflow-pipeline-view {
     display: flex;
     flex-direction: column;
-    background-color: vars.$theme-background;
+    height: 100%; 
+    min-height: 0;
 }
 
 .view-header {
+    flex-shrink: 0;
     display: flex;
-    height: 100%;
     justify-content: space-between;
     align-items: center;
     padding: vars.$padding-large;
@@ -197,8 +169,8 @@ onMounted(() => {
 }
 
 .pipeline-container {
-    flex: 1;
-    padding: vars.$padding-medium;
+    flex-grow: 1;
+    position: relative;
     overflow: hidden;
 }
 
@@ -222,15 +194,5 @@ onMounted(() => {
     box-shadow: vars.$shadow-lg;
     max-width: 500px;
     width: 90%;
-    
-    h3 {
-        margin: 0 0 vars.$margin-medium 0;
-        color: vars.$theme-text;
-    }
-    
-    p {
-        margin: 0 0 vars.$margin-medium 0;
-        color: vars.$theme-text-light;
-    }
 }
 </style>

@@ -76,7 +76,6 @@ export function useConfirm() {
         }
     };
     
-    // TODO: Refactor to specific type
     return {
         isConfirmOpen: readonly(isConfirmOpen),
         confirmTitle: readonly(confirmTitle),

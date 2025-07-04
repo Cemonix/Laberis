@@ -19,27 +19,3 @@ export interface LabelResponse {
     createdAt: string;
     updatedAt: string;
 }
-
-/**
- * Utility type to transform backend response to frontend types
- */
-export type LabelSchemeFromResponse = {
-    labelSchemeId: LabelSchemeResponse['id'];
-    name: LabelSchemeResponse['name'];
-    description: LabelSchemeResponse['description'];
-    projectId: LabelSchemeResponse['projectId'];
-    isDefault: LabelSchemeResponse['isDefault'];
-    labels: LabelFromResponse[];
-};
-
-/**
- * Utility type to transform backend label response to frontend types
- */
-export type LabelFromResponse = {
-    labelId: LabelResponse['id'];
-    name: LabelResponse['name'];
-    color: LabelResponse['color'];
-    description: LabelResponse['description'];
-    labelSchemeId: LabelResponse['labelSchemeId'];
-    metadata: LabelResponse['metadata'];
-};

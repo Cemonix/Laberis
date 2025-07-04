@@ -70,7 +70,6 @@ export function useAlert() {
         }
     };
     
-    // TODO: Refactor to specific type
     return {
         isAlertOpen: readonly(isAlertOpen),
         alertTitle: readonly(alertTitle),

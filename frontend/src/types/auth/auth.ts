@@ -5,6 +5,11 @@ export interface LoginDto {
     password: string;
 }
 
+export interface LoginResponse {
+    user: UserDto;
+    tokens: AuthTokens;
+}
+
 export interface RegisterDto {
     email: string;
     userName: string;
@@ -13,17 +18,15 @@ export interface RegisterDto {
     inviteToken?: string; // Optional for registration via invite
 }
 
+export interface RegisterResponse {
+    user: UserDto;
+    tokens: AuthTokens;
+}
+
 export interface UserDto {
     userName: string;
     email: string;
     roles: RoleEnum[];
-}
-
-export interface AuthResponseDto {
-    token: string;
-    refreshToken: string;
-    expiresAt: string;
-    user: UserDto;
 }
 
 export interface AuthTokens {
@@ -32,9 +35,8 @@ export interface AuthTokens {
     expiresAt: number;
 }
 
-export interface LoginCredentials {
-    email: string;
-    password: string;
+export interface RefreshTokenResponse {
+    tokens: AuthTokens;
 }
 
 export interface AuthState {
@@ -44,16 +46,9 @@ export interface AuthState {
     isLoading: boolean;
 }
 
-export interface LoginResponse {
+export interface AuthResponseDto {
+    token: string;
+    refreshToken: string;
+    expiresAt: string;
     user: UserDto;
-    tokens: AuthTokens;
-}
-
-export interface RegisterResponse {
-    user: UserDto;
-    tokens: AuthTokens;
-}
-
-export interface RefreshTokenResponse {
-    tokens: AuthTokens;
 }

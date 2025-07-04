@@ -1,4 +1,4 @@
-export type { Label, FormPayloadLabel } from './label';
+export type { Label } from './label';
 export type { LabelScheme, FormPayloadLabelScheme } from './labelScheme';
 export type { 
     CreateLabelSchemeRequest, 

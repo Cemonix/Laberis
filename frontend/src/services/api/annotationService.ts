@@ -44,7 +44,7 @@ class AnnotationService {
             version: dto.version,
             createdAt: dto.createdAt,
             updatedAt: dto.updatedAt,
-            annotatorUserId: dto.annotatorUserId,
+            annotatorEmail: dto.annotatorEmail,
         };
     }
 
@@ -63,7 +63,7 @@ class AnnotationService {
             taskId: annotation.taskId,
             assetId: annotation.assetId,
             labelId: annotation.labelId,
-            annotatorUserId: annotation.annotatorUserId || '',
+            annotatorEmail: annotation.annotatorEmail || '',
             parentAnnotationId: annotation.parentAnnotationId,
         };
     }

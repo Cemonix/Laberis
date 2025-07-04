@@ -8,7 +8,7 @@
             <p>{{ error }}</p>
         </div>
 
-        <div v-else-if="project">
+        <div v-else-if="project" class="project-detail-view">
             <header class="project-header">
                 <h1 class="project-name">{{ project.name }}</h1>
                 <p class="project-description">{{ project.description }}</p>
@@ -82,6 +82,9 @@ onMounted(() => {
 @use "@/styles/variables" as vars;
 
 .page-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
     padding: vars.$padding-large;
     width: 100%;
     max-width: vars.$max-width-wide;
@@ -104,6 +107,14 @@ onMounted(() => {
 
 .error-state p {
     color: vars.$color-error;
+}
+
+.project-detail-view {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    border-radius: vars.$border-radius-lg;
+    padding: vars.$padding-large;
 }
 
 .project-header {

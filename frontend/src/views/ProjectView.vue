@@ -157,21 +157,6 @@ onMounted(() => {
     font-style: italic;
 }
 
-.debug-info {
-    margin-top: vars.$margin-large;
-    padding: vars.$padding-medium;
-    background-color: #f5f5f5;
-    border-radius: vars.$border-radius-sm;
-    font-family: monospace;
-    font-size: 12px;
-    
-    pre {
-        white-space: pre-wrap;
-        max-height: 200px;
-        overflow-y: auto;
-    }
-}
-
 .fab {
     position: absolute;
     bottom: vars.$padding-xlarge;

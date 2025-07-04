@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import type {
     AuthTokens,
-    LoginCredentials,
+    LoginDto,
     RegisterDto,
     UserDto,
 } from "@/types/auth/auth";
@@ -118,10 +118,10 @@ export const useAuthStore = defineStore("auth", {
                 this.$logError("Failed to remove tokens from localStorage", error);
             }
         },
-        async login(credentials: LoginCredentials): Promise<void> {
+        async login(loginDto: LoginDto): Promise<void> {
             this.isLoading = true;
             try {
-                const response = await authService.login(credentials);
+                const response = await authService.login(loginDto);
 
                 this.user = response.user;
                 this.tokens = response.tokens;

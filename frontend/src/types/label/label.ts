@@ -6,9 +6,3 @@ export interface Label {
     labelSchemeId: number;
     createdAt: string;
 }
-
-export interface FormPayloadLabel {
-    name: string;
-    description: string;
-    labels: Omit<Label, 'labelId' | 'labelSchemeId'>[];
-}
