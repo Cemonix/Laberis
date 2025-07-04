@@ -54,6 +54,8 @@ const { isConfirmOpen, confirmTitle, confirmMessage, handleConfirm, handleCancel
 
 .main-content {
     position: relative;
+    display: flex;
+    flex-direction: column;
     flex-grow: 1;
     padding: vars.$padding-medium;
     background-color: vars.$color-white;

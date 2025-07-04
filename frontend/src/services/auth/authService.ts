@@ -5,7 +5,6 @@ import type {
     RegisterDto, 
     AuthResponseDto, 
     UserDto,
-    LoginCredentials,
     LoginResponse,
     RegisterResponse,
     AuthTokens
@@ -28,7 +27,6 @@ class AuthService {
         };
 
         const user: UserDto = {
-            id: backendResponse.user.id,
             email: backendResponse.user.email,
             userName: backendResponse.user.userName,
             roles: backendResponse.user.roles
@@ -37,18 +35,12 @@ class AuthService {
         return { user, tokens };
     }
 
-    async login(credentials: LoginCredentials): Promise<LoginResponse> {
-        logger.info(`Attempting login for user: ${credentials.email}`);
+    async login(loginDto: LoginDto): Promise<LoginResponse> {
+        logger.info(`Attempting login for user: ${loginDto.email}`);
         
-        const loginDto: LoginDto = {
-            email: credentials.email,
-            password: credentials.password
-        };
-
         try {
             const response = await apiClient.post<AuthResponseDto>(
-                `${this.baseUrl}/login`,
-                loginDto
+                `${this.baseUrl}/login`, loginDto
             );
             
             if (!isValidApiResponse(response)) {
@@ -56,7 +48,7 @@ class AuthService {
                     'Failed to login - Invalid response format');
             }
 
-            logger.info(`Login successful for user: ${credentials.email}`);
+            logger.info(`Login successful for user: ${loginDto.email}`);
             return this.mapAuthResponse(response.data);
         } catch (error) {
             throw transformApiError(error, 'Failed to login');
@@ -98,7 +90,6 @@ class AuthService {
             logger.info('Successfully fetched current user information');
             
             const user: UserDto = {
-                id: response.data.id,
                 email: response.data.email,
                 userName: response.data.userName,
                 roles: response.data.roles

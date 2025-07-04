@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import { useAuthStore } from "../authStore";
-import type { AuthTokens, UserDto, LoginCredentials } from "@/types/auth/auth.ts"
+import type { AuthTokens, UserDto, LoginDto } from "@/types/auth/auth.ts"
 import { RoleEnum } from "@/types/auth/role";
 
 vi.mock("@/services/auth/authService", () => ({
@@ -20,7 +20,6 @@ describe("Auth Store", () => {
 
     // Mock data
     const mockUser: UserDto = {
-        id: "123",
         email: "test@example.com",
         userName: "testuser",
         roles: [RoleEnum.ADMIN],
@@ -38,7 +37,7 @@ describe("Auth Store", () => {
         expiresAt: Date.now() - 1000, // Expired 1 second ago
     };
 
-    const mockCredentials: LoginCredentials = {
+    const mockLoginDto: LoginDto = {
         email: "test@example.com",
         password: "password123",
     };
@@ -169,9 +168,9 @@ describe("Auth Store", () => {
             const mockResponse = { user: mockUser, tokens: mockTokens };
             vi.mocked(authService.login).mockResolvedValue(mockResponse);
 
-            await authStore.login(mockCredentials);
+            await authStore.login(mockLoginDto);
 
-            expect(authService.login).toHaveBeenCalledWith(mockCredentials);
+            expect(authService.login).toHaveBeenCalledWith(mockLoginDto);
             expect(authStore.user).toEqual(mockUser);
             expect(authStore.tokens).toEqual(mockTokens);
             expect(authStore.isLoading).toBe(false);
@@ -185,7 +184,7 @@ describe("Auth Store", () => {
             const error = new Error("Login failed");
             vi.mocked(authService.login).mockRejectedValue(error);
 
-            await expect(authStore.login(mockCredentials)).rejects.toThrow(
+            await expect(authStore.login(mockLoginDto)).rejects.toThrow(
                 "Login failed"
             );
 

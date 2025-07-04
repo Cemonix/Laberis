@@ -1,4 +1,4 @@
-import type { WorkflowStagePipeline } from './index';
+import type { WorkflowStagePipeline } from './workflowstage';
 
 export interface Connection {
     from: WorkflowStagePipeline;
