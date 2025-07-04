@@ -63,7 +63,6 @@ public class ProjectRepository : GenericRepository<Project>, IProjectRepository
                     _logger.LogWarning("Failed to parse project status: {TrimmedFilterQuery}", trimmedFilterQuery);
                 }
                 break;
-            // TODO: Add more filterable properties
             default:
                 _logger.LogWarning("Unknown filter property: {FilterOn}", filterOn);
                 break;

@@ -135,6 +135,7 @@ public class Program
         builder.Services.AddScoped<ITaskEventRepository, TaskEventRepository>();
         builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
         builder.Services.AddScoped<IWorkflowStageRepository, WorkflowStageRepository>();
+        builder.Services.AddScoped<IWorkflowStageConnectionRepository, WorkflowStageConnectionRepository>();
 
         builder.Services.AddScoped<IStorageServiceFactory, StorageServiceFactory>();
         builder.Services.AddScoped<IStorageService, MinioStorageService>();
@@ -152,6 +153,7 @@ public class Program
         builder.Services.AddScoped<ITaskEventService, TaskEventService>();
         builder.Services.AddScoped<IWorkflowService, WorkflowService>();
         builder.Services.AddScoped<IWorkflowStageService, WorkflowStageService>();
+        builder.Services.AddScoped<IWorkflowStageConnectionService, WorkflowStageConnectionService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<IEmailService, EmailService>();
 

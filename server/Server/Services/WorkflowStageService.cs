@@ -1,5 +1,6 @@
 using server.Models.Domain;
 using server.Models.DTOs.WorkflowStage;
+using server.Models.DTOs.ProjectMember;
 using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
@@ -181,6 +182,17 @@ public class WorkflowStageService : IWorkflowStageService
         }
     }
 
+    public async Task<IEnumerable<WorkflowStageDto>> GetWorkflowStagesWithConnectionsAsync(int workflowId)
+    {
+        _logger.LogInformation("Fetching workflow stages with connections for workflow: {WorkflowId}", workflowId);
+
+        var stages = await _workflowStageRepository.GetWorkflowStagesWithConnectionsAsync(workflowId);
+        
+        _logger.LogInformation("Successfully fetched {Count} workflow stages with connections for workflow: {WorkflowId}", stages.Count(), workflowId);
+        
+        return stages.Select(MapToDtoWithConnections);
+    }
+
     private static WorkflowStageDto MapToDto(WorkflowStage stage)
     {
         return new WorkflowStageDto
@@ -198,5 +210,78 @@ public class WorkflowStageService : IWorkflowStageService
             InputDataSourceId = stage.InputDataSourceId,
             TargetDataSourceId = stage.TargetDataSourceId
         };
+    }
+
+    private static WorkflowStageDto MapToDtoWithConnections(WorkflowStage stage)
+    {
+        return new WorkflowStageDto
+        {
+            Id = stage.WorkflowStageId,
+            Name = stage.Name,
+            Description = stage.Description,
+            StageOrder = stage.StageOrder,
+            StageType = stage.StageType,
+            IsInitialStage = stage.IsInitialStage,
+            IsFinalStage = stage.IsFinalStage,
+            CreatedAt = stage.CreatedAt,
+            UpdatedAt = stage.UpdatedAt,
+            WorkflowId = stage.WorkflowId,
+            InputDataSourceId = stage.InputDataSourceId,
+            TargetDataSourceId = stage.TargetDataSourceId,
+            IncomingConnections = stage.IncomingConnections?.Select(c => new WorkflowStageConnectionDto
+            {
+                Id = c.WorkflowStageConnectionId,
+                FromStageId = c.FromStageId,
+                ToStageId = c.ToStageId,
+                Condition = c.Condition,
+                CreatedAt = c.CreatedAt,
+                UpdatedAt = c.UpdatedAt
+            }).ToList() ?? [],
+            OutgoingConnections = stage.OutgoingConnections?.Select(c => new WorkflowStageConnectionDto
+            {
+                Id = c.WorkflowStageConnectionId,
+                FromStageId = c.FromStageId,
+                ToStageId = c.ToStageId,
+                Condition = c.Condition,
+                CreatedAt = c.CreatedAt,
+                UpdatedAt = c.UpdatedAt
+            }).ToList() ?? [],
+            Assignments = stage.StageAssignments?.Select(a => new WorkflowStageAssignmentDto
+            {
+                Id = a.WorkflowStageAssignmentId,
+                WorkflowStageId = a.WorkflowStageId,
+                ProjectMember = new ProjectMemberDto
+                {
+                    Id = a.ProjectMember.ProjectMemberId,
+                    Role = a.ProjectMember.Role,
+                    InvitedAt = a.ProjectMember.InvitedAt,
+                    JoinedAt = a.ProjectMember.JoinedAt,
+                    CreatedAt = a.ProjectMember.CreatedAt,
+                    UpdatedAt = a.ProjectMember.UpdatedAt,
+                    ProjectId = a.ProjectMember.ProjectId,
+                    Email = a.ProjectMember.User?.Email ?? "",
+                    UserName = a.ProjectMember.User?.UserName
+                },
+                CreatedAt = a.CreatedAt,
+                UpdatedAt = a.UpdatedAt
+            }).ToList() ?? []
+        };
+    }
+
+    public async Task<bool> ValidateStageBelongsToWorkflowAsync(int stageId, int workflowId)
+    {
+        _logger.LogInformation("Validating if stage {StageId} belongs to workflow {WorkflowId}", stageId, workflowId);
+
+        var stage = await _workflowStageRepository.GetByIdAsync(stageId);
+        if (stage == null)
+        {
+            _logger.LogWarning("Workflow stage with ID {StageId} not found", stageId);
+            return false;
+        }
+
+        var isValid = stage.WorkflowId == workflowId;
+        _logger.LogInformation("Stage {StageId} belongs to workflow {WorkflowId}: {IsValid}", stageId, workflowId, isValid);
+        
+        return isValid;
     }
 }

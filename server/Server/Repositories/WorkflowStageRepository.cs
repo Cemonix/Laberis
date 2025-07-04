@@ -19,8 +19,11 @@ public class WorkflowStageRepository : GenericRepository<WorkflowStage>, IWorkfl
     protected override IQueryable<WorkflowStage> ApplyIncludes(IQueryable<WorkflowStage> query)
     {
         // Include related data if needed for specific use cases
-        // Example: return query.Include(ws => ws.Workflow).Include(ws => ws.InputDataSource).Include(ws => ws.TargetDataSource);
-        return query;
+        return query
+            .Include(ws => ws.IncomingConnections)
+            .Include(ws => ws.OutgoingConnections)
+            .Include(ws => ws.StageAssignments)
+                .ThenInclude(sa => sa.ProjectMember);
     }
 
     protected override IQueryable<WorkflowStage> ApplyFilter(IQueryable<WorkflowStage> query, string? filterOn, string? filterQuery)
@@ -129,5 +132,31 @@ public class WorkflowStageRepository : GenericRepository<WorkflowStage>, IWorkfl
             query = isAscending ? query.OrderBy(keySelector) : query.OrderByDescending(keySelector);
         }
         return query;
+    }
+
+    public async Task<IEnumerable<WorkflowStage>> GetWorkflowStagesWithConnectionsAsync(int workflowId)
+    {
+        _logger.LogInformation("Fetching workflow stages with connections for workflow: {WorkflowId}", workflowId);
+        
+        return await _context.Set<WorkflowStage>()
+            .Include(ws => ws.IncomingConnections)
+            .Include(ws => ws.OutgoingConnections)
+            .Include(ws => ws.StageAssignments)
+                .ThenInclude(sa => sa.ProjectMember)
+            .Where(ws => ws.WorkflowId == workflowId)
+            .OrderBy(ws => ws.StageOrder)
+            .ToListAsync();
+    }
+
+    public async Task<WorkflowStage?> GetStageWithConnectionsAsync(int stageId)
+    {
+        _logger.LogInformation("Fetching workflow stage with connections: {StageId}", stageId);
+        
+        return await _context.Set<WorkflowStage>()
+            .Include(ws => ws.IncomingConnections)
+            .Include(ws => ws.OutgoingConnections)
+            .Include(ws => ws.StageAssignments)
+                .ThenInclude(sa => sa.ProjectMember)
+            .FirstOrDefaultAsync(ws => ws.WorkflowStageId == stageId);
     }
 }
