@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
+using System.Globalization;
 
 using server.Data;
 using Microsoft.IdentityModel.Tokens;
@@ -84,6 +87,12 @@ public class Program
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        // Configure and validate Rate Limiting settings
+        builder.Services.AddOptions<RateLimitSettings>()
+            .Bind(configuration.GetSection(RateLimitSettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
 
         builder.Services.AddDbContext<LaberisDbContext>(options =>
@@ -136,6 +145,7 @@ public class Program
         builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
         builder.Services.AddScoped<IWorkflowStageRepository, WorkflowStageRepository>();
         builder.Services.AddScoped<IWorkflowStageConnectionRepository, WorkflowStageConnectionRepository>();
+        builder.Services.AddScoped<IWorkflowStageAssignmentRepository, WorkflowStageAssignmentRepository>();
 
         builder.Services.AddScoped<IStorageServiceFactory, StorageServiceFactory>();
         builder.Services.AddScoped<IStorageService, MinioStorageService>();
@@ -154,6 +164,7 @@ public class Program
         builder.Services.AddScoped<IWorkflowService, WorkflowService>();
         builder.Services.AddScoped<IWorkflowStageService, WorkflowStageService>();
         builder.Services.AddScoped<IWorkflowStageConnectionService, WorkflowStageConnectionService>();
+        builder.Services.AddScoped<IWorkflowStageAssignmentService, WorkflowStageAssignmentService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<IEmailService, EmailService>();
 
@@ -283,6 +294,103 @@ public class Program
             });
         });
 
+        // Configure Rate Limiting
+        var rateLimitSettings = configuration.GetSection(RateLimitSettings.SectionName).Get<RateLimitSettings>();
+        if (rateLimitSettings == null)
+        {
+            TextWriter appStartupErrorWriter = Console.Error;
+            appStartupErrorWriter.WriteLine("Rate limiting settings are not configured properly.");
+            Environment.Exit(1);
+        }
+
+        builder.Services.AddRateLimiter(options =>
+        {
+            // Global limiter applies to all endpoints by default
+            // Partition by user identity for authenticated users, by IP for anonymous users
+            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: httpContext.User.Identity?.Name ?? 
+                        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        AutoReplenishment = true,
+                        PermitLimit = rateLimitSettings.GlobalPermitLimit,
+                        Window = TimeSpan.FromSeconds(rateLimitSettings.GlobalWindowInSeconds),
+                        QueueLimit = rateLimitSettings.GlobalQueueLimit,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                    }));
+
+            // Authentication endpoints - more restrictive
+            options.AddFixedWindowLimiter("auth", options =>
+            {
+                options.PermitLimit = rateLimitSettings.AuthPermitLimit;
+                options.Window = TimeSpan.FromSeconds(rateLimitSettings.AuthWindowInSeconds);
+                options.QueueLimit = rateLimitSettings.AuthQueueLimit;
+                options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                options.AutoReplenishment = true;
+            });
+
+            // File upload endpoints - moderate restrictions
+            options.AddFixedWindowLimiter("upload", options =>
+            {
+                options.PermitLimit = rateLimitSettings.UploadPermitLimit;
+                options.Window = TimeSpan.FromSeconds(rateLimitSettings.UploadWindowInSeconds);
+                options.QueueLimit = rateLimitSettings.UploadQueueLimit;
+                options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                options.AutoReplenishment = true;
+            });
+
+            // Project management endpoints - moderate restrictions
+            options.AddFixedWindowLimiter("project", options =>
+            {
+                options.PermitLimit = rateLimitSettings.ProjectPermitLimit;
+                options.Window = TimeSpan.FromSeconds(rateLimitSettings.ProjectWindowInSeconds);
+                options.QueueLimit = rateLimitSettings.ProjectQueueLimit;
+                options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                options.AutoReplenishment = true;
+            });
+
+            // Public/read-only endpoints - less restrictive
+            options.AddFixedWindowLimiter("public", options =>
+            {
+                options.PermitLimit = rateLimitSettings.PublicPermitLimit;
+                options.Window = TimeSpan.FromSeconds(rateLimitSettings.PublicWindowInSeconds);
+                options.QueueLimit = rateLimitSettings.PublicQueueLimit;
+                options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                options.AutoReplenishment = true;
+            });
+
+            // Custom rejection handler
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                
+                // Add Retry-After header if available
+                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                {
+                    context.HttpContext.Response.Headers.RetryAfter =
+                        ((int)retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
+                }
+
+                // Log rate limit exceeded
+                var logger = context.HttpContext.RequestServices.GetService<ILogger<Program>>();
+                var userIdentifier = context.HttpContext.User.Identity?.Name ?? 
+                    context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                
+                logger?.LogWarning("Rate limit exceeded for user/IP: {UserIdentifier} on endpoint: {Endpoint}", 
+                    userIdentifier, context.HttpContext.Request.Path);
+
+                // Return JSON response
+                context.HttpContext.Response.ContentType = "application/json";
+                await context.HttpContext.Response.WriteAsJsonAsync(new
+                {
+                    error = "Rate limit exceeded",
+                    message = "Too many requests. Please try again later.",
+                    retryAfterSeconds = retryAfter != TimeSpan.Zero ? (int)retryAfter.TotalSeconds : (int?)null
+                }, cancellationToken);
+            };
+        });
+
         #endregion
 
         var app = builder.Build();
@@ -328,6 +436,8 @@ public class Program
         }
 
         app.UseCors("AllowSpecificOrigin");
+
+        app.UseRateLimiter();
 
         app.UseAuthentication();
         app.UseAuthorization();
