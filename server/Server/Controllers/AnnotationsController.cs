@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using server.Models.DTOs.Annotation;
 using server.Services.Interfaces;
 using System.Security.Claims;
@@ -9,6 +10,7 @@ namespace server.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
+[EnableRateLimiting("project")]
 public class AnnotationsController : ControllerBase
 {
     private readonly IAnnotationService _annotationService;

@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using server.Extensions;
 using server.Models.DTOs.Asset;
 using server.Services.Interfaces;
-using System.Security.Claims;
 
 namespace server.Controllers;
 
@@ -140,6 +140,7 @@ public class AssetsController : ControllerBase
     /// <response code="401">If the user is not authenticated.</response>
     /// <response code="500">If an internal server error occurs.</response>
     [HttpPost("upload")]
+    [EnableRateLimiting("upload")]
     [ProducesResponseType(typeof(UploadResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -180,6 +181,7 @@ public class AssetsController : ControllerBase
     /// <response code="401">If the user is not authenticated.</response>
     /// <response code="500">If an internal server error occurs.</response>
     [HttpPost("upload/bulk")]
+    [EnableRateLimiting("upload")]
     [ProducesResponseType(typeof(BulkUploadResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using server.Exceptions;
 using server.Models.DTOs.ProjectInvitation;
 using server.Models.DTOs.ProjectMember;
@@ -11,6 +12,7 @@ namespace server.Controllers;
 [Route("api/projects/{projectId:int}/[controller]")]
 [ApiController]
 [Authorize]
+[EnableRateLimiting("project")]
 public class ProjectMembersController : ControllerBase
 {
     private readonly IProjectMemberService _projectMemberService;
@@ -41,6 +43,7 @@ public class ProjectMembersController : ControllerBase
     /// <response code="200">Returns the list of project member DTOs.</response>
     /// <response code="500">If an unexpected error occurs.</response>
     [HttpGet]
+    [EnableRateLimiting("public")]
     [ProducesResponseType(typeof(IEnumerable<ProjectMemberDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetProjectMembersForProject(
@@ -76,6 +79,7 @@ public class ProjectMembersController : ControllerBase
     /// <param name="userId">The ID of the user.</param>
     /// <returns>The requested project member.</returns>
     [HttpGet("by-user/{userId}")]
+    [EnableRateLimiting("public")]
     [ProducesResponseType(typeof(ProjectMemberDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetProjectMemberByUserId(int projectId, string userId)
@@ -106,6 +110,7 @@ public class ProjectMembersController : ControllerBase
     /// </summary>
     /// <returns>A list of project member DTOs for the current user.</returns>
     [HttpGet("~/api/project-members/my-memberships")]
+    [EnableRateLimiting("public")]
     [ProducesResponseType(typeof(IEnumerable<ProjectMemberDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMyProjectMemberships()
@@ -263,6 +268,89 @@ public class ProjectMembersController : ControllerBase
                 StatusCodes.Status500InternalServerError,
                 "An unexpected error occurred. Please try again later."
             );
+        }
+    }
+
+    /// <summary>
+    /// Updates an existing project member's role by email.
+    /// </summary>
+    /// <param name="projectId">The ID of the project the member belongs to.</param>
+    /// <param name="request">The request containing the email and new role.</param>
+    /// <returns>The updated project member.</returns>
+    /// <response code="200">Returns the updated project member.</response>
+    /// <response code="400">If the request data is invalid.</response>
+    /// <response code="404">If the project member is not found.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
+    [HttpPut("update-by-email")]
+    [Authorize(Policy = "CanManageProjectMembers")]
+    [ProducesResponseType(typeof(ProjectMemberDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UpdateProjectMemberByEmail(int projectId, [FromBody] UpdateProjectMemberByEmailDto request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var updateDto = new UpdateProjectMemberDto { Role = request.Role };
+            var updatedProjectMember = await _projectMemberService.UpdateProjectMemberByEmailAsync(projectId, request.Email, updateDto);
+
+            if (updatedProjectMember == null)
+            {
+                return NotFound($"Project member with email {request.Email} not found in project {projectId}.");
+            }
+
+            return Ok(updatedProjectMember);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating project member by email {Email} in project {ProjectId}.", request.Email, projectId);
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
+        }
+    }
+
+    /// <summary>
+    /// Removes a member from a project by email.
+    /// </summary>
+    /// <param name="projectId">The ID of the project the member belongs to.</param>
+    /// <param name="request">The request containing the email of the user to remove.</param>
+    /// <returns>A success message.</returns>
+    /// <response code="200">Returns a success message.</response>
+    /// <response code="400">If the request data is invalid.</response>
+    /// <response code="404">If the project member is not found.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
+    [HttpDelete("remove-by-email")]
+    [Authorize(Policy = "CanManageProjectMembers")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> RemoveProjectMemberByEmail(int projectId, [FromBody] RemoveProjectMemberByEmailDto request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _projectMemberService.RemoveProjectMemberByEmailAsync(projectId, request.Email);
+
+            if (!result)
+            {
+                return NotFound($"Project member with email {request.Email} not found in project {projectId}.");
+            }
+
+            return Ok(new { message = "Project member removed successfully." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing project member by email {Email} from project {ProjectId}.", request.Email, projectId);
+            return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
         }
     }
 }

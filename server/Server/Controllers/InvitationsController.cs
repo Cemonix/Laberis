@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using server.Models.DTOs.ProjectInvitation;
 using server.Services.Interfaces;
 using System.Security.Claims;
@@ -9,6 +10,7 @@ namespace server.Controllers;
 [Route("api/projects/{projectId:int}/invitations")]
 [ApiController]
 [Authorize]
+[EnableRateLimiting("project")]
 public class InvitationsController : ControllerBase
 {
     private readonly IProjectInvitationService _invitationService;

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using server.Models.DTOs.Issue;
 using server.Services.Interfaces;
 using System.Security.Claims;
@@ -9,6 +10,7 @@ namespace server.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
+[EnableRateLimiting("project")]
 public class IssuesController : ControllerBase
 {
     private readonly IIssueService _issueService;

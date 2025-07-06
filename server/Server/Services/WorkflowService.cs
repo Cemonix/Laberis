@@ -1,21 +1,30 @@
 using server.Models.Domain;
 using server.Models.DTOs.Workflow;
+using server.Models.DTOs.WorkflowStage;
 using server.Models.Common;
+using server.Models.Domain.Enums;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
+using System.Threading.Tasks;
 
 namespace server.Services;
 
 public class WorkflowService : IWorkflowService
 {
     private readonly IWorkflowRepository _workflowRepository;
+    private readonly IWorkflowStageService _workflowStageService;
+    private readonly IWorkflowStageAssignmentService _workflowStageAssignmentService;
     private readonly ILogger<WorkflowService> _logger;
 
     public WorkflowService(
         IWorkflowRepository workflowRepository,
+        IWorkflowStageService workflowStageService,
+        IWorkflowStageAssignmentService workflowStageAssignmentService,
         ILogger<WorkflowService> logger)
     {
         _workflowRepository = workflowRepository ?? throw new ArgumentNullException(nameof(workflowRepository));
+        _workflowStageService = workflowStageService ?? throw new ArgumentNullException(nameof(workflowStageService));
+        _workflowStageAssignmentService = workflowStageAssignmentService ?? throw new ArgumentNullException(nameof(workflowStageAssignmentService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -83,8 +92,96 @@ public class WorkflowService : IWorkflowService
         await _workflowRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully created workflow with ID: {WorkflowId}", workflow.WorkflowId);
-        
+
+        // Create workflow stages
+        await CreateWorkflowStagesAsync(workflow.WorkflowId, createDto);
+
         return MapToDto(workflow);
+    }
+
+    private async System.Threading.Tasks.Task CreateWorkflowStagesAsync(int workflowId, CreateWorkflowDto createDto)
+    {
+        var stageOrder = 1;
+
+        // Create default stages if requested
+        if (createDto.CreateDefaultStages)
+        {
+            _logger.LogInformation("Creating default stages for workflow: {WorkflowId}", workflowId);
+
+            // Annotation stage (always created first if default stages requested)
+            var annotationStage = new CreateWorkflowStageDto
+            {
+                Name = "Annotation",
+                Description = "Initial annotation stage",
+                StageType = WorkflowStageType.ANNOTATION,
+                StageOrder = stageOrder++,
+                IsInitialStage = true,
+                IsFinalStage = false
+            };
+            await _workflowStageService.CreateWorkflowStageAsync(workflowId, annotationStage);
+
+            // Revision stage (if review stage is requested)
+            if (createDto.IncludeReviewStage)
+            {
+                var revisionStage = new CreateWorkflowStageDto
+                {
+                    Name = "Revision",
+                    Description = "Review and revision stage",
+                    StageType = WorkflowStageType.REVISION,
+                    StageOrder = stageOrder++,
+                    IsInitialStage = false,
+                    IsFinalStage = false
+                };
+                await _workflowStageService.CreateWorkflowStageAsync(workflowId, revisionStage);
+            }
+
+            // Completion stage (always created last if default stages requested)
+            var completionStage = new CreateWorkflowStageDto
+            {
+                Name = "Completion",
+                Description = "Final completion stage",
+                StageType = WorkflowStageType.COMPLETION,
+                StageOrder = stageOrder++,
+                IsInitialStage = false,
+                IsFinalStage = true
+            };
+            await _workflowStageService.CreateWorkflowStageAsync(workflowId, completionStage);
+        }
+
+        // Create custom stages if provided
+        if (createDto.Stages != null && createDto.Stages.Count != 0)
+        {
+            _logger.LogInformation("Creating {StageCount} custom stages for workflow: {WorkflowId}",
+                createDto.Stages.Count, workflowId);
+
+            foreach (var stageDto in createDto.Stages)
+            {
+                // Create the stage
+                var createStageDto = new CreateWorkflowStageDto
+                {
+                    Name = stageDto.Name,
+                    Description = stageDto.Description,
+                    StageType = stageDto.StageType,
+                    StageOrder = stageDto.StageOrder > 0 ? stageDto.StageOrder : stageOrder++,
+                    IsInitialStage = stageDto.IsInitialStage,
+                    IsFinalStage = stageDto.IsFinalStage,
+                    InputDataSourceId = stageDto.InputDataSourceId,
+                    TargetDataSourceId = stageDto.TargetDataSourceId
+                };
+
+                var createdStage = await _workflowStageService.CreateWorkflowStageAsync(workflowId, createStageDto);
+
+                // Create assignments for this stage if provided
+                if (stageDto.AssignedProjectMemberIds != null && stageDto.AssignedProjectMemberIds.Count != 0)
+                {
+                    _logger.LogInformation("Creating {AssignmentCount} assignments for stage: {StageId}",
+                        stageDto.AssignedProjectMemberIds.Count, createdStage.Id);
+
+                    await _workflowStageAssignmentService.CreateMultipleAssignmentsAsync(
+                        createdStage.Id, stageDto.AssignedProjectMemberIds);
+                }
+            }
+        }
     }
 
     public async Task<WorkflowDto?> UpdateWorkflowAsync(int workflowId, UpdateWorkflowDto updateDto)

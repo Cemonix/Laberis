@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using server.Models.Common;
 using server.Models.DTOs.LabelScheme;
 using server.Services.Interfaces;
@@ -9,6 +10,7 @@ namespace server.Controllers;
 [Route("api/projects/{projectId:int}/[controller]")]
 [ApiController]
 [Authorize(Policy = "RequireAuthenticatedUser")]
+[EnableRateLimiting("project")]
 public class LabelSchemesController : ControllerBase
 {
     private readonly ILabelSchemeService _labelSchemeService;
