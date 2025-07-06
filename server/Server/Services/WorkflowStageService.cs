@@ -23,7 +23,8 @@ public class WorkflowStageService : IWorkflowStageService
     public async Task<PaginatedResponse<WorkflowStageDto>> GetWorkflowStagesAsync(
         int workflowId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
-        bool isAscending = true, int pageNumber = 1, int pageSize = 25)
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25
+    )
     {
         _logger.LogInformation("Fetching workflow stages for workflow: {WorkflowId}", workflowId);
 

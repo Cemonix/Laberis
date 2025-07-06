@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using server.Models.Common;
 using server.Models.DTOs.Project;
 using server.Services.Interfaces;
@@ -10,6 +11,7 @@ namespace server.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [EnableRateLimiting("project")]
     public class ProjectsController : ControllerBase
     {
         private readonly IProjectService _projectService;

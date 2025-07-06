@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using server.Models.DTOs.TaskEvent;
 using server.Services.Interfaces;
 
@@ -8,6 +9,7 @@ namespace server.Controllers;
 [Route("api/tasks/{taskId:int}/events")]
 [ApiController]
 [Authorize]
+[EnableRateLimiting("project")]
 public class TaskEventsController : ControllerBase
 {
     private readonly ITaskEventService _taskEventService;

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using server.Models.DTOs.WorkflowStage;
 using server.Services.Interfaces;
 
@@ -8,6 +9,7 @@ namespace server.Controllers;
 [Route("api/projects/{projectId:int}/workflows/{workflowId:int}/stages")]
 [ApiController]
 [Authorize]
+[EnableRateLimiting("project")]
 public class WorkflowStagesController : ControllerBase
 {
     private readonly IWorkflowStageService _workflowStageService;

@@ -12,7 +12,7 @@ public record class WorkflowStage
     public WorkflowStageType? StageType { get; init; }
     public bool IsInitialStage { get; init; }
     public bool IsFinalStage { get; init; }
-    public string? UiConfiguration { get; init; } // TODO: For JSONB, store as string for now
+    public string? UiConfiguration { get; init; } // TODO: Remove this column
 
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }

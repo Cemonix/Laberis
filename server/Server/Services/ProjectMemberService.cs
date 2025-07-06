@@ -169,6 +169,55 @@ public class ProjectMemberService : IProjectMemberService
         return true;
     }
 
+    public async Task<ProjectMemberDto?> UpdateProjectMemberByEmailAsync(int projectId, string email, UpdateProjectMemberDto updateDto)
+    {
+        _logger.LogInformation("Updating project member by email for project: {ProjectId}, email: {Email}", projectId, email);
+
+        var members = await _projectMemberRepository.FindAsync(pm => pm.ProjectId == projectId && pm.User!.Email == email);
+        var member = members.FirstOrDefault();
+        
+        if (member == null)
+        {
+            _logger.LogWarning("Project member not found for update. Project: {ProjectId}, email: {Email}", projectId, email);
+            return null;
+        }
+
+        var updatedMember = member with
+        {
+            Role = updateDto.Role,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _projectMemberRepository.Update(updatedMember);
+        await _projectMemberRepository.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully updated project member role for project: {ProjectId}, email: {Email}, new role: {Role}", 
+            projectId, email, updateDto.Role);
+        
+        return MapToDto(updatedMember);
+    }
+
+    public async Task<bool> RemoveProjectMemberByEmailAsync(int projectId, string email)
+    {
+        _logger.LogInformation("Removing project member by email from project: {ProjectId}, email: {Email}", projectId, email);
+
+        var members = await _projectMemberRepository.FindAsync(pm => pm.ProjectId == projectId && pm.User!.Email == email);
+        var member = members.FirstOrDefault();
+        
+        if (member == null)
+        {
+            _logger.LogWarning("Project member not found for removal. Project: {ProjectId}, email: {Email}", projectId, email);
+            return false;
+        }
+
+        _projectMemberRepository.Remove(member);
+        await _projectMemberRepository.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully removed project member from project: {ProjectId}, email: {Email}", projectId, email);
+        
+        return true;
+    }
+
     private static ProjectMemberDto MapToDto(ProjectMember member)
     {
         return new ProjectMemberDto
