@@ -3,6 +3,35 @@ import 'pinia'
 import { LogLevel } from '@/types/logging'
 import { env } from '@/config/env'
 
+/**
+ * Centralized logging utility with context-aware loggers for different application layers.
+ * 
+ * Usage examples:
+ * 
+ * In Vue Components:
+ * ```typescript
+ * const logger = AppLogger.createComponentLogger('MyComponent');
+ * logger.info('Component mounted');
+ * ```
+ * 
+ * In Services:
+ * ```typescript
+ * const logger = AppLogger.createServiceLogger('UserService');
+ * logger.debug('Fetching user data');
+ * ```
+ * 
+ * In Pinia Stores:
+ * ```typescript
+ * const logger = AppLogger.createStoreLogger('authStore');
+ * logger.warn('Authentication token expired');
+ * ```
+ * 
+ * Global logging (use sparingly):
+ * ```typescript
+ * AppLogger.info('Application started');
+ * ```
+ */
+
 class Logger {
     private logLevels = [LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR];
 
@@ -21,7 +50,7 @@ class Logger {
         return requestedLevelIndex >= currentLevelIndex;
     }
 
-    private formatMessage(level: LogLevel, message: string, service?: string): string {
+    private formatMessage(level: LogLevel, message: string, context?: string, contextType?: 'component' | 'service' | 'store'): string {
         let formattedMessage = message;
         
         if (env.LOGGING.enableTimestamps) {
@@ -29,49 +58,69 @@ class Logger {
             formattedMessage = `${timestamp} ${level.toUpperCase()} ${formattedMessage}`;
         }
         
-        if (env.LOGGING.enableServicePrefix && service) {
+        if (env.LOGGING.enableServicePrefix && context) {
+            const prefix = contextType ? `${contextType.toUpperCase()}:${context}` : context;
             formattedMessage = env.LOGGING.enableTimestamps 
-                ? formattedMessage.replace(level.toUpperCase(), `${level.toUpperCase()} [${service}]`)
-                : `[${service}] ${formattedMessage}`;
+                ? formattedMessage.replace(level.toUpperCase(), `${level.toUpperCase()} [${prefix}]`)
+                : `[${prefix}] ${formattedMessage}`;
         }
         
         return formattedMessage;
     }
 
-    debug(message: string, obj?: any, service?: string): void {
+    debug(message: string, obj?: any, context?: string, contextType?: 'component' | 'service' | 'store'): void {
         if (!this.shouldLog(LogLevel.DEBUG)) return;
         
-        console.debug(this.formatMessage(LogLevel.DEBUG, message, service));
+        console.debug(this.formatMessage(LogLevel.DEBUG, message, context, contextType));
         if (obj !== undefined && obj !== null) console.debug(obj);
     }
 
-    info(message: string, obj?: any, service?: string): void {
+    info(message: string, obj?: any, context?: string, contextType?: 'component' | 'service' | 'store'): void {
         if (!this.shouldLog(LogLevel.INFO)) return;
         
-        console.info(this.formatMessage(LogLevel.INFO, message, service));
+        console.info(this.formatMessage(LogLevel.INFO, message, context, contextType));
         if (obj !== undefined && obj !== null) console.info(obj);
     }
 
-    warn(message: string, obj?: any, service?: string): void {
+    warn(message: string, obj?: any, context?: string, contextType?: 'component' | 'service' | 'store'): void {
         if (!this.shouldLog(LogLevel.WARN)) return;
         
-        console.warn(this.formatMessage(LogLevel.WARN, message, service));
+        console.warn(this.formatMessage(LogLevel.WARN, message, context, contextType));
         if (obj !== undefined && obj !== null) console.warn(obj);
     }
 
-    error(message: string, obj?: any, service?: string): void {
+    error(message: string, obj?: any, context?: string, contextType?: 'component' | 'service' | 'store'): void {
         if (!this.shouldLog(LogLevel.ERROR)) return;
         
-        console.error(this.formatMessage(LogLevel.ERROR, message, service));
+        console.error(this.formatMessage(LogLevel.ERROR, message, context, contextType));
         if (obj !== undefined && obj !== null) console.error(obj);
+    }
+
+    // Context-specific logger creators
+    createComponentLogger(componentName: string) {
+        return {
+            debug: (message: string, obj?: any) => this.debug(message, obj, componentName, 'component'),
+            info: (message: string, obj?: any) => this.info(message, obj, componentName, 'component'),
+            warn: (message: string, obj?: any) => this.warn(message, obj, componentName, 'component'),
+            error: (message: string, obj?: any) => this.error(message, obj, componentName, 'component'),
+        };
     }
 
     createServiceLogger(serviceName: string) {
         return {
-            debug: (message: string, obj?: any) => this.debug(message, obj, serviceName),
-            info: (message: string, obj?: any) => this.info(message, obj, serviceName),
-            warn: (message: string, obj?: any) => this.warn(message, obj, serviceName),
-            error: (message: string, obj?: any) => this.error(message, obj, serviceName),
+            debug: (message: string, obj?: any) => this.debug(message, obj, serviceName, 'service'),
+            info: (message: string, obj?: any) => this.info(message, obj, serviceName, 'service'),
+            warn: (message: string, obj?: any) => this.warn(message, obj, serviceName, 'service'),
+            error: (message: string, obj?: any) => this.error(message, obj, serviceName, 'service'),
+        };
+    }
+
+    createStoreLogger(storeName: string) {
+        return {
+            debug: (message: string, obj?: any) => this.debug(message, obj, storeName, 'store'),
+            info: (message: string, obj?: any) => this.info(message, obj, storeName, 'store'),
+            warn: (message: string, obj?: any) => this.warn(message, obj, storeName, 'store'),
+            error: (message: string, obj?: any) => this.error(message, obj, storeName, 'store'),
         };
     }
 }
@@ -80,6 +129,7 @@ export const AppLogger = new Logger();
 
 export const logger = {
     install(app: App) {
+        // Global logger methods (without context)
         app.config.globalProperties.$logDebug = (message: string, obj?: any) => 
             AppLogger.debug(message, obj);
         app.config.globalProperties.$logInfo = (message: string, obj?: any) => 
@@ -88,6 +138,14 @@ export const logger = {
             AppLogger.warn(message, obj);
         app.config.globalProperties.$logError = (message: string, obj?: any) => 
             AppLogger.error(message, obj);
+        
+        // Context-aware logger creators
+        app.config.globalProperties.$createComponentLogger = (componentName: string) =>
+            AppLogger.createComponentLogger(componentName);
+        app.config.globalProperties.$createServiceLogger = (serviceName: string) =>
+            AppLogger.createServiceLogger(serviceName);
+        app.config.globalProperties.$createStoreLogger = (storeName: string) =>
+            AppLogger.createStoreLogger(storeName);
     }
 }
 
@@ -96,7 +154,8 @@ export const piniaLogger = function () {
         $logDebug: (message: string, obj?: any) => AppLogger.debug(message, obj),
         $logInfo: (message: string, obj?: any) => AppLogger.info(message, obj),
         $logWarn: (message: string, obj?: any) => AppLogger.warn(message, obj),
-        $logError: (message: string, obj?: any) => AppLogger.error(message, obj)
+        $logError: (message: string, obj?: any) => AppLogger.error(message, obj),
+        $createStoreLogger: (storeName: string) => AppLogger.createStoreLogger(storeName)
     }
 }
 
@@ -107,6 +166,24 @@ declare module '@vue/runtime-core' {
         $logInfo: (message: string, obj?: any) => void
         $logWarn: (message: string, obj?: any) => void
         $logError: (message: string, obj?: any) => void
+        $createComponentLogger: (componentName: string) => {
+            debug: (message: string, obj?: any) => void
+            info: (message: string, obj?: any) => void
+            warn: (message: string, obj?: any) => void
+            error: (message: string, obj?: any) => void
+        }
+        $createServiceLogger: (serviceName: string) => {
+            debug: (message: string, obj?: any) => void
+            info: (message: string, obj?: any) => void
+            warn: (message: string, obj?: any) => void
+            error: (message: string, obj?: any) => void
+        }
+        $createStoreLogger: (storeName: string) => {
+            debug: (message: string, obj?: any) => void
+            info: (message: string, obj?: any) => void
+            warn: (message: string, obj?: any) => void
+            error: (message: string, obj?: any) => void
+        }
     }
 }
 
@@ -117,5 +194,11 @@ declare module 'pinia' {
         $logInfo: (message: string, obj?: any) => void
         $logWarn: (message: string, obj?: any) => void
         $logError: (message: string, obj?: any) => void
+        $createStoreLogger: (storeName: string) => {
+            debug: (message: string, obj?: any) => void
+            info: (message: string, obj?: any) => void
+            warn: (message: string, obj?: any) => void
+            error: (message: string, obj?: any) => void
+        }
     }
 }

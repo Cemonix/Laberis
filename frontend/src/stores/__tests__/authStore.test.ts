@@ -265,6 +265,8 @@ describe("Auth Store", () => {
         it("should logout on refresh failure", async () => {
             authStore.tokens = mockTokens;
             authStore.user = mockUser;
+            // Set refresh attempts to max - 1, so the next failure will trigger logout
+            authStore.refreshAttempts = authStore.maxRefreshAttempts - 1;
             vi.mocked(authService.refreshToken).mockRejectedValue(
                 new Error("Refresh failed")
             );

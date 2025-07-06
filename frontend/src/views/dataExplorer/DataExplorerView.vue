@@ -92,7 +92,7 @@ import { dataSourceService } from '@/services/api/dataSourceService';
 import { useAlert } from '@/composables/useAlert';
 import { AppLogger } from '@/utils/logger';
 
-const logger = AppLogger.createServiceLogger('DataExplorerView');
+const logger = AppLogger.createComponentLogger('DataExplorerView');
 const route = useRoute();
 const router = useRouter();
 const { showAlert } = useAlert();
