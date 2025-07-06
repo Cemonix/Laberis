@@ -6,7 +6,6 @@ using server.Services;
 using server.Configs;
 using server.Models.DTOs.Auth;
 using server.Exceptions;
-using System.Security.Claims;
 using server.Services.Interfaces;
 
 namespace Server.Tests.Services
@@ -137,8 +136,12 @@ namespace Server.Tests.Services
                     user.UserName = newUser.UserName;
                     user.Email = newUser.Email;
                 });
+            _mockUserManager.Setup(m => m.AddToRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+                .ReturnsAsync(IdentityResult.Success);
+            _mockUserManager.Setup(m => m.UpdateAsync(It.IsAny<ApplicationUser>()))
+                .ReturnsAsync(IdentityResult.Success);
             _mockUserManager.Setup(m => m.GetRolesAsync(It.IsAny<ApplicationUser>()))
-                .ReturnsAsync(new List<string>());
+                .ReturnsAsync(["USER"]);
 
             // Act
             var result = await _authManager.RegisterAsync(registerDto);
@@ -221,7 +224,7 @@ namespace Server.Tests.Services
         }
 
         [Fact]
-        public async Task RegisterAsync_Should_ThrowValidationException_WhenUserCreationFails()
+        public async Task RegisterAsync_Should_ThrowDatabaseException_WhenUserCreationFails()
         {
             // Arrange
             var registerDto = new RegisterDto
@@ -246,12 +249,53 @@ namespace Server.Tests.Services
                 .ReturnsAsync(IdentityResult.Failed(identityErrors));
 
             // Act & Assert
-            var exception = await Assert.ThrowsAsync<ValidationException>(() => 
+            var exception = await Assert.ThrowsAsync<DatabaseException>(() => 
                 _authManager.RegisterAsync(registerDto));
             
             Assert.Contains("Registration failed", exception.Message);
             Assert.Contains("Password is too short", exception.Message);
             Assert.Contains("Email format is invalid", exception.Message);
+        }
+
+        [Fact]
+        public async Task RegisterAsync_Should_ThrowDatabaseException_WhenRoleAssignmentFails()
+        {
+            // Arrange
+            var registerDto = new RegisterDto
+            {
+                Email = "test@example.com",
+                UserName = "testuser",
+                Password = "Test123!",
+                ConfirmPassword = "Test123!"
+            };
+
+            var identityErrors = new[]
+            {
+                new IdentityError { Code = "RoleError", Description = "Role assignment failed" }
+            };
+
+            _mockUserManager.Setup(m => m.FindByEmailAsync(registerDto.Email))
+                .ReturnsAsync((ApplicationUser?)null);
+            _mockUserManager.Setup(m => m.FindByNameAsync(registerDto.UserName))
+                .ReturnsAsync((ApplicationUser?)null);
+            _mockUserManager.Setup(m => m.CreateAsync(It.IsAny<ApplicationUser>(), registerDto.Password))
+                .ReturnsAsync(IdentityResult.Success);
+            _mockUserManager.Setup(m => m.AddToRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
+                .ReturnsAsync(IdentityResult.Failed(identityErrors));
+            _mockUserManager.Setup(m => m.DeleteAsync(It.IsAny<ApplicationUser>()))
+                .ReturnsAsync(IdentityResult.Success);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<DatabaseException>(() => 
+                _authManager.RegisterAsync(registerDto));
+            
+            Assert.Contains("Could not assign default USER role", exception.Message);
+            Assert.Contains("Role assignment failed", exception.Message);
+            
+            // Verify that user creation was attempted but rolled back
+            _mockUserManager.Verify(m => m.CreateAsync(It.IsAny<ApplicationUser>(), registerDto.Password), Times.Once);
+            _mockUserManager.Verify(m => m.AddToRoleAsync(It.IsAny<ApplicationUser>(), "USER"), Times.Once);
+            _mockUserManager.Verify(m => m.DeleteAsync(It.IsAny<ApplicationUser>()), Times.Once);
         }
 
         #endregion
@@ -279,8 +323,10 @@ namespace Server.Tests.Services
                 .ReturnsAsync(user);
             _mockUserManager.Setup(m => m.CheckPasswordAsync(user, loginDto.Password))
                 .ReturnsAsync(true);
+            _mockUserManager.Setup(m => m.UpdateAsync(It.IsAny<ApplicationUser>()))
+                .ReturnsAsync(IdentityResult.Success);
             _mockUserManager.Setup(m => m.GetRolesAsync(user))
-                .ReturnsAsync(new List<string> { "User" });
+                .ReturnsAsync(["User"]);
 
             // Act
             var result = await _authManager.LoginAsync(loginDto);
@@ -294,7 +340,7 @@ namespace Server.Tests.Services
 
             _mockUserManager.Verify(m => m.FindByEmailAsync(loginDto.Email), Times.Once);
             _mockUserManager.Verify(m => m.CheckPasswordAsync(user, loginDto.Password), Times.Once);
-            _mockUserManager.Verify(m => m.GetRolesAsync(user), Times.Once);
+            _mockUserManager.Verify(m => m.GetRolesAsync(user), Times.Exactly(2)); // Called once in GenerateTokenAsync and once for UserDto
         }
 
         [Fact]

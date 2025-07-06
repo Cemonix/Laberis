@@ -6,7 +6,7 @@ using server.Models.Domain;
 
 namespace Server.Tests.Repositories
 {
-    public class LabelRepositoryTests : IDisposable
+    public class LabelRepositoryTests
     {
         private readonly DbContextFactory _dbContextFactory;
         private readonly ILogger<LabelRepository> _mockLogger;
@@ -60,13 +60,6 @@ namespace Server.Tests.Repositories
             Assert.Equal("Test Label", savedLabel.Name);
             Assert.Equal("#FF0000", savedLabel.Color);
             Assert.NotNull(savedLabel);
-        }
-
-        public void Dispose()
-        {
-            // Clean up the in-memory database after each test run.
-            _dbContextFactory.Dispose();
-            GC.SuppressFinalize(this);
         }
     }
 }

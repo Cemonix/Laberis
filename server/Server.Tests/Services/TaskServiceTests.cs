@@ -1,17 +1,14 @@
 using Moq;
 using Microsoft.Extensions.Logging;
-using Server.Tests.Factories;
 using server.Services;
 using server.Repositories.Interfaces;
-using server.Models.Domain;
 using server.Models.DTOs.Task;
 using LaberisTask = server.Models.Domain.Task;
 
 namespace Server.Tests.Services
 {
-    public class TaskServiceTests : IDisposable
+    public class TaskServiceTests
     {
-        private readonly DbContextFactory _dbContextFactory;
         private readonly Mock<ITaskRepository> _mockTaskRepository;
         private readonly Mock<ITaskEventRepository> _mockTaskEventRepository;
         private readonly Mock<ILogger<TaskService>> _mockLogger;
@@ -19,7 +16,6 @@ namespace Server.Tests.Services
 
         public TaskServiceTests()
         {
-            _dbContextFactory = new DbContextFactory();
             _mockTaskRepository = new Mock<ITaskRepository>();
             _mockTaskEventRepository = new Mock<ITaskEventRepository>();
             _mockLogger = new Mock<ILogger<TaskService>>();
@@ -117,12 +113,6 @@ namespace Server.Tests.Services
                 t.AssetId == createDto.AssetId &&
                 t.ProjectId == projectId)), Times.Once);
             _mockTaskRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
-        }
-
-        public void Dispose()
-        {
-            _dbContextFactory.Dispose();
-            GC.SuppressFinalize(this);
         }
     }
 }
