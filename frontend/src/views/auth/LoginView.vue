@@ -53,6 +53,9 @@ import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
 import Button from "@/components/common/Button.vue";
 import Form from "@/components/common/Form.vue";
+import { AppLogger } from "@/utils/logger";
+
+const logger = AppLogger.createComponentLogger('LoginView');
 
 const router = useRouter();
 const route = useRoute();
@@ -104,7 +107,7 @@ const handleLogin = async () => {
             }
         }
     } catch (error) {
-        console.error("Login failed:", error);
+        logger.error("Login failed:", error);
         errorMessage.value = error instanceof Error ? error.message : "Login failed. Please try again.";
     } finally {
         isLoading.value = false;

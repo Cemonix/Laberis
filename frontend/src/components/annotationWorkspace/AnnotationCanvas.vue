@@ -32,6 +32,9 @@ import { AnnotationManager } from "@/core/annotationWorkspace/annotationManager"
 import { StoreError, ToolError } from "@/types/common/errors";
 import AlertModal from "../common/modal/AlertModal.vue";
 import { useAlert } from "@/composables/useAlert";
+import { AppLogger } from "@/utils/logger";
+
+const logger = AppLogger.createComponentLogger('AnnotationCanvas');
 
 const { isAlertOpen, alertTitle, alertMessage, showAlert, handleAlertConfirm } = useAlert();
 
@@ -139,7 +142,7 @@ const loadImage = async (url: string | null) => {
     }
 
     if (!canvasRef.value) {
-        console.error("Canvas element not available for drawing.");
+        logger.error("Canvas element not available for drawing.");
         isLoading.value = false;
         return;
     }
@@ -147,7 +150,7 @@ const loadImage = async (url: string | null) => {
     if (!ctx) {
         ctx = canvasRef.value.getContext("2d");
         if (!ctx) {
-            console.error("Failed to get 2D rendering context.");
+            logger.error("Failed to get 2D rendering context.");
             isLoading.value = false;
             return;
         }
@@ -169,7 +172,7 @@ const loadImage = async (url: string | null) => {
     };
 
     img.onerror = () => {
-        console.error("Error loading image:", url);
+        logger.error("Error loading image:", url);
         imageInstance.value = null;
         isLoading.value = false;
         errorLoadingImage.value = true;
@@ -392,7 +395,7 @@ onMounted(() => {
     if (canvasRef.value && wrapperRef.value) {
         ctx = canvasRef.value.getContext("2d");
         if (!ctx) {
-            console.error("Failed to get 2D rendering context on mount.");
+            logger.error("Failed to get 2D rendering context on mount.");
             return;
         }
 
@@ -412,7 +415,7 @@ onMounted(() => {
         }
         window.addEventListener('keydown', handleEscapeKey);
     } else {
-        console.error("Canvas ref or wrapper ref not available on mount.");
+        logger.error("Canvas ref or wrapper ref not available on mount.");
     }
 });
 

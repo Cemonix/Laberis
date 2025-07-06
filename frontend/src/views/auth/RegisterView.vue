@@ -96,6 +96,9 @@ import { projectInvitationService } from "@/services/api/projectInvitationServic
 import Button from "@/components/common/Button.vue";
 import Form from "@/components/common/Form.vue";
 import type { ProjectInvitationDto } from "@/types/projectInvitation";
+import { AppLogger } from "@/utils/logger";
+
+const logger = AppLogger.createComponentLogger('RegisterView');
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -197,7 +200,7 @@ const handleRegister = async () => {
         // Redirect to home page after successful registration
         router.push('/home');
     } catch (error) {
-        console.error("Registration failed:", error);
+        logger.error("Registration failed:", error);
         errorMessage.value = error instanceof Error ? error.message : "Registration failed. Please try again.";
     } finally {
         isLoading.value = false;

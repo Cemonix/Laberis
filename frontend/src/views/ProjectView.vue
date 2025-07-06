@@ -55,6 +55,9 @@ import type { CreateProjectRequest } from '@/types/project/requests';
 import { useToast } from '@/composables/useToast';
 import { usePermissions } from '@/composables/usePermissions';
 import { RoleEnum } from '@/types/auth/role';
+import { AppLogger } from '@/utils/logger';
+
+const logger = AppLogger.createComponentLogger('ProjectView');
 
 const { showCreateSuccess, showError } = useToast();
 const { hasRole } = usePermissions();
@@ -82,7 +85,7 @@ const fetchProjects = async () => {
         });
         projects.value = response.data;
     } catch (err) {
-        console.error('Error fetching projects:', err);
+        logger.error('Error fetching projects:', err);
         error.value = 'Failed to load projects. Please try again.';
     } finally {
         loading.value = false;
@@ -103,7 +106,7 @@ const handleCreateProject = async (formData: { name: string; description: string
         
         showCreateSuccess('Project');
     } catch (err) {
-        console.error('Error creating project:', err);
+        logger.error('Error creating project:', err);
         showError('Error', 'Failed to create project. Please try again.');
     }
 };

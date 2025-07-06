@@ -187,6 +187,9 @@ import type { CreateWorkflowWithStagesRequest } from '@/types/workflow';
 import { WorkflowStageType } from '@/types/workflow';
 import type { ProjectMember } from '@/types/projectMember';
 import { projectMemberService } from '@/services/api/projectMemberService';
+import { AppLogger } from '@/utils/logger';
+
+const logger = AppLogger.createComponentLogger('CreateWorkflowForm');
 
 interface WorkflowForm {
     name: string;
@@ -245,7 +248,7 @@ const loadProjectMembers = async () => {
         projectMembers.value = members.filter(member => member.joinedAt); // Only include members who have joined
     } catch (error) {
         memberError.value = 'Failed to load team members';
-        console.error('Error loading project members:', error);
+        logger.error('Error loading project members:', error);
     } finally {
         loadingMembers.value = false;
     }
@@ -328,7 +331,7 @@ const handleSubmit = async () => {
         
         emit('save', formData);
     } catch (error) {
-        console.error('Error preparing form data:', error);
+        logger.error('Error preparing form data:', error);
     } finally {
         isLoading.value = false;
     }
