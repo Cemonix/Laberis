@@ -46,7 +46,7 @@ import { dataSourceService } from '@/services/api/dataSourceService';
 import { useAlert } from '@/composables/useAlert';
 import { AppLogger } from '@/utils/logger';
 
-const logger = AppLogger.createServiceLogger('DataSourcesView');
+const logger = AppLogger.createComponentLogger('DataSourcesView');
 const route = useRoute();
 const { showAlert } = useAlert();
 

@@ -8,8 +8,10 @@ import type {
 import { authService } from "@/services/auth/authService";
 import { env } from "@/config/env";
 import { RoleEnum } from "@/types/auth/role";
+import { AppLogger } from "@/utils/logger";
 
 const AUTH_STORAGE_KEY = 'auth_tokens';
+const logger = AppLogger.createStoreLogger('AuthStore');
 
 export const useAuthStore = defineStore("auth", {
     state: () => ({
@@ -66,7 +68,7 @@ export const useAuthStore = defineStore("auth", {
                 }
             }
             else if (!env.IS_DEVELOPMENT && env.AUTO_LOGIN_DEV) {
-                this.$logWarn("Auto-login is only available in development mode. Skipping auto-login.");
+                logger.warn("Auto-login is only available in development mode. Skipping auto-login.");
             }
             
             const storedTokens = this.loadTokensFromStorage();
@@ -75,7 +77,7 @@ export const useAuthStore = defineStore("auth", {
                 try {
                     await this.getCurrentUser();
                 } catch (error) {
-                    this.$logError("Failed to get current user during initialization", error);
+                    logger.error("Failed to get current user during initialization", error);
                     // Clear invalid tokens but don't call logout to avoid infinite loops
                     this.user = null;
                     this.tokens = null;
@@ -89,7 +91,7 @@ export const useAuthStore = defineStore("auth", {
             try {
                 localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authTokens));
             } catch (error) {
-                this.$logError("Failed to save tokens to localStorage", error);
+                logger.error("Failed to save tokens to localStorage", error);
             }
         },
         loadTokensFromStorage(): AuthTokens | null {
@@ -106,7 +108,7 @@ export const useAuthStore = defineStore("auth", {
 
                 return parsed;
             } catch (error) {
-                this.$logError("Failed to load tokens from localStorage", error);
+                logger.error("Failed to load tokens from localStorage", error);
                 this.removeTokensFromStorage();
                 return null;
             }
@@ -115,7 +117,7 @@ export const useAuthStore = defineStore("auth", {
             try {
                 localStorage.removeItem(AUTH_STORAGE_KEY);
             } catch (error) {
-                this.$logError("Failed to remove tokens from localStorage", error);
+                logger.error("Failed to remove tokens from localStorage", error);
             }
         },
         async login(loginDto: LoginDto): Promise<void> {
@@ -128,7 +130,7 @@ export const useAuthStore = defineStore("auth", {
 
                 this.saveTokensToStorage(response.tokens);
             } catch (error) {
-                this.$logError("Login failed", error);
+                logger.error("Login failed", error);
                 throw error;
             } finally {
                 this.isLoading = false;
@@ -144,7 +146,7 @@ export const useAuthStore = defineStore("auth", {
 
                 this.saveTokensToStorage(response.tokens);
             } catch (error) {
-                this.$logError("Registration failed", error);
+                logger.error("Registration failed", error);
                 throw error;
             } finally {
                 this.isLoading = false;
@@ -155,7 +157,7 @@ export const useAuthStore = defineStore("auth", {
             try {
                 await authService.logout();
             } catch (error) {
-                this.$logError("Logout request failed", error);
+                logger.error("Logout request failed", error);
             } finally {
                 this.user = null;
                 this.tokens = null;
@@ -176,7 +178,7 @@ export const useAuthStore = defineStore("auth", {
             }
 
             if (this.refreshAttempts >= this.maxRefreshAttempts) {
-                this.$logError("Max refresh attempts reached, logging out");
+                logger.error("Max refresh attempts reached, logging out");
                 this.clearAuthState();
                 return false;
             }
@@ -189,10 +191,10 @@ export const useAuthStore = defineStore("auth", {
                 this.refreshAttempts = 0; // Reset attempts on success
                 return true;
             } catch (error) {
-                this.$logError("Token refresh failed", error);
+                logger.error("Token refresh failed", error);
 
                 if (this.refreshAttempts >= this.maxRefreshAttempts) {
-                    this.$logError("Max refresh attempts reached, logging out");
+                    logger.error("Max refresh attempts reached, logging out");
                     this.clearAuthState();
                 }
 
@@ -207,7 +209,7 @@ export const useAuthStore = defineStore("auth", {
                     this.user = userData;
                     return;
                 } catch (error) {
-                    this.$logError("Failed to get current user in development mode", error);
+                    logger.error("Failed to get current user in development mode", error);
                     throw error;
                 }
             }
@@ -220,7 +222,7 @@ export const useAuthStore = defineStore("auth", {
                 const userData = await authService.getCurrentUser();
                 this.user = userData;
             } catch (error) {
-                this.$logError("Failed to get current user", error);
+                logger.error("Failed to get current user", error);
                 throw error;
             }
         },
@@ -248,9 +250,9 @@ export const useAuthStore = defineStore("auth", {
                 await this.getCurrentUser();
                 
                 // Don't save fake tokens to storage as they're not real
-                this.$logInfo("Auto-login successful in development mode as:", this.user?.email);
+                logger.info("Auto-login successful in development mode as:", this.user?.email);
             } catch (error) {
-                this.$logError("Auto-login failed:", error);
+                logger.error("Auto-login failed:", error);
                 // Clean up on failure
                 this.user = null;
                 this.tokens = null;

@@ -388,7 +388,7 @@ describe("Workspace Store", () => {
             
             // The logger calls console.error with a formatted message including timestamp
             expect(consoleError).toHaveBeenCalledWith(
-                expect.stringContaining("ERROR [WorkspaceStore] Failed to save annotation:")
+                expect.stringContaining("ERROR [SERVICE:WorkspaceStore] Failed to save annotation:")
             );
             
             // Check that error state is set

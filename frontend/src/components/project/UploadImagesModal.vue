@@ -171,7 +171,7 @@ import { useAlert } from '@/composables/useAlert';
 import { useToast } from '@/composables/useToast';
 import assetService from '@/services/api/assetService';
 
-const logger = AppLogger.createServiceLogger('UploadImagesModal');
+const logger = AppLogger.createComponentLogger('UploadImagesModal');
 
 const { showAlert } = useAlert();
 const { showSuccess, showWarning, showError } = useToast();

@@ -49,7 +49,7 @@ import type { Asset } from '@/types/asset/asset';
 import Card from '@/components/common/Card.vue';
 import { AppLogger } from '@/utils/logger';
 
-const logger = AppLogger.createServiceLogger('AssetThumbnail');
+const logger = AppLogger.createComponentLogger('AssetThumbnail');
 
 const props = defineProps<{
     asset?: Asset | null;
