@@ -3,7 +3,8 @@ import type { PaginatedResponse } from "@/types/api/paginatedResponse";
 import type {
     Workflow,
     CreateWorkflowRequest,
-    UpdateWorkflowRequest
+    UpdateWorkflowRequest,
+    CreateWorkflowWithStagesRequest
 } from "@/types/workflow";
 import { AppLogger } from "@/utils/logger";
 import { ApiResponseError } from "@/types/common";
@@ -123,6 +124,25 @@ class WorkflowService {
         } catch (error) {
             logger.error(`Failed to delete workflow ${workflowId}`, error);
             throw transformApiError(error, 'Failed to delete workflow');
+        }
+    }
+
+    async createWorkflowWithStages(projectId: number, data: CreateWorkflowWithStagesRequest): Promise<Workflow> {
+        logger.info(`Creating workflow with stages for project ${projectId}:`, data.name);
+        
+        try {
+            const response = await apiClient.post<Workflow>(`${this.baseUrl}/${projectId}/workflows`, data);
+            
+            if (isValidApiResponse(response)) {
+                logger.info(`Successfully created workflow with stages: ${response.data.name} (ID: ${response.data.id})`);
+                return response.data;
+            } else {
+                logger.error('Invalid response structure when creating workflow with stages', response?.data);
+                throw new ApiResponseError('Invalid response structure from API when creating workflow with stages.');
+            }
+        } catch (error) {
+            logger.error('Failed to create workflow with stages', error);
+            throw transformApiError(error, 'Failed to create workflow with stages');
         }
     }
 }
