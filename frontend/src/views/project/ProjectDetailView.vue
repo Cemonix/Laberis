@@ -41,6 +41,9 @@ import { useRoute, useRouter } from 'vue-router';
 import type { Project } from '@/types/project/project';
 import { projectService } from '@/services/api/projectService';
 import { useAlert } from '@/composables/useAlert';
+import { AppLogger } from '@/utils/logger';
+
+const logger = AppLogger.createComponentLogger('ProjectDetailView');
 
 const route = useRoute();
 const router = useRouter();
@@ -63,7 +66,7 @@ const fetchProject = async () => {
         
         project.value = await projectService.getProject(projectIdNum);
     } catch (err) {
-        console.error('Error fetching project:', err);
+        logger.error('Error fetching project:', err);
         error.value = 'Failed to load project details. Please try again.';
         await showAlert('Error', 'Project not found. You will be redirected to the projects list.');
         router.push('/projects');

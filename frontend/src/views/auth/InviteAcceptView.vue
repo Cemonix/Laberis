@@ -96,6 +96,9 @@ import { projectService } from "@/services/api/projectService";
 import Button from "@/components/common/Button.vue";
 import type { ProjectInvitationDto } from "@/types/projectInvitation";
 import type { Project } from "@/types/project/project";
+import { AppLogger } from "@/utils/logger";
+
+const logger = AppLogger.createComponentLogger('InviteAcceptView');
 
 const router = useRouter();
 const route = useRoute();
@@ -136,7 +139,7 @@ const validateInvitationToken = async (token: string): Promise<void> => {
         // Fetch project details to get the project name
         await fetchProjectDetails(invitation.projectId);
     } catch (error) {
-        console.error("Failed to validate invitation token:", error);
+        logger.error("Failed to validate invitation token:", error);
         errorMessage.value = error instanceof Error ? error.message : "Failed to validate invitation";
     } finally {
         isValidatingToken.value = false;
@@ -149,7 +152,7 @@ const fetchProjectDetails = async (projectId: number): Promise<void> => {
         const project = await projectService.getProject(projectId);
         projectData.value = project;
     } catch (error) {
-        console.error("Failed to fetch project details:", error);
+        logger.error("Failed to fetch project details:", error);
         // Don't set error message as this is not critical for invitation flow
     }
 };
@@ -168,7 +171,7 @@ const handleAcceptInvitation = async (): Promise<void> => {
         isAccepted.value = true;
         showSuccess("Invitation Accepted", "You have successfully joined the project!");
     } catch (error) {
-        console.error("Failed to accept invitation:", error);
+        logger.error("Failed to accept invitation:", error);
         errorMessage.value = error instanceof Error ? error.message : "Failed to accept invitation";
         showError("Invitation Error", errorMessage.value);
     } finally {

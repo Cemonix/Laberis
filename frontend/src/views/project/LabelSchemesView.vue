@@ -57,6 +57,9 @@ import { labelSchemeService } from '@/services/api/labelSchemeService';
 import { labelService } from '@/services/api/labelService';
 import { useAlert } from '@/composables/useAlert';
 import { useToast } from '@/composables/useToast';
+import { AppLogger } from '@/utils/logger';
+
+const logger = AppLogger.createComponentLogger('LabelSchemesView');
 
 const route = useRoute();
 const { showAlert } = useAlert();
@@ -82,7 +85,7 @@ const fetchLabelSchemes = async () => {
         labelSchemes.value = result.data;
     } catch (error) {
         await showAlert('Error', 'Failed to load label schemes. Please try again.');
-        console.error('Failed to fetch label schemes:', error);
+        logger.error('Failed to fetch label schemes:', error);
     } finally {
         isLoading.value = false;
     }
@@ -132,7 +135,7 @@ const handleCreateScheme = async (formData: FormPayloadLabelScheme) => {
         showCreateSuccess('Label Scheme');
     } catch (error) {
         showError('Error', 'Failed to create label scheme. Please try again.');
-        console.error('Failed to create label scheme:', error);
+        logger.error('Failed to create label scheme:', error);
     } finally {
         isLoading.value = false;
     }

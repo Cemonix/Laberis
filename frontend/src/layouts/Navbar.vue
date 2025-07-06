@@ -24,6 +24,9 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
+import { AppLogger } from "@/utils/logger";
+
+const logger = AppLogger.createComponentLogger('Navbar');
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -33,7 +36,7 @@ const handleLogout = async () => {
         await authStore.logout();
         router.push('/login');
     } catch (error) {
-        console.error('Logout failed:', error);
+        logger.error('Logout failed:', error);
     }
 };
 </script>

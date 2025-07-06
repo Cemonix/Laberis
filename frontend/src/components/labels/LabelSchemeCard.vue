@@ -54,6 +54,9 @@ import CreateLabelForm from './CreateLabelForm.vue';
 import Button from '@/components/common/Button.vue';
 import Card from '@/components/common/Card.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
+import { AppLogger } from '@/utils/logger';
+
+const logger = AppLogger.createComponentLogger('LabelSchemeCard');
 
 const props = defineProps<{
     scheme: LabelScheme;
@@ -90,7 +93,7 @@ const handleCreateLabel = async (formData: CreateLabelRequest) => {
         showCreateSuccess('Label');
     } catch (error) {
         showError('Error', 'Failed to create label. Please try again.');
-        console.error('Failed to create label:', error);
+        logger.error('Failed to create label:', error);
     } finally {
         isLoadingLabels.value = false;
     }
@@ -111,7 +114,7 @@ const fetchLabels = async () => {
         );
         labels.value = result.data;
     } catch (error) {
-        console.error('Failed to fetch labels for scheme:', error);
+        logger.error('Failed to fetch labels for scheme:', error);
         labels.value = [];
     } finally {
         isLoadingLabels.value = false;
