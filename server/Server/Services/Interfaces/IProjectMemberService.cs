@@ -71,4 +71,21 @@ public interface IProjectMemberService
     /// <param name="userId">The ID of the user to remove.</param>
     /// <returns>A task that represents the asynchronous operation, returning true if the member was successfully removed, otherwise false.</returns>
     Task<bool> RemoveProjectMemberAsync(int projectId, string userId);
+
+    /// <summary>
+    /// Updates an existing project member's role by email.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="email">The email of the user.</param>
+    /// <param name="updateDto">The DTO containing updated project member information.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the updated ProjectMemberDto if successful, otherwise null.</returns>
+    Task<ProjectMemberDto?> UpdateProjectMemberByEmailAsync(int projectId, string email, UpdateProjectMemberDto updateDto);
+
+    /// <summary>
+    /// Removes a member from a project by email.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="email">The email of the user to remove.</param>
+    /// <returns>A task that represents the asynchronous operation, returning true if the member was successfully removed, otherwise false.</returns>
+    Task<bool> RemoveProjectMemberByEmailAsync(int projectId, string email);
 }
