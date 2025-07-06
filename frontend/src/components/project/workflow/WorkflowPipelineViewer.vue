@@ -5,94 +5,79 @@
                 <h3 class="pipeline-title">Workflow: {{ workflowName }}</h3>
                 <p class="pipeline-subtitle">{{ stages.length }} stages configured</p>
             </div>
-            <div class="pipeline-controls">
-                <Button 
-                    variant="primary" 
-                    @click="$emit('edit-pipeline')"
-                    v-if="canEdit"
-                >
-                    Manage Pipeline
-                </Button>
-            </div>
         </div>
         
-        <div class="pipeline-canvas-wrapper">
-            <div 
-                class="pipeline-canvas" 
-                ref="canvasContainer" 
-                :style="{ width: `${graphLayout.width}px`, height: `${graphLayout.height}px` }"
-            >
-                <WorkflowStage
-                    v-for="(stage, index) in stages" 
-                    :key="stage.id"
-                    :stage="stage"
-                    :position="graphLayout.stagePositions.get(stage.id)"
-                    :show-actions="canEdit"
-                    @stage-click="handleStageClick"
-                    @edit-stage="handleEditStage"
-                    @manage-assignments="handleManageAssignments"
-                    :style="{ animationDelay: `${index * 100}ms` }"
-                />
-                
-                <svg
-                    class="pipeline-connections" 
-                    :width="graphLayout.width" 
-                    :height="graphLayout.height"
-                >
-                    <defs>
-                        <marker 
-                            id="arrowhead" 
-                            viewBox="0 0 10 10" 
-                            refX="9" 
-                            refY="5" 
-                            markerWidth="6" 
-                            markerHeight="6" 
-                            orient="auto-start-reverse"
+        <div class="pipeline-content">
+            <div v-if="isLoading" class="pipeline-state loading-state">
+                <p>Loading pipeline...</p>
+            </div>
+            <div v-else-if="error" class="pipeline-state error-state">
+                <p>Error: {{ error }}</p>
+                <Button variant="secondary" @click="refreshPipeline">Try Again</Button>
+            </div>
+            <div v-else-if="stages.length === 0" class="pipeline-state empty-state">
+                <h3>Empty Workflow</h3>
+                <p>This workflow has no stages yet. Add a stage to begin.</p>
+            </div>
+            <div v-else class="linear-pipeline">
+                <div class="pipeline-flow">
+                    <template v-for="(stage, index) in orderedStages" :key="stage.id">
+                        <div 
+                            class="stage-container"
+                            :style="{ animationDelay: `${index * 150}ms` }"
                         >
-                            <path d="M 0 0 L 10 5 L 0 10 z" class="arrowhead-polygon"></path>
-                        </marker>
-                    </defs>
-                    
-                    <path
-                        v-for="(connection, index) in graphLayout.connections"
-                        :key="`${connection.from.id}-${connection.to.id}`"
-                        :d="connection.path"
-                        class="connection-path"
-                        marker-end="url(#arrowhead)"
-                        :style="{ animationDelay: `${(stages.length + index) * 100}ms` }"
-                    />
-                </svg>
+                            <WorkflowStageCard
+                                :stage="stage"
+                                :show-actions="canEdit"
+                                @stage-click="handleStageClick"
+                                @edit-stage="handleEditStage"
+                                @manage-assignments="handleManageAssignments"
+                            />
+                        </div>
+                        
+                        <!-- Arrow between stages -->
+                        <div 
+                            v-if="index < orderedStages.length - 1" 
+                            class="pipeline-arrow"
+                            :style="{ animationDelay: `${index * 150 + 75}ms` }"
+                        >
+                            <svg viewBox="0 0 100 20" class="arrow-svg">
+                                <defs>
+                                    <marker 
+                                        id="arrow-marker" 
+                                        viewBox="0 0 10 10" 
+                                        refX="9" 
+                                        refY="5" 
+                                        markerWidth="6" 
+                                        markerHeight="6" 
+                                        orient="auto"
+                                    >
+                                        <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+                                    </marker>
+                                </defs>
+                                <line 
+                                    x1="0" 
+                                    y1="10" 
+                                    x2="100" 
+                                    y2="10" 
+                                    stroke="currentColor" 
+                                    stroke-width="2" 
+                                    marker-end="url(#arrow-marker)"
+                                />
+                            </svg>
+                        </div>
+                    </template>
+                </div>
             </div>
-        </div>
-        
-        <div v-if="isLoading" class="pipeline-state loading-state">
-            <p>Loading pipeline...</p>
-        </div>
-        <div v-else-if="error" class="pipeline-state error-state">
-            <p>Error: {{ error }}</p>
-            <Button variant="secondary" @click="refreshPipeline">Try Again</Button>
-        </div>
-        <div v-else-if="stages.length === 0" class="pipeline-state empty-state">
-            <h3>Empty Workflow</h3>
-            <p>This workflow has no stages yet. Add a stage to begin.</p>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import Button from '@/components/common/Button.vue';
-import WorkflowStage from './WorkflowStage.vue';
+import WorkflowStageCard from './WorkflowStageCard.vue';
 import type { WorkflowStagePipeline } from '@/types/workflow';
-
-const STAGE_WIDTH = 240;
-const STAGE_HEIGHT = 190;
-
-interface ConnectionPath {
-    from: WorkflowStagePipeline;
-    to: WorkflowStagePipeline;
-    path: string;
-}
 
 interface Props {
     workflowId: number;
@@ -113,18 +98,9 @@ const emit = defineEmits<{
     'manage-assignments': [stage: WorkflowStagePipeline];
 }>();
 
-const canvasContainer = ref<HTMLElement | null>(null);
-
-const graphLayout = computed(() => {
-    const stagePositions = new Map<number, { x: number; y: number }>();
-    const connections: ConnectionPath[] = [];
-    
-    return {
-        stagePositions,
-        connections,
-        width: 800,
-        height: 600,
-    };
+// Sort stages by order for linear display
+const orderedStages = computed(() => {
+    return [...props.stages].sort((a, b) => a.stageOrder - b.stageOrder);
 });
 
 const handleStageClick = (stage: WorkflowStagePipeline) => emit('stage-click', stage);
@@ -168,34 +144,59 @@ const refreshPipeline = () => emit('refresh');
     }
 }
 
-.pipeline-canvas-wrapper {
+.pipeline-content {
     flex-grow: 1;
     overflow: auto;
-    position: relative;
-    background-color: vars.$color-gray-100;
-    background-image: radial-gradient(vars.$color-gray-300 1px, transparent 1px);
-    background-size: 20px 20px;
+    padding: vars.$padding-large;
 }
 
-.pipeline-canvas {
-    position: relative;
+.linear-pipeline {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
 }
 
-.pipeline-connections {
-    position: relative;
-    pointer-events: none;
-    z-index: 1;
-
-    .arrowhead-polygon {
-        fill: #9ca3af;
+.pipeline-flow {
+    display: flex;
+    align-items: center;
+    gap: vars.$gap-large;
+    padding: vars.$padding-medium;
+    flex-wrap: wrap;
+    justify-content: center;
+    
+    @media (max-width: 768px) {
+        flex-direction: column;
+        gap: vars.$gap-medium;
     }
+}
 
-    .connection-path {
-        stroke: #9ca3af;
-        stroke-width: 2.5;
-        fill: none;
-        opacity: 0;
-        animation: draw-line 0.5s ease-out forwards;
+.stage-container {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+    animation: stage-fade-in 0.6s ease-out forwards;
+}
+
+.pipeline-arrow {
+    flex-shrink: 0;
+    opacity: 0;
+    animation: arrow-fade-in 0.4s ease-out forwards;
+    
+    @media (max-width: 768px) {
+        transform: rotate(90deg);
+        margin: vars.$gap-small 0;
+    }
+}
+
+.arrow-svg {
+    width: 60px;
+    height: 20px;
+    color: vars.$color-gray-400;
+    
+    @media (max-width: 768px) {
+        width: 20px;
+        height: 60px;
     }
 }
 
@@ -212,6 +213,7 @@ const refreshPipeline = () => emit('refresh');
     h3 {
         font-size: vars.$font-size-large;
         color: vars.$theme-text;
+        margin: 0;
     }
     p {
         color: vars.$theme-text-light;
@@ -223,23 +225,16 @@ const refreshPipeline = () => emit('refresh');
     }
 }
 
-@keyframes draw-line {
-  to {
-    opacity: 1;
-  }
+@keyframes stage-fade-in {
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
-:deep(.workflow-stage) {
-    z-index: 2;
-    opacity: 0;
-    transform: scale(0.9) translateY(10px);
-    animation: stage-enter 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-
-@keyframes stage-enter {
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+@keyframes arrow-fade-in {
+    to {
+        opacity: 1;
+    }
 }
 </style>
