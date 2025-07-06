@@ -323,7 +323,7 @@ const handleSubmit = async () => {
             description: form.description?.trim() || undefined,
             stages,
             createDefaultStages: false,
-            includeReviewStage: false
+            includeReviewStage: form.includeRevision,
         };
         
         emit('save', formData);
