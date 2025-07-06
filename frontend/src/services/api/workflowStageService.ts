@@ -19,7 +19,6 @@ const logger = AppLogger.createServiceLogger('WorkflowStageService');
 class WorkflowStageService {
     private readonly baseUrl = "/projects";
 
-    // Workflow Stage CRUD operations
     async getWorkflowStages(
         projectId: number,
         workflowId: number,
@@ -172,14 +171,14 @@ class WorkflowStageService {
             // Import workflow service here to avoid circular dependency
             const { workflowService } = await import('./workflowService');
             
-            const [workflow, stagesResponse] = await Promise.all([
+            const [workflow, stages] = await Promise.all([
                 workflowService.getWorkflow(projectId, workflowId),
-                this.getWorkflowStages(projectId, workflowId, { pageSize: 1000 }) // Get all stages
+                this.getWorkflowStagesForPipeline(projectId, workflowId) // Use pipeline method for connections and assignments
             ]);
             
             return {
                 ...workflow,
-                stages: stagesResponse.data
+                stages: stages
             };
         } catch (error) {
             logger.error(`Failed to fetch workflow ${workflowId} with stages`, error);

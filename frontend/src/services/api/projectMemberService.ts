@@ -30,17 +30,22 @@ class ProjectMemberService {
         }
     }
 
-    async removeMember(projectId: number, userId: string): Promise<void> {
+    async removeMember(projectId: number, email: string): Promise<void> {
         try {
-            await apiClient.delete(`${this.getBaseUrl(projectId)}/by-user/${userId}`);
+            await apiClient.delete(`${this.getBaseUrl(projectId)}/remove-by-email`, {
+                data: { email }
+            });
         } catch (error) {
             throw transformApiError(error, 'Failed to remove member');
         }
     }
 
-    async updateMemberRole(projectId: number, userId: string, role: ProjectRole): Promise<ProjectMember> {
+    async updateMemberRole(projectId: number, email: string, role: ProjectRole): Promise<ProjectMember> {
          try {
-            const response = await apiClient.put<ProjectMember>(`${this.getBaseUrl(projectId)}/by-user/${userId}`, { role });
+            const response = await apiClient.put<ProjectMember>(`${this.getBaseUrl(projectId)}/update-by-email`, { 
+                email, 
+                role 
+            });
             return response.data;
         } catch (error) {
             throw transformApiError(error, 'Failed to update member role');
