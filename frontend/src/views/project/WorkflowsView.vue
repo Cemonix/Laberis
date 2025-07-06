@@ -43,7 +43,7 @@ import WorkflowCard from '@/components/project/workflow/WorkflowCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateWorkflowForm from '@/components/project/workflow/CreateWorkflowForm.vue';
 import Button from '@/components/common/Button.vue';
-import { type Workflow, type CreateWorkflowRequest } from '@/types/workflow';
+import { type Workflow, type CreateWorkflowWithStagesRequest } from '@/types/workflow';
 import { workflowService } from '@/services/api/workflowService';
 import { useAlert } from '@/composables/useAlert';
 import { AppLogger } from '@/utils/logger';
@@ -51,7 +51,7 @@ import { useConfirm } from '@/composables/useConfirm';
 import { useToast } from '@/composables/useToast';
 import { useErrorHandler } from '@/composables/useErrorHandler';
 
-const logger = AppLogger.createServiceLogger('WorkflowsView');
+const logger = AppLogger.createComponentLogger('WorkflowsView');
 const route = useRoute();
 const router = useRouter();
 const { showAlert } = useAlert();
@@ -78,8 +78,8 @@ const loadWorkflows = async () => {
     isLoading.value = true;
     try {
         const response = await workflowService.getWorkflows(projectId);
-        workflows.value = response;
-        logger.info(`Loaded ${response.length} workflows for project ${projectId}`);
+        workflows.value = response.data;
+        logger.info(`Loaded ${response.data.length} workflows for project ${projectId}`);
     } catch (error) {
         handleError(error, 'Failed to load workflows');
     } finally {
@@ -87,7 +87,7 @@ const loadWorkflows = async () => {
     }
 };
 
-const handleCreateWorkflow = async (formData: CreateWorkflowRequest) => {
+const handleCreateWorkflow = async (formData: CreateWorkflowWithStagesRequest) => {
     const projectId = Number(route.params.projectId);
     if (!projectId || isNaN(projectId)) {
         logger.error('Invalid project ID in route params', route.params.projectId);
@@ -107,9 +107,9 @@ const handleCreateWorkflow = async (formData: CreateWorkflowRequest) => {
 
     isCreating.value = true;
     try {
-        const newWorkflow = await workflowService.createWorkflow(projectId, formData);
+        const newWorkflow = await workflowService.createWorkflowWithStages(projectId, formData);
         workflows.value.push(newWorkflow);
-        logger.info(`Created workflow: ${newWorkflow.name} (ID: ${newWorkflow.id})`);
+        logger.info(`Created workflow with stages: ${newWorkflow.name} (ID: ${newWorkflow.id})`);
         closeModal();
         showCreateSuccess("Workflow", newWorkflow.name);
     } catch (error) {

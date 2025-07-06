@@ -88,7 +88,7 @@
                             v-model="member.role"
                             @change="handleUpdateRole(member)"
                             class="role-select"
-                            :disabled="isUpdatingRole || member.userId === currentUserId"
+                            :disabled="isUpdatingRole || member.email === currentUserEmail"
                         >
                             <option 
                                 v-for="role in availableRoles" 
@@ -102,7 +102,7 @@
                             variant="secondary"
                             size="small"
                             @click="handleRemoveMember(member)"
-                            :disabled="isRemoving || member.userId === currentUserId"
+                            :disabled="isRemoving || member.email === currentUserEmail"
                             class="remove-btn"
                         >
                             Remove
@@ -173,7 +173,7 @@ import { AppLogger } from '@/utils/logger';
 import type { ProjectMember, InviteMemberRequest } from '@/types/projectMember';
 import { ProjectRole } from '@/types/project';
 
-const logger = AppLogger.createServiceLogger('MembersSection');
+const logger = AppLogger.createComponentLogger('MembersSection');
 
 interface Props {
     projectId: number;
@@ -216,7 +216,7 @@ const availableRoles = [
 ];
 
 // Computed
-const currentUserId = computed(() => authStore.user?.id);
+const currentUserEmail = computed(() => authStore.user?.email);
 
 const isInviteFormValid = computed(() => {
     return inviteForm.email.trim() && 
@@ -330,8 +330,8 @@ const handleUpdateRole = async (member: ProjectMember) => {
     
     isUpdatingRole.value = true;
     try {
-        await projectMemberService.updateMemberRole(props.projectId, member.userId, member.role);
-        logger.info(`Updated role for ${member.userId} to ${member.role}`);
+        await projectMemberService.updateMemberRole(props.projectId, member.email, member.role);
+        logger.info(`Updated role for ${member.email} to ${member.role}`);
         showCreateSuccess('Role Updated', `${member.userName || member.email}'s role has been updated`);
     } catch (error) {
         handleError(error, 'Failed to update member role');
@@ -352,10 +352,10 @@ const handleRemoveMember = async (member: ProjectMember) => {
     
     isRemoving.value = true;
     try {
-        await projectMemberService.removeMember(props.projectId, member.userId);
+        await projectMemberService.removeMember(props.projectId, member.email);
         currentMembers.value = currentMembers.value.filter(m => m.id !== member.id);
         
-        logger.info(`Removed member ${member.userId} from project ${props.projectId}`);
+        logger.info(`Removed member ${member.email} from project ${props.projectId}`);
         showDeleteSuccess('Member', member.userName || member.email || 'User');
     } catch (error) {
         handleError(error, 'Failed to remove member');
@@ -374,7 +374,7 @@ const handleRevokeInvitation = async (invitation: ProjectMember) => {
     
     isRevoking.value = true;
     try {
-        await projectMemberService.removeMember(props.projectId, invitation.userId);
+        await projectMemberService.removeMember(props.projectId, invitation.email);
         pendingInvitations.value = pendingInvitations.value.filter(i => i.id !== invitation.id);
         
         logger.info(`Revoked invitation for ${invitation.email}`);

@@ -2,28 +2,7 @@
     <div class="workflow-pipeline-view">
         <div class="view-header">
             <div class="header-left">
-                <Button 
-                    variant="secondary" 
-                    size="small"
-                    @click="goBackToWorkflows"
-                >
-                    ← Back to Workflows
-                </Button>
-                <h2>Workflow Pipeline Builder</h2>
-            </div>
-            <div class="view-actions">
-                <Button
-                    variant="primary"
-                    @click="showCreateStageModal = true"
-                >
-                    Add Stage
-                </Button>
-                <Button
-                    variant="secondary"
-                    @click="showConnectionModal = true"
-                >
-                    Add Connection
-                </Button>
+                <h2>Pipeline Viewer</h2>
             </div>
         </div>
 
@@ -33,25 +12,12 @@
                 :workflow-name="workflowName"
                 :stages="pipelineStages"
                 :can-edit="true"
+                :is-loading="isLoading"
+                :error="errorMessage"
                 @edit-pipeline="handleEditPipeline"
+                @stage-click="handleStageClick"
                 @refresh="loadPipelineData"
             />
-        </div>
-
-        <div v-if="showCreateStageModal" class="modal-overlay" @click="showCreateStageModal = false">
-            <div class="modal-content" @click.stop>
-                <h3>Add New Stage</h3>
-                <p>Stage creation form will be implemented here</p>
-                <Button @click="showCreateStageModal = false">Close</Button>
-            </div>
-        </div>
-
-        <div v-if="showConnectionModal" class="modal-overlay" @click="showConnectionModal = false">
-            <div class="modal-content" @click.stop>
-                <h3>Add Stage Connection</h3>
-                <p>Connection creation form will be implemented here</p>
-                <Button @click="showConnectionModal = false">Close</Button>
-            </div>
         </div>
     </div>
 </template>
@@ -59,70 +25,89 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import Button from '@/components/common/Button.vue';
 import WorkflowPipelineViewer from '@/components/project/workflow/WorkflowPipelineViewer.vue';
 import type { WorkflowStagePipeline } from '@/types/workflow';
-import { WorkflowStageType } from '@/types/workflow';
+import { workflowStageService } from '@/services/api/workflowStageService';
+import { useErrorHandler } from '@/composables/useErrorHandler';
+import { AppLogger } from '@/utils/logger';
 
+const logger = AppLogger.createComponentLogger('WorkflowPipelineView');
 const route = useRoute();
 const router = useRouter();
+const { handleError } = useErrorHandler();
 
 const workflowId = ref<number>(parseInt(route.params.workflowId as string));
-const workflowName = ref<string>('Sample Workflow');
-const showCreateStageModal = ref(false);
-const showConnectionModal = ref(false);
-
-const pipelineStages = ref<WorkflowStagePipeline[]>([
-    {
-        id: 1,
-        name: 'Annotation',
-        description: 'Annotate imported data',
-        stageOrder: 1,
-        stageType: WorkflowStageType.ANNOTATION,
-        isInitialStage: false,
-        isFinalStage: false,
-        previousStageIds: [1],
-        nextStageIds: [2],
-        assignedUserCount: 5,
-    },
-    {
-        id: 2,
-        name: 'Review',
-        description: 'Review annotated data for quality',
-        stageOrder: 2,
-        stageType: WorkflowStageType.REVIEW,
-        isInitialStage: false,
-        isFinalStage: false,
-        previousStageIds: [1],
-        nextStageIds: [3, 1],
-        assignedUserCount: 2,
-    },
-    {
-        id: 3,
-        name: 'Final Acceptance',
-        description: 'Final acceptance of reviewed data',
-        stageOrder: 3,
-        stageType: WorkflowStageType.ACCEPTED,
-        isInitialStage: false,
-        isFinalStage: true,
-        previousStageIds: [2],
-        nextStageIds: [],
-        assignedUserCount: 1,
-    }
-]);
+const projectId = ref<number>(parseInt(route.params.projectId as string));
+const workflowName = ref<string>('');
+const pipelineStages = ref<WorkflowStagePipeline[]>([]);
+const isLoading = ref<boolean>(true);
+const errorMessage = ref<string | null>(null);
 
 const loadPipelineData = async () => {
-    console.log('Loading pipeline data for workflow:', workflowId.value);
+    if (!workflowId.value || isNaN(workflowId.value)) {
+        errorMessage.value = 'Invalid workflow ID';
+        isLoading.value = false;
+        return;
+    }
+
+    if (!projectId.value || isNaN(projectId.value)) {
+        errorMessage.value = 'Invalid project ID';
+        isLoading.value = false;
+        return;
+    }
+
+    isLoading.value = true;
+    errorMessage.value = null;
+    
+    try {
+        logger.info(`Loading pipeline data for workflow ${workflowId.value} in project ${projectId.value}`);
+        
+        const workflowWithStages = await workflowStageService.getWorkflowWithStages(
+            projectId.value, 
+            workflowId.value
+        );
+        
+        workflowName.value = workflowWithStages.name;
+        
+        // Transform WorkflowStage[] to WorkflowStagePipeline[]
+        pipelineStages.value = workflowWithStages.stages.map(stage => ({
+            id: stage.id,
+            name: stage.name,
+            description: stage.description,
+            stageOrder: stage.stageOrder,
+            stageType: stage.stageType,
+            isInitialStage: stage.isInitialStage,
+            isFinalStage: stage.isFinalStage,
+            previousStageIds: stage.incomingConnections?.map(conn => conn.fromStageId) || [],
+            nextStageIds: stage.outgoingConnections?.map(conn => conn.toStageId) || [],
+            assignedUserCount: stage.assignments?.length || 0,
+        }));
+        
+        logger.info(`Successfully loaded ${pipelineStages.value.length} stages for workflow "${workflowName.value}"`);
+        
+    } catch (error) {
+        logger.error('Error loading pipeline data', error);
+        errorMessage.value = 'Failed to load workflow pipeline data';
+        handleError(error, 'Loading workflow pipeline');
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 const handleEditPipeline = () => {
-    console.log('Edit pipeline requested');
+    logger.debug('Edit pipeline requested');
+    // TODO: Navigate to edit mode or show edit modal
 };
 
-const goBackToWorkflows = () => {
+const handleStageClick = (stage: WorkflowStagePipeline) => {
+    logger.info('Stage clicked, navigating to tasks view', { stageId: stage.id, stageName: stage.name });
     router.push({
-        name: 'ProjectWorkflows',
-        params: { projectId: route.params.projectId }
+        name: 'StageTasks',
+        params: {
+            projectId: projectId.value,
+            workflowId: workflowId.value,
+            stageId: stage.id
+        }
     });
 };
 
@@ -168,31 +153,14 @@ onMounted(() => {
     gap: vars.$gap-medium;
 }
 
+.view-actions {
+    display: flex;
+    gap: vars.$gap-medium;
+}
+
 .pipeline-container {
     flex-grow: 1;
     position: relative;
     overflow: hidden;
-}
-
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.modal-content {
-    background-color: vars.$color-white;
-    padding: vars.$padding-large;
-    border-radius: vars.$border-radius-md;
-    box-shadow: vars.$shadow-lg;
-    max-width: 500px;
-    width: 90%;
 }
 </style>

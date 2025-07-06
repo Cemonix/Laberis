@@ -29,7 +29,7 @@ defineEmits(["submit"]);
 
     label {
         font-weight: bold;
-        color: vars.$theme-text-light;
+        color: vars.$theme-text;
     }
 
     input[type="text"],
