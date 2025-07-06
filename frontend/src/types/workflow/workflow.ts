@@ -1,4 +1,4 @@
-import type { WorkflowStage } from "./workflowstage";
+import type { WorkflowStage, WorkflowStageType } from "./workflowstage";
 
 export interface Workflow {
     id: number;
@@ -22,4 +22,24 @@ export interface UpdateWorkflowRequest {
 
 export interface WorkflowWithStages extends Workflow {
     stages: WorkflowStage[];
+}
+
+export interface CreateWorkflowWithStagesRequest {
+    name: string;
+    description?: string;
+    stages: CreateWorkflowStageWithAssignmentsRequest[];
+    createDefaultStages?: boolean;
+    includeReviewStage?: boolean;
+}
+
+export interface CreateWorkflowStageWithAssignmentsRequest {
+    name: string;
+    description?: string;
+    stageOrder: number;
+    stageType?: WorkflowStageType;
+    isInitialStage: boolean;
+    isFinalStage: boolean;
+    inputDataSourceId?: number;
+    targetDataSourceId?: number;
+    assignedProjectMemberIds: number[];
 }

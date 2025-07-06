@@ -22,3 +22,14 @@ export {
     isValidPaginatedResponse,
     isValidResponseWithCustomValidation
 } from '../../services/utils';
+
+// Table types
+export type {
+    TableColumn,
+    TableAction,
+    TableRowAction,
+    TablePagination,
+    TableSortConfig,
+    TableData,
+    TableConfig
+} from './table';

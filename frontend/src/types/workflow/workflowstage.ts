@@ -2,11 +2,8 @@ import type { ProjectMember } from "../projectMember";
 
 export enum WorkflowStageType {
     ANNOTATION = "ANNOTATION",
-    SUSPENDED = "SUSPENDED",
-    DEFERRED = "DEFERRED",
-    REVIEW = "REVIEW",
-    REQUIRES_CHANGES = "REQUIRES_CHANGES",
-    ACCEPTED = "ACCEPTED"
+    REVISION = "REVISION",
+    COMPLETION = "COMPLETION"
 }
 
 export interface WorkflowStage {
@@ -107,11 +104,8 @@ export interface WorkflowStageWithUsers extends WorkflowStage {
 // Utility functions for stage types
 export const WorkflowStageTypeLabels: Record<WorkflowStageType, string> = {
     [WorkflowStageType.ANNOTATION]: "Annotation",
-    [WorkflowStageType.SUSPENDED]: "Suspended",
-    [WorkflowStageType.DEFERRED]: "Deferred",
-    [WorkflowStageType.REVIEW]: "Review",
-    [WorkflowStageType.REQUIRES_CHANGES]: "Requires Changes",
-    [WorkflowStageType.ACCEPTED]: "Accepted"
+    [WorkflowStageType.REVISION]: "Revision",
+    [WorkflowStageType.COMPLETION]: "Completion"
 };
 
 export const formatStageType = (type: WorkflowStageType): string => {
