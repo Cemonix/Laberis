@@ -11,9 +11,8 @@ using server.Services.Interfaces;
 
 namespace Server.Tests.Services
 {
-    public class AssetServiceTests : IDisposable
+    public class AssetServiceTests
     {
-        private readonly DbContextFactory _dbContextFactory;
         private readonly Mock<IAssetRepository> _mockAssetRepository;
         private readonly Mock<IFileStorageService> _mockFileStorageService;
         private readonly Mock<IDataSourceRepository> _mockDataSourceRepository;
@@ -23,7 +22,6 @@ namespace Server.Tests.Services
 
         public AssetServiceTests()
         {
-            _dbContextFactory = new DbContextFactory();
             _mockAssetRepository = new Mock<IAssetRepository>();
             _mockFileStorageService = new Mock<IFileStorageService>();
             _mockDataSourceRepository = new Mock<IDataSourceRepository>();
@@ -121,12 +119,6 @@ namespace Server.Tests.Services
                 a.ProjectId == projectId)), Times.Once
             );
             _mockAssetRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
-        }
-
-        public void Dispose()
-        {
-            _dbContextFactory.Dispose();
-            GC.SuppressFinalize(this);
         }
     }
 }
