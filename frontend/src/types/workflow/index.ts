@@ -4,6 +4,8 @@ export type {
     CreateWorkflowRequest,
     UpdateWorkflowRequest,
     WorkflowWithStages,
+    CreateWorkflowWithStagesRequest,
+    CreateWorkflowStageWithAssignmentsRequest,
 } from './workflow';
 
 export type {
@@ -22,9 +24,3 @@ export {
     WorkflowStageType,
     formatStageType
 } from './workflowstage';
-
-export type {
-    Connection,
-    PipelineLayout,
-    StagePosition,
-} from './pipeline';
