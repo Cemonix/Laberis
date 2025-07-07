@@ -209,7 +209,7 @@ const loadTasks = async () => {
             hasAvailableAssets.value = assetsCheck.hasAssets;
             availableAssetsCount.value = assetsCheck.count;
         } catch (assetCheckError) {
-            logger.warn('Failed to check assets availability, assuming assets are available', assetCheckError);
+            logger.warn('Failed to check assets availability, assuming assets are unavailable', assetCheckError);
             hasAvailableAssets.value = false;
             availableAssetsCount.value = 0;
         }
