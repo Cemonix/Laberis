@@ -313,4 +313,28 @@ public class TasksController : ControllerBase
             return StatusCode(500, "An unexpected error occurred. Please try again later.");
         }
     }
+
+    /// <summary>
+    /// Gets the count of available assets for task creation in a project.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <returns>The count of available assets.</returns>
+    /// <response code="200">Returns the count of available assets.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
+    [HttpGet("available-assets-count")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetAvailableAssetsCount(int projectId)
+    {
+        try
+        {
+            var count = await _taskService.GetAvailableAssetsCountAsync(projectId);
+            return Ok(new { count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while getting available assets count for project {ProjectId}.", projectId);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
 }

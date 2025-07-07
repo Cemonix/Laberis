@@ -85,4 +85,29 @@ public interface ITaskService
     /// <param name="userId">The ID of the user performing the action.</param>
     /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
     Task<TaskDto?> MoveTaskToStageAsync(int taskId, int workflowStageId, string userId);
+
+    /// <summary>
+    /// Creates tasks automatically for all assets in a project when a workflow is created.
+    /// This creates tasks at the initial workflow stage for all imported assets.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="workflowId">The ID of the workflow.</param>
+    /// <param name="initialStageId">The ID of the initial workflow stage.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the number of tasks created.</returns>
+    Task<int> CreateTasksForAllAssetsAsync(int projectId, int workflowId, int initialStageId);
+
+    /// <summary>
+    /// Checks if a data source has any assets available for task creation.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="dataSourceId">The ID of the data source to check.</param>
+    /// <returns>A task that represents the asynchronous operation, returning true if assets are available, otherwise false.</returns>
+    Task<bool> HasAssetsAvailableAsync(int projectId, int dataSourceId);
+
+    /// <summary>
+    /// Gets the count of assets available in a project for task creation.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the count of available assets.</returns>
+    Task<int> GetAvailableAssetsCountAsync(int projectId);
 }

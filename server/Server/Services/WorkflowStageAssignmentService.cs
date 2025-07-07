@@ -106,6 +106,8 @@ public class WorkflowStageAssignmentService : IWorkflowStageAssignmentService
 
         // Fetch the complete assignments with navigation properties
         var createdAssignments = new List<WorkflowStageAssignmentDto>();
+        // TODO: Consider optimizing this to reduce database calls
+        // Fetch assignments in bulk if possible
         foreach (var assignment in assignments)
         {
             var createdAssignment = await _assignmentRepository.GetByIdWithDetailsAsync(assignment.WorkflowStageAssignmentId);

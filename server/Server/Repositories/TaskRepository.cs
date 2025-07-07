@@ -155,4 +155,44 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
         }
         return query;
     }
+
+    public async Task<IEnumerable<Asset>> GetAvailableAssetsForTaskCreationAsync(int projectId)
+    {
+        _logger.LogInformation("Getting available assets for task creation in project {ProjectId}", projectId);
+
+        // Get all assets in the project that are imported and don't have tasks yet
+        var availableAssets = await _context.Assets
+            .Where(a => a.ProjectId == projectId 
+                       && a.Status == Models.Domain.Enums.AssetStatus.IMPORTED
+                       && !_context.Tasks.Any(t => t.AssetId == a.AssetId))
+            .ToListAsync();
+
+        _logger.LogInformation("Found {Count} available assets for task creation in project {ProjectId}", 
+            availableAssets.Count, projectId);
+
+        return availableAssets;
+    }
+
+    public async Task<int> GetAvailableAssetsCountAsync(int projectId, int? dataSourceId = null)
+    {
+        _logger.LogInformation("Getting available assets count for project {ProjectId}, dataSource {DataSourceId}", 
+            projectId, dataSourceId);
+
+        var query = _context.Assets
+            .Where(a => a.ProjectId == projectId 
+                       && a.Status == Models.Domain.Enums.AssetStatus.IMPORTED
+                       && !_context.Tasks.Any(t => t.AssetId == a.AssetId));
+
+        if (dataSourceId.HasValue)
+        {
+            query = query.Where(a => a.DataSourceId == dataSourceId.Value);
+        }
+
+        var count = await query.CountAsync();
+
+        _logger.LogInformation("Found {Count} available assets in project {ProjectId}, dataSource {DataSourceId}", 
+            count, projectId, dataSourceId);
+
+        return count;
+    }
 }

@@ -12,6 +12,7 @@ public class WorkflowServiceTests
     private readonly Mock<IWorkflowRepository> _mockWorkflowRepository;
     private readonly Mock<IWorkflowStageService> _mockWorkflowStageService;
     private readonly Mock<IWorkflowStageAssignmentService> _mockWorkflowStageAssignmentService;
+    private readonly Mock<ITaskService> _mockTaskService;
     private readonly Mock<ILogger<WorkflowService>> _mockLogger;
     private readonly WorkflowService _workflowService;
 
@@ -20,12 +21,14 @@ public class WorkflowServiceTests
         _mockWorkflowRepository = new Mock<IWorkflowRepository>();
         _mockWorkflowStageService = new Mock<IWorkflowStageService>();
         _mockWorkflowStageAssignmentService = new Mock<IWorkflowStageAssignmentService>();
+        _mockTaskService = new Mock<ITaskService>();
         _mockLogger = new Mock<ILogger<WorkflowService>>();
 
         _workflowService = new WorkflowService(
             _mockWorkflowRepository.Object,
             _mockWorkflowStageService.Object,
             _mockWorkflowStageAssignmentService.Object,
+            _mockTaskService.Object,
             _mockLogger.Object
         );
     }
