@@ -27,10 +27,10 @@
         <Button class="fab" @click="openModal" aria-label="Create New Workflow">+</Button>
 
         <ModalWindow :is-open="isModalOpen" title="Create New Workflow" @close="closeModal" :hide-footer="true">
-            <CreateWorkflowForm 
+            <CreateWorkflowWizard 
                 :project-id="Number(route.params.projectId)" 
                 @cancel="closeModal" 
-                @save="handleCreateWorkflow" 
+                @submit="handleCreateWorkflow" 
             />
         </ModalWindow>
     </div>
@@ -41,7 +41,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import WorkflowCard from '@/components/project/workflow/WorkflowCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
-import CreateWorkflowForm from '@/components/project/workflow/CreateWorkflowForm.vue';
+import CreateWorkflowWizard from '@/components/project/workflow/CreateWorkflowWizard.vue';
 import Button from '@/components/common/Button.vue';
 import { type Workflow, type CreateWorkflowWithStagesRequest } from '@/types/workflow';
 import { workflowService } from '@/services/api/workflowService';
@@ -225,5 +225,11 @@ onMounted(() => {
 
 .workflows-page.fade-slide-leave-active .fab {
     opacity: 0;
+}
+
+// Make modal larger for workflow wizard
+:deep(.modal-window) {
+    max-width: 1000px;
+    width: 90vw;
 }
 </style>

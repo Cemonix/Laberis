@@ -57,8 +57,9 @@ class TaskService {
         const url = `${this.baseUrl}/${projectId}/tasks?${queryParams.toString()}`;
         const response = await apiClient.get(url);
         
-        // Transform backend DTO to frontend interface
-        const tasks: Task[] = response.data.map((dto: any) => ({
+        // Backend returns PaginatedResponse<TaskDto> with structure: { data: [...], totalItems: ..., currentPage: ..., etc }
+        const paginatedResponse = response.data;
+        const tasks: Task[] = paginatedResponse.data.map((dto: any) => ({
             id: dto.id,
             priority: dto.priority,
             dueDate: dto.dueDate,
@@ -76,14 +77,12 @@ class TaskService {
             status: this.deriveStatus(dto.completedAt, dto.archivedAt, dto.assignedToEmail)
         }));
 
-        // For now, return paginated response format
-        // TODO: Update when backend returns pagination metadata
         return {
             tasks,
-            totalCount: tasks.length,
-            currentPage: params.pageNumber || 1,
-            pageSize: params.pageSize || 25,
-            totalPages: Math.ceil(tasks.length / (params.pageSize || 25))
+            totalCount: paginatedResponse.totalItems,
+            currentPage: paginatedResponse.currentPage,
+            pageSize: paginatedResponse.pageSize,
+            totalPages: paginatedResponse.totalPages
         };
     }
 
@@ -120,7 +119,9 @@ class TaskService {
         const url = `tasks/my-tasks?${queryParams.toString()}`;
         const response = await apiClient.get(url);
         
-        const tasks: Task[] = response.data.map((dto: any) => ({
+        // Backend returns PaginatedResponse<TaskDto>
+        const paginatedResponse = response.data;
+        const tasks: Task[] = paginatedResponse.data.map((dto: any) => ({
             id: dto.id,
             priority: dto.priority,
             dueDate: dto.dueDate,
@@ -139,10 +140,10 @@ class TaskService {
 
         return {
             tasks,
-            totalCount: tasks.length,
-            currentPage: params.pageNumber || 1,
-            pageSize: params.pageSize || 25,
-            totalPages: Math.ceil(tasks.length / (params.pageSize || 25))
+            totalCount: paginatedResponse.totalItems,
+            currentPage: paginatedResponse.currentPage,
+            pageSize: paginatedResponse.pageSize,
+            totalPages: paginatedResponse.totalPages
         };
     }
 
@@ -344,6 +345,7 @@ class TaskService {
 
                 return {
                     id: task.id,
+                    assetId: task.assetId,
                     assetName,
                     priority: task.priority,
                     status: task.status || TaskStatus.NOT_STARTED,
@@ -365,6 +367,26 @@ class TaskService {
             pageSize: tasksResponse.pageSize,
             totalPages: tasksResponse.totalPages
         };
+    }
+
+    /**
+     * Check if there are assets available for task creation in a project
+     */
+    async checkAssetsAvailable(projectId: number): Promise<{ 
+        hasAssets: boolean; 
+        count: number; 
+    }> {
+        try {
+            const url = `${this.baseUrl}/${projectId}/tasks/available-assets-count`;
+            const response = await apiClient.get(url);
+            return {
+                hasAssets: response.data.count > 0,
+                count: response.data.count
+            };
+        } catch (error) {
+            console.warn('Failed to check assets availability:', error);
+            return { hasAssets: false, count: 0 };
+        }
     }
 }
 

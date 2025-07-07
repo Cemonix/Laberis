@@ -30,15 +30,15 @@
             <DataTable
                 :data="taskTableData"
                 :columns="tableColumns"
-                :actions="tableActions"
+                :actions="getTableActions()"
                 :row-actions="rowActions"
                 :is-loading="isLoading"
                 :error="errorMessage"
                 :clickable-rows="true"
                 :pagination="paginationData"
                 title="Tasks"
-                empty-message="No tasks found"
-                empty-description="Tasks will be automatically created when assets are added to this workflow stage."
+                :empty-message="getEmptyMessage()"
+                :empty-description="getEmptyDescription()"
                 @action="handleTableAction"
                 @row-action="handleRowAction"
                 @row-click="handleTaskClick"
@@ -47,6 +47,13 @@
                 @sort="handleSort"
             >
                 <!-- Custom cell renderers -->
+                <template #cell-priority="{ value }">
+                    <div class="priority-cell" :class="getPriorityClass(value)">
+                        <font-awesome-icon :icon="getPriorityIcon(value)" />
+                        {{ getPriorityLabel(value) }}
+                    </div>
+                </template>
+
                 <template #cell-status="{ value }">
                     <TaskStatusBadge :status="value" />
                 </template>
@@ -86,7 +93,11 @@ import {
     faEdit,
     faUserCog,
     faPlay,
-    faTrash
+    faTrash,
+    faExclamationTriangle,
+    faArrowUp,
+    faMinus,
+    faPlus
 } from '@fortawesome/free-solid-svg-icons';
 import Button from '@/components/common/Button.vue';
 import DataTable from '@/components/common/DataTable.vue';
@@ -117,21 +128,37 @@ const pageSize = ref<number>(25);
 const totalItems = ref<number>(0);
 const sortKey = ref<string>('createdAt');
 const sortDirection = ref<'asc' | 'desc'>('desc');
+const hasAvailableAssets = ref<boolean>(true);
+const availableAssetsCount = ref<number>(0);
 
 // Table configuration
 const tableColumns: TableColumn[] = [
     { key: 'assetName', label: 'Asset', sortable: true, width: '25%' },
-    { key: 'status', label: 'Status', sortable: true, width: '15%', align: 'center' },
-    { key: 'assignedTo', label: 'Assigned To', sortable: true, width: '20%' },
-    { key: 'dueDate', label: 'Due Date', sortable: true, width: '15%', format: 'date' },
-    { key: 'createdAt', label: 'Created', sortable: true, width: '15%', format: 'datetime' },
-    { key: 'completedAt', label: 'Completed', sortable: true, width: '15%', format: 'datetime' },
+    { key: 'priority', label: 'Priority', sortable: true, width: '10%', align: 'center' },
+    { key: 'status', label: 'Status', sortable: true, width: '12%', align: 'center' },
+    { key: 'assignedTo', label: 'Assigned To', sortable: true, width: '18%' },
+    { key: 'dueDate', label: 'Due Date', sortable: true, width: '12%', format: 'date' },
+    { key: 'createdAt', label: 'Created', sortable: true, width: '12%', format: 'datetime' },
+    { key: 'completedAt', label: 'Completed', sortable: true, width: '11%', format: 'datetime' },
 ];
 
-const tableActions: TableAction[] = [
-    { key: 'create-tasks', label: 'Create Tasks', icon: faEdit, variant: 'primary' },
-    { key: 'bulk-assign', label: 'Bulk Assign', icon: faUserCog, variant: 'secondary' },
-];
+const getTableActions = (): TableAction[] => {
+    const actions: TableAction[] = [
+        { key: 'bulk-assign', label: 'Bulk Assign', icon: faUserCog, variant: 'secondary' },
+    ];
+    
+    // Add "Import Assets" action if no assets are available
+    if (!hasAvailableAssets.value) {
+        actions.unshift({
+            key: 'import-assets',
+            label: 'Import Assets',
+            icon: faPlus,
+            variant: 'primary'
+        });
+    }
+    
+    return actions;
+};
 
 const rowActions: TableRowAction<TaskTableRow>[] = [
     { 
@@ -175,6 +202,17 @@ const loadTasks = async () => {
     
     try {
         logger.info(`Loading tasks for stage ${stageId.value} in workflow ${workflowId.value}`);
+        
+        // First check if there are any available assets for task creation (non-blocking)
+        try {
+            const assetsCheck = await taskService.checkAssetsAvailable(projectId.value);
+            hasAvailableAssets.value = assetsCheck.hasAssets;
+            availableAssetsCount.value = assetsCheck.count;
+        } catch (assetCheckError) {
+            logger.warn('Failed to check assets availability, assuming assets are available', assetCheckError);
+            hasAvailableAssets.value = false;
+            availableAssetsCount.value = 0;
+        }
         
         const params = {
             sortBy: sortKey.value,
@@ -265,8 +303,9 @@ const generateMockTasks = (stageId: number): TaskTableRow[] => {
         
         const task: TaskTableRow = {
             id: taskId,
+            assetId: taskId + 1000, // Mock assetId
             assetName: asset,
-            priority: 1, // Keep priority for backend compatibility but don't display
+            priority: Math.floor(Math.random() * 3) + 1, // Random priority 1-3
             status,
             assignedTo: assignedTo || undefined,
             createdAt: createdDate.toISOString(),
@@ -294,11 +333,17 @@ const generateMockTasks = (stageId: number): TaskTableRow[] => {
 const handleTableAction = (actionKey: string) => {
     logger.debug('Table action triggered', { actionKey });
     switch (actionKey) {
-        case 'create-tasks':
-            // TODO: Show create tasks dialog
-            break;
         case 'bulk-assign':
             // TODO: Show bulk assignment dialog
+            break;
+        case 'import-assets':
+            // Navigate to data sources page for asset import
+            router.push({
+                name: 'ProjectDataSources',
+                params: {
+                    projectId: projectId.value
+                }
+            });
             break;
     }
 };
@@ -322,13 +367,18 @@ const handleRowAction = (actionKey: string, row: TaskTableRow, index: number) =>
 };
 
 const handleTaskClick = (task: TaskTableRow, _index: number) => {
-    logger.info('Navigating to annotation workspace', { taskId: task.id, assetName: task.assetName });
-    // TODO: Navigate to annotation workspace
+    logger.info('Navigating to annotation workspace', { taskId: task.id, assetId: task.assetId, assetName: task.assetName });
+    
+    // Navigate to annotation workspace using projectId and the task's assetId
+    // The workspace will load the asset and any existing annotations
     router.push({
         name: 'AnnotationWorkspace',
         params: {
-            projectId: projectId.value,
-            taskId: task.id
+            projectId: projectId.value.toString(),
+            assetId: task.assetId.toString()
+        },
+        query: {
+            taskId: task.id.toString() // Pass taskId as query parameter for context
         }
     });
 };
@@ -371,6 +421,38 @@ const getDueDateClass = (dueDate: string): string => {
     if (diffDays <= 1) return 'urgent';
     if (diffDays <= 3) return 'soon';
     return 'normal';
+};
+
+const getPriorityClass = (priority: number): string => {
+    if (priority >= 3) return 'priority-high';
+    if (priority === 2) return 'priority-medium';
+    return 'priority-low';
+};
+
+const getPriorityIcon = (priority: number) => {
+    if (priority >= 3) return faExclamationTriangle;
+    if (priority === 2) return faArrowUp;
+    return faMinus;
+};
+
+const getPriorityLabel = (priority: number): string => {
+    if (priority >= 3) return 'High';
+    if (priority === 2) return 'Medium';
+    return 'Low';
+};
+
+const getEmptyMessage = (): string => {
+    if (!hasAvailableAssets.value) {
+        return 'No assets available for task creation';
+    }
+    return 'No tasks found';
+};
+
+const getEmptyDescription = (): string => {
+    if (!hasAvailableAssets.value) {
+        return 'There are no assets imported in this project yet. Assets need to be imported into data sources before tasks can be automatically created. Go to the Data Sources page to import assets.';
+    }
+    return 'Tasks will be automatically created when assets are added to this workflow stage.';
 };
 
 onMounted(() => {
@@ -493,6 +575,25 @@ onMounted(() => {
 .no-due-date {
     color: vars.$theme-text-light;
     font-style: italic;
+}
+
+.priority-cell {
+    display: flex;
+    align-items: center;
+    gap: vars.$gap-xsmall;
+    font-weight: vars.$font-weight-medium;
+    
+    &.priority-high {
+        color: vars.$color-error;
+    }
+    
+    &.priority-medium {
+        color: vars.$color-warning;
+    }
+    
+    &.priority-low {
+        color: vars.$theme-text-light;
+    }
 }
 
 @media (max-width: 768px) {

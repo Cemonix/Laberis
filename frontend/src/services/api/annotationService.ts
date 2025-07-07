@@ -1,13 +1,13 @@
 import apiClient from './apiClient';
 import { transformApiError, isValidApiResponse, isValidPaginatedResponse } from '@/services/utils';
 import type { PaginatedResponse, QueryParams } from '@/types/api';
-import type { 
-    Annotation, 
+import type {
     AnnotationDto, 
     CreateAnnotationDto, 
     UpdateAnnotationDto
 } from '@/types/annotation';
 import { AppLogger } from '@/utils/logger';
+import type { Annotation } from '@/types/workspace/annotation';
 
 const logger = AppLogger.createServiceLogger('AnnotationService');
 

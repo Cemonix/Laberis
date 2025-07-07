@@ -85,6 +85,7 @@ export interface TaskWithDetails extends Task {
 // For table display
 export interface TaskTableRow {
     id: number;
+    assetId: number; // Add assetId for navigation
     assetName: string;
     priority: number;
     status: TaskStatus;
