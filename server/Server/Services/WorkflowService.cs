@@ -14,17 +14,20 @@ public class WorkflowService : IWorkflowService
     private readonly IWorkflowRepository _workflowRepository;
     private readonly IWorkflowStageService _workflowStageService;
     private readonly IWorkflowStageAssignmentService _workflowStageAssignmentService;
+    private readonly ITaskService _taskService;
     private readonly ILogger<WorkflowService> _logger;
 
     public WorkflowService(
         IWorkflowRepository workflowRepository,
         IWorkflowStageService workflowStageService,
         IWorkflowStageAssignmentService workflowStageAssignmentService,
+        ITaskService taskService,
         ILogger<WorkflowService> logger)
     {
         _workflowRepository = workflowRepository ?? throw new ArgumentNullException(nameof(workflowRepository));
         _workflowStageService = workflowStageService ?? throw new ArgumentNullException(nameof(workflowStageService));
         _workflowStageAssignmentService = workflowStageAssignmentService ?? throw new ArgumentNullException(nameof(workflowStageAssignmentService));
+        _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -94,14 +97,30 @@ public class WorkflowService : IWorkflowService
         _logger.LogInformation("Successfully created workflow with ID: {WorkflowId}", workflow.WorkflowId);
 
         // Create workflow stages
-        await CreateWorkflowStagesAsync(workflow.WorkflowId, createDto);
+        var initialStageId = await CreateWorkflowStagesAsync(workflow.WorkflowId, createDto);
+
+        // Automatically create tasks for all available assets if an initial stage was created
+        if (initialStageId.HasValue)
+        {
+            try
+            {
+                var tasksCreated = await _taskService.CreateTasksForAllAssetsAsync(projectId, workflow.WorkflowId, initialStageId.Value);
+                _logger.LogInformation("Automatically created {TasksCreated} tasks for workflow {WorkflowId}", tasksCreated, workflow.WorkflowId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to create tasks automatically for workflow {WorkflowId}", workflow.WorkflowId);
+                // Don't fail the workflow creation if task creation fails
+            }
+        }
 
         return MapToDto(workflow);
     }
 
-    private async System.Threading.Tasks.Task CreateWorkflowStagesAsync(int workflowId, CreateWorkflowDto createDto)
+    private async Task<int?> CreateWorkflowStagesAsync(int workflowId, CreateWorkflowDto createDto)
     {
         var stageOrder = 1;
+        int? initialStageId = null;
 
         // Create default stages if requested
         if (createDto.CreateDefaultStages)
@@ -118,7 +137,8 @@ public class WorkflowService : IWorkflowService
                 IsInitialStage = true,
                 IsFinalStage = false
             };
-            await _workflowStageService.CreateWorkflowStageAsync(workflowId, annotationStage);
+            var createdAnnotationStage = await _workflowStageService.CreateWorkflowStageAsync(workflowId, annotationStage);
+            initialStageId = createdAnnotationStage.Id; // This is the initial stage
 
             // Revision stage (if review stage is requested)
             if (createDto.IncludeReviewStage)
@@ -171,6 +191,12 @@ public class WorkflowService : IWorkflowService
 
                 var createdStage = await _workflowStageService.CreateWorkflowStageAsync(workflowId, createStageDto);
 
+                // Track the initial stage
+                if (stageDto.IsInitialStage)
+                {
+                    initialStageId = createdStage.Id;
+                }
+
                 // Create assignments for this stage if provided
                 if (stageDto.AssignedProjectMemberIds != null && stageDto.AssignedProjectMemberIds.Count != 0)
                 {
@@ -182,6 +208,8 @@ public class WorkflowService : IWorkflowService
                 }
             }
         }
+
+        return initialStageId;
     }
 
     public async Task<WorkflowDto?> UpdateWorkflowAsync(int workflowId, UpdateWorkflowDto updateDto)

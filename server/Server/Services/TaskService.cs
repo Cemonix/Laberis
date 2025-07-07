@@ -257,6 +257,68 @@ public class TaskService : ITaskService
         return MapToDto(updatedTask);
     }
 
+    public async Task<int> CreateTasksForAllAssetsAsync(int projectId, int workflowId, int initialStageId)
+    {
+        _logger.LogInformation("Creating tasks for all assets in project {ProjectId} for workflow {WorkflowId}", projectId, workflowId);
+
+        // Get all imported assets for the project that don't already have tasks
+        var availableAssets = await _taskRepository.GetAvailableAssetsForTaskCreationAsync(projectId);
+
+        if (!availableAssets.Any())
+        {
+            _logger.LogInformation("No available assets found for task creation in project {ProjectId}", projectId);
+            return 0;
+        }
+
+        var tasksCreated = 0;
+        foreach (var asset in availableAssets)
+        {
+            var createTaskDto = new CreateTaskDto
+            {
+                AssetId = asset.AssetId,
+                WorkflowId = workflowId,
+                CurrentWorkflowStageId = initialStageId,
+                Priority = 1, // Default priority
+                Metadata = null,
+                AssignedToUserId = null
+            };
+
+            try
+            {
+                await CreateTaskAsync(projectId, createTaskDto);
+                tasksCreated++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to create task for asset {AssetId} in project {ProjectId}", asset.AssetId, projectId);
+            }
+        }
+
+        _logger.LogInformation("Successfully created {TasksCreated} tasks for project {ProjectId}", tasksCreated, projectId);
+        return tasksCreated;
+    }
+
+    public async Task<bool> HasAssetsAvailableAsync(int projectId, int dataSourceId)
+    {
+        _logger.LogInformation("Checking if data source {DataSourceId} has assets available for project {ProjectId}", dataSourceId, projectId);
+        
+        var assetsCount = await _taskRepository.GetAvailableAssetsCountAsync(projectId, dataSourceId);
+        var hasAssets = assetsCount > 0;
+        
+        _logger.LogInformation("Data source {DataSourceId} has {AssetsCount} assets available", dataSourceId, assetsCount);
+        return hasAssets;
+    }
+
+    public async Task<int> GetAvailableAssetsCountAsync(int projectId)
+    {
+        _logger.LogInformation("Getting available assets count for project {ProjectId}", projectId);
+        
+        var count = await _taskRepository.GetAvailableAssetsCountAsync(projectId);
+        
+        _logger.LogInformation("Project {ProjectId} has {AssetsCount} available assets", projectId, count);
+        return count;
+    }
+
     private static TaskDto MapToDto(LaberisTask task)
     {
         return new TaskDto
