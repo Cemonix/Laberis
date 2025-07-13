@@ -3,7 +3,7 @@ using server.Models.Domain.Enums;
 
 namespace server.Models.Domain;
 
-public record class Annotation
+public record Annotation
 {
     public long AnnotationId { get; init; }
     public AnnotationType AnnotationType { get; init; }

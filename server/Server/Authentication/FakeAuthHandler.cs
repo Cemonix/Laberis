@@ -28,7 +28,7 @@ public class FakeAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
             new Claim(ClaimTypes.NameIdentifier, _fakeUserSettings.Id),
             new Claim(ClaimTypes.Name, _fakeUserSettings.Username),
             new Claim(ClaimTypes.Email, _fakeUserSettings.Email),
-            new Claim(ClaimTypes.Role, Role.ADMIN.ToString())
+            new Claim(ClaimTypes.Role, nameof(Role.ADMIN))
         };
 
         var identity = new ClaimsIdentity(claims, "Fake");

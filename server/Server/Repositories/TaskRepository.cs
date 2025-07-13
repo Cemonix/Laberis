@@ -161,6 +161,8 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
         _logger.LogInformation("Getting available assets for task creation in project {ProjectId}", projectId);
 
         // Get all assets in the project that are imported and don't have tasks yet
+        // TODO: This correlated subquery can lead to performance issues on large datasets; 
+        //       consider using a left join or grouping approach to filter out assets without tasks more efficiently.
         var availableAssets = await _context.Assets
             .Where(a => a.ProjectId == projectId 
                        && a.Status == Models.Domain.Enums.AssetStatus.IMPORTED
