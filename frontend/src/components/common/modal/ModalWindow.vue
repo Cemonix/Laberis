@@ -79,7 +79,7 @@ watch(() => props.isOpen, (newValue) => {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(var(--color-black), 0.6);
+    background-color: rgba(0, 0, 0, 0.6);
     z-index: 100;
 
     &.alert-modal {
@@ -92,7 +92,7 @@ watch(() => props.isOpen, (newValue) => {
     flex-direction: column;
     background-color: var(--color-white);
     border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(var(--color-black), 0.15);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
     width: 90%;
     max-width: 600px;
     position: relative;
