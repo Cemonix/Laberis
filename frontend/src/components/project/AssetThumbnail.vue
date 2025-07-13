@@ -166,19 +166,19 @@ const handleImageError = () => {
     flex-shrink: 0;
 
     &.status-new {
-        background-color: var(--color-info, $alpha: -0.8);
+        background-color: var(--color-info);
         color: var(--color-info);
     }
     &.status-annotated {
-        background-color: var(--color-primary, $alpha: -0.8);
+        background-color: var(--color-primary);
         color: var(--color-primary);
     }
     &.status-in_review {
-        background-color: var(--color-warning, $alpha: -0.8);
+        background-color: var(--color-warning);
         color: var(--color-warning);
     }
      &.status-approved {
-         background-color: var(--color-success, $alpha: -0.8);
+         background-color: var(--color-success);
          color: var(--color-success);
     }
 }

@@ -189,6 +189,8 @@ import type {ProjectMember} from '@/types/projectMember';
 import {projectMemberService} from '@/services/api/projectMemberService';
 import {AppLogger} from '@/utils/logger';
 
+// TODO: Remove this component. It is no longer used in the application.
+
 const logger = AppLogger.createComponentLogger('CreateWorkflowForm');
 
 interface WorkflowForm {
@@ -460,7 +462,7 @@ defineExpose({ resetForm });
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
     
     &.annotation {
         background: var(--color-info-light);
@@ -524,20 +526,20 @@ defineExpose({ resetForm });
         
         &:checked {
             background: var(--color-primary);
-            color: vars.$color-white;
+            color: var(--color-white);
         }
     }
 }
 
 .field-error {
-    color: vars.$color-error;
+    color: var(--color-error);
     font-size: 0.875rem;
     font-weight: 500;
     margin-top: 0.25rem;
 }
 
 .field-help {
-    color: vars.$color-gray-600;
+    color: var(--color-gray-600);
     font-size: 0.875rem;
     line-height: 1.4;
     margin-top: 0.25rem;
@@ -547,7 +549,7 @@ defineExpose({ resetForm });
     display: flex;
     justify-content: flex-end;
     position: relative;
-    background: vars.$color-white;
+    background: var(--color-white);
     margin-left: -1rem;
     margin-right: -1rem;
     margin-bottom: -1rem;
