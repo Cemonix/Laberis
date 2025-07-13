@@ -165,7 +165,7 @@ const stageIcon = computed(() => {
     // Clickable hover effects with stage-specific colors
     &.stage-clickable.stage-annotation:hover {
         .stage-header {
-            background: linear-gradient(135deg, var(--color-info), var(--color-info);
+            background: linear-gradient(135deg, var(--color-info), var(--color-info));
 
             .stage-name, .stage-type {
                 color: var(--color-white);
@@ -179,7 +179,7 @@ const stageIcon = computed(() => {
     
     &.stage-clickable.stage-revision:hover {
         .stage-header {
-            background: linear-gradient(135deg, var(--color-warning), var(--color-warning);
+            background: linear-gradient(135deg, var(--color-warning), var(--color-warning));
 
             .stage-name, .stage-type {
                 color: var(--color-white);
@@ -193,7 +193,7 @@ const stageIcon = computed(() => {
     
     &.stage-clickable.stage-completion:hover {
         .stage-header {
-            background: linear-gradient(135deg, var(--color-success), var(--color-success);
+            background: linear-gradient(135deg, var(--color-success), var(--color-success));
 
             .stage-name, .stage-type {
                 color: var(--color-white);
@@ -208,7 +208,7 @@ const stageIcon = computed(() => {
     // Default clickable hover for cards without specific stage types
     &.stage-clickable:not(.stage-annotation):not(.stage-revision):not(.stage-completion):hover {
         .stage-header {
-            background: linear-gradient(135deg, var(--color-primary-light, var(--color-primary);
+            background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
             
             .stage-name, .stage-type {
                 color: var(--color-white);

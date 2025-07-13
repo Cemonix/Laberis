@@ -12,8 +12,7 @@ import {faArchive, faCheckCircle, faHourglass, faPause, faPlay} from '@fortaweso
 import type {TaskStatus} from '@/types/task';
 
 interface Props {
-    status: TaskStatus
-    );
+    status: TaskStatus;
 }
 
 const props = defineProps<Props>();

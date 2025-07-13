@@ -193,7 +193,7 @@ const goHome = () => {
     font-weight: 700;
     margin-bottom: 1rem;
     color: var(--color-text-primary);
-    font-family: var(--font-family-heading), sans-serif;
+    font-family: var(), sans-serif;
 }
 
 .error-message {

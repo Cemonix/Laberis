@@ -8,7 +8,7 @@
                     :key="step.id"
                     class="step"
                     :class="{ 
-                        'active': currentStep === index, 
+                        'active': currentStep === index,
                         'completed': index < currentStep,
                         'disabled': index > currentStep
                     }"
@@ -213,7 +213,7 @@ watch(() => props.initialStep, (newStep) => {
     currentStep.value = newStep;
 });
 
-// Expose methods and data for parent component
+// Expose methods and data for a parent component
 defineExpose({
     currentStep: computed(() => currentStep.value),
     nextStep,
@@ -224,10 +224,10 @@ defineExpose({
 });
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .stepper {
     .stepper-header {
-        margin-bottom: $margin-xlarge;
+        margin-bottom: 2rem;
         
         .stepper-steps {
             display: flex;
@@ -237,11 +237,11 @@ defineExpose({
             &::before {
                 content: '';
                 position: absolute;
-                top: $margin-large;
-                left: $margin-large;
-                right: $margin-large;
+                top: 2rem;
+                left: 2rem;
+                right: 2rem;
                 height: 2px;
-                background: $color-gray-200;
+                background: var(--color-gray-200);
                 z-index: 1;
             }
             
@@ -255,16 +255,16 @@ defineExpose({
                 cursor: default;
                 
                 &.completed .step-indicator {
-                    background: $color-primary;
-                    color: $color-white;
-                    border-color: $color-primary;
+                    background: var(--color-primary);
+                    color: var(--color-white);
+                    border-color: var(--color-primary);
                 }
                 
                 &.active .step-indicator {
-                    background: $color-primary-light;
-                    color: $color-primary-dark;
-                    border-color: $color-primary;
-                    box-shadow: 0 0 0 3px $color-primary-light;
+                    background: var(--color-primary-light);
+                    color: var(--color-primary-dark);
+                    border-color: var(--color-primary);
+                    box-shadow: 0 0 0 3px var(--color-primary-light);
                 }
                 
                 &.disabled {
@@ -274,18 +274,18 @@ defineExpose({
                 .step-indicator {
                     width: 48px;
                     height: 48px;
-                    border-radius: $border-radius-circle;
-                    background: $color-white;
-                    border: 2px solid $color-gray-300;
+                    border-radius: 50%;
+                    background: var(--color-white);
+                    border: 2px solid var(--color-gray-300);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-weight: $font-weight-large;
-                    margin-bottom: $margin-small;
+                    font-weight: 600;
+                    margin-bottom: 0.5rem;
                     transition: all 0.2s ease;
                     
                     .step-check {
-                        font-size: $font-size-large;
+                        font-size: 1.25rem;
                     }
                 }
                 
@@ -293,15 +293,15 @@ defineExpose({
                     text-align: center;
                     
                     .step-title {
-                        font-weight: $font-weight-large;
-                        color: $color-text-primary;
-                        margin-bottom: $margin-xsmall;
-                        font-family: $font-family-heading;
+                        font-weight: 600;
+                        color: var(--color-text-primary);
+                        margin-bottom: 0.25rem;
+                        font-family: var(--font-family-heading), sans-serif;
                     }
                     
                     .step-description {
-                        font-size: $font-size-small;
-                        color: $color-text-secondary;
+                        font-size: 0.75rem;
+                        color: var(--color-text-secondary);
                     }
                 }
             }
@@ -312,7 +312,7 @@ defineExpose({
         min-height: 400px;
         max-height: 50vh;
         overflow-y: auto;
-        padding-right: $padding-small;
+        padding-right: 0.5rem;
         
         /* Custom scrollbar styling */
         &::-webkit-scrollbar {
@@ -320,22 +320,22 @@ defineExpose({
         }
         
         &::-webkit-scrollbar-track {
-            background: $color-gray-100;
-            border-radius: $border-radius-lg;
+            background: var(--color-gray-100);
+            border-radius: 2rem;
         }
         
         &::-webkit-scrollbar-thumb {
-            background: $color-gray-300;
-            border-radius: $border-radius-lg;
+            background: var(--color-gray-300);
+            border-radius: 2rem;
             
             &:hover {
-                background: $color-gray-400;
+                background: var(--color-gray-400);
             }
         }
         
         /* Firefox scrollbar styling */
         scrollbar-width: thin;
-        scrollbar-color: $color-gray-300 $color-gray-100;
+        scrollbar-color: var(--color-gray-300) var(--color-gray-100);
         
         /* Responsive height adjustments */
         @media (max-height: 800px) {
@@ -351,14 +351,14 @@ defineExpose({
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: $margin-xlarge;
-        padding-top: $padding-xlarge;
-        border-top: $border-width solid $color-border-light;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--color-border-light);
         
         .nav-left,
         .nav-right {
             display: flex;
-            gap: $gap-medium;
+            gap: 1rem;
         }
     }
 }
