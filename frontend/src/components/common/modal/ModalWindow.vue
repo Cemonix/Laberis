@@ -80,10 +80,10 @@ watch(() => props.isOpen, (newValue) => {
     width: 100vw;
     height: 100vh;
     background-color: rgba(var(--color-black), 0.6);
-    z-index: var(--z-layer-base-modal);
+    z-index: 100;
 
     &.alert-modal {
-        z-index: var(--z-layer-alert-modal);
+        z-index: 200;
     }
 }
 

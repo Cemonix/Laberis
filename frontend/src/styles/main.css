@@ -86,8 +86,8 @@
     --color-border-light: #e5e7eb;
 
     /* Font families */
-    --font-family-heading: 'Montserrat';
-    --font-family-body: 'Roboto';
+    --font-family-heading: 'Roboto';
+    --font-family-body: 'Montserrat';
 }
 
 /* Global Reset */
@@ -102,7 +102,7 @@ html {
 }
 
 body {
-    font-family: 'Roboto', sans-serif;
+    font-family: 'Montserrat', sans-serif;
     font-weight: 500;
     font-size: 1rem;
     background-color: var(--color-gray-50);

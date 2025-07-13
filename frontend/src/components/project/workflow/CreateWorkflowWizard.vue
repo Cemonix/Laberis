@@ -894,7 +894,7 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
                     background-position: right 0.5rem center;
                     background-repeat: no-repeat;
                     background-size: 1.5em 1.5em;
-                    padding-right: calc(#{1rem} + 1.5em);
+                    padding-right: 2.5rem;
                     appearance: none;
                     
                     &:focus {

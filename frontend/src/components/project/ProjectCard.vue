@@ -45,7 +45,7 @@ const formattedDate = computed(() => {
 });
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .project-card-link {
     display: block;
     text-decoration: none;
@@ -54,7 +54,7 @@ const formattedDate = computed(() => {
 
     &:hover .project-card-content {
         transform: translateY(-5px);
-        box-shadow: 0 1px 3px rgba(var(--color-black), 0.1);
+        box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
         border-color: var(--color-primary);
     }
 }
@@ -64,33 +64,31 @@ const formattedDate = computed(() => {
 }
 
 .project-name {
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin: 0;
-    margin-right: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 800;
 }
 
 .project-status {
     display: inline-block;
-    padding: 0.25em 0.6em;
-    font-size: 0.875rem;
-    font-weight: 700;
-    border-radius: 4px;
+    flex-shrink: 0;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.825rem;
+    font-weight: 800;
+    border-radius: 0.75rem;
     text-transform: capitalize;
     white-space: nowrap;
-    flex-shrink: 0;
 
     &.status-active {
-        background-color: var(--color-primary, $alpha: - 0.7);
-        color: var(--color-primary);
+        background-color: var(--color-primary);
+        color: var(--color-primary-light);
     }
     &.status-archived {
-        background-color: var(--color-secondary, $alpha: - 0.7);
-        color: var(--color-secondary);
+        background-color: var(--color-secondary);
+        color: var(--color-secondary-light);
     }
     &.status-read_only {
-        background-color: var(--color-warning, $alpha: - 0.7);
-        color: var(--color-warning);
+        background-color: var(--color-warning);
+        color: var(--color-warning-light);
     }
 }
 
