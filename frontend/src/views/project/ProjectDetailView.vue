@@ -88,9 +88,8 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    padding: vars.$padding-large;
+    padding: vars.$padding-xlarge;
     width: 100%;
-    max-width: vars.$max-width-wide;
     margin: 0 auto;
 }
 
