@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using server.Repositories.Interfaces;
 using System.Security.Claims;
+using server.Models.Domain;
+using Task = System.Threading.Tasks.Task;
 
 namespace server.Authentication
 {
@@ -17,11 +19,11 @@ namespace server.Authentication
 
         protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, ProjectRoleRequirement requirement)
         {
-            var httpContext = _httpContextAccessor.HttpContext;
+            HttpContext? httpContext = _httpContextAccessor.HttpContext;
             if (httpContext == null) return;
 
             // Get the current user's ID from the token claims
-            var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            string? userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
             {
                 context.Fail();
@@ -29,15 +31,17 @@ namespace server.Authentication
             }
 
             // Get the projectId from the route values
-            if (!int.TryParse(httpContext.GetRouteValue("projectId")?.ToString(), out var projectId))
+            if (!int.TryParse(httpContext.GetRouteValue("projectId")?.ToString(), out int projectId))
             {
                 context.Fail();
                 return;
             }
 
             // Find the user's membership details for this specific project
-            var projectMembers = await _projectMemberRepository.FindAsync(pm => pm.ProjectId == projectId && pm.UserId == userId);
-            var projectMember = projectMembers.FirstOrDefault();
+            IEnumerable<ProjectMember> projectMembers = await _projectMemberRepository.FindAsync(
+                pm => pm.ProjectId == projectId && pm.UserId == userId
+            );
+            ProjectMember? projectMember = projectMembers.FirstOrDefault();
 
             if (projectMember != null && requirement.RequiredRoles.Contains(projectMember.Role))
             {
