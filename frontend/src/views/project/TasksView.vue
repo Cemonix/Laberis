@@ -82,32 +82,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { 
-    faRefresh, 
-    faUser, 
-    faUserSlash, 
+import {computed, onMounted, ref} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import {
+    faArrowUp,
     faCalendar,
     faEdit,
-    faUserCog,
-    faPlay,
-    faTrash,
     faExclamationTriangle,
-    faArrowUp,
     faMinus,
-    faPlus
+    faPlay,
+    faPlus,
+    faRefresh,
+    faTrash,
+    faUser,
+    faUserCog,
+    faUserSlash
 } from '@fortawesome/free-solid-svg-icons';
 import Button from '@/components/common/Button.vue';
 import DataTable from '@/components/common/DataTable.vue';
 import TaskStatusBadge from '@/components/project/task/TaskStatusBadge.vue';
-import type { TaskTableRow } from '@/types/task';
-import { TaskStatus } from '@/types/task';
-import type { TableColumn, TableAction, TableRowAction } from '@/types/common';
-import { useErrorHandler } from '@/composables/useErrorHandler';
-import { taskService } from '@/services/api/taskService';
-import { AppLogger } from '@/utils/logger';
+import type {TaskTableRow} from '@/types/task';
+import {TaskStatus} from '@/types/task';
+import type {TableAction, TableColumn, TableRowAction} from '@/types/common';
+import {useErrorHandler} from '@/composables/useErrorHandler';
+import {taskService} from '@/services/api/taskService';
+import {AppLogger} from '@/utils/logger';
 
 const route = useRoute();
 const router = useRouter();
@@ -461,8 +461,6 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
 .stage-tasks-view {
     display: flex;
     flex-direction: column;
@@ -475,16 +473,16 @@ onMounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding: vars.$padding-large;
-    background-color: vars.$theme-surface;
-    border-bottom: 1px solid vars.$theme-border;
-    gap: vars.$gap-large;
+    padding: 1.5rem;
+    background-color: var(--color-white);
+    border-bottom: 1px solid var(--color-gray-400);
+    gap: 1.5rem;
 }
 
 .header-left {
     display: flex;
     align-items: flex-start;
-    gap: vars.$gap-medium;
+    gap: 1rem;
     flex-grow: 1;
 }
 
@@ -498,16 +496,16 @@ onMounted(() => {
     min-width: 0;
     
     h2 {
-        margin: 0 0 vars.$margin-xsmall;
-        color: vars.$theme-text;
-        font-size: vars.$font-size-xlarge;
+        margin: 0 0 0.25rem;
+        color: var(--color-gray-800);
+        font-size: 1.5rem;
         line-height: 1.2;
     }
     
     .stage-description {
         margin: 0;
-        color: vars.$theme-text-light;
-        font-size: vars.$font-size-small;
+        color: var(--color-gray-600);
+        font-size: 0.875rem;
         line-height: 1.4;
     }
 }
@@ -515,12 +513,12 @@ onMounted(() => {
 .view-actions {
     flex-shrink: 0;
     display: flex;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
 }
 
 .tasks-container {
     flex-grow: 1;
-    padding: vars.$padding-large;
+    padding: 1.5rem;
     overflow: hidden;
 }
 
@@ -528,71 +526,71 @@ onMounted(() => {
 .assigned-user {
     display: flex;
     align-items: center;
-    gap: vars.$gap-xsmall;
+    gap: 0.25rem;
     
     .user-icon {
-        color: vars.$color-success;
+        color: var(--color-success);
     }
 }
 
 .unassigned {
     display: flex;
     align-items: center;
-    gap: vars.$gap-xsmall;
-    color: vars.$theme-text-light;
+    gap: 0.25rem;
+    color: var(--color-gray-600);
     font-style: italic;
     
     .unassigned-icon {
-        color: vars.$color-warning;
+        color: var(--color-warning);
     }
 }
 
 .due-date {
     display: flex;
     align-items: center;
-    gap: vars.$gap-xsmall;
+    gap: 0.25rem;
     
     &.normal {
-        color: vars.$theme-text;
+        color: var(--color-gray-800);
     }
     
     &.soon {
-        color: vars.$color-warning;
-        font-weight: vars.$font-weight-medium;
+        color: var(--color-warning);
+        font-weight: 500;
     }
     
     &.urgent {
-        color: vars.$color-warning;
-        font-weight: vars.$font-weight-large;
+        color: var(--color-warning);
+        font-weight: 600;
     }
     
     &.overdue {
-        color: vars.$color-error;
-        font-weight: vars.$font-weight-large;
+        color: var(--color-error);
+        font-weight: 600;
     }
 }
 
 .no-due-date {
-    color: vars.$theme-text-light;
+    color: var(--color-gray-600);
     font-style: italic;
 }
 
 .priority-cell {
     display: flex;
     align-items: center;
-    gap: vars.$gap-xsmall;
-    font-weight: vars.$font-weight-medium;
+    gap: 0.25rem;
+    font-weight: 500;
     
     &.priority-high {
-        color: vars.$color-error;
+        color: var(--color-error);
     }
     
     &.priority-medium {
-        color: vars.$color-warning;
+        color: var(--color-warning);
     }
     
     &.priority-low {
-        color: vars.$theme-text-light;
+        color: var(--color-gray-600);
     }
 }
 
@@ -600,13 +598,13 @@ onMounted(() => {
     .view-header {
         flex-direction: column;
         align-items: stretch;
-        gap: vars.$gap-medium;
+        gap: 1rem;
     }
     
     .header-left {
         flex-direction: column;
         align-items: stretch;
-        gap: vars.$gap-small;
+        gap: 0.5rem;
     }
     
     .back-button {
@@ -619,7 +617,7 @@ onMounted(() => {
     }
     
     .tasks-container {
-        padding: vars.$padding-medium;
+        padding: 1rem;
     }
 }
 </style>

@@ -9,8 +9,8 @@
 import ToastContainer from '@/components/common/toast/ToastContainer.vue';
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
+<style scoped>
+
 
 .data-explorer-layout {
     display: flex;
@@ -18,7 +18,7 @@ import ToastContainer from '@/components/common/toast/ToastContainer.vue';
     height: 100vh;
     width: 100vw;
     overflow: hidden;
-    background-color: vars.$theme-background;
-    color: vars.$theme-text;
+    background-color: var(--color-gray-50);
+    color: var(--color-gray-800);
 }
 </style>

@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue';
+import {watch} from 'vue';
 import Button from '@/components/common/Button.vue';
 
 defineOptions({
@@ -70,10 +70,6 @@ watch(() => props.isOpen, (newValue) => {
 </script>
 
 <style lang="scss" scoped>
-@use "sass:color";
-@use "sass:map";
-@use "@/styles/variables" as vars;
-
 .modal-overlay {
     display: flex;
     justify-content: center;
@@ -83,65 +79,65 @@ watch(() => props.isOpen, (newValue) => {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(vars.$color-black, 0.6);
-    z-index: vars.$z-layer-base-modal;
+    background-color: rgba(var(--color-black), 0.6);
+    z-index: var(--z-layer-base-modal);
 
     &.alert-modal {
-        z-index: vars.$z-layer-alert-modal;
+        z-index: var(--z-layer-alert-modal);
     }
 }
 
 .modal-window {
     display: flex;
     flex-direction: column;
-    background-color: vars.$color-white;
-    border-radius: vars.$border-radius-md;
-    box-shadow: vars.$shadow-lg;
+    background-color: var(--color-white);
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(var(--color-black), 0.15);
     width: 90%;
     max-width: 600px;
     position: relative;
 }
 
 .modal-header {
-    padding: vars.$padding-medium;
-    border-bottom: vars.$border-width solid vars.$theme-border;
+    padding: 1rem;
+    border-bottom: 1px solid var(--color-gray-400);
     display: flex;
     justify-content: space-between;
     align-items: center;
 
     h2 {
-        font-size: vars.$font-size-large;
-        color: vars.$theme-text;
+        font-size: 1.25rem;
+        color: var(--color-gray-800);
     }
 }
 
 .close-button {
     background: none;
     border: none;
-    font-size: vars.$font-size-xxlarge;
+    font-size: 2rem;
     font-weight: 300;
     line-height: 1;
     cursor: pointer;
-    color: vars.$theme-text-light;
+    color: var(--color-gray-600);
     padding: 0;
 
     &:hover {
-        color: vars.$color-error;
+        color: var(--color-error);
         background: none;
     }
 }
 
 .modal-body {
-    padding: vars.$padding-large;
+    padding: 1.5rem;
     overflow-y: auto;
 }
 
 .modal-footer {
-    padding: vars.$padding-medium;
-    border-top: vars.$border-width solid vars.$theme-border;
+    padding: 1rem;
+    border-top: 1px solid var(--color-gray-400);
     display: flex;
     justify-content: flex-end;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
 }
 
 .modal-fade-enter-active,

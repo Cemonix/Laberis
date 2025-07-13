@@ -139,19 +139,19 @@
 </template>
 
 <script setup lang="ts" generic="T extends Record<string, any>">
-import { computed, ref } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { 
-    faChevronLeft, 
-    faChevronRight, 
-    faSort, 
-    faSortUp, 
-    faSortDown,
+import {computed, ref} from 'vue';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import {
+    faChevronLeft,
+    faChevronRight,
     faExclamationTriangle,
-    faInbox
+    faInbox,
+    faSort,
+    faSortDown,
+    faSortUp
 } from '@fortawesome/free-solid-svg-icons';
 import Button from '@/components/common/Button.vue';
-import type { TableColumn, TableAction, TableRowAction, TablePagination } from '@/types/common';
+import type {TableAction, TableColumn, TablePagination, TableRowAction} from '@/types/common';
 
 interface Props {
     data: T[];
@@ -298,12 +298,10 @@ const goToPage = (page: number) => {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
 .data-table {
-    background: vars.$color-white;
-    border-radius: vars.$border-radius-lg;
-    box-shadow: vars.$shadow-sm;
+    background: var(--color-white);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(var(--color-black), 0.05);
     overflow: hidden;
 }
 
@@ -311,21 +309,21 @@ const goToPage = (page: number) => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: vars.$padding-large;
-    border-bottom: 1px solid vars.$theme-border;
-    background: vars.$color-gray-50;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--color-gray-400);
+    background: var(--color-gray-50);
 }
 
 .table-title {
     margin: 0;
-    font-size: vars.$font-size-large;
-    font-weight: vars.$font-weight-large;
-    color: vars.$theme-text;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-gray-800);
 }
 
 .table-actions {
     display: flex;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
 }
 
 .table-container {
@@ -340,34 +338,34 @@ const goToPage = (page: number) => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: vars.$padding-xlarge;
+    padding: 2rem;
     text-align: center;
     
     svg {
         font-size: 3rem;
-        color: vars.$theme-text-light;
-        margin-bottom: vars.$margin-medium;
+        color: var(--color-gray-600);
+        margin-bottom: 1rem;
     }
     
     h4 {
-        margin: 0 0 vars.$margin-small;
-        color: vars.$theme-text;
+        margin: 0 0 0.5rem;
+        color: var(--color-gray-800);
     }
     
     p {
-        margin: 0 0 vars.$margin-medium;
-        color: vars.$theme-text-light;
+        margin: 0 0 1rem;
+        color: var(--color-gray-600);
     }
 }
 
 .loading-spinner {
     width: 3rem;
     height: 3rem;
-    border: 3px solid vars.$color-gray-200;
-    border-top: 3px solid vars.$color-primary;
+    border: 3px solid var(--color-gray-200);
+    border-top: 3px solid var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-bottom: vars.$margin-medium;
+    margin-bottom: 1rem;
 }
 
 @keyframes spin {
@@ -380,23 +378,23 @@ const goToPage = (page: number) => {
     border-collapse: collapse;
     
     th, td {
-        padding: vars.$padding-medium;
-        border-bottom: 1px solid vars.$theme-border;
+        padding: 1rem;
+        border-bottom: 1px solid var(--color-gray-400);
         vertical-align: middle;
     }
     
     th {
-        background: vars.$color-gray-50;
-        font-weight: vars.$font-weight-large;
-        color: vars.$theme-text;
-        border-bottom: 2px solid vars.$theme-border;
+        background: var(--color-gray-50);
+        font-weight: 600;
+        color: var(--color-gray-800);
+        border-bottom: 2px solid var(--color-gray-400);
         
         &.sortable {
             cursor: pointer;
             user-select: none;
             
             &:hover {
-                background: vars.$color-gray-100;
+                background: var(--color-gray-100);
             }
         }
         
@@ -405,7 +403,7 @@ const goToPage = (page: number) => {
     }
     
     td {
-        color: vars.$theme-text;
+        color: var(--color-gray-800);
         
         &.align-center { text-align: center; }
         &.align-right { text-align: right; }
@@ -413,14 +411,14 @@ const goToPage = (page: number) => {
     
     tbody tr {
         &:hover {
-            background: vars.$color-gray-50;
+            background: var(--color-gray-50);
         }
         
         &.clickable {
             cursor: pointer;
             
             &:hover {
-                background: vars.$color-primary-light;
+                background: var(--color-primary-light);
             }
         }
     }
@@ -429,7 +427,7 @@ const goToPage = (page: number) => {
 .column-header {
     display: flex;
     align-items: center;
-    gap: vars.$gap-xsmall;
+    gap: 0.25rem;
 }
 
 .sort-icon {
@@ -454,7 +452,7 @@ const goToPage = (page: number) => {
 
 .row-actions {
     display: flex;
-    gap: vars.$gap-xsmall;
+    gap: 0.25rem;
     justify-content: flex-end;
 }
 
@@ -462,32 +460,32 @@ const goToPage = (page: number) => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: vars.$padding-medium vars.$padding-large;
-    border-top: 1px solid vars.$theme-border;
-    background: vars.$color-gray-50;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--color-gray-400);
+    background: var(--color-gray-50);
 }
 
 .pagination-info {
-    font-size: vars.$font-size-small;
-    color: vars.$theme-text-light;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
 }
 
 .pagination-controls {
     display: flex;
     align-items: center;
-    gap: vars.$gap-medium;
+    gap: 1rem;
 }
 
 .page-info {
-    font-size: vars.$font-size-small;
-    color: vars.$theme-text;
-    font-weight: vars.$font-weight-medium;
+    font-size: 0.875rem;
+    color: var(--color-gray-800);
+    font-weight: 500;
 }
 
 @media (max-width: 768px) {
     .table-header {
         flex-direction: column;
-        gap: vars.$gap-medium;
+        gap: 1rem;
         align-items: stretch;
     }
     
@@ -497,7 +495,7 @@ const goToPage = (page: number) => {
     
     .table-pagination {
         flex-direction: column;
-        gap: vars.$gap-medium;
+        gap: 1rem;
         align-items: stretch;
         text-align: center;
     }

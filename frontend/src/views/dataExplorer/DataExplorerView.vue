@@ -80,17 +80,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faHome } from '@fortawesome/free-solid-svg-icons';
-import type { Asset, AssetListParams } from '@/types/asset';
+import {computed, onMounted, ref} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import {faHome} from '@fortawesome/free-solid-svg-icons';
+import type {Asset, AssetListParams} from '@/types/asset';
 import AssetThumbnail from '@/components/project/AssetThumbnail.vue';
 import Button from '@/components/common/Button.vue';
 import assetService from '@/services/api/assetService';
-import { dataSourceService } from '@/services/api/dataSourceService';
-import { useAlert } from '@/composables/useAlert';
-import { AppLogger } from '@/utils/logger';
+import {dataSourceService} from '@/services/api/dataSourceService';
+import {useAlert} from '@/composables/useAlert';
+import {AppLogger} from '@/utils/logger';
 
 const logger = AppLogger.createComponentLogger('DataExplorerView');
 const route = useRoute();
@@ -215,43 +215,41 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
 .explorer-container {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    background-color: vars.$color-gray-100;
+    background-color: var(--color-gray-100);
 }
 
 .explorer-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: vars.$padding-medium vars.$padding-large;
-    background-color: vars.$color-white;
-    border-bottom: vars.$border-width solid vars.$theme-border;
+    padding: 1rem 1.5rem;
+    background-color: var(--color-white);
+    border-bottom: 1px solid var(--color-gray-400);
     flex-shrink: 0;
-    box-shadow: vars.$shadow-sm;
+    box-shadow: 0 1px 3px rgba(var(--color-black), 0.05);
 }
 
 .breadcrumbs {
     display: flex;
     align-items: center;
-    gap: vars.$gap-small;
-    font-size: vars.$font-size-large;
+    gap: 0.5rem;
+    font-size: 1.25rem;
 
     .home-button {
         min-width: 32px;
         height: 32px;
         padding: 0;
-        margin-right: vars.$margin-small;
+        margin-right: 0.5rem;
         font-size: 1.2rem;
         font-weight: bold;
     }
 
     a {
-        color: vars.$color-primary;
+        color: var(--color-primary);
         text-decoration: none;
         &:hover {
             text-decoration: underline;
@@ -259,25 +257,25 @@ onMounted(async () => {
     }
     
     .separator {
-        color: vars.$theme-text-light;
-        margin: 0 vars.$margin-xsmall;
+        color: var(--color-gray-600);
+        margin: 0 0.25rem;
     }
 
     .current-source-name {
-        color: vars.$theme-text;
+        color: var(--color-gray-800);
         font-weight: 600;
     }
 }
 
 .header-right {
     display: flex;
-    gap: vars.$gap-medium;
+    gap: 1rem;
 }
 
 .explorer-main-content {
     flex-grow: 1;
     overflow-y: auto;
-    padding: vars.$padding-large;
+    padding: 1.5rem;
 }
 
 .loading-container,
@@ -287,17 +285,17 @@ onMounted(async () => {
     align-items: center;
     justify-content: center;
     min-height: 50vh;
-    gap: vars.$gap-medium;
+    gap: 1rem;
 }
 
 .loading-message {
-    font-size: vars.$font-size-large;
-    color: vars.$theme-text-light;
+    font-size: 1.25rem;
+    color: var(--color-gray-600);
 }
 
 .error-message {
-    font-size: vars.$font-size-large;
-    color: vars.$color-error;
+    font-size: 1.25rem;
+    color: var(--color-error);
     text-align: center;
 }
 
@@ -307,18 +305,18 @@ onMounted(async () => {
     align-items: center;
     justify-content: center;
     min-height: 50vh;
-    gap: vars.$gap-large;
+    gap: 1.5rem;
     text-align: center;
 
     h3 {
-        font-size: vars.$font-size-xlarge;
-        color: vars.$theme-text;
+        font-size: 1.5rem;
+        color: var(--color-gray-800);
         margin: 0;
     }
 
     p {
-        font-size: vars.$font-size-large;
-        color: vars.$theme-text-light;
+        font-size: 1.25rem;
+        color: var(--color-gray-600);
         margin: 0;
         max-width: 50ch;
     }
@@ -328,40 +326,40 @@ onMounted(async () => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: vars.$margin-large;
-    padding-bottom: vars.$padding-medium;
-    border-bottom: vars.$border-width solid vars.$theme-border;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--color-gray-400);
 }
 
 .assets-count {
-    font-size: vars.$font-size-large;
+    font-size: 1.25rem;
     font-weight: 600;
-    color: vars.$theme-text;
+    color: var(--color-gray-800);
 }
 
 .asset-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: vars.$gap-large;
-    margin-bottom: vars.$margin-xlarge;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
 }
 
 .load-more-container {
     display: flex;
     justify-content: center;
-    padding: vars.$padding-large 0;
+    padding: 1.5rem 0;
 }
 
 // Responsive adjustments
 @media (max-width: 768px) {
     .explorer-header {
         flex-direction: column;
-        gap: vars.$gap-medium;
+        gap: 1rem;
         align-items: stretch;
     }
 
     .breadcrumbs {
-        font-size: vars.$font-size-medium;
+        font-size: 1rem;
     }
 
     .header-right {
@@ -370,11 +368,11 @@ onMounted(async () => {
 
     .asset-grid {
         grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: vars.$gap-medium;
+        gap: 1rem;
     }
 
     .explorer-main-content {
-        padding: vars.$padding-medium;
+        padding: 1rem;
     }
 }
 </style>

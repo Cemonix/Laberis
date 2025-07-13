@@ -32,8 +32,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { type Workflow } from '@/types/workflow';
+import {computed} from 'vue';
+import {type Workflow} from '@/types/workflow';
 
 interface Props {
     workflow: Workflow;
@@ -55,10 +55,7 @@ const formatDate = (dateString: string): string => {
 };
 </script>
 
-<style lang="scss" scoped>
-@use "sass:color";
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .workflow-card-link {
     display: block;
     text-decoration: none;
@@ -67,11 +64,11 @@ const formatDate = (dateString: string): string => {
 }
 
 .workflow-card {
-    background-color: vars.$theme-surface;
-    border: 1px solid vars.$theme-border;
-    border-radius: vars.$border-radius-lg;
-    padding: vars.$padding-large;
-    box-shadow: vars.$shadow-sm;
+    background-color: var(--color-white);
+    border: 1px solid var(--color-gray-400);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(var(--color-black), 0.05);
     transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out, border-color 0.2s ease-in-out;
     display: flex;
     flex-direction: column;
@@ -79,64 +76,64 @@ const formatDate = (dateString: string): string => {
     
     &:hover {
         transform: translateY(-4px);
-        box-shadow: vars.$shadow-md;
-        border-color: vars.$color-primary;
+        box-shadow: 0 1px 3px rgba(var(--color-black), 0.1);
+        border-color: var(--color-primary);
     }
 }
 
 .workflow-header {
-    margin-bottom: vars.$margin-medium;
+    margin-bottom: 1rem;
     
     .workflow-name {
-        font-size: vars.$font-size-large;
-        font-weight: vars.$font-weight-xlarge;
-        color: vars.$theme-text;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-gray-800);
         margin: 0;
     }
 }
 
 .workflow-description {
-    color: vars.$theme-text-light;
-    font-size: vars.$font-size-medium;
-    line-height: vars.$line-height-medium;
-    margin-bottom: vars.$margin-large;
+    color: var(--color-gray-600);
+    font-size: 1rem;
+    line-height: 1.4;
+    margin-bottom: 1.5rem;
     flex-grow: 1;
     min-height: 2.4em;
 }
 
 .workflow-stats {
     display: flex;
-    gap: vars.$gap-large;
-    margin-bottom: vars.$margin-large;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
     
     .stat-item {
         display: flex;
         flex-direction: column;
-        gap: vars.$gap-xsmall;
+        gap: 0.25rem;
         
         .stat-label {
-            font-size: vars.$font-size-small;
-            color: vars.$theme-text-light;
+            font-size: 0.875rem;
+            color: var(--color-gray-600);
         }
         
         .stat-value {
-            font-size: vars.$font-size-medium;
-            color: vars.$theme-text;
-            font-weight: vars.$font-weight-large;
+            font-size: 1rem;
+            color: var(--color-gray-800);
+            font-weight: 600;
         }
     }
 }
 
 .workflow-footer {
     margin-top: auto;
-    padding-top: vars.$padding-medium;
-    border-top: 1px solid vars.$theme-border;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-gray-400);
     text-align: right;
     
     span {
-        color: vars.$color-primary;
-        font-weight: vars.$font-weight-large;
-        font-size: vars.$font-size-small;
+        color: var(--color-primary);
+        font-weight: 600;
+        font-size: 0.875rem;
         transition: transform 0.2s ease;
     }
 }

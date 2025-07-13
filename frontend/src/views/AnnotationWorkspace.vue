@@ -22,7 +22,7 @@
         <template v-else>
             <div class="workspace-top-bar">
                 <div class="workspace-top-bar-left">
-                    <router-link to="/home">Home</router-link>
+                    <router-link class="nav-link underline-animation" to="/home">Home</router-link>
                 </div>
                 <div class="workspace-top-bar-center">
                     <Button>Previous</Button>
@@ -52,10 +52,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from "vue";
+import {computed, onMounted, onUnmounted} from "vue";
 import AnnotationCanvas from "@/components/annotationWorkspace/AnnotationCanvas.vue";
 import Button from "@/components/common/Button.vue";
-import { useWorkspaceStore } from "@/stores/workspaceStore";
+import {useWorkspaceStore} from "@/stores/workspaceStore";
 import ToolsLeftPanel from "@/components/annotationWorkspace/ToolsLeftPanel.vue";
 import LabelsPanel from "@/components/annotationWorkspace/LabelsPanel.vue";
 
@@ -107,27 +107,24 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-@use "@/styles/mixins/underline-animation" as mixins;
-
 .annotation-workspace-container {
     display: flex;
     flex-direction: column;
     height: 100%;
     width: 100%;
-    background-color: vars.$color-dark-blue-1;
-    color: vars.$color-gray-200;
+    background-color: var(--color-dark-blue-1);
+    color: var(--color-gray-200);
 }
 
 .workspace-top-bar {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
-    grid-gap: vars.$gap-small;
+    grid-gap: 0.5rem;
     align-items: center;
-    background-color: vars.$color-dark-blue-1;
-    padding: vars.$padding-small vars.$padding-medium;
+    background-color: var(--color-dark-blue-1);
+    padding: 0.5rem 1rem;
     text-align: center;
-    border-bottom: vars.$border-width solid vars.$color-accent-blue;
+    border-bottom: 1px solid var(--color-accent-blue);
 
     .workspace-top-bar-left {
         display: flex;
@@ -136,27 +133,25 @@ onUnmounted(() => {
         justify-self: start;
 
         a {
-            color: vars.$color-gray-200;
+            color: var(--color-gray-200);
             text-decoration: none;
-            padding: vars.$padding-small 0;
-
-            @include mixins.underline-animation();
+            padding: 0.5rem 0;
         }
     }
     .workspace-top-bar-center {
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: vars.$gap-small;
+        gap: 0.5rem;
     }
     .workspace-top-bar-right {
         display: flex;
         justify-content: flex-end;
         align-items: center;
-        font-size: vars.$font-size-medium;
+        font-size: 1rem;
 
         .zoom-display {
-            margin-right: vars.$margin-small;
+            margin-right: 0.5rem;
         }
     }
 }
@@ -170,9 +165,9 @@ onUnmounted(() => {
 .workspace-tools-left {
     width: auto;
     min-width: 60px;
-    background-color: vars.$color-dark-blue-2;
-    padding: vars.$padding-small;
-    border-right: vars.$border-width solid vars.$color-accent-blue;
+    background-color: var(--color-dark-blue-2);
+    padding: 0.5rem;
+    border-right: 1px solid var(--color-accent-blue);
     flex-shrink: 0;
     overflow-y: auto;
 }
@@ -183,15 +178,15 @@ onUnmounted(() => {
     flex-grow: 1;
     overflow: hidden;
     position: relative;
-    padding: vars.$padding-medium;
-    background-color: vars.$color-dark-blue-3;
+    padding: 1rem;
+    background-color: var(--color-dark-blue-3);
 }
 
 .workspace-annotations-right {
     width: 200px;
-    background-color: vars.$color-dark-blue-2;
+    background-color: var(--color-dark-blue-2);
     padding: 0;
-    border-left: vars.$border-width solid vars.$color-accent-blue;
+    border-left: 1px solid var(--color-accent-blue);
     flex-shrink: 0;
     overflow-y: auto;
 }
@@ -203,7 +198,7 @@ onUnmounted(() => {
     justify-content: center;
     width: 100%;
     height: 100%;
-    background-color: rgba(vars.$color-black, 0.8);
+    background-color: rgba(var(--color-black), 0.8);
     z-index: 1000;
 }
 
@@ -214,21 +209,21 @@ onUnmounted(() => {
     text-align: center;
     align-items: center;
     justify-content: center;
-    color: vars.$color-white;
-    padding: vars.$padding-large;
-    border-radius: vars.$border-radius-md;
-    background-color: vars.$color-dark-blue-2;
-    border: 1px solid vars.$color-accent-blue;
+    color: var(--color-white);
+    padding: 1.5rem;
+    border-radius: 4px;
+    background-color: var(--color-dark-blue-2);
+    border: 1px solid var(--color-accent-blue);
 }
 
 .loading-spinner {
     width: 40px;
     height: 40px;
-    border: 4px solid vars.$color-gray-600;
-    border-top: 4px solid vars.$color-primary;
+    border: 4px solid var(--color-gray-600);
+    border-top: 4px solid var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin: 0 auto vars.$margin-medium;
+    margin: 0 auto 1rem;
 }
 
 @keyframes spin {
@@ -238,35 +233,35 @@ onUnmounted(() => {
 
 .error-content {
     h3 {
-        color: vars.$color-error;
-        margin-bottom: vars.$margin-medium;
+        color: var(--color-error);
+        margin-bottom: 1rem;
         grid-column: span 2;
     }
 
     p {
-        margin-bottom: vars.$margin-medium;
-        color: vars.$color-gray-300;
+        margin-bottom: 1rem;
+        color: var(--color-gray-300);
         grid-column: span 2;
     }
 
     Button {
-        margin-inline: vars.$margin-medium;
+        margin-inline: 1rem;
     }
 
     .error-link {
-        color: vars.$color-primary;
+        color: var(--color-primary);
         text-decoration: none;
         
         &:hover {
-            color: vars.$color-link-hover;
+            color: var(--color-link-hover);
             text-decoration: underline;
         }
     }
 }
 
 .asset-name {
-    margin-left: vars.$margin-medium;
-    color: vars.$color-gray-300;
+    margin-left: 1rem;
+    color: var(--color-gray-300);
     font-style: italic;
 }
 </style>

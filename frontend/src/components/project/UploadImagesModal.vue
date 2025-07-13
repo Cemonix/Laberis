@@ -160,15 +160,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import {computed, ref} from 'vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import Button from '@/components/common/Button.vue';
-import type { DataSource } from '@/types/dataSource/dataSource';
-import { NoFilesProvidedError, UploadError } from '@/types/asset';
-import { ApiResponseError, ServerError, NetworkError } from '@/types/common/errors';
-import { AppLogger } from '@/utils/logger';
-import { useAlert } from '@/composables/useAlert';
-import { useToast } from '@/composables/useToast';
+import type {DataSource} from '@/types/dataSource/dataSource';
+import {NoFilesProvidedError, UploadError} from '@/types/asset';
+import {ApiResponseError, NetworkError, ServerError} from '@/types/common/errors';
+import {AppLogger} from '@/utils/logger';
+import {useAlert} from '@/composables/useAlert';
+import {useToast} from '@/composables/useToast';
 import assetService from '@/services/api/assetService';
 
 const logger = AppLogger.createComponentLogger('UploadImagesModal');
@@ -453,35 +453,33 @@ const closeModal = () => {
 };
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .upload-container {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-large;
+    gap: 1.5rem;
 }
 
 .upload-type-section {
     h4 {
-        margin: 0 0 vars.$gap-medium 0;
-        color: vars.$theme-text;
+        margin: 0 0 1rem 0;
+        color: var(--color-gray-800);
     }
 }
 
 .upload-type-options {
     display: flex;
-    gap: vars.$gap-large;
+    gap: 1.5rem;
 }
 
 .upload-option {
     display: flex;
     align-items: center;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
     cursor: pointer;
     
     input[type="radio"] {
-        accent-color: vars.$color-primary;
+        accent-color: var(--color-primary);
     }
     
     span {
@@ -491,9 +489,9 @@ const closeModal = () => {
 
 .file-selection-section {
     .dropzone {
-        border: 2px dashed vars.$color-gray-300;
-        border-radius: vars.$border-radius-lg;
-        padding: vars.$gap-large;
+        border: 2px dashed var(--color-gray-300);
+        border-radius: 8px;
+        padding: 1.5rem;
         text-align: center;
         cursor: pointer;
         transition: all 0.3s ease;
@@ -503,12 +501,12 @@ const closeModal = () => {
         justify-content: center;
         
         &:hover, &.dragover {
-            border-color: vars.$color-primary;
-            background-color: vars.$color-gray-100;
+            border-color: var(--color-primary);
+            background-color: var(--color-gray-100);
         }
         
         &.has-files {
-            padding: vars.$gap-medium;
+            padding: 1rem;
             text-align: left;
             align-items: stretch;
         }
@@ -522,22 +520,22 @@ const closeModal = () => {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: vars.$gap-medium;
+        gap: 1rem;
         
         .upload-icon {
-            color: vars.$color-gray-400;
+            color: var(--color-gray-400);
         }
         
         .dropzone-text {
-            font-size: vars.$font-size-large;
+            font-size: 1.25rem;
             font-weight: 500;
-            color: vars.$theme-text;
+            color: var(--color-gray-800);
             margin: 0;
         }
         
         .dropzone-subtext {
-            font-size: vars.$font-size-small;
-            color: vars.$theme-text-light;
+            font-size: 0.875rem;
+            color: var(--color-gray-600);
             margin: 0;
         }
     }
@@ -550,11 +548,11 @@ const closeModal = () => {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: vars.$gap-medium;
+        margin-bottom: 1rem;
         
         h5 {
             margin: 0;
-            color: vars.$theme-text;
+            color: var(--color-gray-800);
         }
     }
     
@@ -563,17 +561,17 @@ const closeModal = () => {
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: vars.$gap-small;
+        gap: 0.5rem;
     }
     
     .file-item {
         display: flex;
         align-items: center;
-        gap: vars.$gap-medium;
-        padding: vars.$gap-small;
-        border: 1px solid vars.$color-gray-200;
-        border-radius: vars.$border-radius-md;
-        background-color: vars.$color-gray-100;
+        gap: 1rem;
+        padding: 0.5rem;
+        border: 1px solid var(--color-gray-200);
+        border-radius: 4px;
+        background-color: var(--color-gray-100);
         
         .file-preview {
             flex-shrink: 0;
@@ -582,7 +580,7 @@ const closeModal = () => {
                 width: 48px;
                 height: 48px;
                 object-fit: cover;
-                border-radius: vars.$border-radius-sm;
+                border-radius: 2px;
             }
             
             .file-icon {
@@ -591,9 +589,9 @@ const closeModal = () => {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background-color: vars.$color-gray-200;
-                border-radius: vars.$border-radius-sm;
-                color: vars.$color-gray-900;
+                background-color: var(--color-gray-200);
+                border-radius: 2px;
+                color: var(--color-gray-900);
             }
         }
         
@@ -601,17 +599,17 @@ const closeModal = () => {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            gap: vars.$gap-xsmall;
+            gap: 0.25rem;
             
             .file-name {
                 font-weight: 500;
-                color: vars.$theme-text;
+                color: var(--color-gray-800);
                 word-break: break-word;
             }
             
             .file-size {
-                font-size: vars.$font-size-small;
-                color: vars.$theme-text-light;
+                font-size: 0.875rem;
+                color: var(--color-gray-600);
             }
         }
     }
@@ -619,36 +617,36 @@ const closeModal = () => {
 
 .upload-progress-section {
     h4 {
-        margin: 0 0 vars.$gap-medium 0;
-        color: vars.$theme-text;
+        margin: 0 0 1rem 0;
+        color: var(--color-gray-800);
     }
     
     .progress-bar {
         width: 100%;
         height: 8px;
-        background-color: vars.$color-gray-200;
-        border-radius: vars.$border-radius-sm;
+        background-color: var(--color-gray-200);
+        border-radius: 2px;
         overflow: hidden;
-        margin-bottom: vars.$gap-small;
+        margin-bottom: 0.5rem;
         
         .progress-fill {
             height: 100%;
-            background-color: vars.$color-primary;
+            background-color: var(--color-primary);
             transition: width 0.3s ease;
         }
     }
     
     .progress-text {
         margin: 0;
-        font-size: vars.$font-size-small;
-        color: vars.$theme-text-light;
+        font-size: 0.875rem;
+        color: var(--color-gray-600);
     }
 }
 
 .upload-errors-section {
     h4 {
-        margin: 0 0 vars.$gap-medium 0;
-        color: vars.$color-error;
+        margin: 0 0 1rem 0;
+        color: var(--color-error);
     }
     
     .error-list {
@@ -656,23 +654,23 @@ const closeModal = () => {
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: vars.$gap-small;
+        gap: 0.5rem;
     }
     
     .error-item {
-        padding: vars.$gap-small;
-        background-color: vars.$color-gray-200;
-        border: 1px solid vars.$color-error;
-        border-radius: vars.$border-radius-sm;
-        font-size: vars.$font-size-small;
+        padding: 0.5rem;
+        background-color: var(--color-gray-200);
+        border: 1px solid var(--color-error);
+        border-radius: 2px;
+        font-size: 0.875rem;
         
         .error-file {
             font-weight: 500;
-            color: vars.$color-error;
+            color: var(--color-error);
         }
         
         .error-message {
-            color: vars.$theme-text;
+            color: var(--color-gray-800);
         }
     }
 }
@@ -680,6 +678,6 @@ const closeModal = () => {
 .modal-actions {
     display: flex;
     justify-content: flex-end;
-    gap: vars.$gap-medium;
+    gap: 1rem;
 }
 </style>

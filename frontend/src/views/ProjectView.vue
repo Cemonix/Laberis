@@ -43,19 +43,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import {computed, onMounted, ref} from 'vue';
 import ProjectCard from '@/components/project/ProjectCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateProjectForm from '@/components/project/CreateProjectForm.vue';
 import Button from '@/components/common/Button.vue';
-import type { Project } from '@/types/project/project';
-import { ProjectType } from '@/types/project/project';
-import { projectService } from '@/services/api/projectService';
-import type { CreateProjectRequest } from '@/types/project/requests';
-import { useToast } from '@/composables/useToast';
-import { usePermissions } from '@/composables/usePermissions';
-import { RoleEnum } from '@/types/auth/role';
-import { AppLogger } from '@/utils/logger';
+import type {Project} from '@/types/project/project';
+import {ProjectType} from '@/types/project/project';
+import {projectService} from '@/services/api/projectService';
+import type {CreateProjectRequest} from '@/types/project/requests';
+import {useToast} from '@/composables/useToast';
+import {usePermissions} from '@/composables/usePermissions';
+import {RoleEnum} from '@/types/auth/role';
+import {AppLogger} from '@/utils/logger';
 
 const logger = AppLogger.createComponentLogger('ProjectView');
 
@@ -116,28 +116,26 @@ onMounted(() => {
 });
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .page-container {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    padding: vars.$padding-xlarge;
+    padding: 2rem;
     width: 100%;
     margin: 0 auto;
 }
 
 .page-title {
-    font-size: vars.$font-size-xxlarge;
-    margin-bottom: vars.$margin-large;
-    color: vars.$theme-text;
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-gray-800);
 }
 
 .project-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: vars.$gap-large;
+    gap: 1.5rem;
 }
 
 .loading-state,
@@ -145,33 +143,33 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: vars.$gap-medium;
-    padding: vars.$padding-xlarge;
-    color: vars.$theme-text-light;
+    gap: 1rem;
+    padding: 2rem;
+    color: var(--color-gray-600);
     text-align: center;
 }
 
 .no-projects {
     grid-column: 1 / -1;
     text-align: center;
-    padding: vars.$padding-xlarge;
-    color: vars.$theme-text-light;
+    padding: 2rem;
+    color: var(--color-gray-600);
     font-style: italic;
 }
 
 .fab {
     position: absolute;
-    bottom: vars.$padding-xlarge;
-    right: vars.$padding-xlarge;
+    bottom: 2rem;
+    right: 2rem;
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background-color: vars.$color-primary;
-    color: vars.$color-white;
+    background-color: var(--color-primary);
+    color: var(--color-white);
     border: none;
     font-size: 2.5rem;
     line-height: 1;
-    box-shadow: vars.$shadow-md;
+    box-shadow: 0 1px 3px rgba(var(--color-black), 0.1);
     cursor: pointer;
     padding-bottom: 4px;
     transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
@@ -181,7 +179,7 @@ onMounted(() => {
     flex-direction: row;
 
     &:hover {
-        background-color: vars.$color-primary-hover;
+        background-color: var(--color-primary-hover);
         transform: scale(1.1);
     }
 }

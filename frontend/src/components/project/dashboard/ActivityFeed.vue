@@ -20,16 +20,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { 
-    faTag, 
-    faCheckCircle, 
-    faUserPlus, 
-    faUpload, 
-    faTrophy, 
-    faInfoCircle 
-} from '@fortawesome/free-solid-svg-icons';
+import {computed} from 'vue';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import {faCheckCircle, faInfoCircle, faTag, faTrophy, faUpload, faUserPlus} from '@fortawesome/free-solid-svg-icons';
 
 interface Activity {
     type: 'annotation' | 'review' | 'assignment' | 'upload' | 'completion';
@@ -84,21 +77,19 @@ const formatTime = (timestamp: Date) => {
 };
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .activity-feed {
     max-height: 300px;
     overflow-y: auto;
-    padding: vars.$padding-small;
+    padding: 0.5rem;
 }
 
 .activity-item {
     display: flex;
     align-items: flex-start;
-    gap: vars.$gap-medium;
-    padding: vars.$padding-small 0;
-    border-bottom: 1px solid vars.$theme-border;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-gray-400);
 
     &:last-child {
         border-bottom: none;
@@ -108,14 +99,14 @@ const formatTime = (timestamp: Date) => {
 .activity-icon {
     width: 32px;
     height: 32px;
-    border-radius: vars.$border-radius-circle;
-    background-color: vars.$theme-primary;
-    color: vars.$theme-surface;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+    color: var(--color-white);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    font-size: vars.$font-size-medium;
+    font-size: 1rem;
 }
 
 .activity-content {
@@ -124,20 +115,20 @@ const formatTime = (timestamp: Date) => {
 }
 
 .activity-message {
-    font-weight: vars.$font-weight-medium;
-    margin-bottom: vars.$margin-small;
-    line-height: vars.$line-height-medium;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
 }
 
 .activity-time {
-    font-size: vars.$font-size-small;
-    color: vars.$theme-text-light;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
 }
 
 .no-activities {
     text-align: center;
-    color: vars.$theme-text-light;
+    color: var(--color-gray-600);
     font-style: italic;
-    padding: vars.$padding-large;
+    padding: 1.5rem;
 }
 </style>

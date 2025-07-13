@@ -34,8 +34,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import type { DataSource } from "@/types/dataSource/dataSource";
+import {computed, ref} from "vue";
+import type {DataSource} from "@/types/dataSource/dataSource";
 import Card from "@/components/common/Card.vue";
 import Button from "@/components/common/Button.vue";
 import UploadImagesModal from "./UploadImagesModal.vue";
@@ -71,24 +71,22 @@ const handleUploadComplete = (count: number) => {
 };
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .data-source-name {
-    font-size: vars.$font-size-large;
+    font-size: 1.25rem;
 }
 
 .asset-count {
-    font-size: vars.$font-size-small;
+    font-size: 0.875rem;
     font-weight: bold;
-    color: vars.$theme-text-light;
-    background-color: vars.$color-gray-200;
+    color: var(--color-gray-600);
+    background-color: var(--color-gray-200);
     padding: 0.2em 0.6em;
     border-radius: 1em;
 }
 
 .data-source-description {
-    font-size: vars.$font-size-medium;
+    font-size: 1rem;
     margin: 0;
     flex-grow: 1;
 }
@@ -96,12 +94,12 @@ const handleUploadComplete = (count: number) => {
 .card-meta {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-xsmall;
+    gap: 0.25rem;
     text-transform: capitalize;
 }
 
 .card-actions {
     display: flex;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
 }
 </style>

@@ -43,11 +43,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useRoute } from 'vue-router';
-import type { Asset } from '@/types/asset/asset';
+import {computed} from 'vue';
+import {useRoute} from 'vue-router';
+import type {Asset} from '@/types/asset/asset';
 import Card from '@/components/common/Card.vue';
-import { AppLogger } from '@/utils/logger';
+import {AppLogger} from '@/utils/logger';
 
 const logger = AppLogger.createComponentLogger('AssetThumbnail');
 
@@ -71,9 +71,6 @@ const handleImageError = () => {
 </script>
 
 <style lang="scss" scoped>
-@use "sass:color";
-@use "@/styles/variables" as vars;
-
 .asset-thumbnail-link {
     display: block;
     text-decoration: none;
@@ -92,8 +89,8 @@ const handleImageError = () => {
     align-items: center;
     width: 100%;
     height: 100%;
-    background-color: vars.$color-gray-100;
-    color: vars.$color-gray-600;
+    background-color: var(--color-gray-100);
+    color: var(--color-gray-600);
     font-style: italic;
 }
 
@@ -103,14 +100,14 @@ const handleImageError = () => {
 
     &:hover {
         transform: translateY(-5px);
-        box-shadow: vars.$shadow-md;
+        box-shadow: 0 1px 3px rgba(var(--color-black), 0.1);
     }
     
     .asset-image-wrapper {
         position: relative;
         width: 100%;
         aspect-ratio: 16 / 10;
-        background-color: vars.$color-gray-200;
+        background-color: var(--color-gray-200);
 
         .asset-image {
             width: 100%;
@@ -124,8 +121,8 @@ const handleImageError = () => {
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(vars.$color-black, 0.5);
-            color: vars.$color-white;
+            background-color: rgba(var(--color-black), 0.5);
+            color: var(--color-white);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -140,7 +137,7 @@ const handleImageError = () => {
     }
 
     :deep(.base-card-footer) {
-        padding: vars.$padding-small;
+        padding: 0.5rem;
     }
 }
 
@@ -152,12 +149,12 @@ const handleImageError = () => {
 }
 
 .asset-name {
-    font-size: vars.$font-size-small;
+    font-size: 0.875rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     flex-grow: 1;
-    margin-right: vars.$margin-small;
+    margin-right: 0.5rem;
 }
 
 .asset-status {
@@ -169,20 +166,20 @@ const handleImageError = () => {
     flex-shrink: 0;
 
     &.status-new {
-        background-color: color.adjust(vars.$color-info, $alpha: -0.8);
-        color: vars.$color-info;
+        background-color: var(--color-info, $alpha: -0.8);
+        color: var(--color-info);
     }
     &.status-annotated {
-        background-color: color.adjust(vars.$color-primary, $alpha: -0.8);
-        color: vars.$color-primary;
+        background-color: var(--color-primary, $alpha: -0.8);
+        color: var(--color-primary);
     }
     &.status-in_review {
-        background-color: color.adjust(vars.$color-warning, $alpha: -0.8);
-        color: vars.$color-warning;
+        background-color: var(--color-warning, $alpha: -0.8);
+        color: var(--color-warning);
     }
      &.status-approved {
-        background-color: color.adjust(vars.$color-success, $alpha: -0.8);
-        color: vars.$color-success;
+         background-color: var(--color-success, $alpha: -0.8);
+         color: var(--color-success);
     }
 }
 </style>

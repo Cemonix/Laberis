@@ -5,8 +5,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { Label } from '@/types/label/label';
+import {computed} from 'vue';
+import type {Label} from '@/types/label/label';
 
 const props = defineProps<{
     label: Label;
@@ -20,15 +20,13 @@ const chipColor = computed(() => {
 const textColor = computed(() => props.label.color);
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .label-chip {
     display: inline-block;
-    padding: vars.$padding-xsmall vars.$padding-small;
+    padding: 0.25rem 0.5rem;
     border-radius: 1em;
-    font-size: vars.$font-size-small;
-    font-weight: vars.$font_weight_large;
+    font-size: 0.875rem;
+    font-weight: var(--font_weight_large);
     white-space: nowrap;
 }
 </style>

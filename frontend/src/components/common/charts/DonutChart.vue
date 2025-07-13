@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue';
+import {nextTick, onMounted, ref, watch} from 'vue';
 import * as d3 from 'd3';
 
 interface ChartData {
@@ -112,33 +112,31 @@ watch(() => props.data, () => {
 }, { deep: true });
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .donut-chart-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: vars.$gap-medium;
+    gap: 1rem;
 }
 
 .chart-legend {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-small;
-    font-size: vars.$font-size-small;
+    gap: 0.5rem;
+    font-size: 0.875rem;
 }
 
 .legend-item {
     display: flex;
     align-items: center;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
 }
 
 .legend-color {
     width: 16px;
     height: 16px;
-    border-radius: vars.$border-radius-circle;
+    border-radius: 50%;
 }
 
 .legend-label {

@@ -104,9 +104,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faCheck, faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
+import {computed, ref, watch} from 'vue';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import {faArrowLeft, faArrowRight, faCheck} from '@fortawesome/free-solid-svg-icons';
 import Button from '@/components/common/Button.vue';
 
 export interface StepperStep {
@@ -224,9 +224,7 @@ defineExpose({
 });
 </script>
 
-<style scoped lang="scss">
-@use '../../styles/variables' as *;
-
+<style scoped>
 .stepper {
     .stepper-header {
         margin-bottom: $margin-xlarge;
@@ -242,7 +240,7 @@ defineExpose({
                 top: $margin-large;
                 left: $margin-large;
                 right: $margin-large;
-                height: $border-width-thick;
+                height: 2px;
                 background: $color-gray-200;
                 z-index: 1;
             }
@@ -278,7 +276,7 @@ defineExpose({
                     height: 48px;
                     border-radius: $border-radius-circle;
                     background: $color-white;
-                    border: $border-width-thick solid $color-gray-300;
+                    border: 2px solid $color-gray-300;
                     display: flex;
                     align-items: center;
                     justify-content: center;

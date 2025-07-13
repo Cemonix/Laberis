@@ -59,12 +59,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faPenNib, faSearch, faCheckCircle, faCog, faUsers, faSortNumericUp, faEdit, faUserCog } from '@fortawesome/free-solid-svg-icons';
+import {computed} from 'vue';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import {
+    faCheckCircle,
+    faCog,
+    faEdit,
+    faPenNib,
+    faSearch,
+    faSortNumericUp,
+    faUserCog,
+    faUsers
+} from '@fortawesome/free-solid-svg-icons';
 import Button from '@/components/common/Button.vue';
-import type { WorkflowStagePipeline } from '@/types/workflow';
-import { WorkflowStageType, formatStageType } from '@/types/workflow';
+import type {WorkflowStagePipeline} from '@/types/workflow';
+import {formatStageType, WorkflowStageType} from '@/types/workflow';
 
 interface Props {
     stage: WorkflowStagePipeline;
@@ -105,96 +114,93 @@ const stageIcon = computed(() => {
 </script>
 
 <style lang="scss" scoped>
-@use "sass:color" as color;
-@use "@/styles/variables" as vars;
-
 .workflow-stage-card {
     width: 280px;
     min-height: 280px; /* Ensure consistent height */
     display: flex;
     flex-direction: column;
-    background: vars.$color-white;
-    border: 2px solid vars.$theme-border;
-    border-radius: vars.$border-radius-lg;
-    box-shadow: vars.$shadow-sm;
+    background: var(--color-white);
+    border: 2px solid var(--color-gray-400);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(var(--color-black), 0.05);
     overflow: hidden;
     transition: all 0.3s ease;
     cursor: pointer;
     
     &:hover {
         transform: translateY(-4px);
-        box-shadow: vars.$shadow-md;
+        box-shadow: 0 1px 3px rgba(var(--color-black), 0.1);
     }
     
     // Stage type specific styling with hover colors
     &.stage-annotation {
-        border-left: 4px solid vars.$color-info;
+        border-left: 4px solid var(--color-info);
         
         &:hover {
-            border-color: vars.$color-info;
+            border-color: var(--color-info);
         }
     }
     
     &.stage-revision {
-        border-left: 4px solid vars.$color-warning;
+        border-left: 4px solid var(--color-warning);
         
         &:hover {
-            border-color: vars.$color-warning;
+            border-color: var(--color-warning);
         }
     }
     
     &.stage-completion {
-        border-left: 4px solid vars.$color-success;
+        border-left: 4px solid var(--color-success);
         
         &:hover {
-            border-color: vars.$color-success;
+            border-color: var(--color-success);
         }
     }
     
     // Default hover for cards without specific stage types
     &:not(.stage-annotation):not(.stage-revision):not(.stage-completion):hover {
-        border-color: vars.$color-primary;
+        border-color: var(--color-primary);
     }
     
     // Clickable hover effects with stage-specific colors
     &.stage-clickable.stage-annotation:hover {
         .stage-header {
-            background: linear-gradient(135deg, color.adjust(vars.$color-info, $lightness: 10%), vars.$color-info);
+            background: linear-gradient(135deg, var(--color-info), var(--color-info);
 
             .stage-name, .stage-type {
-                color: vars.$color-white;
+                color: var(--color-white);
             }
             
             .stage-icon svg {
-                color: vars.$color-white;
+                color: var(--color-white);
             }
         }
     }
     
     &.stage-clickable.stage-revision:hover {
         .stage-header {
-            background: linear-gradient(135deg, color.adjust(vars.$color-warning, $lightness: 10%), vars.$color-warning);
+            background: linear-gradient(135deg, var(--color-warning), var(--color-warning);
 
             .stage-name, .stage-type {
-                color: vars.$color-white;
+                color: var(--color-white);
             }
             
             .stage-icon svg {
-                color: vars.$color-white;
+                color: var(--color-white);
             }
         }
     }
     
     &.stage-clickable.stage-completion:hover {
         .stage-header {
-            background: linear-gradient(135deg, color.adjust(vars.$color-success, $lightness: 10%), vars.$color-success);
+            background: linear-gradient(135deg, var(--color-success), var(--color-success);
 
             .stage-name, .stage-type {
-                color: vars.$color-white;
+                color: var(--color-white);
             }
             
             .stage-icon svg {
-                color: vars.$color-white;
+                color: var(--color-white);
             }
         }
     }
@@ -202,14 +208,14 @@ const stageIcon = computed(() => {
     // Default clickable hover for cards without specific stage types
     &.stage-clickable:not(.stage-annotation):not(.stage-revision):not(.stage-completion):hover {
         .stage-header {
-            background: linear-gradient(135deg, vars.$color-primary-light, vars.$color-primary);
+            background: linear-gradient(135deg, var(--color-primary-light, var(--color-primary);
             
             .stage-name, .stage-type {
-                color: vars.$color-white;
+                color: var(--color-white);
             }
             
             .stage-icon svg {
-                color: vars.$color-white;
+                color: var(--color-white);
             }
         }
     }
@@ -218,10 +224,10 @@ const stageIcon = computed(() => {
 .stage-header {
     display: flex;
     align-items: center;
-    gap: vars.$gap-medium;
-    padding: vars.$padding-medium;
-    background: vars.$color-gray-50;
-    border-bottom: 1px solid vars.$theme-border;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--color-gray-50);
+    border-bottom: 1px solid var(--color-gray-400);
     transition: all 0.3s ease;
 }
 
@@ -232,13 +238,13 @@ const stageIcon = computed(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: vars.$color-white;
-    border-radius: vars.$border-radius-md;
-    box-shadow: vars.$shadow-xs;
+    background: var(--color-white);
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(var(--color-black), 0.05);
     
     svg {
-        font-size: vars.$font-size-large;
-        color: vars.$color-primary;
+        font-size: 1.25rem;
+        color: var(--color-primary);
         transition: color 0.3s ease;
     }
 }
@@ -249,17 +255,17 @@ const stageIcon = computed(() => {
 }
 
 .stage-name {
-    margin: 0 0 vars.$gap-xsmall;
-    font-size: vars.$font-size-medium;
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
     font-weight: 600;
-    color: vars.$theme-text;
+    color: var(--color-gray-800);
     line-height: 1.2;
     transition: color 0.3s ease;
 }
 
 .stage-type {
-    font-size: vars.$font-size-small;
-    color: vars.$theme-text-light;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -267,73 +273,73 @@ const stageIcon = computed(() => {
 }
 
 .stage-content {
-    padding: vars.$padding-medium;
+    padding: 1rem;
     flex-grow: 1; /* Allow content to grow and fill available space */
     display: flex;
     flex-direction: column;
 }
 
 .stage-description {
-    margin: 0 0 vars.$gap-medium;
-    font-size: vars.$font-size-small;
-    color: vars.$theme-text-light;
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
     line-height: 1.4;
 }
 
 .stage-stats {
     display: flex;
-    gap: vars.$gap-medium;
-    margin-bottom: vars.$gap-medium;
+    gap: 1rem;
+    margin-bottom: 1rem;
 }
 
 .stat-item {
     display: flex;
     align-items: center;
-    gap: vars.$gap-xsmall;
-    font-size: vars.$font-size-small;
-    color: vars.$theme-text-light;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
     
     svg {
         width: 16px;
         text-align: center;
-        color: vars.$color-primary;
+        color: var(--color-primary);
     }
 }
 
 .stage-badges {
     display: flex;
-    gap: vars.$gap-xsmall;
+    gap: 0.25rem;
     flex-wrap: wrap;
     margin-top: auto; /* Push badges to bottom of content area */
 }
 
 .badge {
     padding: 2px 8px;
-    border-radius: vars.$border-radius-sm;
-    font-size: vars.$font-size-xsmall;
+    border-radius: 2px;
+    font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     
     &.start-badge {
-        background: vars.$color-success-light;
-        color: vars.$color-success;
-        border: 1px solid vars.$color-success;
+        background: var(--color-success-light);
+        color: var(--color-success);
+        border: 1px solid var(--color-success);
     }
     
     &.end-badge {
-        background: vars.$color-primary-light;
-        color: vars.$color-primary;
-        border: 1px solid vars.$color-primary;
+        background: var(--color-primary-light);
+        color: var(--color-primary);
+        border: 1px solid var(--color-primary);
     }
 }
 
 .stage-actions {
     display: flex;
-    gap: vars.$gap-xsmall;
-    padding: vars.$padding-small vars.$padding-medium;
-    background: vars.$color-gray-50;
-    border-top: 1px solid vars.$theme-border;
+    gap: 0.25rem;
+    padding: 0.5rem 1rem;
+    background: var(--color-gray-50);
+    border-top: 1px solid var(--color-gray-400);
 }
 
 .action-btn {
@@ -341,10 +347,10 @@ const stageIcon = computed(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: vars.$gap-xsmall;
+    gap: 0.25rem;
 
     svg {
-        font-size: vars.$font-size-xsmall;
+        font-size: 0.75rem;
     }
 }
 
@@ -356,7 +362,7 @@ const stageIcon = computed(() => {
     
     .stage-stats {
         flex-direction: column;
-        gap: vars.$gap-xsmall;
+        gap: 0.25rem;
     }
     
     .stage-actions {

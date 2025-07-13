@@ -87,16 +87,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
-import { useRouter, useRoute } from "vue-router";
-import { useAuthStore } from "@/stores/authStore";
-import { useToast } from "@/composables/useToast";
-import { projectInvitationService } from "@/services/api/projectInvitationService";
-import { projectService } from "@/services/api/projectService";
+import {computed, onMounted, ref} from "vue";
+import {useRoute, useRouter} from "vue-router";
+import {useAuthStore} from "@/stores/authStore";
+import {useToast} from "@/composables/useToast";
+import {projectInvitationService} from "@/services/api/projectInvitationService";
+import {projectService} from "@/services/api/projectService";
 import Button from "@/components/common/Button.vue";
-import type { ProjectInvitationDto } from "@/types/projectInvitation";
-import type { Project } from "@/types/project/project";
-import { AppLogger } from "@/utils/logger";
+import type {ProjectInvitationDto} from "@/types/projectInvitation";
+import type {Project} from "@/types/project/project";
+import {AppLogger} from "@/utils/logger";
 
 const logger = AppLogger.createComponentLogger('InviteAcceptView');
 
@@ -216,21 +216,20 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 @use "@/styles/auth";
-@use "@/styles/variables" as vars;
 
 .invitation-details {
     text-align: center;
 }
 
 .invitation-info {
-    margin: vars.$margin-large 0;
-    padding: vars.$padding-medium;
-    background-color: vars.$color-gray-100;
-    border-radius: vars.$border-radius-lg;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background-color: var(--color-gray-100);
+    border-radius: 8px;
     
     p {
-        margin-bottom: vars.$margin-small;
-        color: vars.$color-gray-900;
+        margin-bottom: 0.5rem;
+        color: var(--color-gray-900);
         
         &:last-child {
             margin-bottom: 0;
@@ -244,25 +243,25 @@ onMounted(async () => {
 
 .auth-required {
     text-align: center;
-    margin-top: vars.$margin-large;
+    margin-top: 1.5rem;
 }
 
 // Additional styles for invitation banners
 .info-banner {
-    padding: vars.$padding-small vars.$padding-medium;
-    margin-bottom: vars.$margin-medium;
-    background-color: vars.$color-info-light;
-    border: vars.$border-width solid vars.$color-info;
-    border-radius: vars.$border-radius-lg;
-    color: vars.$color-info-dark;
-    font-size: vars.$font-size-small;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--color-info-light);
+    border: 1px solid var(--color-info);
+    border-radius: 8px;
+    color: var(--color-info-dark);
+    font-size: 0.875rem;
     text-align: center;
     
     .loading-text {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: vars.$gap-small;
+        gap: 0.5rem;
         
         &::before {
             content: '⏳';
@@ -271,60 +270,60 @@ onMounted(async () => {
 }
 
 .success-banner {
-    padding: vars.$padding-small vars.$padding-medium;
-    margin-bottom: vars.$margin-medium;
-    background-color: vars.$color-success-light;
-    border: vars.$border-width solid vars.$color-success;
-    border-radius: vars.$border-radius-lg;
-    color: vars.$color-success-dark;
-    font-size: vars.$font-size-small;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--color-success-light);
+    border: 1px solid var(--color-success);
+    border-radius: 8px;
+    color: var(--color-success-dark);
+    font-size: 0.875rem;
     text-align: center;
     
     strong {
-        font-weight: vars.$font-weight-large;
+        font-weight: 600;
     }
     
     small {
-        font-size: vars.$font-size-xsmall;
+        font-size: 0.75rem;
         opacity: 0.8;
     }
 }
 
 .warning-banner {
-    padding: vars.$padding-small vars.$padding-medium;
-    margin-bottom: vars.$margin-medium;
-    background-color: vars.$color-warning-light;
-    border: vars.$border-width solid vars.$color-warning;
-    border-radius: vars.$border-radius-lg;
-    color: vars.$color-warning-dark;
-    font-size: vars.$font-size-small;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--color-warning-light);
+    border: 1px solid var(--color-warning);
+    border-radius: 8px;
+    color: var(--color-warning-dark);
+    font-size: 0.875rem;
     text-align: center;
     
     strong {
-        font-weight: vars.$font-weight-large;
+        font-weight: 600;
     }
 }
 
 .error-banner {
-    padding: vars.$padding-small vars.$padding-medium;
-    margin-bottom: vars.$margin-medium;
-    background-color: vars.$color-error-light;
-    border: vars.$border-width solid vars.$color-error;
-    border-radius: vars.$border-radius-lg;
-    color: vars.$color-error-dark;
-    font-size: vars.$font-size-small;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--color-error-light);
+    border: 1px solid var(--color-error);
+    border-radius: 8px;
+    color: var(--color-error-dark);
+    font-size: 0.875rem;
     text-align: center;
     
     strong {
-        font-weight: vars.$font-weight-large;
+        font-weight: 600;
     }
 }
 
 .form-actions {
     display: flex;
-    gap: vars.$gap-medium;
+    gap: 1rem;
     justify-content: center;
-    margin-top: vars.$margin-large;
+    margin-top: 1.5rem;
     
     .btn {
         min-width: 120px;

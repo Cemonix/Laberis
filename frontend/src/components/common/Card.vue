@@ -14,17 +14,15 @@
 
 <script setup lang="ts"></script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .base-card {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    background-color: vars.$theme-surface;
-    border: vars.$border-width solid vars.$theme-border;
-    border-radius: vars.$border-radius-md;
-    box-shadow: vars.$shadow-sm;
+    background-color: var(--color-white);
+    border: 1px solid var(--color-gray-400);
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(var(--color-black), 0.05);
     text-decoration: none;
     color: inherit;
 }
@@ -33,26 +31,26 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: vars.$padding-medium;
-    border-bottom: vars.$border-width solid vars.$theme-border;
-    color: vars.$color-gray-900;
+    padding: 1rem;
+    border-bottom: 1px solid var(--color-gray-400);
+    color: var(--color-gray-900);
 }
 
 .base-card-body {
-    padding: vars.$padding-medium;
+    padding: 1rem;
     flex-grow: 1;
-    color: vars.$color-gray-800;
+    color: var(--color-gray-800);
 }
 
 .base-card-footer {
 	display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: vars.$gap-medium;
-    font-size: vars.$font-size-small;
+    gap: 1rem;
+    font-size: 0.875rem;
     text-transform: capitalize;
-    padding: vars.$padding-medium;
-    border-top: vars.$border-width solid vars.$theme-border;
-    color: vars.$color-gray-600;
+    padding: 1rem;
+    border-top: 1px solid var(--color-gray-400);
+    color: var(--color-gray-600);
 }
 </style>

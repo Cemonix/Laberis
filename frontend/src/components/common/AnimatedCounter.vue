@@ -3,8 +3,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
-import { animateValue, formatNumber } from '@/utils/charts';
+import {onMounted, ref, watch} from 'vue';
+import {animateValue, formatNumber} from '@/utils/charts';
 
 interface Props {
     value: number;
@@ -41,7 +41,7 @@ watch(() => props.value, (newValue) => {
 });
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .animated-counter {
     font-weight: bold;
     transition: all 0.3s ease;

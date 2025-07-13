@@ -178,16 +178,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faPenNib, faSearch, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
+import {computed, onMounted, reactive, ref} from 'vue';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import {faCheckCircle, faPenNib, faSearch} from '@fortawesome/free-solid-svg-icons';
 import Form from '@/components/common/Form.vue';
 import Button from '@/components/common/Button.vue';
-import type { CreateWorkflowWithStagesRequest } from '@/types/workflow';
-import { WorkflowStageType } from '@/types/workflow';
-import type { ProjectMember } from '@/types/projectMember';
-import { projectMemberService } from '@/services/api/projectMemberService';
-import { AppLogger } from '@/utils/logger';
+import type {CreateWorkflowWithStagesRequest} from '@/types/workflow';
+import {WorkflowStageType} from '@/types/workflow';
+import type {ProjectMember} from '@/types/projectMember';
+import {projectMemberService} from '@/services/api/projectMemberService';
+import {AppLogger} from '@/utils/logger';
 
 const logger = AppLogger.createComponentLogger('CreateWorkflowForm');
 
@@ -352,23 +352,21 @@ const resetForm = () => {
 defineExpose({ resetForm });
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .create-workflow-form {
     max-width: 600px;
     margin: 0 auto;
     max-height: 80vh;
     overflow-y: auto;
-    padding: vars.$padding-medium;
+    padding: 1rem;
 }
 
 .form-section {
-    margin-bottom: vars.$margin-large;
-    padding: vars.$padding-medium;
-    background: vars.$color-white;
-    border: 1px solid vars.$theme-border;
-    border-radius: vars.$border-radius-lg;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-400);
+    border-radius: 8px;
     
     &:first-child {
         margin-top: 0;
@@ -376,22 +374,22 @@ defineExpose({ resetForm });
 }
 
 .section-title {
-    margin: 0 0 vars.$margin-medium;
-    font-size: vars.$font-size-medium;
-    font-weight: vars.$font-weight-large;
-    border-bottom: 2px solid vars.$color-primary;
-    padding-bottom: vars.$padding-xsmall;
+    margin: 0 0 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-bottom: 2px solid var(--color-primary);
+    padding-bottom: 0.25rem;
 }
 
 .section-help {
-    margin-bottom: vars.$margin-medium !important;
+    margin-bottom: 1rem !important;
     font-style: italic;
 }
 
 .checkbox-group {
     display: flex;
     align-items: flex-start;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
     
     input[type="checkbox"] {
         margin-top: 2px; // Align with first line of text
@@ -401,131 +399,131 @@ defineExpose({ resetForm });
 .checkbox-label {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-xsmall;
+    gap: 0.25rem;
     cursor: pointer;
-    font-weight: vars.$font-weight-medium;
+    font-weight: 500;
 }
 
 .checkbox-help {
-    font-size: vars.$font-size-small;
-    color: vars.$theme-text-light;
-    font-weight: vars.$font-weight-small;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+    font-weight: 400;
 }
 
 .stages-configuration {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-medium;
+    gap: 1rem;
 }
 
 .stage-assignment {
-    padding: vars.$padding-medium;
-    background: vars.$color-gray-50;
-    border-radius: vars.$border-radius-md;
-    border: 1px solid vars.$theme-border;
+    padding: 1rem;
+    background: var(--color-gray-50);
+    border-radius: 4px;
+    border: 1px solid var(--color-gray-400);
 }
 
 .stage-header {
     display: flex;
     align-items: center;
-    gap: vars.$gap-small;
-    margin-bottom: vars.$margin-small;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
     
     h4 {
         margin: 0;
         flex-grow: 1;
-        color: vars.$theme-text;
-        font-size: vars.$font-size-small;
-        font-weight: vars.$font-weight-large;
+        color: var(--color-gray-800);
+        font-size: 0.875rem;
+        font-weight: 600;
     }
 }
 
 .stage-icon {
-    font-size: vars.$font-size-medium;
+    font-size: 1rem;
     
     &.annotation {
-        color: vars.$color-info;
+        color: var(--color-info);
     }
     
     &.revision {
-        color: vars.$color-warning-dark;
+        color: var(--color-warning-dark);
     }
     
     &.completion {
-        color: vars.$color-success;
+        color: var(--color-success);
     }
 }
 
 .stage-badge {
     padding: 1px 6px;
-    border-radius: vars.$border-radius-sm;
-    font-size: vars.$font-size-xsmall;
-    font-weight: vars.$font-weight-large;
+    border-radius: 2px;
+    font-size: 0.75rem;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     
     &.annotation {
-        background: vars.$color-info-light;
-        color: vars.$color-info;
-        border: 1px solid vars.$color-info;
+        background: var(--color-info-light);
+        color: var(--color-info);
+        border: 1px solid var(--color-info);
     }
     
     &.revision {
-        background: vars.$color-warning-light;
-        color: vars.$color-warning-dark;
-        border: 1px solid vars.$color-warning;
+        background: var(--color-warning-light);
+        color: var(--color-warning-dark);
+        border: 1px solid var(--color-warning);
     }
     
     &.completion {
-        background: vars.$color-success-light;
-        color: vars.$color-success;
-        border: 1px solid vars.$color-success;
+        background: var(--color-success-light);
+        color: var(--color-success);
+        border: 1px solid var(--color-success);
     }
 }
 
 .member-selector {
     .loading-text, .error-text {
-        padding: vars.$padding-small;
+        padding: 0.5rem;
         text-align: center;
         font-style: italic;
     }
     
     .loading-text {
-        color: vars.$theme-text-light;
+        color: var(--color-gray-600);
     }
     
     .error-text {
-        color: vars.$color-error;
+        color: var(--color-error);
     }
 }
 
 .member-select {
     width: 100%;
     min-height: 100px;
-    padding: vars.$padding-small;
-    border: 1px solid vars.$theme-border;
-    border-radius: vars.$border-radius-md;
-    background: vars.$color-white;
-    font-size: vars.$font-size-small;
-    color: vars.$theme-text;
+    padding: 0.5rem;
+    border: 1px solid var(--color-gray-400);
+    border-radius: 4px;
+    background: var(--color-white);
+    font-size: 0.875rem;
+    color: var(--color-gray-800);
     
     &:focus {
         outline: none;
-        border-color: vars.$color-primary;
+        border-color: var(--color-primary);
         box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
     }
     
     &:disabled {
-        background: vars.$color-gray-100;
-        color: vars.$theme-text-light;
+        background: var(--color-gray-100);
+        color: var(--color-gray-600);
         cursor: not-allowed;
     }
     
     option {
-        padding: vars.$padding-xsmall;
+        padding: 0.25rem;
         
         &:checked {
-            background: vars.$color-primary;
+            background: var(--color-primary);
             color: vars.$color-white;
         }
     }
@@ -533,16 +531,16 @@ defineExpose({ resetForm });
 
 .field-error {
     color: vars.$color-error;
-    font-size: vars.$font-size-small;
-    font-weight: vars.$font-weight-medium;
-    margin-top: vars.$margin-xsmall;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-top: 0.25rem;
 }
 
 .field-help {
-    color: vars.$theme-text-light;
-    font-size: vars.$font-size-small;
-    line-height: vars.$line-height-medium;
-    margin-top: vars.$margin-xsmall;
+    color: vars.$color-gray-600;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    margin-top: 0.25rem;
 }
 
 .form-actions {
@@ -550,23 +548,23 @@ defineExpose({ resetForm });
     justify-content: flex-end;
     position: relative;
     background: vars.$color-white;
-    margin-left: -#{vars.$padding-medium};
-    margin-right: -#{vars.$padding-medium};
-    margin-bottom: -#{vars.$padding-medium};
-    padding-left: vars.$padding-medium;
-    padding-right: vars.$padding-medium;
-    padding-bottom: vars.$padding-medium;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    margin-bottom: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: 1rem;
 }
 
 @media (max-width: 768px) {
     .create-workflow-form {
         max-width: 100%;
         max-height: 85vh;
-        padding: vars.$padding-small;
+        padding: 0.5rem;
     }
     
     .form-section {
-        padding: vars.$padding-small;
+        padding: 0.5rem;
     }
     
     .member-select {
@@ -575,12 +573,12 @@ defineExpose({ resetForm });
     
     .form-actions {
         flex-direction: column;
-        margin-left: -#{vars.$padding-small};
-        margin-right: -#{vars.$padding-small};
-        margin-bottom: -#{vars.$padding-small};
-        padding-left: vars.$padding-small;
-        padding-right: vars.$padding-small;
-        padding-bottom: vars.$padding-small;
+        margin-left: -0.5rem;
+        margin-right: -0.5rem;
+        margin-bottom: -0.5rem;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        padding-bottom: 0.5rem;
         
         button {
             width: 100%;

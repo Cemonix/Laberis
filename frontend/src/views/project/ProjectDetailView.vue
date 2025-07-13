@@ -36,12 +36,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import type { Project } from '@/types/project/project';
-import { projectService } from '@/services/api/projectService';
-import { useAlert } from '@/composables/useAlert';
-import { AppLogger } from '@/utils/logger';
+import {onMounted, ref} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
+import type {Project} from '@/types/project/project';
+import {projectService} from '@/services/api/projectService';
+import {useAlert} from '@/composables/useAlert';
+import {AppLogger} from '@/utils/logger';
 
 const logger = AppLogger.createComponentLogger('ProjectDetailView');
 
@@ -69,7 +69,7 @@ const fetchProject = async () => {
         logger.error('Error fetching project:', err);
         error.value = 'Failed to load project details. Please try again.';
         await showAlert('Error', 'Project not found. You will be redirected to the projects list.');
-        router.push('/projects');
+        await router.push('/projects');
     } finally {
         loading.value = false;
     }
@@ -81,14 +81,11 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@use "sass:color";
-@use "@/styles/variables" as vars;
-
 .page-container {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    padding: vars.$padding-xlarge;
+    padding: 2rem;
     width: 100%;
     margin: 0 auto;
 }
@@ -102,57 +99,57 @@ onMounted(() => {
     text-align: center;
     
     p {
-        font-size: vars.$font-size-large;
-        color: vars.$theme-text-light;
+        font-size: 1.25rem;
+        color: var(--color-gray-800);
     }
 }
 
 .error-state p {
-    color: vars.$color-error;
+    color: var(--color-error);
 }
 
 .project-detail-view {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    border-radius: vars.$border-radius-lg;
-    padding: vars.$padding-large;
+    border-radius: 8px;
+    padding: 1.5rem;
 }
 
 .project-header {
-    margin-bottom: vars.$margin-medium;
+    margin-bottom: 1rem;
     .project-name {
         font-size: 2.5rem;
-        color: vars.$theme-text;
+        color: var(--color-gray-800);
     }
     .project-description {
-        font-size: vars.$font-size-large;
-        color: vars.$theme-text-light;
-        margin-top: vars.$margin-small;
+        font-size: 1.25rem;
+        color: var(--color-gray-600);
+        margin-top: 0.5rem;
     }
 }
 
 .project-sub-nav {
     display: flex;
-    gap: vars.$gap-small;
-    border-bottom: vars.$border-width solid vars.$color-gray-300;
-    margin-bottom: vars.$margin-large * 2;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--color-gray-300);
+    margin-bottom: 3rem;
 }
 
 .sub-nav-link {
-    padding: vars.$padding-small vars.$padding-medium;
+    padding: 0.5rem 1rem;
     text-decoration: none;
-    color: vars.$color-gray-700;
+    color: var(--color-gray-700);
     border-bottom: 3px solid transparent;
     transition: color 0.2s ease-in-out, border-color 0.2s ease-in-out;
 
     &:hover {
-        color: vars.$theme-text;
+        color: var(--color-gray-800);
     }
 
     &.is-active {
-        color: vars.$color-primary;
-        border-bottom-color: vars.$color-primary;
+        color: var(--color-primary);
+        border-bottom-color: var(--color-primary);
     }
 }
 

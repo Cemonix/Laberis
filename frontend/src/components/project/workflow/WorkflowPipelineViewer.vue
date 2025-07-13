@@ -74,10 +74,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import {computed} from 'vue';
 import Button from '@/components/common/Button.vue';
 import WorkflowStageCard from './WorkflowStageCard.vue';
-import type { WorkflowStagePipeline } from '@/types/workflow';
+import type {WorkflowStagePipeline} from '@/types/workflow';
 
 interface Props {
     workflowId: number;
@@ -109,16 +109,14 @@ const handleManageAssignments = (stage: WorkflowStagePipeline) => emit('manage-a
 const refreshPipeline = () => emit('refresh');
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .workflow-pipeline-viewer {
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: vars.$theme-background;
-    border-radius: vars.$border-radius-lg;
+    background: var(--color-gray-50);
+    border-radius: 8px;
     overflow: hidden;
 }
 
@@ -127,19 +125,19 @@ const refreshPipeline = () => emit('refresh');
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: vars.$padding-medium vars.$padding-large;
-    border-bottom: 1px solid vars.$theme-border;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-gray-400);
     
     .header-content {
         .pipeline-title {
             margin: 0;
-            color: vars.$theme-text;
-            font-size: vars.$font-size-xlarge;
+            color: var(--color-gray-800);
+            font-size: 1.5rem;
         }
         .pipeline-subtitle {
             margin: 0;
-            color: vars.$theme-text-light;
-            font-size: vars.$font-size-small;
+            color: var(--color-gray-600);
+            font-size: 0.875rem;
         }
     }
 }
@@ -147,7 +145,7 @@ const refreshPipeline = () => emit('refresh');
 .pipeline-content {
     flex-grow: 1;
     overflow: auto;
-    padding: vars.$padding-large;
+    padding: 1.5rem;
 }
 
 .linear-pipeline {
@@ -161,14 +159,14 @@ const refreshPipeline = () => emit('refresh');
 .pipeline-flow {
     display: flex;
     align-items: center;
-    gap: vars.$gap-large;
-    padding: vars.$padding-medium;
+    gap: 1.5rem;
+    padding: 1rem;
     flex-wrap: wrap;
     justify-content: center;
     
     @media (max-width: 768px) {
         flex-direction: column;
-        gap: vars.$gap-medium;
+        gap: 1rem;
     }
 }
 
@@ -185,14 +183,14 @@ const refreshPipeline = () => emit('refresh');
     
     @media (max-width: 768px) {
         transform: rotate(90deg);
-        margin: vars.$gap-small 0;
+        margin: 0.5rem 0;
     }
 }
 
 .arrow-svg {
     width: 60px;
     height: 20px;
-    color: vars.$color-gray-400;
+    color: var(--color-gray-400);
     
     @media (max-width: 768px) {
         width: 20px;
@@ -205,23 +203,23 @@ const refreshPipeline = () => emit('refresh');
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap: vars.$gap-medium;
-    padding: vars.$padding-xlarge;
+    gap: 1rem;
+    padding: 2rem;
     text-align: center;
     height: 100%;
     
     h3 {
-        font-size: vars.$font-size-large;
-        color: vars.$theme-text;
+        font-size: 1.25rem;
+        color: var(--color-gray-800);
         margin: 0;
     }
     p {
-        color: vars.$theme-text-light;
+        color: var(--color-gray-600);
         margin: 0;
     }
     
     &.error-state p {
-        color: vars.$color-error;
+        color: var(--color-error);
     }
 }
 
