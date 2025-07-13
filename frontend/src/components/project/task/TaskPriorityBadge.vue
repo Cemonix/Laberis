@@ -6,14 +6,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { 
-    faExclamation, 
-    faExclamationTriangle, 
-    faFlag,
-    faMinus
-} from '@fortawesome/free-solid-svg-icons';
+import {computed} from 'vue';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import {faExclamation, faExclamationTriangle, faFlag, faMinus} from '@fortawesome/free-solid-svg-icons';
 
 interface Props {
     priority: number;
@@ -56,48 +51,46 @@ const priorityClass = computed(() => priorityInfo.value.class);
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
 .task-priority-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: vars.$gap-xsmall;
+    gap: 0.25rem;
     padding: 2px 8px;
-    border-radius: vars.$border-radius-sm;
-    font-size: vars.$font-size-xsmall;
-    font-weight: vars.$font-weight-medium;
+    border-radius: 2px;
+    font-size: 0.75rem;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     white-space: nowrap;
     min-width: 60px;
     
     &.high {
-        background: vars.$color-error-light;
-        color: vars.$color-error;
-        border: 1px solid vars.$color-error;
+        background: var(--color-error-light);
+        color: var(--color-error);
+        border: 1px solid var(--color-error);
     }
     
     &.medium {
-        background: vars.$color-warning-light;
-        color: vars.$color-warning-dark;
-        border: 1px solid vars.$color-warning;
+        background: var(--color-warning-light);
+        color: var(--color-warning-dark);
+        border: 1px solid var(--color-warning);
     }
     
     &.normal {
-        background: vars.$color-info-light;
-        color: vars.$color-info;
-        border: 1px solid vars.$color-info;
+        background: var(--color-info-light);
+        color: var(--color-info);
+        border: 1px solid var(--color-info);
     }
     
     &.low {
-        background: vars.$color-gray-100;
-        color: vars.$color-gray-600;
-        border: 1px solid vars.$color-gray-300;
+        background: var(--color-gray-100);
+        color: var(--color-gray-600);
+        border: 1px solid var(--color-gray-300);
     }
     
     svg {
-        font-size: vars.$font-size-xsmall;
+        font-size: 0.75rem;
     }
 }
 </style>

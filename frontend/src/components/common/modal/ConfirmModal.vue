@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch, ref, onUnmounted } from 'vue';
+import {onUnmounted, ref, watch} from 'vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import Button from '@/components/common/Button.vue';
 
@@ -83,22 +83,20 @@ onUnmounted(() => {
 });
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .confirm-message {
-    font-size: vars.$font-size-medium;
-    color: vars.$theme-text;
-    line-height: vars.$line-height-large;
+    font-size: 1rem;
+    color: var(--color-gray-800);
+    line-height: 1.5;
 }
 
 .cancel-button {
-    background-color: vars.$color-error-dark;
-    color: vars.$color-white;
-    margin-left: vars.$margin-small;
+    background-color: var(--color-error-dark);
+    color: var(--color-white);
+    margin-left: 0.5rem;
 
     &:hover {
-        background-color: vars.$color-error-darker;
+        background-color: var(--color-error-darker);
     }
 }
 </style>

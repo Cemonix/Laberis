@@ -23,8 +23,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import type { Project } from "@/types/project/project";
+import {computed} from "vue";
+import type {Project} from "@/types/project/project";
 import Card from "@/components/common/Card.vue";
 
 const props = defineProps<{
@@ -45,10 +45,7 @@ const formattedDate = computed(() => {
 });
 </script>
 
-<style lang="scss" scoped>
-@use "sass:color";
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .project-card-link {
     display: block;
     text-decoration: none;
@@ -57,8 +54,8 @@ const formattedDate = computed(() => {
 
     &:hover .project-card-content {
         transform: translateY(-5px);
-        box-shadow: vars.$shadow-md;
-        border-color: color.adjust(vars.$color-primary, $lightness: 15%);
+        box-shadow: 0 1px 3px rgba(var(--color-black), 0.1);
+        border-color: var(--color-primary);
     }
 }
 
@@ -67,38 +64,38 @@ const formattedDate = computed(() => {
 }
 
 .project-name {
-    font-size: vars.$font-size-large;
-    font-weight: vars.$font-weight-xlarge;
+    font-size: 1.25rem;
+    font-weight: 700;
     margin: 0;
-    margin-right: vars.$margin-small;
+    margin-right: 0.5rem;
 }
 
 .project-status {
     display: inline-block;
     padding: 0.25em 0.6em;
-    font-size: vars.$font-size-small;
-    font-weight: vars.$font-weight-xlarge;
-    border-radius: vars.$border-radius-md;
+    font-size: 0.875rem;
+    font-weight: 700;
+    border-radius: 4px;
     text-transform: capitalize;
     white-space: nowrap;
     flex-shrink: 0;
 
     &.status-active {
-        background-color: color.adjust(vars.$color-primary, $alpha: -0.7);
-        color: color.adjust(vars.$color-primary, $lightness: 10%);
+        background-color: var(--color-primary, $alpha: - 0.7);
+        color: var(--color-primary);
     }
     &.status-archived {
-        background-color: color.adjust(vars.$color-secondary, $alpha: -0.7);
-        color: color.adjust(vars.$color-secondary, $lightness: 10%);
+        background-color: var(--color-secondary, $alpha: - 0.7);
+        color: var(--color-secondary);
     }
     &.status-read_only {
-        background-color: color.adjust(vars.$color-warning, $alpha: -0.7);
-        color: vars.$color-warning;
+        background-color: var(--color-warning, $alpha: - 0.7);
+        color: var(--color-warning);
     }
 }
 
 .project-description {
-    font-size: vars.$font-size-medium;
+    font-size: 1rem;
     margin: 0;
     flex-grow: 1;
 }

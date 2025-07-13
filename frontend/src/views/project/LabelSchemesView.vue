@@ -46,18 +46,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import {onMounted, ref} from 'vue';
+import {useRoute} from 'vue-router';
 import LabelSchemeCard from '@/components/labels/LabelSchemeCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateLabelSchemeForm from '@/components/labels/CreateLabelSchemeForm.vue';
 import Button from '@/components/common/Button.vue';
-import type { LabelScheme, FormPayloadLabelScheme } from '@/types/label/labelScheme';
-import { labelSchemeService } from '@/services/api/labelSchemeService';
-import { labelService } from '@/services/api/labelService';
-import { useAlert } from '@/composables/useAlert';
-import { useToast } from '@/composables/useToast';
-import { AppLogger } from '@/utils/logger';
+import type {FormPayloadLabelScheme, LabelScheme} from '@/types/label/labelScheme';
+import {labelSchemeService} from '@/services/api/labelSchemeService';
+import {labelService} from '@/services/api/labelService';
+import {useAlert} from '@/composables/useAlert';
+import {useToast} from '@/composables/useToast';
+import {AppLogger} from '@/utils/logger';
 
 const logger = AppLogger.createComponentLogger('LabelSchemesView');
 
@@ -146,32 +146,29 @@ onMounted(async () => {
 });
 </script>
 
-<style lang="scss" scoped>
-@use "sass:color";
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .page-header {
-    margin-bottom: vars.$margin-xlarge;
+    margin-bottom: 2rem;
     h1 {
-        font-size: vars.$font-size-xlarge;
-        margin-bottom: vars.$padding-xsmall;
+        font-size: 1.5rem;
+        margin-bottom: 0.25rem;
     }
     p {
-        color: vars.$theme-text-light;
-        margin-bottom: vars.$margin-medium;
+        color: var(--color-gray-600);
+        margin-bottom: 1rem;
     }
 }
 
 .schemes-list {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-large;
+    gap: 1.5rem;
 }
 
 .loading-state {
     text-align: center;
-    padding: vars.$padding-xlarge;
-    color: vars.$theme-text-light;
+    padding: 2rem;
+    color: var(--color-gray-600);
 }
 
 @keyframes fab-enter {
@@ -187,17 +184,17 @@ onMounted(async () => {
 
 .fab {
     position: absolute;
-    bottom: vars.$padding-xlarge;
-    right: vars.$padding-xlarge;
+    bottom: 2rem;
+    right: 2rem;
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background-color: vars.$color-primary;
-    color: vars.$color-white;
+    background-color: var(--color-primary);
+    color: var(--color-white);
     border: none;
     font-size: 2.5rem;
     line-height: 1;
-    box-shadow: vars.$shadow-md;
+    box-shadow: 0 1px 3px rgba(var(--color-black), 0.1);
     cursor: pointer;
     display: flex;
     justify-content: center;
@@ -207,7 +204,7 @@ onMounted(async () => {
     animation: fab-enter 0.2s ease-out 0.35s backwards;
 
     &:hover {
-        background-color: vars.$color-primary-hover;
+        background-color: var(--color-primary-hover);
         transform: scale(1.1);
         transition: transform 0.2s ease, background-color 0.3s ease;
     }

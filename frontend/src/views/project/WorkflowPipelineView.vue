@@ -23,13 +23,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import {onMounted, ref} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
 import WorkflowPipelineViewer from '@/components/project/workflow/WorkflowPipelineViewer.vue';
-import type { WorkflowStagePipeline } from '@/types/workflow';
-import { workflowStageService } from '@/services/api/workflowStageService';
-import { useErrorHandler } from '@/composables/useErrorHandler';
-import { AppLogger } from '@/utils/logger';
+import type {WorkflowStagePipeline} from '@/types/workflow';
+import {workflowStageService} from '@/services/api/workflowStageService';
+import {useErrorHandler} from '@/composables/useErrorHandler';
+import {AppLogger} from '@/utils/logger';
 
 const logger = AppLogger.createComponentLogger('WorkflowPipelineView');
 const route = useRoute();
@@ -117,8 +117,6 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
 .workflow-pipeline-view {
     display: flex;
     flex-direction: column;
@@ -131,31 +129,31 @@ onMounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: vars.$padding-large;
-    background-color: vars.$theme-surface;
-    border-bottom: 1px solid vars.$theme-border;
+    padding: 1.5rem;
+    background-color: var(--color-white);
+    border-bottom: 1px solid var(--color-gray-400);
     
     .header-left {
         display: flex;
         align-items: center;
-        gap: vars.$gap-medium;
+        gap: 1rem;
     }
     
     h2 {
         margin: 0;
-        color: vars.$theme-text;
-        font-size: vars.$font-size-xlarge;
+        color: var(--color-gray-800);
+        font-size: 1.5rem;
     }
 }
 
 .view-actions {
     display: flex;
-    gap: vars.$gap-medium;
+    gap: 1rem;
 }
 
 .view-actions {
     display: flex;
-    gap: vars.$gap-medium;
+    gap: 1rem;
 }
 
 .pipeline-container {

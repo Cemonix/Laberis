@@ -88,15 +88,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
-import { useAuthStore } from "@/stores/authStore";
-import { useToast } from "@/composables/useToast";
-import { projectInvitationService } from "@/services/api/projectInvitationService";
+import {computed, onMounted, ref} from "vue";
+import {useRouter} from "vue-router";
+import {useAuthStore} from "@/stores/authStore";
+import {useToast} from "@/composables/useToast";
+import {projectInvitationService} from "@/services/api/projectInvitationService";
 import Button from "@/components/common/Button.vue";
 import Form from "@/components/common/Form.vue";
-import type { ProjectInvitationDto } from "@/types/projectInvitation";
-import { AppLogger } from "@/utils/logger";
+import type {ProjectInvitationDto} from "@/types/projectInvitation";
+import {AppLogger} from "@/utils/logger";
 
 const logger = AppLogger.createComponentLogger('RegisterView');
 
@@ -213,24 +213,23 @@ onMounted(() => {
 });
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 @use "@/styles/auth";
-@use "@/styles/variables" as vars;
 
 // Additional styles for invitation banners
 .info-banner {
-    padding: vars.$padding-small vars.$padding-medium;
-    margin-bottom: vars.$margin-medium;
-    background-color: vars.$color-info-light;
-    border: vars.$border-width solid vars.$color-info;
-    border-radius: vars.$border-radius-lg;
-    color: vars.$color-info-dark;
-    font-size: vars.$font-size-small;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--color-info-light);
+    border: 1px solid var(--color-info);
+    border-radius: 8px;
+    color: var(--color-info-dark);
+    font-size: 0.875rem;
     
     .loading-text {
         display: flex;
         align-items: center;
-        gap: vars.$gap-small;
+        gap: 0.5rem;
         
         &::before {
             content: '⏳';
@@ -239,48 +238,48 @@ onMounted(() => {
 }
 
 .success-banner {
-    padding: vars.$padding-small vars.$padding-medium;
-    margin-bottom: vars.$margin-medium;
-    background-color: vars.$color-success-light;
-    border: vars.$border-width solid vars.$color-success;
-    border-radius: vars.$border-radius-lg;
-    color: vars.$color-success-dark;
-    font-size: vars.$font-size-small;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--color-success-light);
+    border: 1px solid var(--color-success);
+    border-radius: 8px;
+    color: var(--color-success-dark);
+    font-size: 0.875rem;
     
     strong {
-        font-weight: vars.$font-weight-large;
+        font-weight: 600;
     }
     
     small {
-        font-size: vars.$font-size-xsmall;
+        font-size: 0.75rem;
         opacity: 0.8;
     }
 }
 
 .warning-banner {
-    padding: vars.$padding-small vars.$padding-medium;
-    margin-bottom: vars.$margin-medium;
-    background-color: vars.$color-warning-light;
-    border: vars.$border-width solid vars.$color-warning;
-    border-radius: vars.$border-radius-lg;
-    color: vars.$color-warning-dark;
-    font-size: vars.$font-size-small;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--color-warning-light);
+    border: 1px solid var(--color-warning);
+    border-radius: 8px;
+    color: var(--color-warning-dark);
+    font-size: 0.875rem;
     text-align: center;
     
     strong {
-        font-weight: vars.$font-weight-large;
+        font-weight: 600;
     }
 }
 
 .readonly {
-    background-color: vars.$color-gray-600 !important;
+    background-color: var(--color-gray-600) !important;
     cursor: not-allowed;
 }
 
 .field-help {
-    margin-top: vars.$margin-xsmall;
-    font-size: vars.$font-size-xsmall;
-    color: vars.$color-gray-800;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--color-gray-800);
     font-style: italic;
 }
 </style>

@@ -46,10 +46,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faCheckCircle, faExclamationCircle, faExclamationTriangle, faInfoCircle, faTimes } from '@fortawesome/free-solid-svg-icons';
-import type { Toast } from '@/types/toast';
+import {computed, onMounted, ref} from 'vue';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import {
+    faCheckCircle,
+    faExclamationCircle,
+    faExclamationTriangle,
+    faInfoCircle,
+    faTimes
+} from '@fortawesome/free-solid-svg-icons';
+import type {Toast} from '@/types/toast';
 
 const props = defineProps<{
     toast: Toast;
@@ -97,16 +103,14 @@ onMounted(() => {
 });
 </script>
 
-<style scoped lang="scss">
-@use "@/styles/variables" as vars;
-
+<style lang="scss" scoped>
 .toast-notification {
     display: flex;
     align-items: flex-start;
-    gap: vars.$gap-medium;
-    padding: vars.$padding-medium;
-    background: vars.$color-white;
-    border-radius: vars.$border-radius-lg;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--color-white);
+    border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
     border-left: 4px solid;
     min-width: 320px;
@@ -115,42 +119,42 @@ onMounted(() => {
     overflow: hidden;
 
     &--success {
-        border-left-color: vars.$color-success;
+        border-left-color: var(--color-success);
         
         .toast-icon {
-            color: vars.$color-success;
+            color: var(--color-success);
         }
     }
 
     &--error {
-        border-left-color: vars.$color-error;
+        border-left-color: var(--color-error);
         
         .toast-icon {
-            color: vars.$color-error;
+            color: var(--color-error);
         }
     }
 
     &--warning {
-        border-left-color: vars.$color-warning;
+        border-left-color: var(--color-warning);
         
         .toast-icon {
-            color: vars.$color-warning;
+            color: var(--color-warning);
         }
     }
 
     &--info {
-        border-left-color: vars.$color-info;
+        border-left-color: var(--color-info);
         
         .toast-icon {
-            color: vars.$color-info;
+            color: var(--color-info);
         }
     }
 }
 
 .toast-icon {
     flex-shrink: 0;
-    margin-top: vars.$margin-xxsmall;
-    font-size: vars.$font-size-large;
+    margin-top: 0.125rem;
+    font-size: 1.25rem;
 }
 
 .toast-content {
@@ -159,18 +163,18 @@ onMounted(() => {
 }
 
 .toast-title {
-    font-size: vars.$font-size-medium;
-    font-weight: vars.$font-weight-large;
-    color: vars.$color-text-primary;
-    margin: 0 0 vars.$margin-xsmall 0;
-    line-height: vars.$line-height-medium;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 0.25rem 0;
+    line-height: 1.4;
 }
 
 .toast-message {
-    font-size: vars.$font-size-small;
-    color: vars.$color-text-secondary;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
     margin: 0;
-    line-height: vars.$line-height-large;
+    line-height: 1.5;
     word-wrap: break-word;
 }
 
@@ -178,21 +182,21 @@ onMounted(() => {
     flex-shrink: 0;
     background: none;
     border: none;
-    color: vars.$color-text-muted;
+    color: var(--color-text-muted);
     cursor: pointer;
-    padding: vars.$padding-xsmall;
-    margin: calc(-1 * #{vars.$padding-xsmall}) calc(-1 * #{vars.$padding-xsmall}) calc(-1 * #{vars.$padding-xsmall}) vars.$margin-small;
-    border-radius: vars.$border-radius-sm;
+    padding: 0.25rem;
+    margin: calc(-1 * 0.25rem) calc(-1 * 0.25rem) calc(-1 * 0.25rem) 0.5rem;
+    border-radius: 2px;
     transition: color 0.2s ease, background-color 0.2s ease;
-    font-size: vars.$font-size-medium;
+    font-size: 1rem;
 
     &:hover {
-        color: vars.$color-text-secondary;
-        background-color: vars.$color-gray-100;
+        color: var(--color-text-secondary);
+        background-color: var(--color-gray-100);
     }
 
     &:focus {
-        outline: 2px solid vars.$color-primary;
+        outline: 2px solid var(--color-primary);
         outline-offset: 2px;
     }
 }
@@ -203,9 +207,9 @@ onMounted(() => {
     left: 0;
     height: 3px;
     background: linear-gradient(
-        90deg, 
-        vars.$color-primary 0%, 
-        vars.$color-primary-hover 100%
+        90deg,
+            var(--color-primary) 0%,
+            var(--color-primary-hover) 100%
     );
     animation: toast-progress linear forwards;
     transform-origin: left;

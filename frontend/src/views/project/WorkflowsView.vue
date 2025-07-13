@@ -37,19 +37,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import {onMounted, ref} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
 import WorkflowCard from '@/components/project/workflow/WorkflowCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateWorkflowWizard from '@/components/project/workflow/CreateWorkflowWizard.vue';
 import Button from '@/components/common/Button.vue';
-import { type Workflow, type CreateWorkflowWithStagesRequest } from '@/types/workflow';
-import { workflowService } from '@/services/api/workflowService';
-import { useAlert } from '@/composables/useAlert';
-import { AppLogger } from '@/utils/logger';
-import { useConfirm } from '@/composables/useConfirm';
-import { useToast } from '@/composables/useToast';
-import { useErrorHandler } from '@/composables/useErrorHandler';
+import {type CreateWorkflowWithStagesRequest, type Workflow} from '@/types/workflow';
+import {workflowService} from '@/services/api/workflowService';
+import {useAlert} from '@/composables/useAlert';
+import {AppLogger} from '@/utils/logger';
+import {useConfirm} from '@/composables/useConfirm';
+import {useToast} from '@/composables/useToast';
+import {useErrorHandler} from '@/composables/useErrorHandler';
 
 const logger = AppLogger.createComponentLogger('WorkflowsView');
 const route = useRoute();
@@ -157,17 +157,15 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
 .page-header {
-    margin-bottom: vars.$margin-xlarge;
+    margin-bottom: 2rem;
     h1 {
-        font-size: vars.$font-size-xlarge;
-        margin-bottom: vars.$padding-xsmall;
+        font-size: 1.5rem;
+        margin-bottom: 0.25rem;
     }
     p {
-        color: vars.$theme-text-light;
-        margin-bottom: vars.$margin-medium;
+        color: var(--color-gray-600);
+        margin-bottom: 1rem;
         max-width: 80ch;
     }
 }
@@ -175,12 +173,12 @@ onMounted(() => {
 .workflows-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: vars.$gap-large;
+    gap: 1.5rem;
 }
 
 .no-content-message,
 .loading-message {
-    color: vars.$theme-text-light;
+    color: var(--color-gray-600);
     font-style: italic;
 }
 
@@ -197,17 +195,17 @@ onMounted(() => {
 
 .fab {
     position: absolute;
-    bottom: vars.$padding-xlarge;
-    right: vars.$padding-xlarge;
+    bottom: 2rem;
+    right: 2rem;
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background-color: vars.$color-primary;
-    color: vars.$color-white;
+    background-color: var(--color-primary);
+    color: var(--color-white);
     border: none;
     font-size: 2.5rem;
     line-height: 1;
-    box-shadow: vars.$shadow-md;
+    box-shadow: 0 1px 3px rgba(var(--color-black), 0.1);
     cursor: pointer;
     display: flex;
     justify-content: center;
@@ -217,7 +215,7 @@ onMounted(() => {
     animation: fab-enter 0.2s ease-out 0.35s backwards;
 
     &:hover {
-        background-color: vars.$color-primary-hover;
+        background-color: var(--color-primary-hover);
         transform: scale(1.1);
         transition: transform 0.2s ease, background-color 0.3s ease;
     }

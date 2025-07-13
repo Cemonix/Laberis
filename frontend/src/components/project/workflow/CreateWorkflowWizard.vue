@@ -341,27 +341,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted, watch } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { 
-    faPenNib, 
-    faSearch, 
-    faCheckCircle, 
-    faArrowRight, 
+import {computed, onMounted, reactive, ref, watch} from 'vue';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import {
+    faArrowRight,
+    faCheckCircle,
+    faExclamationTriangle,
+    faPenNib,
     faPlus,
-    faSpinner,
-    faExclamationTriangle
+    faSearch,
+    faSpinner
 } from '@fortawesome/free-solid-svg-icons';
+import type {StepperStep} from '@/components/common/Stepper.vue';
 import Stepper from '@/components/common/Stepper.vue';
-import type { StepperStep } from '@/components/common/Stepper.vue';
-import type { CreateWorkflowWithStagesRequest } from '@/types/workflow';
-import { WorkflowStageType } from '@/types/workflow';
-import type { ProjectMember } from '@/types/projectMember';
-import type { DataSource } from '@/types/dataSource';
-import { projectMemberService } from '@/services/api/projectMemberService';
-import { dataSourceService } from '@/services/api/dataSourceService';
-import { AppLogger } from '@/utils/logger';
-import { useToast } from '@/composables/useToast';
+import type {CreateWorkflowWithStagesRequest} from '@/types/workflow';
+import {WorkflowStageType} from '@/types/workflow';
+import type {ProjectMember} from '@/types/projectMember';
+import type {DataSource} from '@/types/dataSource';
+import {projectMemberService} from '@/services/api/projectMemberService';
+import {dataSourceService} from '@/services/api/dataSourceService';
+import {AppLogger} from '@/utils/logger';
+import {useToast} from '@/composables/useToast';
 
 const logger = AppLogger.createComponentLogger('CreateWorkflowWizard');
 const { showApiError } = useToast();
@@ -667,9 +667,7 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
 });
 </script>
 
-<style scoped lang="scss">
-@use '@/styles/variables' as vars;
-
+<style lang="scss" scoped>
 .create-workflow-wizard {
     max-width: 100%;
     margin: 0;
@@ -678,31 +676,31 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
 .stepper-content {
     .step-panel {
         h3 {
-            color: vars.$color-text-primary;
-            font-family: vars.$font-family-heading;
-            margin-bottom: vars.$margin-small;
+            color: var(--color-text-primary);
+            font-family: var(--font-family-heading), sans-serif;
+            margin-bottom: 0.5rem;
         }
         
         .step-intro {
-            color: vars.$color-text-secondary;
-            margin-bottom: vars.$margin-xlarge;
+            color: var(--color-text-secondary);
+            margin-bottom: 2rem;
         }
     }
 }
 
 .form-section {
     .form-group {
-        margin-bottom: vars.$margin-large;
+        margin-bottom: 1.5rem;
         
         label {
             display: block;
-            font-weight: vars.$font-weight-medium;
-            font-family: vars.$font-family-body;
-            color: vars.$color-gray-700;
-            margin-bottom: vars.$margin-small;
+            font-weight: 500;
+            font-family: var(--font-family-body), sans-serif;
+            color: var(--color-gray-700);
+            margin-bottom: 0.5rem;
 
             .required {
-                color: vars.$color-error;
+                color: var(--color-error);
             }
         }
         
@@ -710,72 +708,72 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
         .form-textarea,
         .form-select {
             width: 100%;
-            padding: vars.$padding-small vars.$padding-medium;
-            border: vars.$border-width solid vars.$color-gray-300;
-            border-radius: vars.$border-radius-lg;
-            font-size: vars.$font-size-medium;
-            font-family: vars.$font-family-body;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--color-gray-300);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: var(--font-family-body), sans-serif;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
             
             &:focus {
                 outline: none;
-                border-color: vars.$color-primary;
-                box-shadow: 0 0 0 3px vars.$color-primary-light;
+                border-color: var(--color-primary);
+                box-shadow: 0 0 0 3px var(--color-primary-light);
             }
             
             &:disabled {
-                background: vars.$color-gray-50;
-                color: vars.$color-text-muted;
+                background: var(--color-gray-50);
+                color: var(--color-text-muted);
                 cursor: not-allowed;
                 opacity: 0.6;
             }
         }
 
         .form-select {
-            background: vars.$color-white;
+            background: var(--color-whitee);
             background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right vars.$padding-small center;
+            background-position: right 0.5rem center;
             background-repeat: no-repeat;
             background-size: 1.5em 1.5em;
-            padding-right: calc(#{vars.$padding-medium} + 1.5em);
+            padding-right: calc(#{1rem} + 1.5em);
             appearance: none;
             
             option {
-                padding: vars.$padding-xsmall;
-                background: vars.$color-white;
-                color: vars.$color-text-primary;
+                padding: 0.25rem;
+                background: var(--color-whitee);
+                color: var(--color-text-primary);
 
                 &:checked {
-                    background: vars.$color-primary;
-                    color: vars.$color-white;
+                    background: var(--color-primary);
+                    color: var(--color-whitee);
                 }
                 
                 &:hover {
-                    background: vars.$color-primary-light;
+                    background: var(--color-primary-light);
                 }
             }
         }
         
         .field-help {
-            font-size: vars.$font-size-small;
-            color: vars.$color-text-secondary;
-            margin-top: vars.$margin-xsmall;
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+            margin-top: 0.25rem;
         }
         
         .field-error {
-            font-size: vars.$font-size-small;
-            color: vars.$color-error;
-            margin-top: vars.$margin-xsmall;
+            font-size: 0.875rem;
+            color: var(--color-error);
+            margin-top: 0.25rem;
         }
     }
     
     .checkbox-wrapper {
         display: flex;
         align-items: flex-start;
-        gap: vars.$gap-medium;
+        gap: 1rem;
 
         input[type="checkbox"] {
-            margin-top: vars.$margin-xsmall;
+            margin-top: 0.25rem;
         }
         
         .checkbox-label {
@@ -784,9 +782,9 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
             
             .checkbox-description {
                 display: block;
-                font-weight: vars.$font-weight-small;
-                color: vars.$color-text-secondary;
-                margin-top: vars.$margin-xsmall;
+                font-weight: 400;
+                color: var(--color-text-secondary);
+                margin-top: 0.25rem;
             }
         }
     }
@@ -796,140 +794,148 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
 .error-section {
     display: flex;
     align-items: center;
-    gap: vars.$gap-small;
-    padding: vars.$padding-xlarge;
+    gap: 0.5rem;
+    padding: 2rem;
     text-align: center;
-    color: vars.$color-text-secondary;
-    background: vars.$color-gray-50;
-    border-radius: vars.$border-radius-lg;
+    color: var(--color-text-secondary);
+    background: var(--color-gray-50);
+    border-radius: 8px;
 }
 
 .error-section {
-    color: vars.$color-error;
-    background: vars.$color-error-light;
+    color: var(--color-error);
+    background: var(--color-error-light);
 }
 
 .data-source-configuration {
     .stage-data-source-config {
-        background: vars.$color-white;
-        border: vars.$border-width solid vars.$color-gray-200;
-        border-radius: vars.$border-radius-xl;
-        padding: vars.$padding-large;
-        margin-bottom: vars.$margin-large;
+        background: var(--color-whitee);
+        border: 1px solid var(--color-gray-200);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
 
         .stage-header {
             display: flex;
             align-items: center;
-            gap: vars.$gap-medium;
-            margin-bottom: vars.$margin-medium;
+            gap: 1rem;
+            margin-bottom: 1rem;
             
             .stage-icon {
-                font-size: vars.$font-size-large;
+                font-size: 1.25rem;
 
-                &.annotation { color: vars.$color-primary; }
-                &.revision { color: vars.$color-warning; }
-                &.completion { color: vars.$color-success; }
+                &.annotation {
+                    color: var(--color-primary);
+                }
+
+                &.revision {
+                    color: var(--color-warning);
+                }
+
+                &.completion {
+                    color: var(--color-success);
+                }
             }
             
             h4 {
                 flex: 1;
                 margin: 0;
-                color: vars.$color-text-primary;
-                font-family: vars.$font-family-heading;
+                color: var(--color-text-primary);
+                font-family: var(--font-family-heading), sans-serif;
             }
             
             .stage-badge {
-                background: vars.$color-gray-100;
-                color: vars.$color-gray-700;
-                padding: vars.$padding-xsmall vars.$padding-small;
-                border-radius: vars.$border-radius-xl;
-                font-size: vars.$font-size-xsmall;
-                font-weight: vars.$font-weight-medium;
+                background: var(--color-gray-100);
+                color: var(--color-gray-700);
+                padding: 0.25rem 0.5rem;
+                border-radius: 16px;
+                font-size: 0.75rem;
+                font-weight: 500;
                 text-transform: uppercase;
                 
                 &.required {
-                    background: vars.$color-error-light;
-                    color: vars.$color-error-dark;
+                    background: var(--color-error-light);
+                    color: var(--color-error-dark);
                 }
                 
                 &.optional {
-                    background: vars.$color-warning-light;
-                    color: vars.$color-warning-dark;
+                    background: var(--color-warning-light);
+                    color: var(--color-warning-dark);
                 }
             }
         }
 
         .data-source-selectors {
             .form-group {
-                margin-bottom: vars.$margin-medium;
+                margin-bottom: 1rem;
                 
                 label {
                     display: block;
-                    font-weight: vars.$font-weight-medium;
-                    font-family: vars.$font-family-body;
-                    color: vars.$color-gray-700;
-                    margin-bottom: vars.$margin-small;
+                    font-weight: 500;
+                    font-family: var(--font-family-body), sans-serif;
+                    color: var(--color-gray-700);
+                    margin-bottom: 0.5rem;
 
                     .required {
-                        color: vars.$color-error;
+                        color: var(--color-error);
                     }
                 }
                 
                 .form-select {
                     width: 100%;
-                    padding: vars.$padding-small vars.$padding-medium;
-                    border: vars.$border-width solid vars.$color-gray-300;
-                    border-radius: vars.$border-radius-lg;
-                    font-size: vars.$font-size-medium;
-                    font-family: vars.$font-family-body;
+                    padding: 0.5rem 1rem;
+                    border: 1px solid var(--color-gray-300);
+                    border-radius: 8px;
+                    font-size: 1rem;
+                    font-family: var(--font-family-body), sans-serif;
                     transition: border-color 0.2s ease, box-shadow 0.2s ease;
-                    background: vars.$color-white;
+                    background: var(--color-whitee);
                     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-                    background-position: right vars.$padding-small center;
+                    background-position: right 0.5rem center;
                     background-repeat: no-repeat;
                     background-size: 1.5em 1.5em;
-                    padding-right: calc(#{vars.$padding-medium} + 1.5em);
+                    padding-right: calc(#{1rem} + 1.5em);
                     appearance: none;
                     
                     &:focus {
                         outline: none;
-                        border-color: vars.$color-primary;
-                        box-shadow: 0 0 0 3px vars.$color-primary-light;
+                        border-color: var(--color-primary);
+                        box-shadow: 0 0 0 3px var(--color-primary-light);
                     }
                     
                     &:disabled {
-                        background: vars.$color-gray-50;
-                        color: vars.$color-text-muted;
+                        background: var(--color-gray-50);
+                        color: var(--color-text-muted);
                         cursor: not-allowed;
                         opacity: 0.6;
                     }
                     
                     option {
-                        padding: vars.$padding-xsmall;
-                        background: vars.$color-white;
-                        color: vars.$color-text-primary;
+                        padding: 0.25rem;
+                        background: var(--color-white);
+                        color: var(--color-text-primary);
 
                         &:checked {
-                            background: vars.$color-primary;
-                            color: vars.$color-white;
+                            background: var(--color-primary);
+                            color: var(--color-white);
                         }
                         
                         &:hover {
-                            background: vars.$color-primary-light;
+                            background: var(--color-primary-light);
                         }
                     }
                 }
                 
                 .field-help {
-                    font-size: vars.$font-size-small;
-                    color: vars.$color-text-secondary;
-                    margin-top: vars.$margin-xsmall;
+                    font-size: 0.875rem;
+                    color: var(--color-text-secondary);
+                    margin-top: 0.25rem;
                 }
                 
                 .field-error {
-                    font-size: vars.$font-size-small;
-                    color: vars.$color-error;
-                    margin-top: vars.$margin-xsmall;
+                    font-size: 0.875rem;
+                    color: var(--color-error);
+                    margin-top: 0.25rem;
                 }
             }
         }
@@ -937,22 +943,22 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
 }
 
 .workflow-preview {
-    background: vars.$color-gray-50;
-    border-radius: vars.$border-radius-xl;
-    padding: vars.$padding-large;
-    margin-bottom: vars.$margin-xlarge;
+    background: var(--color-gray-50);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
     
     h4 {
         margin-top: 0;
-        margin-bottom: vars.$margin-medium;
-        color: vars.$color-text-primary;
-        font-family: vars.$font-family-heading;
+        margin-bottom: 1rem;
+        color: var(--color-text-primary);
+        font-family: var(--font-family-heading), sans-serif;
     }
     
     .workflow-stages {
         display: flex;
         align-items: center;
-        gap: vars.$gap-medium;
+        gap: 1rem;
         flex-wrap: wrap;
         
         .workflow-stage {
@@ -962,89 +968,105 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                gap: vars.$gap-small;
-                padding: vars.$padding-medium;
-                background: vars.$color-white;
-                border-radius: vars.$border-radius-lg;
-                border: vars.$border-width-thick solid;
+                gap: 0.5rem;
+                padding: 1rem;
+                background: var(--color-white);
+                border-radius: 8px;
+                border: 1px-thick solid;
                 min-width: 120px;
 
-                &.annotation { border-color: vars.$color-primary-light; }
-                &.revision { border-color: vars.$color-warning-light; }
-                &.completion { border-color: vars.$color-success-light; }
+                &.annotation {
+                    border-color: var(--color-primary-light);
+                }
+
+                &.revision {
+                    border-color: var(--color-warning-light);
+                }
+
+                &.completion {
+                    border-color: var(--color-success-light);
+                }
 
                 svg {
-                    font-size: vars.$font-size-large;
+                    font-size: 1.25rem;
                 }
                 
                 span {
-                    font-weight: vars.$font-weight-medium;
-                    font-size: vars.$font-size-small;
+                    font-weight: 500;
+                    font-size: 0.875rem;
                 }
             }
             
             .stage-members {
-                margin-top: vars.$margin-small;
-                font-size: vars.$font-size-xsmall;
-                color: vars.$color-text-secondary;
+                margin-top: 0.5rem;
+                font-size: 0.75rem;
+                color: var(--color-text-secondary);
                 max-width: 120px;
                 word-wrap: break-word;
             }
         }
         
         .workflow-arrow {
-            color: vars.$color-gray-400;
-            font-size: vars.$font-size-xlarge;
+            color: var(--color-gray-400);
+            font-size: 1.5rem;
         }
     }
 }
 
 .assignment-sections {
     .stage-assignment {
-        background: vars.$color-white;
-        border: vars.$border-width solid vars.$color-gray-200;
-        border-radius: vars.$border-radius-xl;
-        padding: vars.$padding-large;
-        margin-bottom: vars.$margin-large;
+        background: var(--color-white);
+        border: 1px solid var(--color-gray-200);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
 
         .stage-header {
             display: flex;
             align-items: center;
-            gap: vars.$gap-medium;
-            margin-bottom: vars.$margin-medium;
+            gap: 1rem;
+            margin-bottom: 1rem;
             
             .stage-icon {
-                width: vars.$font-size-large;
+                width: 1.25rem;
 
-                &.annotation { color: vars.$color-primary; }
-                &.revision { color: vars.$color-warning; }
-                &.completion { color: vars.$color-success; }
+                &.annotation {
+                    color: var(--color-primary);
+                }
+
+                &.revision {
+                    color: var(--color-warning);
+                }
+
+                &.completion {
+                    color: var(--color-success);
+                }
             }
             
             h4 {
                 flex: 1;
                 margin: 0;
-                color: vars.$color-text-primary;
-                font-family: vars.$font-family-heading;
+                color: var(--color-text-primary);
+                font-family: var(--font-family-heading), sans-serif;
             }
             
             .stage-badge {
-                background: vars.$color-gray-100;
-                color: vars.$color-gray-700;
-                padding: vars.$padding-xsmall vars.$padding-small;
-                border-radius: vars.$border-radius-xl;
-                font-size: vars.$font-size-xsmall;
-                font-weight: vars.$font-weight-medium;
+                background: var(--color-gray-100);
+                color: var(--color-gray-700);
+                padding: 0.25rem 0.5rem;
+                border-radius: 16px;
+                font-size: 0.75rem;
+                font-weight: 500;
                 text-transform: uppercase;
                 
                 &.required {
-                    background: vars.$color-error-light;
-                    color: vars.$color-error-dark;
+                    background: var(--color-error-light);
+                    color: var(--color-error-dark);
                 }
                 
                 &.optional {
-                    background: vars.$color-warning-light;
-                    color: vars.$color-warning-dark;
+                    background: var(--color-warning-light);
+                    color: var(--color-warning-dark);
                 }
             }
         }
@@ -1052,42 +1074,42 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
         .member-selector {
             label {
                 display: block;
-                font-weight: vars.$font-weight-medium;
-                font-family: vars.$font-family-body;
-                color: vars.$color-gray-700;
-                margin-bottom: vars.$margin-medium;
+                font-weight: 500;
+                font-family: var(--font-family-body), sans-serif;
+                color: var(--color-gray-700);
+                margin-bottom: 1rem;
                 
                 .required {
-                    color: vars.$color-error;
+                    color: var(--color-error);
                 }
             }
             
             .member-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-                gap: vars.$gap-medium;
+                gap: 1rem;
                 
                 .member-card {
                     display: flex;
                     align-items: center;
-                    gap: vars.$gap-medium;
-                    padding: vars.$padding-small;
-                    border: vars.$border-width solid vars.$color-gray-200;
-                    border-radius: vars.$border-radius-lg;
+                    gap: 1rem;
+                    padding: 0.5rem;
+                    border: 1px solid var(--color-gray-200);
+                    border-radius: 8px;
                     cursor: pointer;
                     transition: all 0.2s ease;
-                    box-shadow: vars.$shadow-xs;
+                    box-shadow: 0 1px 2px rgba(var(--color-black), 0.05);
                     
                     &:hover {
-                        border-color: vars.$color-primary-hover;
-                        background: vars.$color-primary-light;
-                        box-shadow: vars.$shadow-sm;
+                        border-color: var(--color-primary-hover);
+                        background: var(--color-primary-light);
+                        box-shadow: 0 1px 3px rgba(var(--color-black), 0.05);
                     }
                     
                     &.selected {
-                        border-color: vars.$color-primary;
-                        background: vars.$color-primary-light;
-                        box-shadow: vars.$shadow-sm;
+                        border-color: var(--color-primary);
+                        background: var(--color-primary-light);
+                        box-shadow: 0 1px 3px rgba(var(--color-black), 0.05);
                     }
                     
                     input[type="checkbox"] {
@@ -1098,13 +1120,13 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
                         flex: 1;
                         
                         .member-name {
-                            font-weight: vars.$font-weight-medium;
-                            color: vars.$color-text-primary;
+                            font-weight: 500;
+                            color: var(--color-text-primary);
                         }
                         
                         .member-role {
-                            font-size: vars.$font-size-small;
-                            color: vars.$color-text-secondary;
+                            font-size: 0.875rem;
+                            color: var(--color-text-secondary);
                             text-transform: capitalize;
                         }
                     }
@@ -1112,9 +1134,9 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
             }
             
             .field-error {
-                font-size: vars.$font-size-small;
-                color: vars.$color-error;
-                margin-top: vars.$margin-small;
+                font-size: 0.875rem;
+                color: var(--color-error);
+                margin-top: 0.5rem;
             }
         }
     }

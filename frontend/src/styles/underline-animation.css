@@ -1,0 +1,51 @@
+/* Underline Animation CSS */
+
+/* Base class for underline animation */
+.underline-animation {
+  position: relative;
+  transition: color 0.2s ease-in-out;
+}
+
+.underline-animation::after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -4px;
+  left: 50%;
+  background-color: var(--color-primary);
+  transition: width 0.3s ease, left 0.3s ease;
+}
+
+.underline-animation:hover,
+.underline-animation.router-link-exact-active {
+  color: var(--color-link-hover);
+}
+
+.underline-animation:hover::after,
+.underline-animation.router-link-exact-active::after {
+  width: 100%;
+  left: 0;
+}
+
+/* Variant with custom color - add modifier classes */
+.underline-animation--white::after {
+  background-color: var(--color-white);
+}
+
+.underline-animation--success::after {
+  background-color: var(--color-success);
+}
+
+.underline-animation--error::after {
+  background-color: var(--color-error);
+}
+
+/* Variant with custom height */
+.underline-animation--thick::after {
+  height: 3px;
+}
+
+.underline-animation--thin::after {
+  height: 1px;
+}

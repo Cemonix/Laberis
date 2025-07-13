@@ -33,8 +33,8 @@ import Footer from '@/layouts/Footer.vue';
 import AlertModal from '@/components/common/modal/AlertModal.vue';
 import ConfirmModal from '@/components/common/modal/ConfirmModal.vue';
 import ToastContainer from '@/components/common/toast/ToastContainer.vue';
-import { useAlert } from '@/composables/useAlert';
-import { useConfirm } from '@/composables/useConfirm';
+import {useAlert} from '@/composables/useAlert';
+import {useConfirm} from '@/composables/useConfirm';
 
 const { isAlertOpen, alertTitle, alertMessage, handleAlertConfirm } = useAlert();
 const { isConfirmOpen, confirmTitle, confirmMessage, handleConfirm, handleCancel } = useConfirm();
@@ -42,14 +42,11 @@ const { isConfirmOpen, confirmTitle, confirmMessage, handleConfirm, handleCancel
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-@use "@/styles/variables/theme" as theme;
-
 .default-layout {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    background-color: vars.$theme-background;
+    background-color: var(--color-gray-50);
 }
 
 .main-content {
@@ -57,8 +54,8 @@ const { isConfirmOpen, confirmTitle, confirmMessage, handleConfirm, handleCancel
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    padding: vars.$padding-medium;
-    background-color: vars.$color-white;
+    padding: 1rem;
+    background-color: var(--color-white);
 
     // Override padding for auth pages to provide full-screen experience
     &:has(.auth-container) {

@@ -44,10 +44,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
-import type { ToolName } from '@/types/workspace/tools';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import {computed} from 'vue';
+import {useWorkspaceStore} from '@/stores/workspaceStore';
+import type {ToolName} from '@/types/workspace/tools';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import Button from '@/components/common/Button.vue';
 
 const workspaceStore = useWorkspaceStore();
@@ -72,40 +72,37 @@ const selectLabel = (labelId: number) => {
 };
 </script>
 
-<style lang="scss" scoped>
-@use "sass:color";
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .tools-panel-left {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-medium;
-    padding: vars.$padding-small;
-    background-color: vars.$color-dark-blue-2;
-    color: vars.$color-white;
+    gap: 1rem;
+    padding: 0.5rem;
+    background-color: var(--color-dark-blue-2);
+    color: var(--color-white);
     overflow-y: auto;
 }
 
 .panel-section {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
 }
 
 .section-title {
-    font-size: vars.$font-size-small;
-    font-weight: vars.$font-weight-xlarge;
-    color: vars.$color-white;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-white);
     text-transform: uppercase;
-    margin-bottom: vars.$margin-xsmall;
-    border-bottom: 1px solid color.adjust(vars.$color-accent-blue, $lightness: 10%);
-    padding-bottom: vars.$padding-xsmall;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--color-accent-blue);
+    padding-bottom: 0.25rem;
 }
 
 .tools-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
-    gap: vars.$gap-small;
+    gap: 0.5rem;
 }
 
 .tool-button {
@@ -114,63 +111,63 @@ const selectLabel = (labelId: number) => {
     justify-content: center;
     width: 100%;
     aspect-ratio: 1 / 1;
-    padding: vars.$padding-small;
-    background-color: color.adjust(vars.$color-dark-blue-2, $lightness: -5%);
-    color: vars.$color-white;
-    border: 1px solid vars.$color-accent-blue;
-    border-radius: vars.$border-radius-md;
+    padding: 0.5rem;
+    background-color: var(--color-dark-blue-2);
+    color: var(--color-white);
+    border: 1px solid var(--color-accent-blue);
+    border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out;
 
     &:hover {
-        background-color: color.adjust(vars.$color-dark-blue-2, $lightness: 5%);
-        border-color: color.adjust(vars.$color-accent-blue, $lightness: 10%);
+        background-color: var(--color-dark-blue-2);
+        border-color: var(--color-accent-blue);
     }
 
     &.active-tool {
-        background-color: vars.$color-primary;
-        color: vars.$color-white;
-        border-color: color.adjust(vars.$color-primary, $lightness: -10%);
+        background-color: var(--color-primary);
+        color: var(--color-white);
+        border-color: var(--color-primary);
     }
 
     .tool-icon {
-        font-size: vars.$font-size-large;
+        font-size: 1.25rem;
     }
 }
 
 .labels-list {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
 }
 
 .label-button {
     display: flex;
     align-items: center;
     width: 100%;
-    padding: calc(vars.$padding-small * 0.75) vars.$padding-small;
-    background-color: color.adjust(vars.$color-dark-blue-2, $lightness: -3%);
-    color: vars.$color-white;
-    border: 1px solid vars.$color-accent-blue;
-    border-radius: vars.$border-radius-md;
+    padding: calc(0.5rem * 0.75) 0.5rem;
+    background-color: var(--color-dark-blue-2);
+    color: var(--color-white);
+    border: 1px solid var(--color-accent-blue);
+    border-radius: 4px;
     cursor: pointer;
     text-align: left;
-    font-size: vars.$font-size-small;
+    font-size: 0.875rem;
     transition: background-color 0.1s ease-in-out, border-color 0.1s ease-in-out;
 
     &:hover {
-        background-color: color.adjust(vars.$color-dark-blue-2, $lightness: 5%);
-        border-color: color.adjust(vars.$color-accent-blue, $lightness: 10%);
+        background-color: var(--color-dark-blue-2);
+        border-color: var(--color-accent-blue);
     }
 
     &.active-label {
-        background-color: vars.$color-primary;
-        color: vars.$color-white;
-        border-color: color.adjust(vars.$color-primary, $lightness: -10%);
-        font-weight: vars.$font-weight-xlarge;
+        background-color: var(--color-primary);
+        color: var(--color-white);
+        border-color: var(--color-primary);
+        font-weight: 700;
 
         .label-color-swatch {
-            border-color: rgba(vars.$color-white, 0.7);
+            border-color: rgba(var(--color-white), 0.7);
         }
     }
 }
@@ -179,8 +176,8 @@ const selectLabel = (labelId: number) => {
     width: 12px;
     height: 12px;
     border-radius: 3px;
-    margin-right: vars.$margin-small;
-    border: 1px solid vars.$color-accent-blue;
+    margin-right: 0.5rem;
+    border: 1px solid var(--color-accent-blue);
     flex-shrink: 0;
 }
 
@@ -191,9 +188,9 @@ const selectLabel = (labelId: number) => {
 }
 
 .no-labels-message {
-    font-size: vars.$font-size-small;
-    color: color.adjust(vars.$color-white, $lightness: 20%);
-    padding: vars.$padding-small;
+    font-size: 0.875rem;
+    color: var(--color-white);
+    padding: 0.5rem;
     text-align: center;
 }
 </style>

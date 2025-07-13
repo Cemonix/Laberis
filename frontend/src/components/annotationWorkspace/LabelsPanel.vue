@@ -40,8 +40,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useWorkspaceStore } from '@/stores/workspaceStore';
+import {computed} from 'vue';
+import {useWorkspaceStore} from '@/stores/workspaceStore';
 
 const workspaceStore = useWorkspaceStore();
 
@@ -60,45 +60,43 @@ const selectLabel = (labelId: number) => {
 };
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .labels-panel {
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: vars.$padding-medium;
+    padding: 1rem;
 }
 
 .panel-title {
-    color: vars.$color-gray-200;
-    font-size: vars.$font-size-large;
-    margin-bottom: vars.$margin-medium;
-    border-bottom: 1px solid vars.$color-accent-blue;
-    padding-bottom: vars.$padding-small;
+    color: var(--color-gray-200);
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--color-accent-blue);
+    padding-bottom: 0.5rem;
 }
 
 .panel-loading {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: vars.$padding-large;
-    color: vars.$color-gray-400;
+    padding: 1.5rem;
+    color: var(--color-gray-400);
     font-style: italic;
 }
 
 .no-labels {
-    padding: vars.$padding-large;
+    padding: 1.5rem;
     text-align: center;
-    color: vars.$color-gray-400;
+    color: var(--color-gray-400);
     
     p {
-        margin-bottom: vars.$margin-small;
+        margin-bottom: 0.5rem;
         font-weight: bold;
     }
     
     small {
-        color: vars.$color-gray-500;
+        color: var(--color-gray-500);
         line-height: 1.4;
     }
 }
@@ -106,28 +104,28 @@ const selectLabel = (labelId: number) => {
 .labels-list {
     flex: 1;
     overflow-y: auto;
-    margin-bottom: vars.$margin-medium;
+    margin-bottom: 1rem;
 }
 
 .label-item {
     display: flex;
     flex-direction: column;
-    padding: vars.$padding-small;
-    margin-bottom: vars.$margin-small;
-    border-radius: vars.$border-radius-md;
-    background-color: vars.$color-dark-blue-3;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    background-color: var(--color-dark-blue-3);
     border: 2px solid transparent;
     cursor: pointer;
     transition: all 0.2s ease-in-out;
     
     &:hover {
-        background-color: rgba(vars.$color-accent-blue, 0.2);
-        border-color: vars.$color-accent-blue;
+        background-color: rgba(var(--color-accent-blue), 0.2);
+        border-color: var(--color-accent-blue);
     }
     
     &.label-selected {
-        border-color: vars.$color-primary;
-        background-color: rgba(vars.$color-primary, 0.1);
+        border-color: var(--color-primary);
+        background-color: rgba(var(--color-primary), 0.1);
     }
 }
 
@@ -135,38 +133,38 @@ const selectLabel = (labelId: number) => {
     width: 20px;
     height: 20px;
     border-radius: 4px;
-    margin-bottom: vars.$margin-small;
-    border: 1px solid vars.$color-gray-600;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--color-gray-600);
     flex-shrink: 0;
 }
 
 .label-name {
-    color: vars.$color-gray-200;
+    color: var(--color-gray-200);
     font-weight: bold;
-    margin-bottom: vars.$margin-xsmall;
+    margin-bottom: 0.25rem;
 }
 
 .label-description {
-    color: vars.$color-gray-400;
-    font-size: vars.$font-size-small;
+    color: var(--color-gray-400);
+    font-size: 0.875rem;
     line-height: 1.3;
 }
 
 .scheme-info {
-    border-top: 1px solid vars.$color-accent-blue;
-    padding-top: vars.$padding-small;
+    border-top: 1px solid var(--color-accent-blue);
+    padding-top: 0.5rem;
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-xsmall;
+    gap: 0.25rem;
 }
 
 .scheme-name {
-    color: vars.$color-gray-300;
+    color: var(--color-gray-300);
     font-weight: bold;
 }
 
 .scheme-description {
-    color: vars.$color-gray-400;
+    color: var(--color-gray-400);
     line-height: 1.3;
 }
 </style>

@@ -4,27 +4,28 @@
             <div class="navbar-brand">
                 <router-link to="/home">Laberis</router-link>
             </div>
-            <div class="navbar-links" v-if="authStore.isAuthenticated">
+            <div v-if="authStore.isAuthenticated" class="navbar-links nav-link underline-animation">
                 <router-link to="/projects">Projects</router-link>
             </div>
         </div>
         <div class="navbar-auth">
             <template v-if="authStore.isAuthenticated">
-                <router-link to="/account" class="username-link">Account</router-link>
+                <router-link class="username-link nav-link underline-animation" to="/account">Account</router-link>
                 <button @click="handleLogout" class="auth-link logout-btn">Logout</button>
             </template>
             <template v-else>
-                <router-link to="/login" class="auth-link">Login</router-link>
-                <router-link to="/register" class="auth-link btn-outline">Register</router-link>
+                <router-link class="auth-link nav-link underline-animation" to="/login">Login</router-link>
+                <router-link class="auth-link nav-link underline-animation btn-outline" to="/register">Register
+                </router-link>
             </template>
         </div>
     </nav>
 </template>
 
 <script setup lang="ts">
-import { useRouter } from "vue-router";
-import { useAuthStore } from "@/stores/authStore";
-import { AppLogger } from "@/utils/logger";
+import {useRouter} from "vue-router";
+import {useAuthStore} from "@/stores/authStore";
+import {AppLogger} from "@/utils/logger";
 
 const logger = AppLogger.createComponentLogger('Navbar');
 
@@ -34,50 +35,43 @@ const authStore = useAuthStore();
 const handleLogout = async () => {
     try {
         await authStore.logout();
-        router.push('/login');
+        await router.push('/login');
     } catch (error) {
         logger.error('Logout failed:', error);
     }
 };
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-@use "@/styles/layout/navbar" as navbar;
-@use "@/styles/mixins/underline-animation" as mixins;
-
-
+<style scoped>
 .navbar {
     display: grid;
     grid-template-columns: auto 1fr;
-    background-color: navbar.$navbar-bg;
-    padding: vars.$padding-medium;
-    color: navbar.$navbar-text;
-    box-shadow: vars.$shadow-sm;
+    background-color: var(--color-gray-800);
+    padding: 1rem;
+    color: var(--color-white);
+    box-shadow: 0 1px 3px rgba(var(--color-black, 0.05));
 
     .navbar-left {
         display: flex;
         align-items: baseline;
-        gap: vars.$gap-large;
+        gap: 1.5rem;
 
         .navbar-brand {
             a {
-                color: navbar.$navbar-text;
+                color: var(--color-white);
                 text-decoration: none;
-                font-weight: vars.$font-weight-xlarge;
-                font-size: vars.$font-size-xlarge;
+                font-weight: 700;
+                font-size: 1.5rem;
             }
         }
     
         .navbar-links {
             a {
-                padding: vars.$padding-xsmall 0;
-                color: navbar.$navbar-text;
+                padding: 0.25rem 0;
+                color: var(--color-white);
                 text-decoration: none;
-                font-weight: vars.$font-weight-medium;
-                font-size: vars.$font-size-medium;
-
-                @include mixins.underline-animation();
+                font-weight: 500;
+                font-size: 1rem;
             }
         }
     }
@@ -87,24 +81,20 @@ const handleLogout = async () => {
         display: flex;
         align-items: center;
         justify-content: flex-end;
-        gap: vars.$gap-medium;
+        gap: 1rem;
 
         .auth-link {
-            color: navbar.$navbar-text;
+            color: var(--color-white);
             text-decoration: none;
-            font-size: vars.$font-size-medium;
-            font-weight: vars.$font-weight-medium;
-
-            @include mixins.underline-animation();
+            font-size: 1rem;
+            font-weight: 500;
         }
 
         .username-link {
-            color: navbar.$navbar-text;
+            color: var(--color-white);
             text-decoration: none;
-            font-size: vars.$font-size-medium;
-            font-weight: vars.$font-weight-medium;
-
-            @include mixins.underline-animation();
+            font-size: 1rem;
+            font-weight: 500;
         }
 
         .logout-btn {
@@ -112,11 +102,9 @@ const handleLogout = async () => {
             border: none;
             cursor: pointer;
             font-family: inherit;
-            color: navbar.$navbar-text;
-            font-size: vars.$font-size-medium;
-            font-weight: vars.$font-weight-medium;
-
-            @include mixins.underline-animation();
+            color: var(--color-white);
+            font-size: 1rem;
+            font-weight: 500;
         }
     }
 }

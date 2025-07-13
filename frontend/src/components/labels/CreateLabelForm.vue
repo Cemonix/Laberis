@@ -82,12 +82,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import {computed, ref} from 'vue';
 import Form from '@/components/common/Form.vue';
 import Button from '@/components/common/Button.vue';
 import LabelChip from './LabelChip.vue';
-import type { CreateLabelRequest } from '@/types/label/requests';
-import { generateRandomColor, isValidHexColor } from '@/utils/colors';
+import type {CreateLabelRequest} from '@/types/label/requests';
+import {generateRandomColor, isValidHexColor} from '@/utils/colors';
 
 const props = defineProps<{
     disabled?: boolean;
@@ -132,35 +132,33 @@ const handleCancel = () => {
 };
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .form-group {
-    margin-bottom: vars.$margin-large;
+    margin-bottom: 1.5rem;
 
     label {
         display: block;
-        margin-bottom: vars.$margin-small;
-        font-weight: vars.$font-weight-xlarge;
-        color: vars.$theme-text;
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+        color: var(--color-gray-800);
     }
 
     input, textarea {
         width: 100%;
-        padding: vars.$padding-medium;
-        border: 1px solid vars.$theme-border;
-        border-radius: vars.$border-radius-md;
-        font-size: vars.$font-size-medium;
+        padding: 1rem;
+        border: 1px solid var(--color-gray-400);
+        border-radius: 4px;
+        font-size: 1rem;
         
         &:focus {
             outline: none;
-            border-color: vars.$color-primary;
+            border-color: var(--color-primary);
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
         }
         
         &:disabled {
-            background-color: vars.$color-gray-200;
-            color: vars.$theme-text-light;
+            background-color: var(--color-gray-200);
+            color: var(--color-gray-600);
             cursor: not-allowed;
         }
     }
@@ -174,15 +172,15 @@ const handleCancel = () => {
 
 .color-input-group {
     display: flex;
-    gap: vars.$gap-medium;
+    gap: 1rem;
     align-items: center;
 
     .color-picker {
         width: 60px;
         height: 40px;
         padding: 0;
-        border: 1px solid vars.$theme-border;
-        border-radius: vars.$border-radius-md;
+        border: 1px solid var(--color-gray-400);
+        border-radius: 4px;
         cursor: pointer;
         
         &::-webkit-color-swatch-wrapper {
@@ -191,7 +189,7 @@ const handleCancel = () => {
         
         &::-webkit-color-swatch {
             border: none;
-            border-radius: calc(vars.$border-radius-md - 1px);
+            border-radius: calc(4px - 1px);
         }
     }
 
@@ -202,18 +200,18 @@ const handleCancel = () => {
 }
 
 .label-preview {
-    margin: vars.$margin-large 0;
-    padding: vars.$padding-large;
-    background-color: vars.$color-gray-200;
-    border-radius: vars.$border-radius-md;
+    margin: 1.5rem 0;
+    padding: 1.5rem;
+    background-color: var(--color-gray-200);
+    border-radius: 4px;
 
     h4 {
-        margin-bottom: vars.$margin-medium;
-        color: vars.$theme-text;
+        margin-bottom: 1rem;
+        color: var(--color-gray-800);
     }
 
     .preview-placeholder {
-        color: vars.$theme-text-light;
+        color: var(--color-gray-600);
         font-style: italic;
     }
 }
@@ -221,9 +219,9 @@ const handleCancel = () => {
 .form-actions {
     display: flex;
     justify-content: flex-end;
-    gap: vars.$gap-medium;
-    margin-top: vars.$margin-xlarge;
-    padding-top: vars.$padding-large;
-    border-top: 1px solid vars.$theme-border;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-gray-400);
 }
 </style>

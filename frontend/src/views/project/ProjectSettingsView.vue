@@ -12,26 +12,24 @@
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router';
+import {useRoute} from 'vue-router';
 import MembersSection from '@/components/project/settings/MembersSection.vue';
 
 const route = useRoute();
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .page-header {
-    margin-bottom: vars.$margin-xlarge;
+    margin-bottom: 2rem;
     
     h1 {
-        font-size: vars.$font-size-xlarge;
-        margin-bottom: vars.$padding-xsmall;
+        font-size: 1.5rem;
+        margin-bottom: 0.25rem;
     }
     
     p {
-        color: vars.$theme-text-light;
-        margin-bottom: vars.$margin-medium;
+        color: var(--color-gray-600);
+        margin-bottom: 1rem;
         max-width: 80ch;
     }
 }
@@ -39,6 +37,6 @@ const route = useRoute();
 .settings-sections {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-large;
+    gap: 1.5rem;
 }
 </style>

@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import {computed} from 'vue';
 
 const props = withDefaults(defineProps<{
     variant?: 'primary' | 'secondary';
@@ -20,13 +20,11 @@ const buttonClass = computed(() => [
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
 .btn {
     display: inline-block;
-    padding: vars.$padding-small vars.$padding-medium;
+    padding: 0.5rem 1rem;
     border: 1px solid transparent;
-    border-radius: vars.$border-radius-sm;
+    border-radius: 2px;
     cursor: pointer;
     font-weight: bold;
     text-align: center;
@@ -35,31 +33,31 @@ const buttonClass = computed(() => [
 }
 
 .btn-primary {
-    background-color: vars.$color-primary;
-    color: vars.$color-white;
+    background-color: var(--color-primary);
+    color: var(--color-white);
 
     &:hover {
-        background-color: vars.$color-primary-hover;
+        background-color: var(--color-primary-hover);
     }
 }
 
 .btn-secondary {
-    background-color: vars.$color-secondary;
-    color: vars.$color-white;
+    background-color: var(--color-secondary);
+    color: var(--color-white);
 
     &:hover {
-        background-color: vars.$color-secondary-hover;
+        background-color: var(--color-secondary-hover);
     }
 }
 
 .btn:disabled {
-    background-color: vars.$color-gray-300;
-    color: vars.$color-gray-600;
+    background-color: var(--color-gray-50);
+    color: var(--color-gray-600);
     cursor: not-allowed;
 }
 
 .btn:disabled:hover {
-    background-color: vars.$color-gray-300;
+    background-color: var(--color-gray-300);
 }
 
 </style>

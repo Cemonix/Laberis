@@ -61,16 +61,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import {computed, ref} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
 import Button from '@/components/common/Button.vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { 
-  faFileCircleXmark, 
-  faShieldHalved, 
-  faServer, 
-  faTriangleExclamation 
-} from '@fortawesome/free-solid-svg-icons';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import {faFileCircleXmark, faServer, faShieldHalved, faTriangleExclamation} from '@fortawesome/free-solid-svg-icons';
 
 const route = useRoute();
 const router = useRouter();
@@ -158,23 +153,21 @@ const goHome = () => {
 };
 </script>
 
-<style scoped lang="scss">
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .error-page {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100%;
-  background: vars.$color-gray-100;
-  padding: vars.$padding-large;
+    background: var(--color-gray-100);
+    padding: 1.5rem;
 }
 
 .error-container {
-  background: vars.$color-white;
-  border-radius: vars.$border-radius-xl;
-  box-shadow: vars.$shadow-lg;
-  padding: vars.$padding-xlarge;
+    background: var(--color-white);
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(var(--color-black), 0.15);
+    padding: 2rem;
   text-align: center;
   max-width: 500px;
   width: 100%;
@@ -183,85 +176,85 @@ const goHome = () => {
 }
 
 .error-icon {
-  margin-bottom: vars.$margin-large;
+    margin-bottom: 1.5rem;
 }
 
 .icon {
   font-size: 5rem;
-  color: vars.$color-error;
+    color: var(--color-error);
 }
 
 .error-content {
-  color: vars.$color-text-secondary;
+    color: var(--color-text-secondary);
 }
 
 .error-title {
-  font-size: vars.$font-size-xxlarge;
-  font-weight: vars.$font-weight-xlarge;
-  margin-bottom: vars.$margin-medium;
-  color: vars.$color-text-primary;
-  font-family: vars.$font-family-heading;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--color-text-primary);
+    font-family: var(--font-family-heading), sans-serif;
 }
 
 .error-message {
-  font-size: vars.$font-size-large;
-  line-height: vars.$line-height-large;
-  margin-bottom: vars.$margin-large;
-  color: vars.$color-text-secondary;
-  font-family: vars.$font-family-body;
+    font-size: 1.25rem;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+    color: var(--color-text-secondary);
+    font-family: var(--font-family-body), sans-serif;
 }
 
 .error-code {
   font-family: monospace;
-  font-size: vars.$font-size-small;
-  color: vars.$color-error;
-  background: vars.$color-error-light;
-  padding: vars.$padding-small vars.$padding-medium;
-  border-radius: vars.$border-radius-sm;
-  margin-bottom: vars.$margin-large;
+    font-size: 0.875rem;
+    color: var(--color-error);
+    background: var(--color-error-light);
+    padding: 0.5rem 1rem;
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
   display: inline-block;
-  border: vars.$border-width solid vars.$color-error;
+    border: 1px solid var(--color-error);
 }
 
 .error-actions {
   display: flex;
-  gap: vars.$gap-medium;
+    gap: 1rem;
   justify-content: center;
   flex-wrap: wrap;
-  margin-bottom: vars.$margin-large;
+    margin-bottom: 1.5rem;
 }
 
 .error-details {
-  border-top: vars.$border-width solid vars.$color-border-light;
-  padding-top: vars.$padding-large;
+    border-top: 1px solid var(--color-border-light);
+    padding-top: 1.5rem;
 }
 
 .details-toggle {
   background: none;
   border: none;
-  color: vars.$color-primary;
+    color: var(--color-primary);
   cursor: pointer;
-  font-size: vars.$font-size-small;
+    font-size: 0.875rem;
   text-decoration: underline;
-  padding: vars.$padding-small;
-  font-family: vars.$font-family-body;
+    padding: 0.5rem;
+    font-family: var(--font-family-body), sans-serif;
 }
 
 .details-toggle:hover {
-  color: vars.$color-primary-hover;
+    color: var(--color-primary-hover);
 }
 
 .details-content {
-  margin-top: vars.$margin-medium;
-  background: vars.$color-gray-50;
-  border-radius: vars.$border-radius-sm;
-  padding: vars.$padding-medium;
+    margin-top: 1rem;
+    background: var(--color-gray-50);
+    border-radius: 2px;
+    padding: 1rem;
   text-align: left;
 }
 
 .details-content pre {
-  font-size: vars.$font-size-xsmall;
-  color: vars.$color-text-primary;
+    font-size: 0.75rem;
+    color: var(--color-text-primary);
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -270,16 +263,16 @@ const goHome = () => {
 
 @media (max-width: 640px) {
   .error-page {
-    padding: vars.$padding-medium;
+      padding: 1rem;
   }
   
   .error-container {
-    padding: vars.$padding-large;
+      padding: 1.5rem;
     max-height: 95vh;
   }
   
   .error-title {
-    font-size: vars.$font-size-xlarge;
+      font-size: 1.5rem;
   }
   
   .error-actions {

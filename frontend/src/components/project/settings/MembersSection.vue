@@ -160,18 +160,18 @@
 <script setup lang="ts">
 // TODO: REFACTOR THIS FILE
 
-import { ref, onMounted, computed, reactive } from 'vue';
+import {computed, onMounted, reactive, ref} from 'vue';
 import Card from '@/components/common/Card.vue';
 import Button from '@/components/common/Button.vue';
 import Form from '@/components/common/Form.vue';
-import { projectMemberService } from '@/services/api/projectMemberService';
-import { useToast } from '@/composables/useToast';
-import { useConfirm } from '@/composables/useConfirm';
-import { useErrorHandler } from '@/composables/useErrorHandler';
-import { useAuthStore } from '@/stores/authStore';
-import { AppLogger } from '@/utils/logger';
-import type { ProjectMember, InviteMemberRequest } from '@/types/projectMember';
-import { ProjectRole } from '@/types/project';
+import {projectMemberService} from '@/services/api/projectMemberService';
+import {useToast} from '@/composables/useToast';
+import {useConfirm} from '@/composables/useConfirm';
+import {useErrorHandler} from '@/composables/useErrorHandler';
+import {useAuthStore} from '@/stores/authStore';
+import {AppLogger} from '@/utils/logger';
+import type {InviteMemberRequest, ProjectMember} from '@/types/projectMember';
+import {ProjectRole} from '@/types/project';
 
 const logger = AppLogger.createComponentLogger('MembersSection');
 
@@ -420,9 +420,6 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@use "sass:color";
-@use "@/styles/variables" as vars;
-
 .members-section {
     max-width: 900px;
 }
@@ -430,27 +427,27 @@ onMounted(() => {
 .invite-form-section,
 .members-list-section,
 .invitations-list-section {
-    margin-bottom: vars.$margin-xlarge;
+    margin-bottom: 2rem;
     
     &:last-child {
         margin-bottom: 0;
     }
     
     h3 {
-        font-size: vars.$font-size-large;
-        margin-bottom: vars.$margin-medium;
-        color: vars.$theme-text;
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        color: var(--color-gray-800);
     }
 }
 
 .invite-form {
     display: grid;
     grid-template-columns: 1fr 200px auto;
-    gap: vars.$gap-medium;
+    gap: 1rem;
     align-items: end;
-    padding: vars.$padding-large;
-    background-color: vars.$theme-surface-variant;
-    border-radius: vars.$border-radius-md;
+    padding: 1.5rem;
+    background-color: var(--color-gray-50);
+    border-radius: 4px;
     
     @media (max-width: 768px) {
         grid-template-columns: 1fr;
@@ -458,34 +455,34 @@ onMounted(() => {
 }
 
 .field-error {
-    color: vars.$color-error;
-    font-size: vars.$font-size-small;
-    font-weight: vars.$font-weight-medium;
-    margin-top: vars.$margin-xsmall;
+    color: var(--color-error);
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-top: 0.25rem;
 }
 
 .field-help {
-    color: vars.$theme-text-light;
-    font-size: vars.$font-size-small;
-    line-height: vars.$line-height-medium;
-    margin-top: vars.$margin-xsmall;
+    color: var(--color-gray-600);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    margin-top: 0.25rem;
 }
 
 .loading-state,
 .empty-state {
-    padding: vars.$padding-large;
+    padding: 1.5rem;
     text-align: center;
-    color: vars.$theme-text-light;
+    color: var(--color-gray-600);
     font-style: italic;
-    background-color: vars.$theme-surface-variant;
-    border-radius: vars.$border-radius-md;
+    background-color: var(--color-gray-50);
+    border-radius: 4px;
 }
 
 .members-list,
 .invitations-list {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-medium;
+    gap: 1rem;
 }
 
 .member-item,
@@ -493,14 +490,14 @@ onMounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: vars.$padding-large;
-    background-color: vars.$theme-surface;
-    border: 1px solid vars.$theme-border;
-    border-radius: vars.$border-radius-md;
+    padding: 1.5rem;
+    background-color: var(--color-white);
+    border: 1px solid var(--color-gray-400);
+    border-radius: 4px;
     transition: box-shadow 0.2s ease-in-out;
     
     &:hover {
-        box-shadow: vars.$shadow-sm;
+        box-shadow: 0 1px 3px rgba(var(--color-black), 0.05);
     }
 }
 
@@ -509,94 +506,94 @@ onMounted(() => {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
 }
 
 .member-details,
 .invitation-details {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-xsmall;
+    gap: 0.25rem;
 }
 
 .member-name,
 .invitation-email {
-    font-weight: vars.$font-weight-medium;
-    color: vars.$theme-text;
-    font-size: vars.$font-size-medium;
+    font-weight: 500;
+    color: var(--color-gray-800);
+    font-size: 1rem;
 }
 
 .member-email {
-    font-size: vars.$font-size-small;
-    color: vars.$theme-text-light;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
 }
 
 .member-meta,
 .invitation-meta {
     display: flex;
-    gap: vars.$gap-medium;
+    gap: 1rem;
     align-items: center;
 }
 
 .member-role,
 .invitation-role {
-    padding: vars.$padding-xsmall vars.$padding-small;
-    border-radius: vars.$border-radius-sm;
-    font-size: vars.$font-size-small;
-    font-weight: vars.$font-weight-medium;
+    padding: 0.25rem 0.5rem;
+    border-radius: 2px;
+    font-size: 0.875rem;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     
     &.role-manager {
-        background-color: color.adjust(vars.$color-error, $alpha: -0.8);
-        color: vars.$color-error;
+        background-color: var(--color-error);
+        color: var(--color-error);
     }
     
     &.role-annotator {
-        background-color: color.adjust(vars.$color-primary, $alpha: -0.8);
-        color: vars.$color-primary;
+        background-color: var(--color-primary);
+        color: var(--color-primary);
     }
     
     &.role-reviewer {
-        background-color: color.adjust(vars.$color-warning, $alpha: -0.8);
-        color: vars.$color-warning;
+        background-color: var(--color-warning);
+        color: var(--color-warning);
     }
     
     &.role-viewer {
-        background-color: color.adjust(vars.$color-secondary, $alpha: -0.8);
-        color: vars.$color-secondary;
+        background-color: var(--color-secondary);
+        color: var(--color-secondary);
     }
 }
 
 .member-joined,
 .invitation-sent {
-    font-size: vars.$font-size-small;
-    color: vars.$theme-text-light;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
 }
 
 .member-actions,
 .invitation-actions {
     display: flex;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
     align-items: center;
 }
 
 .role-select {
     min-width: 120px;
-    padding: vars.$padding-small;
-    border: 1px solid vars.$theme-border;
-    border-radius: vars.$border-radius-sm;
-    font-size: vars.$font-size-small;
-    background-color: vars.$theme-surface;
-    color: vars.$theme-text;
+    padding: 0.5rem;
+    border: 1px solid var(--color-gray-400);
+    border-radius: 2px;
+    font-size: 0.875rem;
+    background-color: var(--color-white);
+    color: var(--color-gray-800);
     
     &:focus {
         outline: none;
-        border-color: vars.$color-primary;
+        border-color: var(--color-primary);
     }
     
     &:disabled {
-        background-color: vars.$theme-surface-variant;
+        background-color: var(--color-gray-50);
         opacity: 0.6;
         cursor: not-allowed;
     }
@@ -604,13 +601,13 @@ onMounted(() => {
 
 .remove-btn,
 .revoke-btn {
-    background-color: vars.$color-error;
-    border-color: vars.$color-error;
-    color: vars.$color-white;
+    background-color: var(--color-error);
+    border-color: var(--color-error);
+    color: var(--color-white);
     
     &:hover:not(:disabled) {
-        background-color: vars.$color-error-dark;
-        border-color: vars.$color-error-dark;
+        background-color: var(--color-error-dark);
+        border-color: var(--color-error-dark);
     }
     
     &:disabled {
@@ -625,7 +622,7 @@ onMounted(() => {
     .invitation-item {
         flex-direction: column;
         align-items: stretch;
-        gap: vars.$gap-medium;
+        gap: 1rem;
     }
     
     .member-actions,

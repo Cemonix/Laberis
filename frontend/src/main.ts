@@ -1,14 +1,14 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
+import {createApp} from 'vue'
+import {createPinia} from 'pinia'
 
-import './styles/main.scss'
+import './styles/main.css'
 import App from './App.vue'
 import router from './router'
 
-import { setupInterceptors } from '@/services/api/apiClient'
-import { useAuthStore } from '@/stores/authStore'
-import { logger, piniaLogger } from '@/utils/logger'
-import { useErrorHandler } from '@/composables/useErrorHandler';
+import {setupInterceptors} from '@/services/api/apiClient'
+import {useAuthStore} from '@/stores/authStore'
+import {logger, piniaLogger} from '@/utils/logger'
+import {useErrorHandler} from '@/composables/useErrorHandler';
 
 async function initializeApp() {
     // Instantiate error handler here to attach it globally

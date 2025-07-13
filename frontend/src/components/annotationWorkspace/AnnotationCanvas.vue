@@ -23,16 +23,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
-import { useWorkspaceStore } from '@/stores/workspaceStore';
-import type { Point } from "@/types/common/point";
-import { ToolName } from "@/types/workspace/tools";
-import { drawPoint, drawBoundingBox } from '@/core/annotationWorkspace/annotationDrawer';
-import { AnnotationManager } from "@/core/annotationWorkspace/annotationManager";
-import { StoreError, ToolError } from "@/types/common/errors";
+import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from "vue";
+import {useWorkspaceStore} from '@/stores/workspaceStore';
+import type {Point} from "@/types/common/point";
+import {ToolName} from "@/types/workspace/tools";
+import {drawBoundingBox, drawPoint} from '@/core/annotationWorkspace/annotationDrawer';
+import {AnnotationManager} from "@/core/annotationWorkspace/annotationManager";
+import {StoreError, ToolError} from "@/types/common/errors";
 import AlertModal from "../common/modal/AlertModal.vue";
-import { useAlert } from "@/composables/useAlert";
-import { AppLogger } from "@/utils/logger";
+import {useAlert} from "@/composables/useAlert";
+import {AppLogger} from "@/utils/logger";
 
 const logger = AppLogger.createComponentLogger('AnnotationCanvas');
 
@@ -459,8 +459,6 @@ watch(() => workspaceStore.canvasDisplayDimensions, () => {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
 .annotation-canvas-wrapper {
     display: flex;
     flex-direction: column;
@@ -469,7 +467,7 @@ watch(() => workspaceStore.canvasDisplayDimensions, () => {
     width: 100%;
     height: 100%;
     position: relative;
-    background-color: vars.$color-dark-blue-3;
+    background-color: var(--color-dark-blue-3);
     overflow: hidden;
 }
 
@@ -486,7 +484,7 @@ watch(() => workspaceStore.canvasDisplayDimensions, () => {
     left: 0;
     width: 100%;
     height: 100%;
-    font-size: vars.$font-size-large;
+    font-size: 1.25rem;
     z-index: 10;
     pointer-events: none; // Allow interaction with canvas below
 }
@@ -494,11 +492,11 @@ watch(() => workspaceStore.canvasDisplayDimensions, () => {
 .loading-overlay,
 .error-overlay {
     @extend %overlay-base;
-    background-color: rgba(vars.$color-black, 0.5);
-    color: vars.$color-white;
+    background-color: rgba(var(--color-black), 0.5);
+    color: var(--color-white);
 
     &.error-overlay {
-        color: vars.$color-error;
+        color: var(--color-error);
     }
 }
 </style>

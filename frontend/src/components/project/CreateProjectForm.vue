@@ -25,11 +25,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import {ref} from 'vue';
 import Form from '@/components/common/Form.vue';
 import Button from '@/components/common/Button.vue';
-import { ProjectType } from '@/types/project/project';
-import { useToast } from '@/composables/useToast';
+import {ProjectType} from '@/types/project/project';
+import {useToast} from '@/composables/useToast';
 
 const { showWarning } = useToast();
 
@@ -55,8 +55,5 @@ const handleSubmit = async () => {
 };
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
-/* .create-project-form {  Remove this block, now handled by base Form } */
+<style scoped>
 </style>

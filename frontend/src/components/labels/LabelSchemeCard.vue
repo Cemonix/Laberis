@@ -43,18 +43,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import type { LabelScheme } from '@/types/label/labelScheme';
-import type { Label } from '@/types/label/label';
-import type { CreateLabelRequest } from '@/types/label/requests';
-import { labelService } from '@/services/api/labelService';
-import { useToast } from '@/composables/useToast';
+import {onMounted, ref} from 'vue';
+import type {LabelScheme} from '@/types/label/labelScheme';
+import type {Label} from '@/types/label/label';
+import type {CreateLabelRequest} from '@/types/label/requests';
+import {labelService} from '@/services/api/labelService';
+import {useToast} from '@/composables/useToast';
 import LabelChip from './LabelChip.vue';
 import CreateLabelForm from './CreateLabelForm.vue';
 import Button from '@/components/common/Button.vue';
 import Card from '@/components/common/Card.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
-import { AppLogger } from '@/utils/logger';
+import {AppLogger} from '@/utils/logger';
 
 const logger = AppLogger.createComponentLogger('LabelSchemeCard');
 
@@ -124,39 +124,36 @@ const fetchLabels = async () => {
 onMounted(fetchLabels);
 </script>
 
-<style lang="scss" scoped>
-@use "sass:color";
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .scheme-name {
-    font-size: vars.$font-size-large;
+    font-size: 1.25rem;
 }
 
 .card-actions {
     display: flex;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
 }
 
 .scheme-description {
     font-style: italic;
-    color: vars.$theme-text-light;
-    margin-bottom: vars.$margin-medium;
+    color: var(--color-gray-600);
+    margin-bottom: 1rem;
 }
 
 .labels-container {
     display: flex;
     flex-wrap: wrap;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
 }
 
 .loading-labels {
-    color: vars.$theme-text-light;
-    font-size: vars.$font-size-small;
+    color: var(--color-gray-600);
+    font-size: 0.875rem;
     font-style: italic;
 }
 
 .no-labels {
-    color: vars.$theme-text-light;
-    font-size: vars.$font-size-small;
+    color: var(--color-gray-600);
+    font-size: 0.875rem;
 }
 </style>

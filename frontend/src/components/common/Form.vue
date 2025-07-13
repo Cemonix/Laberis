@@ -13,23 +13,20 @@ defineEmits(["submit"]);
 </script>
 
 <style lang="scss" scoped>
-@use "sass:color";
-@use "@/styles/variables" as vars;
-
 .base-form {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-medium;
+    gap: 1rem;
 }
 
 :deep(.form-group) {
     display: flex;
     flex-direction: column;
-    gap: vars.$gap-xsmall;
+    gap: 0.25rem;
 
     label {
         font-weight: bold;
-        color: vars.$theme-text;
+        color: var(--color-gray-800);
     }
 
     input[type="text"],
@@ -38,11 +35,11 @@ defineEmits(["submit"]);
     textarea,
     select {
         width: 100%;
-        padding: vars.$padding-small;
-        border: vars.$border-width solid vars.$color-gray-400;
-        border-radius: vars.$border-radius-sm;
-        font-size: vars.$font-size-medium;
-        font-family: vars.$font-family-body;
+        padding: 0.5rem;
+        border: 1px solid var(--color-gray-400);
+        border-radius: 2px;
+        font-size: 1rem;
+        font-family: var(--font-family-body), sans-serif;
     }
 }
 
@@ -50,9 +47,9 @@ defineEmits(["submit"]);
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: vars.$gap-small;
-    margin-top: vars.$margin-medium;
-    padding-top: vars.$padding-medium;
-    border-top: vars.$border-width solid vars.$color-gray-400;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-gray-400);
 }
 </style>

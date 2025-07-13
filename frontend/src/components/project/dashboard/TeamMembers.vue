@@ -62,21 +62,19 @@ const getInitials = (name: string): string => {
 };
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
+<style scoped>
 .team-members {
     max-height: 300px;
     overflow-y: auto;
-    padding: vars.$padding-small;
+    padding: 0.5rem;
 }
 
 .member-item {
     display: flex;
     align-items: center;
-    gap: vars.$gap-medium;
-    padding: vars.$padding-small 0;
-    border-bottom: 1px solid vars.$theme-border;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-gray-400);
 
     &:last-child {
         border-bottom: none;
@@ -86,7 +84,7 @@ const getInitials = (name: string): string => {
 .member-avatar {
     width: 40px;
     height: 40px;
-    border-radius: vars.$border-radius-circle;
+    border-radius: 50%;
     overflow: hidden;
     flex-shrink: 0;
 }
@@ -100,13 +98,13 @@ const getInitials = (name: string): string => {
 .avatar-placeholder {
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, vars.$theme-primary, vars.$color-secondary);
-    color: vars.$theme-surface;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+    color: var(--color-white);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: vars.$font-weight-large;
-    font-size: vars.$font-size-small;
+    font-weight: 600;
+    font-size: 0.875rem;
 }
 
 .member-info {
@@ -115,19 +113,19 @@ const getInitials = (name: string): string => {
 }
 
 .member-name {
-    font-weight: vars.$font-weight-large;
-    margin-bottom: vars.$margin-xxsmall;
+    font-weight: 600;
+    margin-bottom: 0.125rem;
 }
 
 .member-role {
-    font-size: vars.$font-size-small;
-    color: vars.$theme-text-light;
-    margin-bottom: vars.$margin-xsmall;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+    margin-bottom: 0.25rem;
 }
 
 .member-stats {
-    font-size: vars.$font-size-small;
-    color: vars.$theme-text-light;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
 }
 
 .member-status {
@@ -137,18 +135,18 @@ const getInitials = (name: string): string => {
 .status-indicator {
     width: 12px;
     height: 12px;
-    border-radius: vars.$border-radius-circle;
-    background-color: vars.$color-secondary;
+    border-radius: 50%;
+    background-color: var(--color-secondary);
 
     &.active {
-        background-color: vars.$color-success;
+        background-color: var(--color-success);
     }
 }
 
 .no-members {
     text-align: center;
-    color: vars.$theme-text-light;
+    color: var(--color-gray-600);
     font-style: italic;
-    padding: vars.$padding-large;
+    padding: 1.5rem;
 }
 </style>

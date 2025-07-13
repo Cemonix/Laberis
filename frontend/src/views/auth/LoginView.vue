@@ -48,12 +48,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { useRouter, useRoute } from "vue-router";
-import { useAuthStore } from "@/stores/authStore";
+import {onMounted, ref} from "vue";
+import {useRoute, useRouter} from "vue-router";
+import {useAuthStore} from "@/stores/authStore";
 import Button from "@/components/common/Button.vue";
 import Form from "@/components/common/Form.vue";
-import { AppLogger } from "@/utils/logger";
+import {AppLogger} from "@/utils/logger";
 
 const logger = AppLogger.createComponentLogger('LoginView');
 
@@ -115,22 +115,21 @@ const handleLogin = async () => {
 };
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 @use "@/styles/auth";
-@use "@/styles/variables" as vars;
 
 .info-banner {
-    padding: vars.$padding-small vars.$padding-medium;
-    margin-bottom: vars.$margin-medium;
-    background-color: vars.$color-info-light;
-    border: vars.$border-width solid vars.$color-info;
-    border-radius: vars.$border-radius-lg;
-    color: vars.$color-info-dark;
-    font-size: vars.$font-size-small;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--color-info-light);
+    border: 1px solid var(--color-info);
+    border-radius: 8px;
+    color: var(--color-info-dark);
+    font-size: 0.875rem;
     text-align: center;
     
     strong {
-        font-weight: vars.$font-weight-large;
+        font-weight: 600;
     }
 }
 </style>

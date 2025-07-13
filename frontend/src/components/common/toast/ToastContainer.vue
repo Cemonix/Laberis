@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import { useToast } from '@/composables/useToast';
+import {useToast} from '@/composables/useToast';
 import ToastNotification from './ToastNotification.vue';
 
 const { toasts, removeToast } = useToast();
@@ -33,19 +33,17 @@ const handleRemoveToast = (id: string) => {
 };
 </script>
 
-<style scoped lang="scss">
-@use "@/styles/variables" as vars;
-
+<style lang="scss" scoped>
 .toast-container {
     position: fixed;
     top: 80px;
-    right: vars.$padding-large;
+    right: 1.5rem;
     z-index: 9999;
     pointer-events: none;
     
     @media (max-width: 768px) {
-        right: vars.$padding-medium;
-        left: vars.$padding-medium;
+        right: 1rem;
+        left: 1rem;
         top: 70px;
     }
 }
@@ -54,7 +52,7 @@ const handleRemoveToast = (id: string) => {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: vars.$gap-small;
+    gap: 0.5rem;
     
     @media (max-width: 768px) {
         align-items: stretch;

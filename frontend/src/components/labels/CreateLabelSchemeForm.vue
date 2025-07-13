@@ -41,11 +41,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import {ref} from "vue";
 import Form from "@/components/common/Form.vue";
 import Button from "@/components/common/Button.vue";
-import type { FormPayloadLabelScheme } from "@/types/label/labelScheme";
-import { useAlert } from "@/composables/useAlert";
+import type {FormPayloadLabelScheme} from "@/types/label/labelScheme";
+import {useAlert} from "@/composables/useAlert";
 
 const props = defineProps<{
     disabled?: boolean;
@@ -72,37 +72,33 @@ const handleSubmit = async () => {
 };
 </script>
 
-<style lang="scss" scoped>
-@use "sass:color";
-@use "@/styles/variables" as vars;
-@use "@/styles/variables/theme" as theme;
-
+<style scoped>
 .form-group {
-    margin-bottom: vars.$margin-large;
+    margin-bottom: 1.5rem;
 
     label {
         display: block;
-        margin-bottom: vars.$margin-small;
-        font-weight: vars.$font-weight-xlarge;
-        color: vars.$theme-text;
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+        color: var(--color-gray-800);
     }
 
     input, textarea {
         width: 100%;
-        padding: vars.$padding-medium;
-        border: 1px solid vars.$theme-border;
-        border-radius: vars.$border-radius-md;
-        font-size: vars.$font-size-medium;
+        padding: 1rem;
+        border: 1px solid var(--color-gray-400);
+        border-radius: 4px;
+        font-size: 1rem;
         
         &:focus {
             outline: none;
-            border-color: vars.$color-primary;
+            border-color: var(--color-primary);
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
         }
         
         &:disabled {
-            background-color: vars.$color-gray-200;
-            color: vars.$theme-text-light;
+            background-color: var(--color-gray-200);
+            color: var(--color-gray-600);
             cursor: not-allowed;
         }
     }
@@ -118,9 +114,9 @@ const handleSubmit = async () => {
 .form-actions {
     display: flex;
     justify-content: flex-end;
-    gap: vars.$gap-medium;
-    margin-top: vars.$margin-xlarge;
-    padding-top: vars.$padding-large;
-    border-top: 1px solid vars.$theme-border;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-gray-400);
 }
 </style>

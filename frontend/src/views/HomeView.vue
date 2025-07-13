@@ -8,23 +8,20 @@
 <script setup lang="ts">
 </script>
 
-<style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-@use "@/styles/variables/theme" as theme;
-
+<style scoped>
 .home-container {
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
-	gap: vars.$gap-medium;
+    gap: 1rem;
 	width: 100%;
-	background-color: vars.$color-gray-300;
-	padding: vars.$padding-medium;
+    background-color: var(--color-gray-300);
+    padding: 1rem;
 
 	h1 {
 		text-align: center;
-		color: vars.$theme-text;
+        color: var(--color-gray-800);
 	}
 }
 </style>

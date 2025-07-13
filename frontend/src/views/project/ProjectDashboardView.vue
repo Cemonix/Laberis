@@ -158,9 +158,9 @@ import BarChart from '@/components/common/charts/BarChart.vue';
 import ActivityFeed from '@/components/project/dashboard/ActivityFeed.vue';
 import TeamMembers from '@/components/project/dashboard/TeamMembers.vue';
 import AnimatedCounter from '@/components/common/AnimatedCounter.vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faSpinner, faSyncAlt } from '@fortawesome/free-solid-svg-icons';
-import { useProjectDashboard } from '@/composables/useProjectDashboard';
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import {faSpinner, faSyncAlt} from '@fortawesome/free-solid-svg-icons';
+import {useProjectDashboard} from '@/composables/useProjectDashboard';
 
 // Use the dashboard composable
 const {
@@ -196,11 +196,9 @@ const {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/variables" as vars;
-
 .dashboard-container {
     width: 100%;
-    padding: vars.$padding-large;
+    padding: 1.5rem;
     min-height: 100vh;
     background: #fafafa;
 }
@@ -212,19 +210,19 @@ const {
     align-items: center;
     justify-content: center;
     min-height: 60vh;
-    gap: vars.$gap-large;
+    gap: 1.5rem;
     
     .loading-spinner {
         width: 40px;
         height: 40px;
         border: 3px solid #e5e7eb;
-        border-top: 3px solid vars.$color-primary;
+        border-top: 3px solid var(--color-primary);
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
     
     p {
-        font-size: vars.$font-size-medium;
+        font-size: 1rem;
         color: #6b7280;
         margin: 0;
     }
@@ -237,39 +235,39 @@ const {
     align-items: center;
     justify-content: center;
     min-height: 60vh;
-    gap: vars.$gap-medium;
+    gap: 1rem;
     text-align: center;
     
     .error-icon {
         font-size: 3rem;
-        margin-bottom: vars.$margin-medium;
+        margin-bottom: 1rem;
     }
     
     h3 {
-        font-size: vars.$font-size-large;
+        font-size: 1.25rem;
         color: #dc2626;
         margin: 0;
     }
     
     p {
-        font-size: vars.$font-size-medium;
+        font-size: 1rem;
         color: #6b7280;
         margin: 0;
         max-width: 400px;
     }
     
     .retry-button {
-        background: vars.$color-primary;
+        background: var(--color-primary);
         color: white;
         border: none;
-        padding: vars.$padding-small vars.$padding-medium;
-        border-radius: vars.$border-radius-md;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
         font-weight: 500;
         cursor: pointer;
         transition: all 0.2s ease;
         
         &:hover {
-            background: vars.$color-primary-hover;
+            background: var(--color-primary-hover);
             transform: translateY(-1px);
         }
     }
@@ -280,7 +278,7 @@ const {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     grid-auto-rows: min-content;
-    gap: vars.$gap-large;
+    gap: 1.5rem;
     width: 100%;
     align-items: start;
 }
@@ -288,7 +286,7 @@ const {
 // Widget Base Styles
 .widget {
     background: white;
-    border-radius: vars.$border-radius-lg;
+    border-radius: 8px;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
     border: 1px solid #e5e7eb;
     display: flex;
@@ -307,7 +305,7 @@ const {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: vars.$padding-medium vars.$padding-large 0 vars.$padding-large;
+        padding: 1rem 1.5rem 0 1.5rem;
         
         h3 {
             margin: 0;
@@ -315,11 +313,11 @@ const {
         
         .activity-count,
         .member-count {
-            font-size: vars.$font-size-small;
+            font-size: 0.875rem;
             color: #6b7280;
             background: #f3f4f6;
-            padding: 2px vars.$padding-small;
-            border-radius: vars.$border-radius-sm;
+            padding: 2px 0.5rem;
+            border-radius: 2px;
             font-weight: 500;
         }
     }
@@ -374,26 +372,26 @@ const {
             flex: 1;
             
             .project-title {
-                font-size: vars.$font-size-xlarge;
+                font-size: 1.5rem;
                 font-weight: 700;
-                margin: 0 0 vars.$margin-small 0;
+                margin: 0 0 0.5rem 0;
                 color: #111827;
             }
             
             .project-description {
-                font-size: vars.$font-size-medium;
+                font-size: 1rem;
                 color: #6b7280;
-                margin: 0 0 vars.$margin-small 0;
+                margin: 0 0 0.5rem 0;
                 max-width: 600px;
             }
             
             .demo-notice {
-                margin-top: vars.$margin-small;
+                margin-top: 0.5rem;
                 
                 small {
                     color: #9ca3af;
                     font-style: italic;
-                    font-size: vars.$font-size-small;
+                    font-size: 0.875rem;
                 }
             }
         }
@@ -403,13 +401,13 @@ const {
                 background: white;
                 border: 1px solid #d1d5db;
                 color: #374151;
-                padding: vars.$padding-small vars.$padding-medium;
-                border-radius: vars.$border-radius-md;
+                padding: 0.5rem 1rem;
+                border-radius: 4px;
                 cursor: pointer;
                 transition: all 0.2s ease;
                 display: flex;
                 align-items: center;
-                gap: vars.$gap-small;
+                gap: 0.5rem;
                 font-weight: 500;
                 
                 &:hover:not(:disabled) {
@@ -430,10 +428,10 @@ const {
     }
 
     h3 {
-        font-size: vars.$font-size-large;
+        font-size: 1.25rem;
         font-weight: 600;
-        margin-bottom: vars.$margin-medium;
-        padding: vars.$padding-medium vars.$padding-large 0 vars.$padding-large;
+        margin-bottom: 1rem;
+        padding: 1rem 1.5rem 0 1.5rem;
         color: #111827;
     }
 }
@@ -443,7 +441,7 @@ const {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0 vars.$padding-medium;
+    padding: 0 1rem;
     overflow: hidden;
     
     // Ensure charts are responsive
@@ -462,58 +460,58 @@ const {
     }
     
     .chart-container {
-        padding: 0 vars.$padding-small;
+        padding: 0 0.5rem;
     }
 }
 
 // KPI Widget Specific Styles
 .kpi-widget {
     .kpi-stats {
-        margin-top: vars.$margin-medium;
-        padding: 0 vars.$padding-large vars.$padding-medium vars.$padding-large;
+        margin-top: 1rem;
+        padding: 0 1.5rem 1rem 1.5rem;
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: vars.$gap-medium;
+        gap: 1rem;
         
         .stat-item {
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
-            padding: vars.$padding-small;
+            padding: 0.5rem;
             background: #f9fafb;
             border: 1px solid #e5e7eb;
-            border-radius: vars.$border-radius-md;
+            border-radius: 4px;
             
             .stat-label {
-                font-size: vars.$font-size-small;
+                font-size: 0.875rem;
                 font-weight: 500;
                 color: #6b7280;
-                margin-bottom: vars.$margin-xsmall;
+                margin-bottom: 0.25rem;
             }
             
             .stat-value {
-                font-size: vars.$font-size-large;
+                font-size: 1.25rem;
                 font-weight: 700;
-                color: vars.$color-primary;
+                color: var(--color-primary);
             }
         }
     }
     
     .completion-bar {
-        margin-top: vars.$margin-large;
-        padding: 0 vars.$padding-large vars.$padding-large vars.$padding-large;
+        margin-top: 1.5rem;
+        padding: 0 1.5rem 1.5rem 1.5rem;
         
         .completion-label {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: vars.$margin-small;
-            font-size: vars.$font-size-small;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
             font-weight: 500;
             
             .percentage {
-                color: vars.$color-primary;
+                color: var(--color-primary);
                 font-weight: 600;
             }
         }
@@ -521,13 +519,13 @@ const {
         .progress-bar {
             height: 6px;
             background: #e5e7eb;
-            border-radius: vars.$border-radius-sm;
+            border-radius: 2px;
             overflow: hidden;
             
             .progress-fill {
                 height: 100%;
-                background: vars.$color-primary;
-                border-radius: vars.$border-radius-sm;
+                background: var(--color-primary);
+                border-radius: 2px;
                 transition: width 1s ease-in-out;
             }
         }
@@ -536,11 +534,11 @@ const {
 
 // Chart Summary
 .chart-summary {
-    padding: 0 vars.$padding-large vars.$padding-medium vars.$padding-large;
+    padding: 0 1.5rem 1rem 1.5rem;
     
     p {
         margin: 0;
-        font-size: vars.$font-size-small;
+        font-size: 0.875rem;
         color: #6b7280;
         text-align: center;
         font-style: italic;
@@ -552,8 +550,8 @@ const {
     .quick-stats-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: vars.$gap-medium;
-        padding: 0 vars.$padding-large vars.$padding-large vars.$padding-large;
+        gap: 1rem;
+        padding: 0 1.5rem 1.5rem 1.5rem;
         
         @media (max-width: 1200px) {
             grid-template-columns: repeat(2, 1fr);
@@ -566,11 +564,11 @@ const {
         .quick-stat {
             display: flex;
             align-items: center;
-            gap: vars.$gap-medium;
-            padding: vars.$padding-medium;
+            gap: 1rem;
+            padding: 1rem;
             background: #f9fafb;
             border: 1px solid #e5e7eb;
-            border-radius: vars.$border-radius-md;
+            border-radius: 4px;
             transition: all 0.2s ease;
             min-width: 0; // Allow content to shrink
             
@@ -586,9 +584,9 @@ const {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background: vars.$color-primary;
+                background: var(--color-primary);
                 color: white;
-                border-radius: vars.$border-radius-md;
+                border-radius: 4px;
                 flex-shrink: 0;
             }
             
@@ -599,7 +597,7 @@ const {
                 flex: 1;
                 
                 .stat-number {
-                    font-size: vars.$font-size-large;
+                    font-size: 1.25rem;
                     font-weight: 700;
                     color: #111827;
                     line-height: 1.1;
@@ -609,7 +607,7 @@ const {
                 }
                 
                 .stat-text {
-                    font-size: vars.$font-size-small;
+                    font-size: 0.875rem;
                     color: #6b7280;
                     font-weight: 500;
                     white-space: nowrap;
@@ -643,16 +641,16 @@ const {
 
 // Enhanced chart styling
 :deep(.chart-legend) {
-    margin-top: vars.$margin-medium;
+    margin-top: 1rem;
     background: #f9fafb;
     border: 1px solid #e5e7eb;
-    border-radius: vars.$border-radius-md;
-    padding: vars.$padding-small vars.$padding-medium;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
 }
 
 :deep(.legend-item) {
-    gap: vars.$gap-small;
-    font-size: vars.$font-size-small;
+    gap: 0.5rem;
+    font-size: 0.875rem;
     color: #374151;
     font-weight: 500;
 }
@@ -699,12 +697,12 @@ const {
 
 @media (max-width: 1024px) {
     .dashboard-container {
-        padding: vars.$padding-medium;
+        padding: 1rem;
     }
     
     .dashboard-grid {
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: vars.$gap-medium;
+        gap: 1rem;
     }
     
     .widget.large-widget,
@@ -715,16 +713,16 @@ const {
     .widget.project-header {
         flex-direction: column;
         text-align: center;
-        gap: vars.$gap-medium;
+        gap: 1rem;
         
         .project-info .project-title {
-            font-size: vars.$font-size-large;
+            font-size: 1.25rem;
         }
     }
     
     .kpi-widget .kpi-stats {
         grid-template-columns: 1fr;
-        gap: vars.$gap-small;
+        gap: 0.5rem;
     }
     
     .stats-widget .quick-stats-grid {
@@ -745,12 +743,12 @@ const {
 
 @media (max-width: 700px) {
     .dashboard-container {
-        padding: vars.$padding-medium;
+        padding: 1rem;
     }
     
     .dashboard-grid {
         grid-template-columns: 1fr;
-        gap: vars.$gap-medium;
+        gap: 1rem;
     }
     
     .widget, .widget.large-widget, .widget.wide-widget {
@@ -759,13 +757,13 @@ const {
     }
     
     .widget h3 {
-        font-size: vars.$font-size-medium;
-        padding: vars.$padding-medium 0 0 vars.$padding-medium;
+        font-size: 1rem;
+        padding: 1rem 0 0 1rem;
     }
     
     .kpi-stats,
     .quick-stats-grid {
-        padding: 0 vars.$padding-medium vars.$padding-medium vars.$padding-medium;
+        padding: 0 1rem 1rem 1rem;
     }
     
     .stats-widget .quick-stats-grid {
@@ -784,7 +782,7 @@ const {
     }
     
     .chart-container {
-        padding: 0 vars.$padding-small;
+        padding: 0 0.5rem;
     }
 }
 
@@ -811,12 +809,12 @@ const {
 
 // Focus states for accessibility
 .refresh-button:focus {
-    outline: 2px solid vars.$color-primary;
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
 }
 
 .retry-button:focus {
-    outline: 2px solid vars.$color-primary;
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
 }
 </style>
