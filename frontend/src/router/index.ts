@@ -123,7 +123,7 @@ const routes: Array<RouteRecordRaw> = [
             {
                 path: 'workflows/:workflowId/stages/:stageId/tasks',
                 name: 'StageTasks',
-                component: () => import('@/views/project/StageTasksView.vue'),
+                component: () => import('@/views/project/TasksView.vue'),
                 props: true,
             },
             {
