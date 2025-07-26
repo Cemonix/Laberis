@@ -58,6 +58,18 @@
                 </div>
             </div>
         </template>
+        <Modal
+            v-if="showCompletionModal"
+            title="Workflow Complete"
+            @confirm="handleCompletionModalConfirm"
+            @cancel="handleCompletionModalCancel"
+            confirm-text="Go to Tasks"
+            cancel-text="Stay"
+        >
+            <template>
+                <p>You have reached the last task in this workflow stage. Would you like to return to the tasks view?</p>
+            </template>
+        </Modal>
     </div>
 </template>
 
@@ -124,6 +136,11 @@ const handlePreviousTask = async () => {
     }
 };
 
+import { ref } from "vue";
+import Modal from "@/components/common/Modal.vue";
+
+const showCompletionModal = ref(false);
+
 const handleNextTask = async () => {
     const navigationInfo = await workspaceStore.navigateToNextTask();
     if (navigationInfo) {
@@ -142,19 +159,28 @@ const handleNextTask = async () => {
             }
         });
     } else {
-        // At last task - could show completion message or navigate back to tasks view
-        const currentTask = workspaceStore.getCurrentTask;
-        if (currentTask && confirm('You have reached the last task in this workflow stage. Would you like to return to the tasks view?')) {
-            router.push({
-                name: 'StageTasks',
-                params: {
-                    projectId: props.projectId,
-                    workflowId: currentTask.workflowId.toString(),
-                    stageId: currentTask.currentWorkflowStageId.toString()
-                }
-            });
-        }
+        // At last task - show completion modal
+        showCompletionModal.value = true;
     }
+};
+
+const handleCompletionModalConfirm = () => {
+    const currentTask = workspaceStore.getCurrentTask;
+    if (currentTask) {
+        router.push({
+            name: 'StageTasks',
+            params: {
+                projectId: props.projectId,
+                workflowId: currentTask.workflowId.toString(),
+                stageId: currentTask.currentWorkflowStageId.toString()
+            }
+        });
+    }
+    showCompletionModal.value = false;
+};
+
+const handleCompletionModalCancel = () => {
+    showCompletionModal.value = false;
 };
 
 onMounted(async () => {
