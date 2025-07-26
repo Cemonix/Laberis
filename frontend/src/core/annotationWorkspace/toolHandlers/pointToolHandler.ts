@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Annotation, PointAnnotationData } from '@/types/workspace/annotation';
+import { AnnotationType } from '@/types/workspace/annotation';
 import type { ToolHandler } from './toolHandler';
 import type { useWorkspaceStore } from '@/stores/workspaceStore';
 import { StoreError, ToolError } from '@/types/common/errors';
@@ -26,7 +27,7 @@ export class PointToolHandler implements ToolHandler {
         const imageY = (canvasY - store.viewOffset.y) / store.zoomLevel;
 
         const pointCoordinates: PointAnnotationData = {
-            type: 'point',
+            type: AnnotationType.POINT,
             point: {
                 x: imageX,
                 y: imageY,
@@ -35,7 +36,7 @@ export class PointToolHandler implements ToolHandler {
 
         const newAnnotation: Annotation = {
             clientId: uuidv4(),
-            annotationType: 'point',
+            annotationType: AnnotationType.POINT,
             labelId: store.getSelectedLabelId,
             coordinates: pointCoordinates,
             assetId: Number(store.currentAssetId),
