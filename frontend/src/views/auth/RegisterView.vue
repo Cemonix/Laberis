@@ -214,9 +214,9 @@ onMounted(() => {
 </script>
 
 <style scoped>
-@use "@/styles/auth";
+@import "@/styles/auth.css";
 
-// Additional styles for invitation banners
+/* Additional styles for invitation banners */
 .info-banner {
     padding: 0.5rem 1rem;
     margin-bottom: 1rem;

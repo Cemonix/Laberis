@@ -215,7 +215,7 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
-@use "@/styles/auth";
+@import "@/styles/auth.css";
 
 .invitation-details {
     text-align: center;

@@ -116,7 +116,7 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-@use "@/styles/auth";
+@import "@/styles/auth.css";
 
 .info-banner {
     padding: 0.5rem 1rem;
