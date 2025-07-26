@@ -1,35 +1,45 @@
 import type { Point } from "@/types/common/point";
 
+// --- Annotation Type Enum ---
+export enum AnnotationType {
+    POINT = 'point',
+    LINE = 'line',
+    BOUNDING_BOX = 'bounding_box',
+    POLYLINE = 'polyline',
+    POLYGON = 'polygon',
+    TEXT = 'text'
+}
+
 // --- Specific Data Structures for the 'coordinates' field ---
 export interface PointAnnotationData {
-    type: 'point';
+    type: AnnotationType.POINT;
     point: Point;
 }
 
 export interface LineAnnotationData {
-    type: 'line';
+    type: AnnotationType.LINE;
     pointFrom: Point;
     pointTo: Point;
 }
 
 export interface BoundingBoxAnnotationData {
-    type: 'bounding_box';
+    type: AnnotationType.BOUNDING_BOX;
     topLeft: Point;
     bottomRight: Point;
 }
 
 export interface PolylineAnnotationData {
-    type: 'polyline';
+    type: AnnotationType.POLYLINE;
     points: Point[];
 }
 
 export interface PolygonAnnotationData {
-    type: 'polygon';
+    type: AnnotationType.POLYGON;
     points: Point[];
 }
 
 export interface TextAnnotationData {
-    type: 'text';
+    type: AnnotationType.TEXT;
     text: string;
     point?: Point;
     width?: number;
@@ -39,19 +49,22 @@ export interface TextAnnotationData {
 export type AnnotationCoordinates = 
     | BoundingBoxAnnotationData 
     | PointAnnotationData 
+    | LineAnnotationData
     | PolylineAnnotationData 
     | PolygonAnnotationData
     | TextAnnotationData;
 
 // --- Main Annotation Interface ---
-export type AnnotationTypeValue = 'bounding_box' | 'polygon' | 'polyline' | 'line' | 'point' | 'text';
-
 export interface Annotation {
+    // Frontend-specific fields
     clientId?: string;
+    
+    // Backend fields (matches AnnotationDto)
     annotationId?: number;
-    annotationType: AnnotationTypeValue;
+    annotationType: AnnotationType;
+    data?: string;
+    coordinates?: AnnotationCoordinates;
     labelId: number;
-    coordinates: AnnotationCoordinates; 
     assetId: number;
     taskId: number;
     notes?: string;
@@ -63,4 +76,47 @@ export interface Annotation {
     createdAt?: string;
     updatedAt?: string;
     annotatorEmail?: string;
+}
+
+export interface AnnotationDto {
+    id: number;
+    annotationType: string;
+    data: string;
+    isPrediction: boolean;
+    confidenceScore?: number;
+    isGroundTruth: boolean;
+    version: number;
+    notes?: string;
+    createdAt: string;
+    updatedAt: string;
+    taskId: number;
+    assetId: number;
+    labelId: number;
+    annotatorEmail: string;
+    parentAnnotationId?: number;
+}
+
+export interface CreateAnnotationDto {
+    annotationType: AnnotationType;
+    data: string;
+    isPrediction?: boolean;
+    confidenceScore?: number;
+    isGroundTruth?: boolean;
+    version?: number;
+    notes?: string;
+    taskId: number;
+    assetId: number;
+    labelId: number;
+    annotatorEmail?: string;
+    parentAnnotationId?: number;
+}
+
+export interface UpdateAnnotationDto {
+    annotationType?: AnnotationType;
+    data?: string;
+    isPrediction?: boolean;
+    confidenceScore?: number;
+    isGroundTruth?: boolean;
+    notes?: string;
+    labelId?: number;
 }
