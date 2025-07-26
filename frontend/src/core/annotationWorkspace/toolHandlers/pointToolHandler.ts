@@ -51,4 +51,8 @@ export class PointToolHandler implements ToolHandler {
     onMouseUp(_event: MouseEvent, _store: WorkspaceStore): void {}
 
     draw(_ctx: CanvasRenderingContext2D): void {}
+
+    isDrawing(): boolean {
+        return false; // Point tool doesn't have a drawing state
+    }
 }
