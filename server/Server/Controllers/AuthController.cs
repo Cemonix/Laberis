@@ -139,4 +139,38 @@ public class AuthController : ControllerBase
 
         return Ok(userDto);
     }
+
+    /// <summary>
+    /// Change the current user's password
+    /// </summary>
+    /// <param name="changePasswordDto">Password change data</param>
+    /// <returns>Success message</returns>
+    [HttpPost("change-password")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+    {
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("Invalid user token");
+            }
+
+            _logger.LogInformation("Password change attempt for user: {UserId}", userId);
+            
+            await _authManager.ChangePasswordAsync(userId, changePasswordDto);
+            
+            _logger.LogInformation("Password changed successfully for user: {UserId}", userId);
+            return Ok(new { message = "Password changed successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Password change failed for user");
+            throw;
+        }
+    }
 }
