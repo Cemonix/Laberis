@@ -88,20 +88,29 @@ class AnnotationService {
         const backendType = annotation.annotationType.toString();
         logger.debug(`Saving annotation: frontend type '${annotation.annotationType}' -> backend type '${backendType}'`);
         
-        return {
+        const payload: CreateAnnotationDto = {
             annotationType: annotation.annotationType, // AnnotationType enum values are strings
             data: annotation.data || JSON.stringify(annotation.coordinates),
-            isPrediction: annotation.isPrediction || false,
-            confidenceScore: annotation.confidenceScore,
-            isGroundTruth: annotation.isGroundTruth || false,
-            version: annotation.version || 1,
-            notes: annotation.notes,
             taskId: annotation.taskId,
             assetId: annotation.assetId,
             labelId: annotation.labelId,
-            annotatorEmail: annotation.annotatorEmail || '',
-            parentAnnotationId: annotation.parentAnnotationId,
+            isPrediction: annotation.isPrediction || false,
+            isGroundTruth: annotation.isGroundTruth || false,
+            version: annotation.version || 1,
         };
+
+        // Only include optional fields if they have values
+        if (annotation.confidenceScore !== undefined) {
+            payload.confidenceScore = annotation.confidenceScore;
+        }
+        if (annotation.notes) {
+            payload.notes = annotation.notes;
+        }
+        if (annotation.parentAnnotationId) {
+            payload.parentAnnotationId = annotation.parentAnnotationId;
+        }
+
+        return payload;
     }
 
     /**
@@ -151,6 +160,7 @@ class AnnotationService {
 
         try {
             const backendPayload = this.transformAnnotationForSave(annotation);
+            logger.debug('Sending annotation payload to backend:', backendPayload);
             const response = await apiClient.post<AnnotationDto>(this.baseUrl, backendPayload);
             
             if (!isValidApiResponse(response)) {
