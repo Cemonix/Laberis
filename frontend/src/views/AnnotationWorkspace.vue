@@ -58,29 +58,32 @@
                 </div>
             </div>
         </template>
-        <Modal
-            v-if="showCompletionModal"
+        <ModalWindow
+            :is-open="showCompletionModal"
             title="Workflow Complete"
-            @confirm="handleCompletionModalConfirm"
-            @cancel="handleCompletionModalCancel"
-            confirm-text="Go to Tasks"
-            cancel-text="Stay"
+            @close="handleCompletionModalCancel"
+            hide-footer
         >
             <template>
                 <p>You have reached the last task in this workflow stage. Would you like to return to the tasks view?</p>
             </template>
-        </Modal>
+            <template #footer>
+                <Button @click="handleCompletionModalCancel">Stay</Button>
+                <Button @click="handleCompletionModalConfirm" variant="primary">Go to Tasks</Button>
+            </template>
+        </ModalWindow>
     </div>
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted} from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 import AnnotationCanvas from "@/components/annotationWorkspace/AnnotationCanvas.vue";
 import Button from "@/components/common/Button.vue";
 import {useWorkspaceStore} from "@/stores/workspaceStore";
 import ToolsLeftPanel from "@/components/annotationWorkspace/ToolsLeftPanel.vue";
 import AnnotationsPanel from "@/components/annotationWorkspace/AnnotationsPanel.vue";
 import {useRoute, useRouter} from "vue-router";
+import ModalWindow from "@/components/common/modal/ModalWindow.vue";
 
 const props = defineProps({
     projectId: {
@@ -135,9 +138,6 @@ const handlePreviousTask = async () => {
         });
     }
 };
-
-import { ref } from "vue";
-import Modal from "@/components/common/Modal.vue";
 
 const showCompletionModal = ref(false);
 

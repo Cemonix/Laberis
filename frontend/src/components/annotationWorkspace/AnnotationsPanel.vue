@@ -97,14 +97,9 @@
 
         <!-- Label Edit Modal -->
         <ModalWindow
-            v-if="isLabelEditModalOpen"
             :is-open="isLabelEditModalOpen"
             title="Change Label"
             @close="closeLabelEditModal"
-            @confirm="confirmLabelChange"
-            confirm-text="Change Label"
-            cancel-text="Cancel"
-            :confirm-disabled="!selectedNewLabelId"
         >
             <div class="label-edit-content">
                 <p class="modal-description">
@@ -129,23 +124,27 @@
                     </div>
                 </div>
             </div>
+            <template #footer>
+                <Button @click="closeLabelEditModal">Cancel</Button>
+                <Button @click="confirmLabelChange" variant="primary" :disabled="!selectedNewLabelId">Change Label</Button>
+            </template>
         </ModalWindow>
         
         <!-- Delete Confirmation Modal -->
         <ModalWindow
-            v-if="isDeleteConfirmModalOpen"
             :is-open="isDeleteConfirmModalOpen"
             title="Delete Annotation"
             @close="closeDeleteConfirmModal"
-            @confirm="confirmDeleteAnnotation"
-            confirm-text="Delete"
-            cancel-text="Cancel"
         >
             <div class="delete-confirm-content">
                 <p>
                     Are you sure you want to delete annotation #{{ deletingAnnotationId }}?
                 </p>
             </div>
+            <template #footer>
+                <Button @click="closeDeleteConfirmModal">Cancel</Button>
+                <Button @click="confirmDeleteAnnotation" class="delete-button">Delete</Button>
+            </template>
         </ModalWindow>
     </div>
 </template>
@@ -169,6 +168,7 @@ import {
     faQuestion
 } from '@fortawesome/free-solid-svg-icons';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
+import Button from '@/components/common/Button.vue';
 
 const workspaceStore = useWorkspaceStore();
 const hoveredAnnotationId = ref<number | null>(null);
@@ -247,6 +247,7 @@ const closeLabelEditModal = () => {
 const confirmLabelChange = async () => {
     if (!editingAnnotation.value || !selectedNewLabelId.value) return;
     
+    // FIX: Not working 
     await handleLabelChange(editingAnnotation.value, selectedNewLabelId.value.toString());
     closeLabelEditModal();
 };
@@ -506,7 +507,7 @@ const getAnnotationIcon = (type: AnnotationType) => {
 }
 
 .modal-description {
-    color: var(--color-gray-300);
+    color: var(--color-gray-800);
     margin-bottom: 1.5rem;
     font-size: 0.95rem;
 }
@@ -523,30 +524,34 @@ const getAnnotationIcon = (type: AnnotationType) => {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.75rem;
-    border: 2px solid var(--color-gray-700);
-    border-radius: 6px;
-    background-color: var(--color-dark-blue-3);
+    padding: 1rem;
+    border: 2px solid var(--color-gray-600);
+    border-radius: 8px;
+    background-color: var(--color-dark-blue-2);
     cursor: pointer;
     transition: all 0.2s ease-in-out;
     
     &:hover {
         border-color: var(--color-accent-blue);
-        background-color: rgba(var(--color-accent-blue), 0.1);
+        background-color: var(--color-dark-blue-1);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
     
     &.selected {
         border-color: var(--color-primary);
-        background-color: rgba(var(--color-primary), 0.1);
+        background-color: var(--color-dark-blue-1);
+        box-shadow: 0 0 0 2px rgba(var(--color-primary), 0.2);
     }
 }
 
 .label-color-preview {
     width: 24px;
     height: 24px;
-    border-radius: 4px;
-    border: 1px solid var(--color-gray-600);
+    border-radius: 6px;
+    border: 2px solid var(--color-gray-500);
     flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .label-info {
@@ -557,15 +562,27 @@ const getAnnotationIcon = (type: AnnotationType) => {
 }
 
 .label-name {
-    color: var(--color-gray-200);
-    font-weight: bold;
-    font-size: 0.95rem;
+    color: var(--color-white);
+    font-weight: 600;
+    font-size: 1rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .label-description {
-    color: var(--color-gray-400);
-    font-size: 0.85rem;
-    line-height: 1.3;
+    color: var(--color-gray-300);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Delete button style for modal */
+.delete-button {
+    background-color: var(--color-error);
+    color: var(--color-white);
+    
+    &:hover {
+        background-color: var(--color-error-hover);
+    }
 }
 
 </style>
