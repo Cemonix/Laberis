@@ -169,6 +169,9 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import Button from '@/components/common/Button.vue';
+import {AppLogger} from "@/utils/logger";
+
+const logger = AppLogger.createComponentLogger('AnnotationCanvas');
 
 const workspaceStore = useWorkspaceStore();
 const hoveredAnnotationId = ref<number | null>(null);
@@ -195,7 +198,7 @@ const handleLabelChange = async (annotation: Annotation, newLabelId: string | un
     try {
         await workspaceStore.updateAnnotation(annotation.annotationId, { labelId });
     } catch (error) {
-        console.error('Failed to update annotation label:', error);
+        logger.error('Failed to update annotation label:', error);
     }
 };
 
@@ -204,7 +207,7 @@ const deletingAnnotationId = ref<number | null>(null);
 
 const handleDeleteAnnotation = (annotationId: number | undefined) => {
     if (!annotationId) {
-        console.warn('Cannot delete annotation: annotationId is missing');
+        logger.warn('Cannot delete annotation: annotationId is missing');
         return;
     }
     deletingAnnotationId.value = annotationId;
@@ -220,16 +223,16 @@ const confirmDeleteAnnotation = async () => {
     if (!deletingAnnotationId.value) return;
     try {
         await workspaceStore.deleteAnnotation(deletingAnnotationId.value);
-        console.log(`Successfully deleted annotation ${deletingAnnotationId.value}`);
+        logger.info(`Successfully deleted annotation ${deletingAnnotationId.value}`);
     } catch (error) {
-        console.error('Failed to delete annotation:', error);
+        logger.error('Failed to delete annotation:', error);
     }
     closeDeleteConfirmModal();
 };
 
 const handleEditLabel = (annotation: Annotation) => {
     if (!annotation.annotationId) {
-        console.warn('Cannot edit annotation: annotationId is missing', annotation);
+        logger.warn('Cannot edit annotation: annotationId is missing', annotation);
         return;
     }
     
@@ -254,7 +257,7 @@ const confirmLabelChange = async () => {
 
 const handleFocusAnnotation = (annotation: Annotation) => {
     // TODO: Implement focus functionality to highlight annotation on canvas
-    console.log('Focus annotation:', annotation);
+    logger.info('Focus annotation:', annotation);
     // This will be implemented later to:
     // 1. Highlight the annotation on canvas
     // 2. Center the view on the annotation
@@ -368,7 +371,7 @@ const getAnnotationIcon = (type: AnnotationType) => {
         color: var(--color-gray-200);
         font-weight: bold;
         padding: 0.5rem 0.25rem;
-        text-align: left;
+        text-align: center;
         border-bottom: 2px solid var(--color-accent-blue);
         position: sticky;
         top: 0;
@@ -450,7 +453,7 @@ const getAnnotationIcon = (type: AnnotationType) => {
 
 
 .col-actions {
-    width: 100px;
+    min-width: 100px;
     
     .action-buttons {
         display: flex;
