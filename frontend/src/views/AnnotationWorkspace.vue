@@ -48,7 +48,7 @@
             </div>
             <div class="workspace-main-area">
                 <div class="workspace-tools-left">
-                    <ToolsLeftPanel />
+                    <WorkspaceSidebar />
                 </div>
                 <div class="workspace-canvas-area">
                     <AnnotationCanvas :image-url="imageUrlFromStore" />
@@ -80,7 +80,7 @@ import {computed, onMounted, onUnmounted, ref} from "vue";
 import AnnotationCanvas from "@/components/annotationWorkspace/AnnotationCanvas.vue";
 import Button from "@/components/common/Button.vue";
 import {useWorkspaceStore} from "@/stores/workspaceStore";
-import ToolsLeftPanel from "@/components/annotationWorkspace/ToolsLeftPanel.vue";
+import WorkspaceSidebar from "@/components/annotationWorkspace/WorkspaceSidebar.vue";
 import AnnotationsPanel from "@/components/annotationWorkspace/AnnotationsPanel.vue";
 import {useRoute, useRouter} from "vue-router";
 import ModalWindow from "@/components/common/modal/ModalWindow.vue";
