@@ -46,7 +46,7 @@ export function drawLine(
     pointFrom: Point,
     pointTo: Point,
     color: string = '#00FF00',
-    lineWidth: number = 1
+    lineWidth: number = 2
 ) {
 
     ctx.save();
@@ -54,7 +54,7 @@ export function drawLine(
     ctx.beginPath();
     ctx.moveTo(pointFrom.x, pointFrom.y);
     ctx.lineTo(pointTo.x, pointTo.y);
-    ctx.lineWidth = lineWidth;
+    ctx.lineWidth = Math.max(lineWidth, 2); // Ensure minimum visibility
 
     ctx.strokeStyle = color;
     ctx.stroke();
@@ -73,17 +73,19 @@ export function drawPolyline(
     ctx: CanvasRenderingContext2D,
     points: Point[],
     color: string = '#00FF00',
-    lineWidth: number = 1
+    lineWidth: number = 2
 ) {
+    if (points.length < 2) return;
+    
     ctx.save();
 
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
-    for (const point of points) {
-        ctx.lineTo(point.x, point.y);
+    for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
     }
 
-    ctx.lineWidth = lineWidth;
+    ctx.lineWidth = Math.max(lineWidth, 2); // Ensure minimum visibility
     ctx.strokeStyle = color;
     ctx.stroke();
 
@@ -99,7 +101,8 @@ export function drawPolyline(
 export function drawPolygon(
     ctx: CanvasRenderingContext2D,
     points: Point[],
-    color: string = '#00FF00'
+    color: string = '#00FF00',
+    lineWidth: number = 2
 ) {
     if (points.length < 3) return; // A polygon requires at least 3 points
 
@@ -107,12 +110,12 @@ export function drawPolygon(
 
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
-    for (const point of points.slice(1)) {
-        ctx.lineTo(point.x, point.y);
+    for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
     }
     ctx.closePath();
 
-    ctx.lineWidth = 2;
+    ctx.lineWidth = Math.max(lineWidth, 2); // Ensure minimum visibility
     ctx.strokeStyle = color;
     ctx.stroke();
 
@@ -134,16 +137,58 @@ export function drawBoundingBox(
     y: number,
     width: number,
     height: number,
-    color: string = '#00FF00'
+    color: string = '#00FF00',
+    lineWidth: number = 2
 ) {
     ctx.save();
 
     ctx.beginPath();
     ctx.rect(x, y, width, height);
     
-    ctx.lineWidth = 2;
+    ctx.lineWidth = Math.max(lineWidth, 2); // Ensure minimum visibility
     ctx.strokeStyle = color;
     ctx.stroke();
 
+    ctx.restore();
+}
+
+/**
+ * Draws an edit handle (small square) at a point for annotation editing.
+ * @param ctx The 2D rendering context of the canvas.
+ * @param x The x-coordinate of the handle center.
+ * @param y The y-coordinate of the handle center.
+ * @param size The size of the handle (default 8px).
+ * @param color The color of the handle.
+ * @param isHovered Whether the handle is being hovered.
+ */
+export function drawEditHandle(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    size: number = 8,
+    color: string = '#FFFFFF',
+    isHovered: boolean = false
+) {
+    const halfSize = size / 2;
+    
+    ctx.save();
+    
+    // Draw white background
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(x - halfSize, y - halfSize, size, size);
+    
+    // Draw colored border
+    ctx.strokeStyle = color;
+    ctx.lineWidth = isHovered ? 3 : 2;
+    ctx.strokeRect(x - halfSize, y - halfSize, size, size);
+    
+    // Draw inner dot if hovered
+    if (isHovered) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    
     ctx.restore();
 }
