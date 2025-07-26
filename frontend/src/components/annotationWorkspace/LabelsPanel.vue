@@ -2,6 +2,25 @@
     <div class="labels-panel">
         <h3 class="panel-title">Labels</h3>
         
+        <!-- Label Scheme Selector -->
+        <div v-if="availableLabelSchemes.length > 1" class="scheme-selector">
+            <label for="scheme-dropdown" class="selector-label">Label Scheme:</label>
+            <select 
+                id="scheme-dropdown"
+                v-model="selectedSchemeId" 
+                @change="onSchemeChange"
+                class="scheme-dropdown"
+            >
+                <option 
+                    v-for="scheme in availableLabelSchemes" 
+                    :key="scheme.labelSchemeId"
+                    :value="scheme.labelSchemeId"
+                >
+                    {{ scheme.name }}
+                </option>
+            </select>
+        </div>
+        
         <!-- Loading state -->
         <div v-if="isLoading" class="panel-loading">
             <span>Loading labels...</span>
@@ -40,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed} from 'vue';
+import {computed, ref, watch} from 'vue';
 import {useWorkspaceStore} from '@/stores/workspaceStore';
 
 const workspaceStore = useWorkspaceStore();
@@ -49,6 +68,17 @@ const isLoading = computed(() => workspaceStore.getLoadingState);
 const availableLabels = computed(() => workspaceStore.getAvailableLabels);
 const selectedLabelId = computed(() => workspaceStore.getSelectedLabelId);
 const currentLabelScheme = computed(() => workspaceStore.getCurrentLabelScheme);
+const availableLabelSchemes = computed(() => workspaceStore.getAvailableLabelSchemes);
+
+// Track selected scheme ID
+const selectedSchemeId = ref<number | null>(null);
+
+// Initialize selectedSchemeId when currentLabelScheme changes
+watch(currentLabelScheme, (newScheme) => {
+    if (newScheme) {
+        selectedSchemeId.value = newScheme.labelSchemeId;
+    }
+}, { immediate: true });
 
 const selectLabel = (labelId: number) => {
     if (selectedLabelId.value === labelId) {
@@ -56,6 +86,12 @@ const selectLabel = (labelId: number) => {
         workspaceStore.setCurrentLabelId(null);
     } else {
         workspaceStore.setCurrentLabelId(labelId);
+    }
+};
+
+const onSchemeChange = async () => {
+    if (selectedSchemeId.value) {
+        await workspaceStore.switchLabelScheme(selectedSchemeId.value);
     }
 };
 </script>
@@ -74,6 +110,47 @@ const selectLabel = (labelId: number) => {
     margin-bottom: 1rem;
     border-bottom: 1px solid var(--color-accent-blue);
     padding-bottom: 0.5rem;
+}
+
+.scheme-selector {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background-color: var(--color-dark-blue-2);
+    border-radius: 4px;
+    border: 1px solid var(--color-accent-blue);
+}
+
+.selector-label {
+    display: block;
+    color: var(--color-gray-300);
+    font-size: 0.875rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.scheme-dropdown {
+    width: 100%;
+    padding: 0.5rem;
+    background-color: var(--color-dark-blue-3);
+    color: var(--color-gray-200);
+    border: 1px solid var(--color-gray-600);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.2s ease-in-out;
+    
+    &:focus {
+        border-color: var(--color-primary);
+    }
+    
+    &:hover {
+        border-color: var(--color-accent-blue);
+    }
+}
+
+.scheme-dropdown option {
+    background-color: var(--color-dark-blue-3);
+    color: var(--color-gray-200);
 }
 
 .panel-loading {
