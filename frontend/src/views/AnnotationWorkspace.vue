@@ -25,9 +25,19 @@
                     <router-link class="nav-link underline-animation" to="/home">Home</router-link>
                 </div>
                 <div class="workspace-top-bar-center">
-                    <Button>Previous</Button>
-                    <span>122 / 150</span>
-                    <Button>Next</Button>
+                    <Button 
+                        @click="handlePreviousTask"
+                        :disabled="!canNavigateToPrevious"
+                    >
+                        Previous
+                    </Button>
+                    <span>{{ taskNavigationInfo.current }} / {{ taskNavigationInfo.total }}</span>
+                    <Button 
+                        @click="handleNextTask"
+                        :disabled="!canNavigateToNext"
+                    >
+                        {{ canNavigateToNext ? 'Next' : 'All Done' }}
+                    </Button>
                 </div>
                 <div class="workspace-top-bar-right">
                     <span class="zoom-display"
@@ -44,7 +54,7 @@
                     <AnnotationCanvas :image-url="imageUrlFromStore" />
                 </div>
                 <div class="workspace-annotations-right">
-                    <LabelsPanel />
+                    <AnnotationsPanel />
                 </div>
             </div>
         </template>
@@ -57,7 +67,8 @@ import AnnotationCanvas from "@/components/annotationWorkspace/AnnotationCanvas.
 import Button from "@/components/common/Button.vue";
 import {useWorkspaceStore} from "@/stores/workspaceStore";
 import ToolsLeftPanel from "@/components/annotationWorkspace/ToolsLeftPanel.vue";
-import LabelsPanel from "@/components/annotationWorkspace/LabelsPanel.vue";
+import AnnotationsPanel from "@/components/annotationWorkspace/AnnotationsPanel.vue";
+import {useRoute, useRouter} from "vue-router";
 
 const props = defineProps({
     projectId: {
@@ -71,11 +82,16 @@ const props = defineProps({
 });
 
 const workspaceStore = useWorkspaceStore();
+const route = useRoute();
+const router = useRouter();
 
 const isLoading = computed(() => workspaceStore.getLoadingState);
 const error = computed(() => workspaceStore.getError);
 const imageUrlFromStore = computed(() => workspaceStore.currentImageUrl);
 const displayedTime = computed(() => workspaceStore.elapsedTimeDisplay);
+const taskNavigationInfo = computed(() => workspaceStore.getTaskNavigationInfo);
+const canNavigateToPrevious = computed(() => workspaceStore.canNavigateToPrevious);
+const canNavigateToNext = computed(() => workspaceStore.canNavigateToNext);
 const zoomPercentageDisplay = computed(() => {
     const zoomLevel = workspaceStore.zoomLevel;
     return `${(zoomLevel * 100).toFixed(0)}%`;
@@ -83,17 +99,75 @@ const zoomPercentageDisplay = computed(() => {
 
 const retryLoading = async () => {
     workspaceStore.clearError();
-    await workspaceStore.loadAsset(props.projectId, props.assetId);
+    const taskId = route.query.taskId as string | undefined;
+    await workspaceStore.loadAsset(props.projectId, props.assetId, taskId);
+};
+
+const handlePreviousTask = async () => {
+    const navigationInfo = await workspaceStore.navigateToPreviousTask();
+    
+    if (navigationInfo) {
+        // Directly load the new asset instead of using router.push to avoid same-route issues
+        await workspaceStore.loadAsset(navigationInfo.projectId, navigationInfo.assetId, navigationInfo.taskId);
+        
+        // Update the URL without triggering a route change
+        await router.replace({
+            name: 'AnnotationWorkspace',
+            params: {
+                projectId: navigationInfo.projectId,
+                assetId: navigationInfo.assetId
+            },
+            query: {
+                taskId: navigationInfo.taskId
+            }
+        });
+    }
+};
+
+const handleNextTask = async () => {
+    const navigationInfo = await workspaceStore.navigateToNextTask();
+    if (navigationInfo) {
+        // Directly load the new asset instead of using router.push to avoid same-route issues
+        await workspaceStore.loadAsset(navigationInfo.projectId, navigationInfo.assetId, navigationInfo.taskId);
+        
+        // Update the URL without triggering a route change
+        await router.replace({
+            name: 'AnnotationWorkspace',
+            params: {
+                projectId: navigationInfo.projectId,
+                assetId: navigationInfo.assetId
+            },
+            query: {
+                taskId: navigationInfo.taskId
+            }
+        });
+    } else {
+        // At last task - could show completion message or navigate back to tasks view
+        const currentTask = workspaceStore.getCurrentTask;
+        if (currentTask && confirm('You have reached the last task in this workflow stage. Would you like to return to the tasks view?')) {
+            router.push({
+                name: 'StageTasks',
+                params: {
+                    projectId: props.projectId,
+                    workflowId: currentTask.workflowId.toString(),
+                    stageId: currentTask.currentWorkflowStageId.toString()
+                }
+            });
+        }
+    }
 };
 
 onMounted(async () => {
+    const taskId = route.query.taskId as string | undefined;
     console.log(
         "[WorkspaceView] Mounted. Project ID:",
         props.projectId,
         "Asset ID:",
-        props.assetId
+        props.assetId,
+        "Task ID:",
+        taskId
     );
-    await workspaceStore.loadAsset(props.projectId, props.assetId);
+    await workspaceStore.loadAsset(props.projectId, props.assetId, taskId);
     console.log(
         "[WorkspaceView] loadAsset action dispatched. Image URL from store should be updated now.",
         "Image URL:",
@@ -183,7 +257,7 @@ onUnmounted(() => {
 }
 
 .workspace-annotations-right {
-    width: 200px;
+    width: 300px;
     background-color: var(--color-dark-blue-2);
     padding: 0;
     border-left: 1px solid var(--color-accent-blue);
