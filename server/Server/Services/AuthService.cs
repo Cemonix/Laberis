@@ -248,6 +248,46 @@ public class AuthService : IAuthService
         await _userManager.UpdateAsync(user);
         _logger.LogInformation("Refresh token for user {UserId} has been revoked.", userId);
     }
+
+    public async Task ChangePasswordAsync(string userId, ChangePasswordDto changePasswordDto)
+    {
+        _logger.LogInformation("Attempting to change password for user: {UserId}", userId);
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            _logger.LogWarning("Password change failed: User with ID {UserId} not found", userId);
+            throw new NotFoundException("User not found");
+        }
+
+        // Verify current password
+        var isCurrentPasswordValid = await _userManager.CheckPasswordAsync(user, changePasswordDto.CurrentPassword);
+        if (!isCurrentPasswordValid)
+        {
+            _logger.LogWarning("Password change failed: Invalid current password for user {UserId}", userId);
+            throw new ValidationException("Current password is incorrect");
+        }
+
+        // Check if new password is different from current password
+        var isSamePassword = await _userManager.CheckPasswordAsync(user, changePasswordDto.NewPassword);
+        if (isSamePassword)
+        {
+            _logger.LogWarning("Password change failed: New password is the same as current password for user {UserId}", userId);
+            throw new ValidationException("New password must be different from current password");
+        }
+
+        // Change password
+        var result = await _userManager.ChangePasswordAsync(user, changePasswordDto.CurrentPassword, changePasswordDto.NewPassword);
+        
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            _logger.LogError("Password change failed for user {UserId}: {Errors}", userId, errors);
+            throw new ValidationException($"Password change failed: {errors}");
+        }
+
+        _logger.LogInformation("Password changed successfully for user: {UserId}", userId);
+    }
     
     private static string GenerateRefreshToken()
     {
