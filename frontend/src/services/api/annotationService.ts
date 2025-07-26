@@ -1,13 +1,14 @@
 import apiClient from './apiClient';
 import { transformApiError, isValidApiResponse, isValidPaginatedResponse } from '@/services/utils';
 import type { PaginatedResponse, QueryParams } from '@/types/api';
-import type {
-    AnnotationDto, 
-    CreateAnnotationDto, 
-    UpdateAnnotationDto
-} from '@/types/annotation';
 import { AppLogger } from '@/utils/logger';
-import type { Annotation } from '@/types/workspace/annotation';
+import { 
+    type Annotation, 
+    AnnotationType,
+    type CreateAnnotationDto, 
+    type UpdateAnnotationDto,
+    type AnnotationDto // Legacy DTO for backend communication
+} from '@/types/workspace/annotation';
 
 const logger = AppLogger.createServiceLogger('AnnotationService');
 
@@ -15,6 +16,29 @@ const logger = AppLogger.createServiceLogger('AnnotationService');
 
 class AnnotationService {
     private readonly baseUrl = '/annotations';
+
+    /**
+     * Validates and converts backend annotation type to frontend enum
+     */
+    private validateAnnotationType(backendType: string): AnnotationType {
+        // Map backend string values to frontend enum
+        const typeMapping: Record<string, AnnotationType> = {
+            'point': AnnotationType.POINT,
+            'line': AnnotationType.LINE,
+            'bounding_box': AnnotationType.BOUNDING_BOX,
+            'polyline': AnnotationType.POLYLINE,
+            'polygon': AnnotationType.POLYGON,
+            'text': AnnotationType.TEXT
+        };
+        
+        const mappedType = typeMapping[backendType.toLowerCase()];
+        if (!mappedType) {
+            logger.warn(`Unknown annotation type from backend: ${backendType}, defaulting to POINT`);
+            return AnnotationType.POINT;
+        }
+        
+        return mappedType;
+    }
 
     /**
      * Transforms backend AnnotationDto to frontend Annotation
@@ -29,10 +53,14 @@ class AnnotationService {
                 'Failed to transform annotation - Invalid coordinates format');
         }
 
+        const validatedType = this.validateAnnotationType(dto.annotationType);
+        logger.debug(`Transforming annotation: backend type '${dto.annotationType}' -> frontend type '${validatedType}'`);
+
         return {
             annotationId: dto.id,
-            annotationType: dto.annotationType as any, // TODO: Type assertion for now
-            coordinates,
+            annotationType: validatedType,
+            data: dto.data, // Keep raw data for backend sync
+            coordinates, // Parsed coordinates for frontend use
             labelId: dto.labelId,
             assetId: dto.assetId,
             taskId: dto.taskId,
@@ -52,9 +80,13 @@ class AnnotationService {
      * Transforms frontend Annotation to backend CreateAnnotationDto format
      */
     private transformAnnotationForSave(annotation: Omit<Annotation, 'annotationId' | 'createdAt' | 'updatedAt'>): CreateAnnotationDto {
+        // Ensure we're sending the enum value (which is the string) to the backend
+        const backendType = annotation.annotationType.toString();
+        logger.debug(`Saving annotation: frontend type '${annotation.annotationType}' -> backend type '${backendType}'`);
+        
         return {
-            annotationType: annotation.annotationType,
-            data: JSON.stringify(annotation.coordinates),
+            annotationType: annotation.annotationType, // AnnotationType enum values are strings
+            data: annotation.data || JSON.stringify(annotation.coordinates),
             isPrediction: annotation.isPrediction || false,
             confidenceScore: annotation.confidenceScore,
             isGroundTruth: annotation.isGroundTruth || false,
