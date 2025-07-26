@@ -12,7 +12,9 @@ import annotationService from '@/services/api/annotationService';
 import assetService from '@/services/api/assetService';
 import { labelSchemeService } from '@/services/api/labelSchemeService';
 import { labelService } from '@/services/api/labelService';
+import { taskService } from '@/services/api/taskService';
 import type { Asset } from '@/types/asset/asset';
+import type { Task } from '@/types/task';
 import { AppLogger } from '@/utils/logger';
 
 const logger = AppLogger.createServiceLogger('WorkspaceStore');
@@ -48,6 +50,9 @@ export const useWorkspaceStore = defineStore("workspace", {
         currentLabelId: null as number | null,
         currentLabelScheme: null as LabelScheme | null,
         currentTaskId: null as number | null,
+        currentTaskData: null as Task | null,
+        availableTasks: [] as Task[],
+        initialTaskId: null as number | null, // Store the initial task ID from URL query
         isLoading: false,
         error: null,
     }),
@@ -99,10 +104,41 @@ export const useWorkspaceStore = defineStore("workspace", {
         getAvailableLabels(state): Label[] {
             return state.currentLabelScheme?.labels || [];
         },
+        getCurrentTask(state): Task | null {
+            return state.currentTaskData;
+        },
+        getAvailableTasks(state): Task[] {
+            return state.availableTasks;
+        },
+        getCurrentTaskIndex(state): number {
+            if (!state.currentTaskData || state.availableTasks.length === 0) {
+                return -1;
+            }
+            return state.availableTasks.findIndex(task => task.id === state.currentTaskData?.id);
+        },
+        getTaskNavigationInfo(state): { current: number; total: number } {
+            const currentIndex = state.currentTaskData && state.availableTasks.length > 0 
+                ? state.availableTasks.findIndex(task => task.id === state.currentTaskData?.id)
+                : -1;
+            return {
+                current: currentIndex >= 0 ? currentIndex + 1 : 0,
+                total: state.availableTasks.length
+            };
+        },
+        canNavigateToPrevious(state): boolean {
+            if (!state.currentTaskData || state.availableTasks.length === 0) return false;
+            const currentIndex = state.availableTasks.findIndex(task => task.id === state.currentTaskData?.id);
+            return currentIndex > 0;
+        },
+        canNavigateToNext(state): boolean {
+            if (!state.currentTaskData || state.availableTasks.length === 0) return false;
+            const currentIndex = state.availableTasks.findIndex(task => task.id === state.currentTaskData?.id);
+            return currentIndex < state.availableTasks.length - 1;
+        },
     },
 
     actions: {
-        async loadAsset(projectId: string, assetId: string) {
+        async loadAsset(projectId: string, assetId: string, taskId?: string) {
             this.currentProjectId = projectId;
             this.currentAssetId = assetId;
             this.isLoading = true;
@@ -132,6 +168,10 @@ export const useWorkspaceStore = defineStore("workspace", {
                 this.zoomLevel = 1;
                 this.annotations = [];
                 this.currentLabelId = null;
+                this.currentTaskId = null;
+                this.currentTaskData = null;
+                this.availableTasks = [];
+                this.initialTaskId = taskId ? parseInt(taskId, 10) : null;
 
                 // Fetch annotations for this asset
                 try {
@@ -141,6 +181,49 @@ export const useWorkspaceStore = defineStore("workspace", {
                 } catch (annotationError) {
                     logger.error("Failed to fetch annotations:", annotationError);
                     this.setAnnotations([]); // Clear annotations on error
+                }
+
+                // Fetch tasks - either by specific task ID or find task for this asset
+                try {
+                    let currentTask: Task | null = null;
+                    let workflowStageId: number | null = null;
+
+                    if (this.initialTaskId) {
+                        // If we have a specific task ID (from URL query), load that task first
+                        try {
+                            currentTask = await taskService.getTaskById(numericProjectId, this.initialTaskId);
+                            workflowStageId = currentTask.currentWorkflowStageId;
+                            logger.info(`Loaded specific task ${this.initialTaskId} for stage ${workflowStageId}`);
+                        } catch (taskByIdError) {
+                            logger.warn(`Failed to load task ${this.initialTaskId}, falling back to asset tasks:`, taskByIdError);
+                        }
+                    }
+
+                    // If we don't have a current task yet, find task(s) for this asset
+                    if (!currentTask) {
+                        const assetTasks = await taskService.getTasksForAsset(numericProjectId, numericAssetId);
+                        if (assetTasks.length > 0) {
+                            currentTask = assetTasks[0];
+                            workflowStageId = currentTask.currentWorkflowStageId;
+                            logger.info(`Found asset task ${currentTask.id} for asset ${assetId} in stage ${workflowStageId}`);
+                        }
+                    }
+
+                    if (currentTask && workflowStageId) {
+                        // Load all tasks for this workflow stage to enable navigation
+                        const stageTasks = await taskService.getTasksForStage(numericProjectId, workflowStageId);
+                        this.availableTasks = stageTasks.tasks;
+                        this.currentTaskData = currentTask;
+                        this.currentTaskId = currentTask.id;
+                        
+                        const taskIndex = this.availableTasks.findIndex(task => task.id === currentTask.id);
+                        logger.info(`Loaded ${this.availableTasks.length} tasks for stage ${workflowStageId}, current task is at index ${taskIndex}`);
+                    } else {
+                        logger.warn(`No tasks found for asset ${assetId}`);
+                    }
+                } catch (taskError) {
+                    logger.error("Failed to fetch tasks:", taskError);
+                    // Don't fail the entire load process if tasks fail
                 }
 
                 // Fetch label schemes for this project
@@ -187,6 +270,10 @@ export const useWorkspaceStore = defineStore("workspace", {
                 this.annotations = [];
                 this.currentLabelScheme = null;
                 this.currentLabelId = null;
+                this.currentTaskId = null;
+                this.currentTaskData = null;
+                this.availableTasks = [];
+                this.initialTaskId = null;
             }
         },
 
@@ -216,18 +303,31 @@ export const useWorkspaceStore = defineStore("workspace", {
                 const savedAnnotation = await annotationService.createAnnotation(annotation);
 
                 // Update the annotation in the store with the saved data (including ID)
-                const index = this.annotations.findIndex(a => a.clientId === savedAnnotation.clientId);
+                // First try to find by clientId
+                let index = this.annotations.findIndex(a => a.clientId === annotation.clientId);
+                
                 if (index !== -1) {
-                    this.annotations[index] = savedAnnotation;
+                    // Preserve the clientId when updating
+                    this.annotations[index] = { ...savedAnnotation, clientId: annotation.clientId };
+                    logger.debug(`Updated annotation by clientId: ${annotation.clientId}`);
                 } else {
-                    // If clientId doesn't match, find by coordinates or other unique properties
-                    const foundIndex = this.annotations.findIndex(a => 
+                    // If clientId doesn't match, find by coordinates and other properties
+                    index = this.annotations.findIndex(a => 
+                        !a.annotationId && // Only match unsaved annotations
                         a.assetId === savedAnnotation.assetId && 
                         a.labelId === savedAnnotation.labelId &&
+                        a.annotationType === savedAnnotation.annotationType &&
                         JSON.stringify(a.coordinates) === JSON.stringify(savedAnnotation.coordinates)
                     );
-                    if (foundIndex !== -1) {
-                        this.annotations[foundIndex] = savedAnnotation;
+                    
+                    if (index !== -1) {
+                        // Preserve the original clientId
+                        this.annotations[index] = { ...savedAnnotation, clientId: this.annotations[index].clientId };
+                        logger.debug(`Updated annotation by coordinates match`);
+                    } else {
+                        logger.warn(`Could not find matching annotation to update after save`);
+                        // Add as new annotation if we can't find a match
+                        this.annotations.push({ ...savedAnnotation, clientId: annotation.clientId });
                     }
                 }
 
@@ -432,5 +532,56 @@ export const useWorkspaceStore = defineStore("workspace", {
         _updateElapsedTimeDisplay() {
             this.elapsedTimeDisplay = this.timerInstance.getFormattedElapsedTime();
         },
+
+        /**
+         * Navigate to the previous task in the current workflow stage
+         */
+        async navigateToPreviousTask(): Promise<{ projectId: string; assetId: string; taskId: string } | null> {
+            if (!this.currentTaskData || this.availableTasks.length === 0) {
+                logger.warn('Cannot navigate to previous task: no current task or available tasks');
+                return null;
+            }
+
+            const currentIndex = this.availableTasks.findIndex(task => task.id === this.currentTaskData?.id);
+            if (currentIndex <= 0) {
+                logger.info('Already at first task, cannot go to previous');
+                return null; // Already at first task
+            }
+
+            const previousTask = this.availableTasks[currentIndex - 1];
+            logger.info(`Navigating to previous task: ${previousTask.id} (asset ${previousTask.assetId})`);
+            
+            return {
+                projectId: this.currentProjectId!,
+                assetId: previousTask.assetId.toString(),
+                taskId: previousTask.id.toString()
+            };
+        },
+
+        /**
+         * Navigate to the next task in the current workflow stage
+         */
+        async navigateToNextTask(): Promise<{ projectId: string; assetId: string; taskId: string } | null> {
+            if (!this.currentTaskData || this.availableTasks.length === 0) {
+                logger.warn('Cannot navigate to next task: no current task or available tasks');
+                return null;
+            }
+
+            const currentIndex = this.availableTasks.findIndex(task => task.id === this.currentTaskData?.id);
+            if (currentIndex >= this.availableTasks.length - 1) {
+                logger.info('Already at last task, cannot go to next');
+                return null; // Already at last task
+            }
+
+            const nextTask = this.availableTasks[currentIndex + 1];
+            logger.info(`Navigating to next task: ${nextTask.id} (asset ${nextTask.assetId})`);
+            
+            return {
+                projectId: this.currentProjectId!,
+                assetId: nextTask.assetId.toString(),
+                taskId: nextTask.id.toString()
+            };
+        },
+
     },
 });
