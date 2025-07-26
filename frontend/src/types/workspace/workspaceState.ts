@@ -24,6 +24,7 @@ export interface WorkspaceState {
     annotations: Annotation[];
     currentLabelId: number | null;
     currentLabelScheme: LabelScheme | null;
+    availableLabelSchemes: LabelScheme[];
     currentTaskId: number | null;
     currentTaskData: Task | null;
     availableTasks: Task[];

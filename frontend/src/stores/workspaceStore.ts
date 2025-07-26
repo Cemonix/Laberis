@@ -41,14 +41,15 @@ export const useWorkspaceStore = defineStore("workspace", {
         availableTools: [
             { id: ToolName.CURSOR, name: 'Cursor', iconDefinition: faArrowPointer },
             { id: ToolName.POINT, name: 'Point', iconDefinition: faDotCircle },
-            { id: ToolName.BOUNDING_BOX, name: 'Bounding Box', iconDefinition: faSquare },
             { id: ToolName.LINE, name: 'Line', iconDefinition: faMinus },
+            { id: ToolName.BOUNDING_BOX, name: 'Bounding Box', iconDefinition: faSquare },
             { id: ToolName.POLYLINE, name: 'Polyline', iconDefinition: faWaveSquare },
             { id: ToolName.POLYGON, name: 'Polygon', iconDefinition: faDrawPolygon },
         ],
         annotations: [] as Annotation[],
         currentLabelId: null as number | null,
         currentLabelScheme: null as LabelScheme | null,
+        availableLabelSchemes: [] as LabelScheme[],
         currentTaskId: null as number | null,
         currentTaskData: null as Task | null,
         availableTasks: [] as Task[],
@@ -103,6 +104,9 @@ export const useWorkspaceStore = defineStore("workspace", {
         },
         getAvailableLabels(state): Label[] {
             return state.currentLabelScheme?.labels || [];
+        },
+        getAvailableLabelSchemes(state): LabelScheme[] {
+            return state.availableLabelSchemes;
         },
         getCurrentTask(state): Task | null {
             return state.currentTaskData;
@@ -230,6 +234,9 @@ export const useWorkspaceStore = defineStore("workspace", {
                 try {
                     const labelSchemes = await labelSchemeService.getLabelSchemesForProject(numericProjectId);
                     if (labelSchemes.data.length > 0) {
+                        // Store all available label schemes
+                        this.availableLabelSchemes = labelSchemes.data;
+                        
                         // Use the first available label scheme, or look for a default one
                         const selectedScheme = labelSchemes.data.find(scheme => scheme.isDefault) || labelSchemes.data[0];
                         
@@ -245,10 +252,12 @@ export const useWorkspaceStore = defineStore("workspace", {
                         }
                     } else {
                         logger.warn(`No label schemes found for project ${projectId}`);
+                        this.availableLabelSchemes = [];
                         this.setCurrentLabelScheme(null);
                     }
                 } catch (labelSchemeError) {
                     logger.error("Failed to fetch label schemes:", labelSchemeError);
+                    this.availableLabelSchemes = [];
                     this.setCurrentLabelScheme(null);
                 }
 
@@ -269,6 +278,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                 this.imageNaturalDimensions = null;
                 this.annotations = [];
                 this.currentLabelScheme = null;
+                this.availableLabelSchemes = [];
                 this.currentLabelId = null;
                 this.currentTaskId = null;
                 this.currentTaskData = null;
@@ -446,6 +456,43 @@ export const useWorkspaceStore = defineStore("workspace", {
                 console.log("[Store] Label Scheme set:", scheme.name);
             } else {
                 console.log("[Store] Label Scheme cleared.");
+            }
+        },
+
+        /**
+         * Switches to a different label scheme by ID
+         * @param schemeId The ID of the label scheme to switch to
+         */
+        async switchLabelScheme(schemeId: number) {
+            try {
+                // Find the scheme in available schemes
+                const scheme = this.availableLabelSchemes.find(s => s.labelSchemeId === schemeId);
+                if (!scheme) {
+                    logger.error(`Label scheme with ID ${schemeId} not found in available schemes`);
+                    return;
+                }
+
+                // If the scheme doesn't have labels loaded, fetch them
+                if (!scheme.labels && this.currentProjectId) {
+                    const numericProjectId = parseInt(this.currentProjectId);
+                    try {
+                        const labelsResponse = await labelService.getLabelsForScheme(numericProjectId, schemeId);
+                        scheme.labels = labelsResponse.data;
+                        logger.info(`Loaded ${labelsResponse.data.length} labels for scheme: ${scheme.name}`);
+                    } catch (labelsError) {
+                        logger.error("Failed to fetch labels for scheme:", labelsError);
+                        // Continue anyway, set scheme without labels
+                    }
+                }
+
+                // Clear current label selection when switching schemes
+                this.setCurrentLabelId(null);
+                
+                // Set the new scheme
+                this.setCurrentLabelScheme(scheme);
+                logger.info(`Switched to label scheme: ${scheme.name}`);
+            } catch (error) {
+                logger.error("Failed to switch label scheme:", error);
             }
         },
 
