@@ -33,7 +33,11 @@ class AnnotationService {
         
         const mappedType = typeMapping[backendType.toLowerCase()];
         if (!mappedType) {
-            logger.warn(`Unknown annotation type from backend: ${backendType}, defaulting to POINT`);
+            logger.warn(
+                `Unknown annotation type from backend: ${backendType}. ` +
+                `Expected one of: ${Object.keys(typeMapping).join(', ')}. ` +
+                `Defaulting to POINT. Please check the backend data source for inconsistencies.`
+            );
             return AnnotationType.POINT;
         }
         
