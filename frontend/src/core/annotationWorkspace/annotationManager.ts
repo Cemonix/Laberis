@@ -2,6 +2,10 @@ import type { useWorkspaceStore } from '@/stores/workspaceStore';
 import { ToolName } from '@/types/workspace/tools';
 import type { ToolHandler } from '@/core/annotationWorkspace/toolHandlers/toolHandler';
 import { PointToolHandler } from '@/core/annotationWorkspace/toolHandlers/pointToolHandler';
+import { LineToolHandler } from '@/core/annotationWorkspace/toolHandlers/lineToolHandler';
+import { BoundingBoxToolHandler } from '@/core/annotationWorkspace/toolHandlers/boundingBoxToolHandler';
+import { PolylineToolHandler } from '@/core/annotationWorkspace/toolHandlers/polylineToolHandler';
+import { PolygonToolHandler } from '@/core/annotationWorkspace/toolHandlers/polygonToolHandler';
 
 type WorkspaceStore = ReturnType<typeof useWorkspaceStore>;
 
@@ -14,8 +18,10 @@ export class AnnotationManager {
         this.toolHandlers = new Map();
 
         this.toolHandlers.set(ToolName.POINT, new PointToolHandler());
-        // TODO: this.toolHandlers.set(ToolName.BOUNDING_BOX, new BoundingBoxToolHandler()); // Example for later
-        // Add other handlers here...
+        this.toolHandlers.set(ToolName.LINE, new LineToolHandler());
+        this.toolHandlers.set(ToolName.BOUNDING_BOX, new BoundingBoxToolHandler());
+        this.toolHandlers.set(ToolName.POLYLINE, new PolylineToolHandler());
+        this.toolHandlers.set(ToolName.POLYGON, new PolygonToolHandler());
     }
 
     private getActiveHandler(): ToolHandler | undefined {
@@ -39,7 +45,15 @@ export class AnnotationManager {
         this.getActiveHandler()?.onMouseLeave?.(event, this.store);
     }
 
+    public onKeyDown(event: KeyboardEvent): void {
+        this.getActiveHandler()?.onKeyDown?.(event, this.store);
+    }
+
     public draw(ctx: CanvasRenderingContext2D): void {
         this.getActiveHandler()?.draw(ctx);
+    }
+
+    public isDrawing(): boolean {
+        return this.getActiveHandler()?.isDrawing() ?? false;
     }
 }
