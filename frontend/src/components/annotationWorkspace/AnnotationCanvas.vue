@@ -27,6 +27,7 @@ import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from "vue";
 import {useWorkspaceStore} from '@/stores/workspaceStore';
 import type {Point} from "@/types/common/point";
 import {ToolName} from "@/types/workspace/tools";
+import {AnnotationType} from "@/types/workspace/annotation";
 import {drawBoundingBox, drawPoint} from '@/core/annotationWorkspace/annotationDrawer';
 import {AnnotationManager} from "@/core/annotationWorkspace/annotationManager";
 import {StoreError, ToolError} from "@/types/common/errors";
@@ -247,7 +248,7 @@ const drawSavedAnnotations = (context: CanvasRenderingContext2D) => {
     if (!annotationsToRender.value) return;
 
     annotationsToRender.value.forEach(annotation => {
-        if (annotation.annotationType === 'point' && annotation.coordinates.type === 'point') {
+        if (annotation.annotationType === AnnotationType.POINT && annotation.coordinates?.type === AnnotationType.POINT) {
             const imageCoordX = annotation.coordinates.point.x;
             const imageCoordY = annotation.coordinates.point.y;
 
@@ -258,7 +259,7 @@ const drawSavedAnnotations = (context: CanvasRenderingContext2D) => {
 
             drawPoint(context, imageCoordX, imageCoordY, pointColor, pointRadius, lineWidth);
         }
-        else if (annotation.annotationType === 'bounding_box' && annotation.coordinates.type === 'bounding_box') {
+        else if (annotation.annotationType === AnnotationType.BOUNDING_BOX && annotation.coordinates?.type === AnnotationType.BOUNDING_BOX) {
             const label = workspaceStore.getLabelById(annotation.labelId);
             const { topLeft, bottomRight } = annotation.coordinates;
             const width = bottomRight.x - topLeft.x;
