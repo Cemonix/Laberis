@@ -5,6 +5,7 @@ import type { Tool, ToolName } from "@/types/workspace/tools";
 import type { Annotation } from '@/types/workspace/annotation';
 import type { LabelScheme } from '@/types/label/labelScheme';
 import type { Asset } from '@/types/asset/asset';
+import type { Task } from '@/types/task';
 
 export interface WorkspaceState {
     currentProjectId: string | null;
@@ -24,6 +25,9 @@ export interface WorkspaceState {
     currentLabelId: number | null;
     currentLabelScheme: LabelScheme | null;
     currentTaskId: number | null;
+    currentTaskData: Task | null;
+    availableTasks: Task[];
+    initialTaskId: number | null;
     isLoading: boolean;
     error: string | null;
 }
