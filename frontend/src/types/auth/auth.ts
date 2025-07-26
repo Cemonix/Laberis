@@ -52,3 +52,13 @@ export interface AuthResponseDto {
     expiresAt: string;
     user: UserDto;
 }
+
+export interface ChangePasswordDto {
+    currentPassword: string;
+    newPassword: string;
+    confirmNewPassword: string;
+}
+
+export interface ChangePasswordResponse {
+    message: string;
+}
