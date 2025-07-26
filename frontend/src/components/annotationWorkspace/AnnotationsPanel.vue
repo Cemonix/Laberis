@@ -131,6 +131,22 @@
             </div>
         </ModalWindow>
         
+        <!-- Delete Confirmation Modal -->
+        <ModalWindow
+            v-if="isDeleteConfirmModalOpen"
+            :is-open="isDeleteConfirmModalOpen"
+            title="Delete Annotation"
+            @close="closeDeleteConfirmModal"
+            @confirm="confirmDeleteAnnotation"
+            confirm-text="Delete"
+            cancel-text="Cancel"
+        >
+            <div class="delete-confirm-content">
+                <p>
+                    Are you sure you want to delete annotation #{{ deletingAnnotationId }}?
+                </p>
+            </div>
+        </ModalWindow>
     </div>
 </template>
 
@@ -183,20 +199,32 @@ const handleLabelChange = async (annotation: Annotation, newLabelId: string | un
     }
 };
 
-const handleDeleteAnnotation = async (annotationId: number | undefined) => {
+const isDeleteConfirmModalOpen = ref(false);
+const deletingAnnotationId = ref<number | null>(null);
+
+const handleDeleteAnnotation = (annotationId: number | undefined) => {
     if (!annotationId) {
         console.warn('Cannot delete annotation: annotationId is missing');
         return;
     }
-    
-    if (confirm('Are you sure you want to delete this annotation?')) {
-        try {
-            await workspaceStore.deleteAnnotation(annotationId);
-            console.log(`Successfully deleted annotation ${annotationId}`);
-        } catch (error) {
-            console.error('Failed to delete annotation:', error);
-        }
+    deletingAnnotationId.value = annotationId;
+    isDeleteConfirmModalOpen.value = true;
+};
+
+const closeDeleteConfirmModal = () => {
+    isDeleteConfirmModalOpen.value = false;
+    deletingAnnotationId.value = null;
+};
+
+const confirmDeleteAnnotation = async () => {
+    if (!deletingAnnotationId.value) return;
+    try {
+        await workspaceStore.deleteAnnotation(deletingAnnotationId.value);
+        console.log(`Successfully deleted annotation ${deletingAnnotationId.value}`);
+    } catch (error) {
+        console.error('Failed to delete annotation:', error);
     }
+    closeDeleteConfirmModal();
 };
 
 const handleEditLabel = (annotation: Annotation) => {
