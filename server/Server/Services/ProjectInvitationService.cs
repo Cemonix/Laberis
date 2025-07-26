@@ -186,9 +186,7 @@ public class ProjectInvitationService : IProjectInvitationService
         };
 
         _invitationRepository.Detach(invitation);
-
         _invitationRepository.Update(updatedInvitation); 
-        
         await _invitationRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully processed invitation token {Token} for user {UserId}", token, userId);
