@@ -32,9 +32,22 @@ export interface ToolHandler {
     onMouseLeave?(event: MouseEvent, store: WorkspaceStore): void; // Optional
 
     /**
+     * Handles keyboard events (like Enter to finish annotation).
+     * @param event The native KeyboardEvent.
+     * @param store The Pinia workspace store instance.
+     */
+    onKeyDown?(event: KeyboardEvent, store: WorkspaceStore): void; // Optional
+
+    /**
      * Draws any temporary, in-progress visuals for the tool.
      * For example, a bounding box being dragged.
      * @param ctx The 2D rendering context of the canvas.
      */
     draw(ctx: CanvasRenderingContext2D): void;
+
+    /**
+     * Returns whether the tool is currently in drawing mode.
+     * @returns true if the tool is actively drawing/creating an annotation
+     */
+    isDrawing(): boolean;
 }
