@@ -7,7 +7,9 @@ import type {
     UserDto,
     LoginResponse,
     RegisterResponse,
-    AuthTokens
+    AuthTokens,
+    ChangePasswordDto,
+    ChangePasswordResponse
 } from "@/types/auth/auth";
 import { AppLogger } from "@/utils/logger";
 
@@ -142,6 +144,28 @@ class AuthService {
         } catch (error) {
             logger.error('Token refresh failed', error);
             throw transformApiError(error, 'Failed to refresh token');
+        }
+    }
+
+    async changePassword(changePasswordDto: ChangePasswordDto): Promise<ChangePasswordResponse> {
+        logger.info('Attempting to change password');
+        
+        try {
+            const response = await apiClient.post<ChangePasswordResponse>(
+                `${this.baseUrl}/change-password`,
+                changePasswordDto
+            );
+            
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to change password - Invalid response format');
+            }
+
+            logger.info('Password change successful');
+            return response.data;
+        } catch (error) {
+            logger.error('Password change failed', error);
+            throw transformApiError(error, 'Failed to change password');
         }
     }
 }

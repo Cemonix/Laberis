@@ -51,7 +51,14 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('@/views/AccountView.vue'),
         meta: {
             layout: DefaultLayout,
-        }
+        },
+        children: [
+            {
+                path: 'change-password',
+                name: 'ChangePassword',
+                component: () => import('@/views/account/ChangePasswordView.vue'),
+            }
+        ]
     },
     // Workspace and project routes
     {
