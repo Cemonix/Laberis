@@ -148,6 +148,19 @@ class TaskService {
     }
 
     /**
+     * Get tasks for a specific asset
+     */
+    async getTasksForAsset(projectId: number, assetId: number): Promise<Task[]> {
+        const params: TasksQueryParams = {
+            filterOn: 'asset_id',
+            filterQuery: assetId.toString()
+        };
+        
+        const response = await this.getTasksForProject(projectId, params);
+        return response.tasks;
+    }
+
+    /**
      * Get a single task by ID
      */
     async getTaskById(projectId: number, taskId: number): Promise<TaskWithDetails> {
