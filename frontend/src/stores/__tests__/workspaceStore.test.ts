@@ -5,6 +5,7 @@ import { ToolName } from "@/types/workspace/tools";
 import type { ImageDimensions } from "@/types/image/imageDimensions";
 import type { Point } from "@/types/common/point";
 import type { Annotation } from "@/types/workspace/annotation";
+import { AnnotationType } from "@/types/workspace/annotation";
 import type { LabelScheme } from "@/types/label/labelScheme";
 import { AssetStatus } from "@/types/asset/asset";
 
@@ -103,11 +104,11 @@ describe("Workspace Store", () => {
     const mockAnnotation: Annotation = {
         annotationId: 1,
         clientId: "client-123",
-        annotationType: "point",
+        annotationType: AnnotationType.POINT,
         taskId: 1,
         assetId: 1,
         labelId: 1,
-        coordinates: { type: "point", point: { x: 100, y: 150 } },
+        coordinates: { type: AnnotationType.POINT, point: { x: 100, y: 150 } },
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z",
     };
@@ -177,8 +178,8 @@ describe("Workspace Store", () => {
             ).toEqual([
                 ToolName.CURSOR,
                 ToolName.POINT,
-                ToolName.BOUNDING_BOX,
                 ToolName.LINE,
+                ToolName.BOUNDING_BOX,
                 ToolName.POLYLINE,
                 ToolName.POLYGON,
             ]);
