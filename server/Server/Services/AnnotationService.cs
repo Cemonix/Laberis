@@ -141,6 +141,7 @@ public class AnnotationService : IAnnotationService
             return null;
         }
 
+        // Create a new entity with updated values
         var updatedAnnotation = existingAnnotation with
         {
             Data = updateDto.Data ?? existingAnnotation.Data,
@@ -152,6 +153,8 @@ public class AnnotationService : IAnnotationService
             UpdatedAt = DateTime.UtcNow
         };
 
+        // Detach the existing entity to avoid tracking conflicts
+        _annotationRepository.Detach(existingAnnotation);
         _annotationRepository.Update(updatedAnnotation);
         await _annotationRepository.SaveChangesAsync();
 
