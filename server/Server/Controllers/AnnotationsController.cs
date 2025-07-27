@@ -140,6 +140,7 @@ public class AnnotationsController : ControllerBase
     /// <summary>
     /// Creates a new annotation.
     /// </summary>
+    /// <param name="projectId">The ID of the project to create the annotation in.</param>
     /// <param name="createAnnotationDto">The annotation creation data.</param>
     /// <returns>The newly created annotation.</returns>
     /// <response code="201">Returns the newly created annotation and its location.</response>
@@ -151,7 +152,7 @@ public class AnnotationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CreateAnnotation([FromBody] CreateAnnotationDto createAnnotationDto)
+    public async Task<IActionResult> CreateAnnotation(int projectId, [FromBody] CreateAnnotationDto createAnnotationDto)
     {
         var annotatorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(annotatorUserId))
@@ -163,7 +164,7 @@ public class AnnotationsController : ControllerBase
         {
             var newAnnotation = await _annotationService.CreateAnnotationAsync(createAnnotationDto, annotatorUserId);
             return CreatedAtAction(nameof(GetAnnotationById), 
-                new { annotationId = newAnnotation.Id }, newAnnotation);
+                new { projectId, annotationId = newAnnotation.Id }, newAnnotation);
         }
         catch (Exception ex)
         {
