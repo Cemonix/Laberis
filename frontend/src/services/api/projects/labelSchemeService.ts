@@ -8,7 +8,7 @@ import type {
     CreateLabelSchemeRequest,
     UpdateLabelSchemeRequest
 } from '@/types/label/requests';
-import type { LabelScheme } from '@/types/label/labelScheme';
+import type { LabelScheme, LabelSchemeDeletionImpact } from '@/types/label/labelScheme';
 import type { PaginatedResponse } from '@/types/api/paginatedResponse';
 import type { QueryParams } from '@/types/api';
 
@@ -22,7 +22,9 @@ function transformLabelSchemeResponse(response: LabelSchemeResponse): LabelSchem
         description: response.description,
         projectId: response.projectId,
         isDefault: response.isDefault,
+        isActive: response.isActive,
         createdAt: response.createdAt,
+        deletedAt: response.deletedAt,
     };
 }
 
@@ -134,6 +136,48 @@ class LabelSchemeService extends BaseProjectService {
         await this.delete(url);
         
         this.logger.info('Successfully deleted label scheme', { projectId, schemeId });
+    }
+
+    /**
+     * Soft deletes a label scheme from a project, preserving annotations.
+     */
+    async softDeleteLabelScheme(projectId: number, schemeId: number): Promise<void> {
+        this.logger.info('Soft deleting label scheme', { projectId, schemeId });
+
+        const url = this.buildProjectUrl(projectId, `labelschemes/${schemeId}/soft-delete`);
+        await this.post(url, {});
+        
+        this.logger.info('Successfully soft deleted label scheme', { projectId, schemeId });
+    }
+
+    /**
+     * Gets deletion impact statistics for a label scheme.
+     */
+    async getDeletionImpact(projectId: number, schemeId: number): Promise<LabelSchemeDeletionImpact> {
+        this.logger.info('Fetching deletion impact for label scheme', { projectId, schemeId });
+
+        const url = this.buildProjectUrl(projectId, `labelschemes/${schemeId}/deletion-impact`);
+        const response = await this.get<LabelSchemeDeletionImpact>(url);
+        
+        this.logger.info('Successfully fetched deletion impact', { 
+            projectId, 
+            schemeId, 
+            totalAnnotations: response.totalAnnotationsCount 
+        });
+        
+        return response;
+    }
+
+    /**
+     * Reactivates a soft-deleted label scheme.
+     */
+    async reactivateLabelScheme(projectId: number, schemeId: number): Promise<void> {
+        this.logger.info('Reactivating label scheme', { projectId, schemeId });
+
+        const url = this.buildProjectUrl(projectId, `labelschemes/${schemeId}/reactivate`);
+        await this.post(url, {});
+        
+        this.logger.info('Successfully reactivated label scheme', { projectId, schemeId });
     }
 }
 

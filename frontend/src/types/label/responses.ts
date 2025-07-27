@@ -4,8 +4,9 @@ export interface LabelSchemeResponse {
     description?: string;
     projectId: number;
     isDefault: boolean;
+    isActive: boolean;
     createdAt: string;
-    updatedAt: string;
+    deletedAt?: string;
     labels: LabelResponse[];
 }
 

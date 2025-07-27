@@ -14,6 +14,9 @@
                     v-for="scheme in labelSchemes"
                     :key="scheme.labelSchemeId"
                     :scheme="scheme"
+                    @edit-scheme="handleEditScheme"
+                    @delete-scheme="handleDeleteScheme"
+                    @reactivate-scheme="handleReactivateScheme"
                 />
                 <p v-if="!labelSchemes || labelSchemes.length === 0">
                     No label schemes have been created for this project yet.
@@ -21,26 +24,54 @@
             </template>
         </div>
 
-        <Button 
-            class="fab" 
-            @click="openModal" 
+        <FloatingActionButton 
+            :onClick="openModal" 
             :disabled="isLoading"
-            aria-label="Create New Scheme"
-        >
-            +
-        </Button>
+            aria-label="Create New Label Scheme"
+            title="Create New Label Scheme"
+        />
 
+        <!-- Create/Edit Label Scheme Modal -->
         <ModalWindow 
             :is-open="isModalOpen" 
-            title="Create New Label Scheme" 
+            :title="editingScheme ? 'Edit Label Scheme' : 'Create New Label Scheme'" 
             @close="closeModal" 
             :hide-footer="true"
         >
             <CreateLabelSchemeForm 
                 @cancel="closeModal" 
-                @save="handleCreateScheme" 
+                @save="editingScheme ? handleUpdateScheme : handleCreateScheme" 
                 :disabled="isLoading"
+                :initial-data="editingScheme || undefined"
             />
+        </ModalWindow>
+
+        <!-- Delete Confirmation Modal -->
+        <ModalWindow 
+            :is-open="isDeleteModalOpen" 
+            title="Delete Label Scheme" 
+            @close="closeDeleteModal" 
+            :hide-footer="true"
+        >
+            <DeletionImpactDialog 
+                v-if="deletionImpact && !isDeletionImpactLoading" 
+                :impact="deletionImpact"
+                @confirm="confirmDelete"
+                @cancel="closeDeleteModal"
+                :is-loading="isLoading"
+            />
+            <div v-else class="loading-deletion-impact">
+                <div class="loading-content">
+                    <div class="spinner"></div>
+                    <p>Analyzing deletion impact...</p>
+                    <p class="loading-subtext">Checking how many annotations will be affected</p>
+                </div>
+                <div class="loading-actions">
+                    <Button variant="secondary" @click="closeDeleteModal">
+                        Cancel
+                    </Button>
+                </div>
+            </div>
         </ModalWindow>
     </div>
 </template>
@@ -51,8 +82,10 @@ import {useRoute} from 'vue-router';
 import LabelSchemeCard from '@/components/labels/LabelSchemeCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateLabelSchemeForm from '@/components/labels/CreateLabelSchemeForm.vue';
+import DeletionImpactDialog from '@/components/labels/DeletionImpactDialog.vue';
+import FloatingActionButton from '@/components/common/FloatingActionButton.vue';
 import Button from '@/components/common/Button.vue';
-import type {FormPayloadLabelScheme, LabelScheme} from '@/types/label/labelScheme';
+import type {FormPayloadLabelScheme, LabelScheme, LabelSchemeDeletionImpact} from '@/types/label/labelScheme';
 import {labelSchemeService, labelService} from '@/services/api/projects';
 import {useAlert} from '@/composables/useAlert';
 import {useToast} from '@/composables/useToast';
@@ -66,10 +99,29 @@ const { showCreateSuccess, showWarning, showError } = useToast();
 
 const labelSchemes = ref<LabelScheme[]>([]);
 const isModalOpen = ref(false);
+const isDeleteModalOpen = ref(false);
 const isLoading = ref(false);
+const isDeletionImpactLoading = ref(false);
+const editingScheme = ref<LabelScheme | null>(null);
+const schemeToDelete = ref<LabelScheme | null>(null);
+const deletionImpact = ref<LabelSchemeDeletionImpact | null>(null);
 
-const openModal = () => isModalOpen.value = true;
-const closeModal = () => isModalOpen.value = false;
+const openModal = () => {
+    editingScheme.value = null;
+    isModalOpen.value = true;
+};
+
+const closeModal = () => {
+    editingScheme.value = null;
+    isModalOpen.value = false;
+};
+
+const closeDeleteModal = () => {
+    schemeToDelete.value = null;
+    deletionImpact.value = null;
+    isDeletionImpactLoading.value = false; // Reset loading state
+    isDeleteModalOpen.value = false;
+};
 
 /**
  * Fetches label schemes for the current project
@@ -140,6 +192,88 @@ const handleCreateScheme = async (formData: FormPayloadLabelScheme) => {
     }
 };
 
+const handleEditScheme = (scheme: LabelScheme) => {
+    editingScheme.value = scheme;
+    isModalOpen.value = true;
+};
+
+const handleUpdateScheme = async (formData: FormPayloadLabelScheme) => {
+    if (!editingScheme.value) return;
+    
+    const projectId = Number(route.params.projectId);
+    
+    try {
+        isLoading.value = true;
+        
+        await labelSchemeService.updateLabelScheme(projectId, editingScheme.value.labelSchemeId, {
+            name: formData.name,
+            description: formData.description
+        });
+        
+        await fetchLabelSchemes();
+        closeModal();
+        showCreateSuccess('Label Scheme Updated');
+    } catch (error) {
+        showError('Error', 'Failed to update label scheme. Please try again.');
+        logger.error('Failed to update label scheme:', error);
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+const handleDeleteScheme = async (scheme: LabelScheme) => {
+    schemeToDelete.value = scheme;
+    deletionImpact.value = null; // Reset previous data
+    isDeleteModalOpen.value = true; // Open modal immediately
+    
+    try {
+        isDeletionImpactLoading.value = true;
+        const projectId = Number(route.params.projectId);
+        deletionImpact.value = await labelSchemeService.getDeletionImpact(projectId, scheme.labelSchemeId);
+    } catch (error) {
+        showError('Error', 'Failed to load deletion impact. Please try again.');
+        logger.error('Failed to get deletion impact:', error);
+        closeDeleteModal(); // Close modal on error
+    } finally {
+        isDeletionImpactLoading.value = false;
+    }
+};
+
+const confirmDelete = async () => {
+    if (!schemeToDelete.value) return;
+    
+    const projectId = Number(route.params.projectId);
+    
+    try {
+        isLoading.value = true;
+        await labelSchemeService.softDeleteLabelScheme(projectId, schemeToDelete.value.labelSchemeId);
+        await fetchLabelSchemes();
+        closeDeleteModal();
+        showCreateSuccess('Label Scheme Deleted');
+    } catch (error) {
+        showError('Error', 'Failed to delete label scheme. Please try again.');
+        logger.error('Failed to delete label scheme:', error);
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+const handleReactivateScheme = async (scheme: LabelScheme) => {
+    const projectId = Number(route.params.projectId);
+    
+    try {
+        isLoading.value = true;
+        await labelSchemeService.reactivateLabelScheme(projectId, scheme.labelSchemeId);
+        await fetchLabelSchemes();
+        showCreateSuccess('Label Scheme Reactivated');
+    } catch (error) {
+        showError('Error', 'Failed to reactivate label scheme. Please try again.');
+        logger.error('Failed to reactivate label scheme:', error);
+    } finally {
+        isLoading.value = false;
+    }
+};
+
 onMounted(async () => {
     await fetchLabelSchemes();
 });
@@ -170,46 +304,45 @@ onMounted(async () => {
     color: var(--color-gray-600);
 }
 
-@keyframes fab-enter {
-  from {
-    transform: scale(0);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+.loading-deletion-impact {
+    text-align: center;
+    padding: 2rem;
+    min-width: 400px;
 }
 
-.fab {
-    position: absolute;
-    bottom: 2rem;
-    right: 2rem;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background-color: var(--color-primary);
-    color: var(--color-white);
-    border: none;
-    font-size: 2.5rem;
-    line-height: 1;
-    box-shadow: 0 1px 3px rgba(var(--color-black), 0.1);
-    cursor: pointer;
+.loading-content {
+    margin-bottom: 2rem;
+}
+
+.loading-content p {
+    margin: 0.5rem 0;
+    color: var(--color-gray-700);
+}
+
+.loading-subtext {
+    font-size: 0.875rem;
+    color: var(--color-gray-500) !important;
+}
+
+.loading-actions {
     display: flex;
     justify-content: center;
-    align-items: center;
-    padding-bottom: 4px;
-    transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
-    animation: fab-enter 0.2s ease-out 0.35s backwards;
-
-    &:hover {
-        background-color: var(--color-primary-hover);
-        transform: scale(1.1);
-        transition: transform 0.2s ease, background-color 0.3s ease;
-    }
 }
 
-.label-schemes-page.fade-slide-leave-active .fab {
-    opacity: 0;
+.spinner {
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    border: 3px solid var(--color-gray-200);
+    border-top: 3px solid var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem auto;
 }
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 </style>
