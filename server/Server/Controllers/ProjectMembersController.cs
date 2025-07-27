@@ -106,6 +106,41 @@ public class ProjectMembersController : ControllerBase
     }
 
     /// <summary>
+    /// Gets a current user's specific project membership by project ID.
+    /// </summary>
+    /// <param name="projectId">The ID of the project to get membership for.</param>
+    /// <returns>The project member DTO for the current user.</returns>
+    [HttpGet("my-membership")]
+    [EnableRateLimiting("public")]
+    [ProducesResponseType(typeof(ProjectMemberDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMyProjectMembership(int projectId)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return Unauthorized("User ID not found in token.");
+            }
+            var projectMember = await _projectMemberService.GetProjectMemberAsync(projectId, userIdClaim);
+            if (projectMember == null)
+            {
+                return NotFound($"Project membership for user {userIdClaim} in project {projectId} not found.");
+            }
+            return Ok(projectMember);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while fetching project membership for user in project {ProjectId}.", projectId);
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                "An unexpected error occurred. Please try again later."
+            );
+        }
+    }
+
+    /// <summary>
     /// Gets all projects where the current user is a member.
     /// </summary>
     /// <returns>A list of project member DTOs for the current user.</returns>
