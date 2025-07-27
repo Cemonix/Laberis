@@ -136,7 +136,6 @@ export function useErrorHandler() {
      * @param context An optional string to provide more context for logging.
      */
     const handleError = (error: unknown, context?: string) => {
-        // Always log the full error for debugging purposes
         const logMessage = context ? `Error in ${context}` : 'An error occurred';
         logger.error(logMessage, error);
 

@@ -46,7 +46,7 @@
 import {computed, onMounted, ref} from 'vue';
 import ProjectCard from '@/components/project/ProjectCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
-import CreateProjectForm from '@/components/project/dataSource/CreateProjectForm.vue';
+import CreateProjectForm from '@/components/project/CreateProjectForm.vue';
 import Button from '@/components/common/Button.vue';
 import type {Project} from '@/types/project/project';
 import {ProjectType} from '@/types/project/project';
@@ -81,7 +81,7 @@ const fetchProjects = async () => {
     try {
         const response = await projectService.getProjects({
             sortBy: 'name',
-            sortOrder: 'desc'
+            isAscending: false // desc order (false = descending)
         });
         projects.value = response.data;
     } catch (err) {

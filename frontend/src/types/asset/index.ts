@@ -1,6 +1,10 @@
 // Asset types
 export type {
     Asset,
+} from './asset';
+
+// Asset enum
+export {
     AssetStatus,
 } from './asset';
 
