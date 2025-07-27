@@ -5,14 +5,16 @@ import type { WorkspaceState } from "@/types/workspace/workspaceState";
 import { Timer } from "@/utils/timer";
 import type { Point } from "@/types/common/point";
 import { ToolName, type Tool } from "@/types/workspace/tools";
-import type { Annotation } from '@/types/workspace/annotation';
+import type { Annotation, CreateAnnotationDto } from '@/types/workspace/annotation';
 import type { LabelScheme } from '@/types/label/labelScheme';
 import type { Label } from '@/types/label/label';
-import annotationService from '@/services/api/annotationService';
-import assetService from '@/services/api/assetService';
-import { labelSchemeService } from '@/services/api/labelSchemeService';
-import { labelService } from '@/services/api/labelService';
-import { taskService } from '@/services/api/taskService';
+import { 
+    annotationService,
+    assetService, 
+    labelSchemeService,
+    labelService,
+    taskService 
+} from '@/services/api/projects';
 import type { Asset } from '@/types/asset/asset';
 import type { Task } from '@/types/task';
 import { AppLogger } from '@/utils/logger';
@@ -179,7 +181,7 @@ export const useWorkspaceStore = defineStore("workspace", {
 
                 // Fetch annotations for this asset
                 try {
-                    const fetchedAnnotations = await annotationService.getAnnotationsForAsset(numericAssetId);
+                    const fetchedAnnotations = await annotationService.getAnnotationsForAsset(numericProjectId, numericAssetId);
                     this.setAnnotations(fetchedAnnotations.data);
                     logger.info(`Loaded ${fetchedAnnotations.data.length} annotations for asset ${assetId}`);
                 } catch (annotationError) {
@@ -208,7 +210,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                         const assetTasks = await taskService.getTasksForAsset(numericProjectId, numericAssetId);
                         if (assetTasks.length > 0) {
                             currentTask = assetTasks[0];
-                            workflowStageId = currentTask.currentWorkflowStageId;
+                            workflowStageId = currentTask?.currentWorkflowStageId || null;
                             logger.info(`Found asset task ${currentTask.id} for asset ${assetId} in stage ${workflowStageId}`);
                         }
                     }
@@ -220,7 +222,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                         this.currentTaskData = currentTask;
                         this.currentTaskId = currentTask.id;
                         
-                        const taskIndex = this.availableTasks.findIndex(task => task.id === currentTask.id);
+                        const taskIndex = this.availableTasks.findIndex(task => task.id === currentTask?.id);
                         logger.info(`Loaded ${this.availableTasks.length} tasks for stage ${workflowStageId}, current task is at index ${taskIndex}`);
                     } else {
                         logger.warn(`No tasks found for asset ${assetId}`);
@@ -289,12 +291,10 @@ export const useWorkspaceStore = defineStore("workspace", {
 
         setImageNaturalDimensions(dimensions: ImageDimensions) {
             this.imageNaturalDimensions = dimensions;
-            console.log("[Store] Set image natural dimensions:", dimensions);
         },
 
         setCanvasDisplayDimensions(dimensions: ImageDimensions) {
             this.canvasDisplayDimensions = dimensions;
-            console.log("[Store] Set canvas display dimensions:", dimensions);
         },
 
         setAnnotations(annotations: Annotation[]) {
@@ -309,8 +309,24 @@ export const useWorkspaceStore = defineStore("workspace", {
             this.annotations.push(annotation);
 
             try {
+                // Convert Annotation to CreateAnnotationDto
+                const createDto: CreateAnnotationDto = {
+                    annotationType: annotation.annotationType,
+                    data: annotation.data || (annotation.coordinates ? JSON.stringify(annotation.coordinates) : '{}'),
+                    taskId: annotation.taskId,
+                    assetId: annotation.assetId,
+                    labelId: annotation.labelId,
+                    isPrediction: annotation.isPrediction || false,
+                    confidenceScore: annotation.confidenceScore,
+                    isGroundTruth: annotation.isGroundTruth || false,
+                    version: annotation.version || 1,
+                    notes: annotation.notes,
+                    annotatorEmail: annotation.annotatorEmail,
+                    parentAnnotationId: annotation.parentAnnotationId
+                };
+
                 // Save annotation to backend
-                const savedAnnotation = await annotationService.createAnnotation(annotation);
+                const savedAnnotation = await annotationService.createAnnotation(parseInt(this.currentProjectId!), createDto);
 
                 // Update the annotation in the store with the saved data (including ID)
                 // First try to find by clientId
@@ -382,7 +398,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                 if (updates.labelId !== undefined) updatePayload.labelId = updates.labelId;
 
                 // Update annotation on backend
-                const updatedAnnotation = await annotationService.updateAnnotation(annotationId, updatePayload);
+                const updatedAnnotation = await annotationService.updateAnnotation(parseInt(this.currentProjectId!), annotationId, updatePayload);
 
                 // Update the annotation in the store with the response from backend
                 this.annotations[index] = updatedAnnotation;
@@ -418,7 +434,7 @@ export const useWorkspaceStore = defineStore("workspace", {
 
             try {
                 // Delete annotation on backend
-                await annotationService.deleteAnnotation(annotationId);
+                await annotationService.deleteAnnotation(parseInt(this.currentProjectId!), annotationId);
 
                 logger.info(`Successfully deleted annotation with ID: ${annotationId}`);
 
@@ -440,9 +456,9 @@ export const useWorkspaceStore = defineStore("workspace", {
             this.currentLabelId = labelId;
             if (labelId !== null) {
                 const label = this.getLabelById(labelId); // Using the getter within an action
-                console.log(`[Store] Selected Label ID: ${labelId} (${label?.name || 'Unknown'})`);
+                logger.info(`[Store] Selected Label ID: ${labelId} (${label?.name || 'Unknown'})`);
             } else {
-                console.log("[Store] Label selection cleared.");
+                logger.info("[Store] Label selection cleared.");
             }
         },
 
@@ -453,9 +469,9 @@ export const useWorkspaceStore = defineStore("workspace", {
         setCurrentLabelScheme(scheme: LabelScheme | null) {
             this.currentLabelScheme = scheme;
             if (scheme) {
-                console.log("[Store] Label Scheme set:", scheme.name);
+                logger.info("[Store] Label Scheme set:", scheme.name);
             } else {
-                console.log("[Store] Label Scheme cleared.");
+                logger.info("[Store] Label Scheme cleared.");
             }
         },
 
@@ -503,9 +519,9 @@ export const useWorkspaceStore = defineStore("workspace", {
         setCurrentTaskId(taskId: number | null) {
             this.currentTaskId = taskId;
             if (taskId !== null) {
-                console.log("[Store] Current Task ID set:", taskId);
+                logger.info("[Store] Current Task ID set:", taskId);
             } else {
-                console.log("[Store] Current Task ID cleared.");
+                logger.info("[Store] Current Task ID cleared.");
             }
         },
 
