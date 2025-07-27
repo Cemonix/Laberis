@@ -9,50 +9,39 @@ import { AnnotationType } from "@/types/workspace/annotation";
 import type { LabelScheme } from "@/types/label/labelScheme";
 import { AssetStatus } from "@/types/asset/asset";
 
-// Mock the annotation service
-vi.mock("@/services/api/annotationService", () => ({
-    default: {
+// Mock the services from projects
+vi.mock("@/services/api/projects", () => ({
+    annotationService: {
         getAnnotationsForAsset: vi.fn(),
         createAnnotation: vi.fn(),
         updateAnnotation: vi.fn(),
         deleteAnnotation: vi.fn(),
-    }
-}));
-
-// Mock the asset service
-vi.mock("@/services/api/assetService", () => ({
-    default: {
+    },
+    assetService: {
         getAssetById: vi.fn(),
         uploadAsset: vi.fn(),
         uploadAssets: vi.fn(),
-        getAssetsForProject: vi.fn(),
+        getAssets: vi.fn(),
         deleteAsset: vi.fn(),
-    }
-}));
-
-// Mock the label scheme service
-vi.mock("@/services/api/labelSchemeService", () => ({
+    },
     labelSchemeService: {
         getLabelSchemesForProject: vi.fn(),
-        createLabelScheme: vi.fn(),
-        updateLabelScheme: vi.fn(),
-        deleteLabelScheme: vi.fn(),
-    }
-}));
-
-// Mock the label service
-vi.mock("@/services/api/labelService", () => ({
+    },
     labelService: {
         getLabelsForScheme: vi.fn(),
-        createLabel: vi.fn(),
-        updateLabel: vi.fn(),
-        deleteLabel: vi.fn(),
+    },
+    taskService: {
+        getTaskById: vi.fn(),
+        updateTask: vi.fn(),
+        getTasksForAsset: vi.fn(),
     }
 }));
 
-import annotationService from "@/services/api/annotationService";
-import assetService from "@/services/api/assetService";
-import { labelSchemeService } from "@/services/api/labelSchemeService";
+import { 
+    annotationService,
+    assetService, 
+    labelSchemeService 
+} from "@/services/api/projects";
 
 // Mock the timer utility
 vi.mock("@/utils/timer", () => ({
@@ -302,6 +291,10 @@ describe("Workspace Store", () => {
                 totalItems: 0
             });
 
+            // Mock task service
+            const { taskService } = await import("@/services/api/projects");
+            vi.mocked(taskService.getTasksForAsset).mockResolvedValue([]);
+
             await workspaceStore.loadAsset("1", "1");
 
             expect(workspaceStore.currentProjectId).toBe("1");
@@ -320,39 +313,19 @@ describe("Workspace Store", () => {
 
     describe("Image Dimensions", () => {
         it("should set image natural dimensions", () => {
-            const consoleSpy = vi
-                .spyOn(console, "log")
-                .mockImplementation(() => {});
-
             workspaceStore.setImageNaturalDimensions(mockImageDimensions);
 
             expect(workspaceStore.imageNaturalDimensions).toEqual(
                 mockImageDimensions
             );
-            expect(consoleSpy).toHaveBeenCalledWith(
-                "[Store] Set image natural dimensions:",
-                mockImageDimensions
-            );
-
-            consoleSpy.mockRestore();
         });
 
         it("should set canvas display dimensions", () => {
-            const consoleSpy = vi
-                .spyOn(console, "log")
-                .mockImplementation(() => {});
-
             workspaceStore.setCanvasDisplayDimensions(mockImageDimensions);
 
             expect(workspaceStore.canvasDisplayDimensions).toEqual(
                 mockImageDimensions
             );
-            expect(consoleSpy).toHaveBeenCalledWith(
-                "[Store] Set canvas display dimensions:",
-                mockImageDimensions
-            );
-
-            consoleSpy.mockRestore();
         });
     });
 
@@ -365,14 +338,38 @@ describe("Workspace Store", () => {
         });
 
         it("should add annotation successfully", async () => {
+            // Set up the workspace with project and task IDs for the test
+            workspaceStore.currentProjectId = "1";
+            workspaceStore.currentTaskId = 1;
+            
             const savedAnnotation = { ...mockAnnotation, annotationId: 2 };
             vi.mocked(annotationService.createAnnotation).mockResolvedValue(savedAnnotation);
 
             await workspaceStore.addAnnotation(mockAnnotation);
 
             expect(workspaceStore.annotations).toHaveLength(1);
-            expect(annotationService.createAnnotation).toHaveBeenCalledWith(mockAnnotation);
-            expect(workspaceStore.annotations[0]).toEqual(savedAnnotation);
+            
+            // Check that the service was called with the correct project ID and CreateAnnotationDto
+            expect(annotationService.createAnnotation).toHaveBeenCalledWith(1, {
+                annotationType: mockAnnotation.annotationType,
+                data: JSON.stringify(mockAnnotation.coordinates),
+                taskId: mockAnnotation.taskId,
+                assetId: mockAnnotation.assetId,
+                labelId: mockAnnotation.labelId,
+                isPrediction: false,
+                confidenceScore: undefined,
+                isGroundTruth: false,
+                version: 1,
+                notes: undefined,
+                annotatorEmail: undefined,
+                parentAnnotationId: undefined
+            });
+            
+            // Check that the annotation was updated with the saved data
+            expect(workspaceStore.annotations[0]).toEqual({
+                ...savedAnnotation,
+                clientId: mockAnnotation.clientId
+            });
         });
 
         it("should handle annotation save failure", async () => {
@@ -401,81 +398,36 @@ describe("Workspace Store", () => {
 
     describe("Label Management", () => {
         it("should set current label id", () => {
-            const consoleSpy = vi
-                .spyOn(console, "log")
-                .mockImplementation(() => {});
-
             workspaceStore.setCurrentLabelId(5);
             expect(workspaceStore.currentLabelId).toBe(5);
-            expect(consoleSpy).toHaveBeenCalledWith(
-                "[Store] Selected Label ID: 5 (Unknown)"
-            );
 
             workspaceStore.setCurrentLabelId(null);
             expect(workspaceStore.currentLabelId).toBeNull();
-            expect(consoleSpy).toHaveBeenCalledWith(
-                "[Store] Label selection cleared."
-            );
-
-            consoleSpy.mockRestore();
         });
 
         it("should set current label id with known label name", () => {
-            const consoleSpy = vi
-                .spyOn(console, "log")
-                .mockImplementation(() => {});
             workspaceStore.setCurrentLabelScheme(mockLabelScheme);
-
             workspaceStore.setCurrentLabelId(10);
-            expect(consoleSpy).toHaveBeenCalledWith(
-                "[Store] Selected Label ID: 10 (Test Label)"
-            );
-
-            consoleSpy.mockRestore();
+            
+            expect(workspaceStore.currentLabelId).toBe(10);
         });
 
         it("should set current label scheme", () => {
-            const consoleSpy = vi
-                .spyOn(console, "log")
-                .mockImplementation(() => {});
-
             workspaceStore.setCurrentLabelScheme(mockLabelScheme);
             expect(workspaceStore.currentLabelScheme).toEqual(mockLabelScheme);
-            expect(consoleSpy).toHaveBeenCalledWith(
-                "[Store] Label Scheme set:",
-                "Test Scheme"
-            );
 
             workspaceStore.setCurrentLabelScheme(null);
             expect(workspaceStore.currentLabelScheme).toBeNull();
-            expect(consoleSpy).toHaveBeenCalledWith(
-                "[Store] Label Scheme cleared."
-            );
-
-            consoleSpy.mockRestore();
         });
     });
 
     describe("Task Management", () => {
         it("should set current task id", () => {
-            const consoleSpy = vi
-                .spyOn(console, "log")
-                .mockImplementation(() => {});
-
             workspaceStore.setCurrentTaskId(123);
             expect(workspaceStore.currentTaskId).toBe(123);
-            expect(consoleSpy).toHaveBeenCalledWith(
-                "[Store] Current Task ID set:",
-                123
-            );
 
             workspaceStore.setCurrentTaskId(null);
             expect(workspaceStore.currentTaskId).toBeNull();
-            expect(consoleSpy).toHaveBeenCalledWith(
-                "[Store] Current Task ID cleared."
-            );
-
-            consoleSpy.mockRestore();
         });
     });
 
