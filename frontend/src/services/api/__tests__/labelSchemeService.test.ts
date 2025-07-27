@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { labelSchemeService } from '../labelSchemeService';
+import { labelSchemeService } from '../projects/labelSchemeService';
 import type { LabelSchemeResponse } from '@/types/label/responses';
 import type { CreateLabelSchemeRequest, UpdateLabelSchemeRequest } from '@/types/label/requests';
 import type { PaginatedResponse } from '@/types/api/paginatedResponse';
@@ -150,7 +150,8 @@ describe('LabelSchemeService', () => {
             const result = await labelSchemeService.getLabelSchemeById(projectId, schemeId);
 
             expect(mockGet).toHaveBeenCalledWith(
-                `/projects/${projectId}/labelschemes/${schemeId}`
+                `/projects/${projectId}/labelschemes/${schemeId}`,
+                { params: undefined }
             );
             expect(result).toEqual({
                 labelSchemeId: 1,
@@ -278,7 +279,7 @@ describe('LabelSchemeService', () => {
             const projectId = 1;
             const schemeId = 1;
 
-            mockDelete.mockResolvedValue({});
+            mockDelete.mockResolvedValue({ status: 204 });
 
             await labelSchemeService.deleteLabelScheme(projectId, schemeId);
 
