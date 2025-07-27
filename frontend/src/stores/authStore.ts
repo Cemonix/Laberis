@@ -9,6 +9,7 @@ import { authService } from "@/services/auth/authService";
 import { env } from "@/config/env";
 import { RoleEnum } from "@/types/auth/role";
 import { AppLogger } from "@/utils/logger";
+import { LastProjectManager } from "@/core/storage";
 
 const AUTH_STORAGE_KEY = 'auth_tokens';
 const logger = AppLogger.createStoreLogger('AuthStore');
@@ -171,6 +172,21 @@ export const useAuthStore = defineStore("auth", {
             this.tokens = null;
             this.refreshAttempts = 0;
             this.removeTokensFromStorage();
+        },
+
+        /**
+         * Get the appropriate redirect URL after login
+         * If user has a last project, redirect to project dashboard
+         * Otherwise, redirect to home page
+         */
+        getPostLoginRedirectUrl(): string {
+            const lastProject = LastProjectManager.getLastProject();
+            if (lastProject) {
+                logger.info(`Redirecting to last project dashboard: ${lastProject.projectName} (ID: ${lastProject.projectId})`);
+                return `/projects/${lastProject.projectId}`;
+            }
+            logger.info("No last project found, redirecting to home");
+            return '/home';
         },
         async refreshTokens(): Promise<boolean> {
             if (!this.tokens?.refreshToken) {

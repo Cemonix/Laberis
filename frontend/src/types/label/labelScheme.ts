@@ -6,7 +6,9 @@ export interface LabelScheme {
     description?: string;
     projectId: number;
     isDefault?: boolean;
+    isActive: boolean;
     createdAt: string;
+    deletedAt?: string;
     labels?: Label[];
 }
 
@@ -18,4 +20,19 @@ export interface FormPayloadLabelScheme {
         color: string;
         description?: string;
     }[];
+}
+
+export interface LabelSchemeDeletionImpact {
+    labelSchemeId: number;
+    labelSchemeName: string;
+    totalLabelsCount: number;
+    totalAnnotationsCount: number;
+    labelImpacts: LabelImpact[];
+}
+
+export interface LabelImpact {
+    labelId: number;
+    labelName: string;
+    labelColor?: string;
+    annotationsCount: number;
 }

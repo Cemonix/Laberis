@@ -22,7 +22,11 @@
             </template>
         </div>
 
-        <Button class="fab" @click="openModal" aria-label="Create New Data Source">+</Button>
+        <FloatingActionButton 
+            :onClick="openModal" 
+            aria-label="Create New Data Source"
+            title="Create New Data Source"
+        />
 
         <ModalWindow :is-open="isModalOpen" title="Create New Data Source" @close="closeModal" :hide-footer="true">
             <CreateDataSourceForm 
@@ -40,7 +44,7 @@ import {useRoute} from 'vue-router';
 import DataSourceCard from '@/components/project/DataSourceCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateDataSourceForm from '@/components/project/CreateDataSourceForm.vue';
-import Button from '@/components/common/Button.vue';
+import FloatingActionButton from '@/components/common/FloatingActionButton.vue';
 import {type CreateDataSourceRequest, type DataSource} from '@/types/dataSource';
 import {dataSourceService} from '@/services/api/projects';
 import {useAlert} from '@/composables/useAlert';
@@ -155,46 +159,4 @@ onMounted(() => {
     font-style: italic;
 }
 
-@keyframes fab-enter {
-  from {
-    transform: scale(0);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.fab {
-    position: absolute;
-    bottom: 2rem;
-    right: 2rem;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background-color: var(--color-primary);
-    color: var(--color-white);
-    border: none;
-    font-size: 2.5rem;
-    line-height: 1;
-    box-shadow: 0 1px 3px rgba(var(--color-black), 0.1);
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding-bottom: 4px;
-    transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
-    animation: fab-enter 0.2s ease-out 0.35s backwards;
-
-    &:hover {
-        background-color: var(--color-primary-hover);
-        transform: scale(1.1);
-        transition: transform 0.2s ease, background-color 0.3s ease;
-    }
-}
-
-.data-sources-page.fade-slide-leave-active .fab {
-    opacity: 0;
-}
 </style>

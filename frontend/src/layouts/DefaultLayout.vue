@@ -24,6 +24,9 @@
         />
 
         <ToastContainer />
+        
+        <!-- Teleport target for floating action buttons -->
+        <div id="fab-container"></div>
     </div>
 </template>
 
@@ -60,6 +63,22 @@ const { isConfirmOpen, confirmTitle, confirmMessage, handleConfirm, handleCancel
     // Override padding for auth pages to provide full-screen experience
     &:has(.auth-container) {
         padding: 0;
+    }
+}
+
+// Container for teleported floating action buttons
+#fab-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+    
+    // Allow button interactions while keeping container non-interactive
+    & > * {
+        pointer-events: auto;
     }
 }
 </style>

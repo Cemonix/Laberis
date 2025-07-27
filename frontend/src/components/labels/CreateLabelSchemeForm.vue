@@ -34,21 +34,22 @@
                 class="btn btn-primary"
                 :disabled="props.disabled"
             >
-                {{ props.disabled ? 'Creating...' : 'Create Scheme' }}
+                {{ props.disabled ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update Scheme' : 'Create Scheme') }}
             </Button>
         </div>
     </Form>
 </template>
 
 <script setup lang="ts">
-import {ref} from "vue";
+import {ref, computed, watch} from "vue";
 import Form from "@/components/common/Form.vue";
 import Button from "@/components/common/Button.vue";
-import type {FormPayloadLabelScheme} from "@/types/label/labelScheme";
+import type {FormPayloadLabelScheme, LabelScheme} from "@/types/label/labelScheme";
 import {useAlert} from "@/composables/useAlert";
 
 const props = defineProps<{
     disabled?: boolean;
+    initialData?: LabelScheme;
 }>();
 
 const { showAlert } = useAlert();
@@ -62,6 +63,23 @@ const formData = ref<FormPayloadLabelScheme>({
     name: "",
     description: "",
 });
+
+const isEditMode = computed(() => !!props.initialData);
+
+// Watch for initial data changes and populate form
+watch(() => props.initialData, (newData) => {
+    if (newData) {
+        formData.value = {
+            name: newData.name,
+            description: newData.description || "",
+        };
+    } else {
+        formData.value = {
+            name: "",
+            description: "",
+        };
+    }
+}, { immediate: true });
 
 const handleSubmit = async () => {
     if (!formData.value.name.trim()) {

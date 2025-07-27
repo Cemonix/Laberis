@@ -174,8 +174,9 @@ router.beforeEach(async (to, _from, next) => {
     const authRoutes = ['Login', 'Register'];
     
     if (authRoutes.includes(to.name as string) && authStore.isAuthenticated) {
-        // If user is already authenticated and trying to access auth pages, redirect to home
-        next({ name: 'Home' });
+        // If user is already authenticated and trying to access auth pages, redirect to appropriate page
+        const redirectUrl = authStore.getPostLoginRedirectUrl();
+        next(redirectUrl);
     } else if (!publicRoutes.includes(to.name as string) && !authStore.isAuthenticated) {
         // If user is not authenticated and trying to access protected routes, redirect to login
         next({ name: 'Login' });

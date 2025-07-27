@@ -1,14 +1,18 @@
 <template>
-    <Card class="scheme-card">
+    <Card class="scheme-card" :data-inactive="!scheme.isActive">
         <template #header>
             <h3 class="scheme-name">{{ scheme.name }}</h3>
             <div class="card-actions">
-                <Button variant="primary" @click="openAddLabelModal">Add Label</Button>
-                <Button variant="secondary">Edit Scheme</Button>
+                <Button variant="primary" @click="openAddLabelModal" :disabled="!scheme.isActive">Add Label</Button>
+                <Button variant="secondary" @click="handleEditScheme" :disabled="!scheme.isActive">Edit Scheme</Button>
+                <Button variant="danger" @click="handleDeleteScheme">{{ scheme.isActive ? 'Delete' : 'Reactivate' }}</Button>
             </div>
         </template>
 
         <p v-if="scheme.description" class="scheme-description">{{ scheme.description }}</p>
+        <div v-if="!scheme.isActive" class="soft-deleted-notice">
+            <p>⚠️ This scheme has been deleted. Existing annotations remain, but no new annotations can be created with these labels.</p>
+        </div>
         
         <div class="labels-container">
             <div v-if="isLoadingLabels" class="loading-labels">
@@ -62,6 +66,12 @@ const props = defineProps<{
     scheme: LabelScheme;
 }>();
 
+const emits = defineEmits<{
+    editScheme: [scheme: LabelScheme];
+    deleteScheme: [scheme: LabelScheme];
+    reactivateScheme: [scheme: LabelScheme];
+}>();
+
 const labels = ref<Label[]>([]);
 const isLoadingLabels = ref(false);
 const isAddLabelModalOpen = ref(false);
@@ -74,6 +84,18 @@ const openAddLabelModal = () => {
 
 const closeAddLabelModal = () => {
     isAddLabelModalOpen.value = false;
+};
+
+const handleEditScheme = () => {
+    emits('editScheme', props.scheme);
+};
+
+const handleDeleteScheme = () => {
+    if (props.scheme.isActive) {
+        emits('deleteScheme', props.scheme);
+    } else {
+        emits('reactivateScheme', props.scheme);
+    }
 };
 
 const handleCreateLabel = async (formData: CreateLabelRequest) => {
@@ -155,5 +177,24 @@ onMounted(fetchLabels);
 .no-labels {
     color: var(--color-gray-600);
     font-size: 0.875rem;
+}
+
+.soft-deleted-notice {
+    background-color: var(--color-yellow-50);
+    border: 1px solid var(--color-yellow-300);
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.soft-deleted-notice p {
+    color: var(--color-yellow-800);
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.scheme-card[data-inactive="true"] {
+    opacity: 0.7;
+    border-color: var(--color-gray-300);
 }
 </style>
