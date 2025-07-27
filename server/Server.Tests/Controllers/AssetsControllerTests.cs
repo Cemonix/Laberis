@@ -96,7 +96,7 @@ namespace Server.Tests.Controllers
             };
 
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
-                projectId, null, null, null, true, 1, 25, true, 3600
+                projectId, null, null, null, null, true, 1, 25, true, 3600
             )
             ).ReturnsAsync(expectedAssets);
 
@@ -111,7 +111,7 @@ namespace Server.Tests.Controllers
             Assert.Equal(expectedAssets.Data, paginatedResponse.Data);
 
             _mockAssetService.Verify(s => s.GetAssetsForProjectAsync(
-                projectId, null, null, null, true, 1, 25, true, 3600
+                projectId, null, null, null, null, true, 1, 25, true, 3600
             ),
             Times.Once
             );
@@ -148,12 +148,12 @@ namespace Server.Tests.Controllers
             };
 
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
-                projectId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize, true, 3600)
+                projectId, null, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize, true, 3600)
             ).ReturnsAsync(expectedAssets);
 
             // Act
             var result = await _controller.GetAssetsForProject(
-                projectId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
+                projectId, null, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -163,7 +163,7 @@ namespace Server.Tests.Controllers
 
             _mockAssetService.Verify(
                 s => s.GetAssetsForProjectAsync(
-                    projectId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize, true, 3600
+                    projectId, null, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize, true, 3600
                 ),
                 Times.Once
             );
@@ -184,7 +184,7 @@ namespace Server.Tests.Controllers
             };
 
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
-                projectId, null, null, null, true, 1, 25, true, 3600
+                projectId, null, null, null, null, true, 1, 25, true, 3600
             )).ReturnsAsync(expectedAssets);
 
             // Act
@@ -203,7 +203,7 @@ namespace Server.Tests.Controllers
             // Arrange
             var projectId = 1;
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
-                projectId, null, null, null, true, 1, 25, true, 3600
+                projectId, null, null, null, null, true, 1, 25, true, 3600
             )).ThrowsAsync(new Exception("Database error"));
 
             // Act & Assert

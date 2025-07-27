@@ -9,6 +9,7 @@ public interface IAssetService
     /// Retrieves all assets for a specific project, optionally filtered and sorted.
     /// </summary>
     /// <param name="projectId">The ID of the project to retrieve assets for.</param>
+    /// <param name="dataSourceId">Optional ID to filter assets by data source.</param>
     /// <param name="filterOn">The field to filter on (e.g., "filename", "status", "mime_type").</param>
     /// <param name="filterQuery">The query string to filter by.</param>
     /// <param name="sortBy">The field to sort by (e.g., "filename", "created_at", "size_bytes").</param>
@@ -20,6 +21,7 @@ public interface IAssetService
     /// <returns>A task that represents the asynchronous operation, containing a collection of AssetDto.</returns>
     Task<PaginatedResponse<AssetDto>> GetAssetsForProjectAsync(
         int projectId,
+        int? dataSourceId = null,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25,
         bool includeUrls = true, int urlExpiryInSeconds = 3600
