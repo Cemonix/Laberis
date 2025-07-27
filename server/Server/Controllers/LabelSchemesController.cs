@@ -118,4 +118,52 @@ public class LabelSchemesController : ControllerBase
         }
         return NoContent();
     }
+
+    /// <summary>
+    /// Soft deletes a label scheme and all associated labels, preserving annotations.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="schemeId">The ID of the label scheme to soft delete.</param>
+    [HttpPost("{schemeId:int}/soft-delete")]
+    public async Task<IActionResult> SoftDeleteLabelScheme(int projectId, int schemeId)
+    {
+        var success = await _labelSchemeService.SoftDeleteLabelSchemeAsync(projectId, schemeId);
+        if (!success)
+        {
+            return NotFound();
+        }
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Gets statistics about the impact of deleting a label scheme.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="schemeId">The ID of the label scheme.</param>
+    [HttpGet("{schemeId:int}/deletion-impact")]
+    public async Task<IActionResult> GetDeletionImpact(int projectId, int schemeId)
+    {
+        var impact = await _labelSchemeService.GetDeletionImpactAsync(projectId, schemeId);
+        if (impact == null)
+        {
+            return NotFound();
+        }
+        return Ok(impact);
+    }
+
+    /// <summary>
+    /// Reactivates a soft-deleted label scheme.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="schemeId">The ID of the label scheme to reactivate.</param>
+    [HttpPost("{schemeId:int}/reactivate")]
+    public async Task<IActionResult> ReactivateLabelScheme(int projectId, int schemeId)
+    {
+        var success = await _labelSchemeService.ReactivateLabelSchemeAsync(projectId, schemeId);
+        if (!success)
+        {
+            return NotFound();
+        }
+        return NoContent();
+    }
 }

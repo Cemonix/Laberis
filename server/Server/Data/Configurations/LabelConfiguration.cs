@@ -46,10 +46,26 @@ public class LabelConfiguration : IEntityTypeConfiguration<Label>
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .ValueGeneratedOnAddOrUpdate();
 
+        entity.Property(l => l.DeletedAt)
+            .HasColumnName("deleted_at")
+            .IsRequired(false);
+
+        entity.Property(l => l.IsActive)
+            .HasColumnName("is_active")
+            .IsRequired()
+            .HasDefaultValue(true);
+
+        entity.Property(l => l.OriginalName)
+            .HasColumnName("original_name")
+            .HasMaxLength(255)
+            .IsRequired(false);
+
         entity.Property(l => l.LabelSchemeId).HasColumnName("label_scheme_id");
 
-        // Unique constraint for Name within a LabelScheme
-        entity.HasIndex(l => new { l.LabelSchemeId, l.Name }).IsUnique();
+        // Unique constraint for Name within a LabelScheme (only for active labels)
+        entity.HasIndex(l => new { l.LabelSchemeId, l.Name, l.IsActive })
+            .IsUnique()
+            .HasFilter("is_active = true");
 
         entity.HasQueryFilter(l => l.LabelScheme.Project.Status != ProjectStatus.PENDING_DELETION);
     }

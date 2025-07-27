@@ -83,6 +83,16 @@ public abstract class GenericRepository<T> : IGenericRepository<T> where T : cla
         return await _dbSet.Where(predicate).ToListAsync();
     }
 
+    public virtual async Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null)
+    {
+        var query = _dbSet.AsQueryable();
+        if (predicate != null)
+        {
+            query = query.Where(predicate);
+        }
+        return await query.CountAsync();
+    }
+
     public virtual void Detach(T entity)
     {
         if (_context.Entry(entity).State != EntityState.Detached)

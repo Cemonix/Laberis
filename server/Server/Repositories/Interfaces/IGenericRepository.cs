@@ -21,6 +21,8 @@ public interface IGenericRepository<T> where T : class
 
     Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
 
+    Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null);
+
     /// <summary>
     /// Detaches an entity from the context.
     /// This is useful for entities that are being tracked but you want to stop tracking them.
