@@ -34,14 +34,15 @@ public class AssetService : IAssetService
 
     public async Task<PaginatedResponse<AssetDto>> GetAssetsForProjectAsync(
         int projectId,
+        int? dataSourceId = null,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25,
         bool includeUrls = true, int urlExpiryInSeconds = 3600)
     {
-        _logger.LogInformation("Fetching assets for project: {ProjectId}", projectId);
+        _logger.LogInformation("Fetching assets for project: {ProjectId}, dataSource: {DataSourceId}", projectId, dataSourceId);
 
         var (assets, totalCount) = await _assetRepository.GetAllWithCountAsync(
-            filter: a => a.ProjectId == projectId,
+            filter: a => a.ProjectId == projectId && (dataSourceId == null || a.DataSourceId == dataSourceId),
             filterOn: filterOn,
             filterQuery: filterQuery,
             sortBy: sortBy,

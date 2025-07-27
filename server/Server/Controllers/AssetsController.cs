@@ -25,6 +25,7 @@ public class AssetsController : ControllerBase
     /// Gets all assets for a specific project with optional filtering, sorting, and pagination.
     /// </summary>
     /// <param name="projectId">The ID of the project to get assets for.</param>
+    /// <param name="dataSourceId">Optional ID to filter assets by data source.</param>
     /// <param name="filterOn">The field to filter on (e.g., "filename", "mime_type", "status").</param>
     /// <param name="filterQuery">The value to filter by.</param>
     /// <param name="sortBy">The field to sort by (e.g., "filename", "created_at", "size_bytes").</param>
@@ -39,6 +40,7 @@ public class AssetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAssetsForProject(
         int projectId,
+        [FromQuery] int? dataSourceId = null,
         [FromQuery] string? filterOn = null,
         [FromQuery] string? filterQuery = null,
         [FromQuery] string? sortBy = null,
@@ -48,7 +50,8 @@ public class AssetsController : ControllerBase
     )
     {
         var assets = await _assetService.GetAssetsForProjectAsync(
-            projectId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
+            projectId, dataSourceId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize
+        );
         return Ok(assets);
     }
 
