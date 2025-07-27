@@ -197,8 +197,9 @@ const handleRegister = async () => {
             inviteToken: inviteToken.value || undefined
         });
         
-        // Redirect to home page after successful registration
-        router.push('/home');
+        // Use smart redirect based on last project after successful registration
+        const smartRedirectUrl = authStore.getPostLoginRedirectUrl();
+        router.push(smartRedirectUrl);
     } catch (error) {
         logger.error("Registration failed:", error);
         errorMessage.value = error instanceof Error ? error.message : "Registration failed. Please try again.";

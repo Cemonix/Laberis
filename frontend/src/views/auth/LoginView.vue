@@ -102,8 +102,9 @@ const handleLogin = async () => {
             if (redirectUrl) {
                 router.push(decodeURIComponent(redirectUrl));
             } else {
-                // Default redirect to home page
-                router.push('/home');
+                // Use smart redirect based on last project
+                const smartRedirectUrl = authStore.getPostLoginRedirectUrl();
+                router.push(smartRedirectUrl);
             }
         }
     } catch (error) {
