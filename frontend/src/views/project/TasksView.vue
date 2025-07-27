@@ -106,7 +106,7 @@ import type {TaskTableRow} from '@/types/task';
 import {TaskStatus} from '@/types/task';
 import type {TableAction, TableColumn, TableRowAction} from '@/types/common';
 import {useErrorHandler} from '@/composables/useErrorHandler';
-import {taskService} from '@/services/api/taskService';
+import {taskService} from '@/services/api/projects';
 import {AppLogger} from '@/utils/logger';
 
 const route = useRoute();
