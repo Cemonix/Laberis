@@ -39,7 +39,7 @@
 import {onMounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import type {Project} from '@/types/project/project';
-import {projectService} from '@/services/api/projectService';
+import {projectService} from '@/services/api/projects';
 import {useAlert} from '@/composables/useAlert';
 import {AppLogger} from '@/utils/logger';
 

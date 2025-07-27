@@ -92,7 +92,7 @@ import {computed, onMounted, ref} from "vue";
 import {useRouter} from "vue-router";
 import {useAuthStore} from "@/stores/authStore";
 import {useToast} from "@/composables/useToast";
-import {projectInvitationService} from "@/services/api/projectInvitationService";
+import {projectInvitationService} from "@/services/api";
 import Button from "@/components/common/Button.vue";
 import Form from "@/components/common/Form.vue";
 import type {ProjectInvitationDto} from "@/types/projectInvitation";

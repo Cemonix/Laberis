@@ -164,7 +164,7 @@ import {computed, onMounted, reactive, ref} from 'vue';
 import Card from '@/components/common/Card.vue';
 import Button from '@/components/common/Button.vue';
 import Form from '@/components/common/Form.vue';
-import {projectMemberService} from '@/services/api/projectMemberService';
+import {projectMemberService} from '@/services/api/projects';
 import {useToast} from '@/composables/useToast';
 import {useConfirm} from '@/composables/useConfirm';
 import {useErrorHandler} from '@/composables/useErrorHandler';

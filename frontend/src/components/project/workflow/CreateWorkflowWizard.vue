@@ -358,8 +358,7 @@ import type {CreateWorkflowWithStagesRequest} from '@/types/workflow';
 import {WorkflowStageType} from '@/types/workflow';
 import type {ProjectMember} from '@/types/projectMember';
 import type {DataSource} from '@/types/dataSource';
-import {projectMemberService} from '@/services/api/projectMemberService';
-import {dataSourceService} from '@/services/api/dataSourceService';
+import {projectMemberService, dataSourceService} from '@/services/api/projects';
 import {AppLogger} from '@/utils/logger';
 import {useToast} from '@/composables/useToast';
 

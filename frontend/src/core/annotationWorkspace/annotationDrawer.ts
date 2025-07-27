@@ -75,6 +75,7 @@ export function drawPolyline(
     color: string = '#00FF00',
     lineWidth: number = 2
 ) {
+    if (!points || points.length === 0) return;
     if (points.length < 2) return;
     
     ctx.save();
@@ -104,6 +105,7 @@ export function drawPolygon(
     color: string = '#00FF00',
     lineWidth: number = 2
 ) {
+    if (!points || points.length === 0) return;
     if (points.length < 3) return; // A polygon requires at least 3 points
 
     ctx.save();

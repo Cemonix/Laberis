@@ -47,7 +47,7 @@ import {onMounted, ref} from 'vue';
 import type {LabelScheme} from '@/types/label/labelScheme';
 import type {Label} from '@/types/label/label';
 import type {CreateLabelRequest} from '@/types/label/requests';
-import {labelService} from '@/services/api/labelService';
+import {labelService} from '@/services/api/projects/labelService';
 import {useToast} from '@/composables/useToast';
 import LabelChip from './LabelChip.vue';
 import CreateLabelForm from './CreateLabelForm.vue';

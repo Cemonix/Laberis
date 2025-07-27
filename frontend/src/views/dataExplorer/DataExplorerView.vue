@@ -87,8 +87,7 @@ import {faHome} from '@fortawesome/free-solid-svg-icons';
 import type {Asset, AssetListParams} from '@/types/asset';
 import AssetThumbnail from '@/components/project/AssetThumbnail.vue';
 import Button from '@/components/common/Button.vue';
-import assetService from '@/services/api/assetService';
-import {dataSourceService} from '@/services/api/dataSourceService';
+import {assetService, dataSourceService} from '@/services/api/projects';
 import {useAlert} from '@/composables/useAlert';
 import {AppLogger} from '@/utils/logger';
 

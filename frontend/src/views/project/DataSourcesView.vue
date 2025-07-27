@@ -42,7 +42,7 @@ import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateDataSourceForm from '@/components/project/CreateDataSourceForm.vue';
 import Button from '@/components/common/Button.vue';
 import {type CreateDataSourceRequest, type DataSource} from '@/types/dataSource';
-import {dataSourceService} from '@/services/api/dataSourceService';
+import {dataSourceService} from '@/services/api/projects';
 import {useAlert} from '@/composables/useAlert';
 import {AppLogger} from '@/utils/logger';
 

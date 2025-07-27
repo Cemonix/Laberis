@@ -186,7 +186,7 @@ import Button from '@/components/common/Button.vue';
 import type {CreateWorkflowWithStagesRequest} from '@/types/workflow';
 import {WorkflowStageType} from '@/types/workflow';
 import type {ProjectMember} from '@/types/projectMember';
-import {projectMemberService} from '@/services/api/projectMemberService';
+import {projectMemberService} from '@/services/api/projects';
 import {AppLogger} from '@/utils/logger';
 
 // TODO: Remove this component. It is no longer used in the application.
@@ -394,7 +394,7 @@ defineExpose({ resetForm });
     gap: 0.5rem;
     
     input[type="checkbox"] {
-        margin-top: 2px; // Align with first line of text
+        margin-top: 2px;
     }
 }
 

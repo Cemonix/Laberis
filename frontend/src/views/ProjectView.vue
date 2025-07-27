@@ -50,7 +50,7 @@ import CreateProjectForm from '@/components/project/CreateProjectForm.vue';
 import Button from '@/components/common/Button.vue';
 import type {Project} from '@/types/project/project';
 import {ProjectType} from '@/types/project/project';
-import {projectService} from '@/services/api/projectService';
+import {projectService} from '@/services/api/projects';
 import type {CreateProjectRequest} from '@/types/project/requests';
 import {useToast} from '@/composables/useToast';
 import {usePermissions} from '@/composables/usePermissions';
