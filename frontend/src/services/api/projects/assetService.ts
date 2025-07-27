@@ -1,24 +1,24 @@
-import apiClient from './apiClient';
-import { transformApiError, isValidApiResponse, isValidPaginatedResponse } from '@/services/utils';
+import { BaseProjectService } from '../base';
 import type { PaginatedResponse } from '@/types/api';
 import { buildQueryParams } from '@/types/api';
 import type { Asset, AssetListParams } from '@/types/asset';
 import type { UploadResult, BulkUploadResult } from '@/types/asset';
 import { NoFilesProvidedError } from '@/types/asset';
-import { AppLogger } from '@/utils/logger';
+import apiClient from '../apiClient';
+import { transformApiError, isValidApiResponse, isValidPaginatedResponse } from '@/services/utils';
 
-const logger = AppLogger.createServiceLogger('AssetService');
-
-class AssetService {
-    private readonly baseUrl = '/projects';
+/**
+ * Service class for managing assets within projects.
+ * Extends BaseProjectService to inherit common project-related functionality.
+ * Note: Upload methods use apiClient directly due to FormData requirements.
+ */
+class AssetService extends BaseProjectService {
+    constructor() {
+        super('AssetService');
+    }
 
     /**
      * Uploads a single image file to a project's data source
-     * @param projectId The project ID
-     * @param dataSourceId The data source ID
-     * @param file The file to upload
-     * @param metadata Optional metadata as JSON string
-     * @returns Promise resolving to upload result
      */
     async uploadAsset(
         projectId: number, 
@@ -26,7 +26,7 @@ class AssetService {
         file: File, 
         metadata?: string
     ): Promise<UploadResult> {
-        logger.info(`Uploading single asset to project ${projectId}, data source ${dataSourceId}`, {
+        this.logger.info(`Uploading single asset to project ${projectId}, data source ${dataSourceId}`, {
             filename: file.name,
             size: file.size,
             type: file.type
@@ -40,8 +40,9 @@ class AssetService {
                 formData.append('metadata', metadata);
             }
 
+            const url = this.buildProjectUrl(projectId, 'assets/upload');
             const response = await apiClient.post<UploadResult>(
-                `${this.baseUrl}/${projectId}/assets/upload`,
+                url,
                 formData,
                 {
                     headers: {
@@ -55,7 +56,7 @@ class AssetService {
                     'Failed to upload asset - Invalid response format');
             }
 
-            logger.info(`Successfully uploaded asset: ${file.name}`, response.data);
+            this.logger.info(`Successfully uploaded asset: ${file.name}`, response.data);
             return response.data;
         } catch (error) {
             throw transformApiError(error, `Failed to upload asset: ${file.name}`);
@@ -64,12 +65,6 @@ class AssetService {
 
     /**
      * Uploads multiple image files to a project's data source
-     * @param projectId The project ID
-     * @param dataSourceId The data source ID
-     * @param files The files to upload
-     * @param metadata Optional metadata as JSON string
-     * @param onProgress Optional progress callback
-     * @returns Promise resolving to bulk upload result
      */
     async uploadAssets(
         projectId: number, 
@@ -80,11 +75,11 @@ class AssetService {
     ): Promise<BulkUploadResult> {
         // Validate that files are provided
         if (!files || files.length === 0) {
-            logger.error('Bulk upload attempted with no files');
+            this.logger.error('Bulk upload attempted with no files');
             throw new NoFilesProvidedError();
         }
 
-        logger.info(`Uploading ${files.length} assets to project ${projectId}, data source ${dataSourceId}`, {
+        this.logger.info(`Uploading ${files.length} assets to project ${projectId}, data source ${dataSourceId}`, {
             filenames: files.map(f => f.name),
             totalSize: files.reduce((sum, f) => sum + f.size, 0)
         });
@@ -101,8 +96,9 @@ class AssetService {
                 formData.append('metadata', metadata);
             }
 
+            const url = this.buildProjectUrl(projectId, 'assets/upload/bulk');
             const response = await apiClient.post<BulkUploadResult>(
-                `${this.baseUrl}/${projectId}/assets/upload/bulk`,
+                url,
                 formData,
                 {
                     headers: {
@@ -122,7 +118,7 @@ class AssetService {
                     'Failed to upload assets - Invalid response format');
             }
 
-            logger.info(`Successfully uploaded ${response.data.successfulUploads} of ${files.length} assets`, response.data);
+            this.logger.info(`Successfully uploaded ${response.data.successfulUploads} of ${files.length} assets`, response.data);
             return response.data;
         } catch (error) {
             if (error instanceof NoFilesProvidedError) {
@@ -134,29 +130,25 @@ class AssetService {
 
     /**
      * Gets assets for a specific project with optional filtering and pagination
-     * @param projectId The project ID
-     * @param options Query options for filtering, sorting, and pagination
-     * @returns Promise resolving to paginated asset list
      */
     async getAssets(
         projectId: number,
         options: AssetListParams = {}
     ): Promise<PaginatedResponse<Asset>> {
-        logger.info(`Fetching assets for project ${projectId}`, options);
+        this.logger.info(`Fetching assets for project ${projectId}`, options);
 
         try {
             const queryParams = buildQueryParams(options);
-
-            const response = await apiClient.get<PaginatedResponse<Asset>>(
-                `${this.baseUrl}/${projectId}/assets?${queryParams.toString()}`
-            );
+            const url = this.buildProjectUrl(projectId, `assets?${queryParams.toString()}`);
+            
+            const response = await apiClient.get<PaginatedResponse<Asset>>(url);
 
             if (!isValidPaginatedResponse(response)) {
                 throw transformApiError(new Error('Invalid paginated response structure'), 
                     'Failed to fetch assets - Invalid response format');
             }
 
-            logger.info(`Fetched ${response.data.data.length} assets for project ${projectId}`, response.data);
+            this.logger.info(`Fetched ${response.data.data.length} assets for project ${projectId}`, response.data);
             return response.data;
         } catch (error) {
             throw transformApiError(error, 'Failed to fetch assets');
@@ -165,30 +157,16 @@ class AssetService {
 
     /**
      * Gets a specific asset by ID
-     * @param projectId The project ID
-     * @param assetId The asset ID
-     * @returns Promise resolving to the asset
      */
     async getAssetById(projectId: number, assetId: number): Promise<Asset> {
-        logger.info(`Fetching asset ${assetId} for project ${projectId}`);
+        this.logger.info(`Fetching asset ${assetId} for project ${projectId}`);
 
-        try {
-            const response = await apiClient.get<Asset>(
-                `${this.baseUrl}/${projectId}/assets/${assetId}`
-            );
+        const url = this.buildProjectUrl(projectId, `assets/${assetId}`);
+        const response = await this.get<Asset>(url);
 
-            if (!isValidApiResponse(response)) {
-                throw transformApiError(new Error('Invalid response data'), 
-                    'Failed to fetch asset - Invalid response format');
-            }
-
-            logger.info(`Fetched asset ${assetId} for project ${projectId}`, response.data);
-            return response.data;
-        } catch (error) {
-            throw transformApiError(error, `Failed to fetch asset ${assetId}`);
-        }
+        this.logger.info(`Fetched asset ${assetId} for project ${projectId}`, response);
+        return response;
     }
-
 }
 
-export default new AssetService();
+export const assetService = new AssetService();

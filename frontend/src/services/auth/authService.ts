@@ -1,5 +1,4 @@
-import apiClient from "../api/apiClient";
-import { transformApiError, isValidApiResponse } from '@/services/utils';
+import { BaseService } from "../api/base";
 import type { 
     LoginDto, 
     RegisterDto, 
@@ -11,12 +10,17 @@ import type {
     ChangePasswordDto,
     ChangePasswordResponse
 } from "@/types/auth/auth";
-import { AppLogger } from "@/utils/logger";
 
-const logger = AppLogger.createServiceLogger('AuthService');
+/**
+ * Service class for authentication operations.
+ * Extends BaseService to inherit common functionality.
+ */
+class AuthService extends BaseService {
+    protected readonly baseUrl = "/auth";
 
-class AuthService {
-    private readonly baseUrl = "/auth";
+    constructor() {
+        super('AuthService');
+    }
 
     /**
      * Convert backend AuthResponseDto to frontend format
@@ -38,135 +42,89 @@ class AuthService {
     }
 
     async login(loginDto: LoginDto): Promise<LoginResponse> {
-        logger.info(`Attempting login for user: ${loginDto.email}`);
+        this.logger.info(`Attempting login for user: ${loginDto.email}`);
         
-        try {
-            const response = await apiClient.post<AuthResponseDto>(
-                `${this.baseUrl}/login`, loginDto
-            );
-            
-            if (!isValidApiResponse(response)) {
-                throw transformApiError(new Error('Invalid response data'), 
-                    'Failed to login - Invalid response format');
-            }
+        const response = await this.post<LoginDto, AuthResponseDto>(
+            this.getBaseUrl('login'), 
+            loginDto
+        );
 
-            logger.info(`Login successful for user: ${loginDto.email}`);
-            return this.mapAuthResponse(response.data);
-        } catch (error) {
-            throw transformApiError(error, 'Failed to login');
-        }
+        this.logger.info(`Login successful for user: ${loginDto.email}`);
+        return this.mapAuthResponse(response);
     }
 
     async register(registerDto: RegisterDto): Promise<RegisterResponse> {
-        logger.info(`Attempting registration for user: ${registerDto.email}`);
+        this.logger.info(`Attempting registration for user: ${registerDto.email}`);
 
-        try {
-            const response = await apiClient.post<AuthResponseDto>(
-                `${this.baseUrl}/register`,
-                registerDto
-            );
-            
-            if (!isValidApiResponse(response)) {
-                throw transformApiError(new Error('Invalid response data'), 
-                    'Failed to register - Invalid response format');
-            }
+        const response = await this.post<RegisterDto, AuthResponseDto>(
+            this.getBaseUrl('register'),
+            registerDto
+        );
 
-            logger.info(`Registration successful for user: ${registerDto.email}`);
-            return this.mapAuthResponse(response.data);
-        } catch (error) {
-            throw transformApiError(error, 'Failed to register');
-        }
+        this.logger.info(`Registration successful for user: ${registerDto.email}`);
+        return this.mapAuthResponse(response);
     }
 
     async getCurrentUser(): Promise<UserDto> {
-        logger.info('Fetching current user information');
+        this.logger.info('Fetching current user information');
 
-        try {
-            const response = await apiClient.get<UserDto>(`${this.baseUrl}/me`);
-            
-            if (!isValidApiResponse(response)) {
-                throw transformApiError(new Error('Invalid response data'), 
-                    'Failed to fetch current user - Invalid response format');
-            }
+        const response = await this.get<UserDto>(this.getBaseUrl('me'));
 
-            logger.info('Successfully fetched current user information');
-            
-            const user: UserDto = {
-                email: response.data.email,
-                userName: response.data.userName,
-                roles: response.data.roles
-            };
-            
-            return user;
-        } catch (error) {
-            throw transformApiError(error, 'Failed to fetch current user');
-        }
+        this.logger.info('Successfully fetched current user information');
+        
+        const user: UserDto = {
+            email: response.email,
+            userName: response.userName,
+            roles: response.roles
+        };
+        
+        return user;
     }
 
     async logout(): Promise<void> {
-        logger.info('Attempting logout');
+        this.logger.info('Attempting logout');
         
         try {
-            await apiClient.post(`${this.baseUrl}/logout`);
-            logger.info('Logout successful - tokens revoked on server');
+            await this.post<void, void>(this.getBaseUrl('logout'), undefined, false);
+            this.logger.info('Logout successful - tokens revoked on server');
         } catch (error) {
-            logger.warn('Server-side logout failed, proceeding with client-side cleanup', error);
+            this.logger.warn('Server-side logout failed, proceeding with client-side cleanup', error);
         }
     }
 
     async refreshToken(refreshToken: string): Promise<AuthTokens> {
-        logger.info('Attempting to refresh access token');
+        this.logger.info('Attempting to refresh access token');
         
         const refreshTokenRequest = {
             token: refreshToken
         };
 
-        try {
-            const response = await apiClient.post<AuthResponseDto>(
-                `${this.baseUrl}/refresh-token`,
-                refreshTokenRequest
-            );
-            
-            if (!isValidApiResponse(response)) {
-                throw transformApiError(new Error('Invalid response data'), 
-                    'Failed to refresh token - Invalid response format');
-            }
+        const response = await this.post<typeof refreshTokenRequest, AuthResponseDto>(
+            this.getBaseUrl('refresh-token'),
+            refreshTokenRequest
+        );
 
-            logger.info('Token refresh successful');
-            
-            const tokens: AuthTokens = {
-                accessToken: response.data.token,
-                refreshToken: response.data.refreshToken,
-                expiresAt: new Date(response.data.expiresAt).getTime()
-            };
-            
-            return tokens;
-        } catch (error) {
-            logger.error('Token refresh failed', error);
-            throw transformApiError(error, 'Failed to refresh token');
-        }
+        this.logger.info('Token refresh successful');
+        
+        const tokens: AuthTokens = {
+            accessToken: response.token,
+            refreshToken: response.refreshToken,
+            expiresAt: new Date(response.expiresAt).getTime()
+        };
+        
+        return tokens;
     }
 
     async changePassword(changePasswordDto: ChangePasswordDto): Promise<ChangePasswordResponse> {
-        logger.info('Attempting to change password');
+        this.logger.info('Attempting to change password');
         
-        try {
-            const response = await apiClient.post<ChangePasswordResponse>(
-                `${this.baseUrl}/change-password`,
-                changePasswordDto
-            );
-            
-            if (!isValidApiResponse(response)) {
-                throw transformApiError(new Error('Invalid response data'), 
-                    'Failed to change password - Invalid response format');
-            }
+        const response = await this.post<ChangePasswordDto, ChangePasswordResponse>(
+            this.getBaseUrl('change-password'),
+            changePasswordDto
+        );
 
-            logger.info('Password change successful');
-            return response.data;
-        } catch (error) {
-            logger.error('Password change failed', error);
-            throw transformApiError(error, 'Failed to change password');
-        }
+        this.logger.info('Password change successful');
+        return response;
     }
 }
 
