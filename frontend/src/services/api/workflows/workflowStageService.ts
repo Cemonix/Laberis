@@ -7,6 +7,7 @@ import type {
     WorkflowWithStages
 } from "@/types/workflow";
 import type { QueryParams } from '@/types/api';
+import { workflowService } from './workflowService';
 
 /**
  * Service class for managing workflow stages within projects.
@@ -126,11 +127,24 @@ class WorkflowStageService extends BaseProjectService {
     async getWorkflowWithStages(projectId: number, workflowId: number): Promise<WorkflowWithStages> {
         this.logger.info(`Fetching workflow ${workflowId} with stages from project ${projectId}`);
         
-        const url = this.buildProjectResourceUrl(projectId, 'workflows/{workflowId}/with-stages', { workflowId });
-        const response = await this.get<WorkflowWithStages>(url);
-        
-        this.logger.info(`Successfully fetched workflow with ${response.stages.length} stages`);
-        return response;
+        try {
+            // Get workflow details and stages in parallel
+            const [workflow, stagesResponse] = await Promise.all([
+                workflowService.getWorkflowById(projectId, workflowId),
+                this.getWorkflowStages(projectId, workflowId)
+            ]);
+
+            const workflowWithStages: WorkflowWithStages = {
+                ...workflow,
+                stages: stagesResponse.data
+            };
+
+            this.logger.info(`Successfully fetched workflow with ${workflowWithStages.stages.length} stages`);
+            return workflowWithStages;
+        } catch (error) {
+            this.logger.error(`Failed to fetch workflow with stages from project ${projectId}, workflow ${workflowId}:`, error);
+            throw error;
+        }
     }
 
     /**

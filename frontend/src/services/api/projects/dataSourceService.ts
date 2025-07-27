@@ -10,7 +10,6 @@ import type {
 
 /**
  * Service class for managing data sources within projects.
- * Extends BaseProjectService to inherit common project-related functionality.
  */
 class DataSourceService extends BaseProjectService {
     constructor() {

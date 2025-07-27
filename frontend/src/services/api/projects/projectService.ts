@@ -10,7 +10,6 @@ import type { QueryParams } from '@/types/api';
 
 /**
  * Service class for managing projects.
- * Extends BaseService to inherit common functionality.
  */
 class ProjectService extends BaseService {
     protected readonly baseUrl = '/projects';

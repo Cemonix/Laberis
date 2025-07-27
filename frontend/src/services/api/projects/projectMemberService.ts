@@ -4,7 +4,6 @@ import type { ProjectMember, InviteMemberRequest } from '@/types/projectMember';
 
 /**
  * Service class for managing project members.
- * Extends BaseProjectService to inherit common project-related functionality.
  */
 class ProjectMemberService extends BaseProjectService {
     constructor() {

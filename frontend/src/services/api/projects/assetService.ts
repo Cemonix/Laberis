@@ -9,7 +9,6 @@ import { transformApiError, isValidApiResponse, isValidPaginatedResponse } from 
 
 /**
  * Service class for managing assets within projects.
- * Extends BaseProjectService to inherit common project-related functionality.
  * Note: Upload methods use apiClient directly due to FormData requirements.
  */
 class AssetService extends BaseProjectService {
