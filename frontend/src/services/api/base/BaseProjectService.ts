@@ -9,7 +9,7 @@ export abstract class BaseProjectService extends BaseService {
 
     /**
      * Builds URLs for project-specific endpoints.
-     * Example: buildProjectUrl(123, 'labelschemes/456/labels') -> '/projects/123/labelschemes/456/labels'
+     * Example: buildProjectUrl(123, 'annotations') -> '/projects/123/annotations'
      */
     protected buildProjectUrl(projectId: number, path: string = ''): string {
         const cleanPath = path.startsWith('/') ? path.slice(1) : path;

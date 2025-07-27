@@ -14,7 +14,6 @@ import type { QueryParams } from '@/types/api';
 
 /**
  * Transforms a backend LabelSchemeResponse object to a frontend LabelScheme object.
- * Assumes LabelSchemeResponse mirrors the backend LabelSchemeDto.
  */
 function transformLabelSchemeResponse(response: LabelSchemeResponse): LabelScheme {
     return {
