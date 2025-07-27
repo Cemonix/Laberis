@@ -11,6 +11,8 @@
     --color-secondary: #6c757d;
     --color-secondary-hover: #5a6268;
 
+    /* TODO: Refactor colors to use scales */
+
     /* Blue colors */
     --color-blue-1: #3498db;
     --color-blue-2: #2980b9;
@@ -25,22 +27,87 @@
 
     /* Semantic (Feedback) */
     --color-success: #28a745;
-    --color-success-rgb: 40, 167, 69;
     --color-success-light: #d4edda;
     --color-success-dark: #1e7e34;
     --color-warning: #ffc107;
-    --color-warning-rgb: 255, 193, 7;
     --color-warning-light: #fff3cd;
     --color-warning-dark: #e0a800;
     --color-error: #dc3545;
-    --color-error-rgb: 220, 53, 69;
     --color-error-light: #f8d7da;
     --color-error-dark: #c82333;
     --color-error-darker: #b02a37;
     --color-info: #17a2b8;
-    --color-info-rgb: 23, 162, 184;
     --color-info-light: #d1ecf1;
     --color-info-dark: #138496;
+
+    /* Grayscale */
+    --color-white: #ffffff;
+    --color-gray-50: #f9fafb;
+    --color-gray-100: #f8f9fa;
+    --color-gray-200: #f1f1f1;
+    --color-gray-300: #e9ecef;
+    --color-gray-400: #dee2e6;
+    --color-gray-500: #ccc;
+    --color-gray-600: #aaa;
+    --color-gray-700: #495057;
+    --color-gray-800: #333;
+    --color-gray-900: #212529;
+    --color-black: #000000;
+
+    /* Red Scale */
+    --color-red-100: #f8d7da;
+    --color-red-200: #f5c6cb;
+    --color-red-300: #f1b0b7;
+    --color-red-400: #e57373;
+    --color-red-500: #ef4444;
+    --color-red-600: #dc3545;
+    --color-red-700: #c82333;
+    --color-red-800: #b02a37;
+    --color-red-900: #a61b2d;
+
+    /* Green Scale */
+    --color-green-100: #d4edda;
+    --color-green-200: #c3e6cb;
+    --color-green-300: #a3d9a5;
+    --color-green-400: #81c784;
+    --color-green-500: #28a745;
+    --color-green-600: #218838;
+    --color-green-700: #1e7e34;
+    --color-green-800: #1c7430;
+    --color-green-900: #1b5e20;
+
+    /* Yellow Scale */
+    --color-yellow-100: #fff3cd;
+    --color-yellow-200: #ffeeba;
+    --color-yellow-300: #ffe8a1;
+    --color-yellow-400: #ffe08f;
+    --color-yellow-500: #ffc107;
+    --color-yellow-600: #e0a800;
+    --color-yellow-700: #c69500;
+    --color-yellow-800: #b38f00;
+    --color-yellow-900: #a67c00;
+
+    /* Blue Scale */
+    --color-blue-100: #cce5ff;
+    --color-blue-200: #b3d7ff;
+    --color-blue-300: #99c9ff;
+    --color-blue-400: #80bbff;
+    --color-blue-500: #007bff;
+    --color-blue-600: #0069d9;
+    --color-blue-700: #0056b3;
+    --color-blue-800: #004494;
+    --color-blue-900: #003366;
+    
+    /* Turquoise Scale */
+    --color-turquoise-100: #d1ecf1;
+    --color-turquoise-200: #bee5eb;
+    --color-turquoise-300: #abdde5;
+    --color-turquoise-400: #8cd0d9;
+    --color-turquoise-500: #17a2b8;
+    --color-turquoise-600: #138496;
+    --color-turquoise-700: #117a8b;
+    --color-turquoise-800: #0f6f80;
+    --color-turquoise-900: #0d5c75;
 
     /* Error page specific colors */
     --color-error-page-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -59,20 +126,6 @@
     --color-btn-outline-border: #667eea;
     --color-btn-outline-hover-bg: #667eea;
     --color-btn-outline-hover-text: #ffffff;
-
-    /* Grayscale */
-    --color-white: #ffffff;
-    --color-gray-50: #f9fafb;
-    --color-gray-100: #f8f9fa;
-    --color-gray-200: #f1f1f1;
-    --color-gray-300: #e9ecef;
-    --color-gray-400: #dee2e6;
-    --color-gray-500: #ccc;
-    --color-gray-600: #aaa;
-    --color-gray-700: #495057;
-    --color-gray-800: #333;
-    --color-gray-900: #212529;
-    --color-black: #000000;
 
     /* Text colors */
     --color-text-primary: #1f2937;
