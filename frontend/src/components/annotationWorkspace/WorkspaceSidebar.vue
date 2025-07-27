@@ -118,6 +118,9 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import type { ToolName } from '@/types/workspace/tools';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import Button from '@/components/common/Button.vue';
+import { AppLogger } from '@/utils/logger';
+
+const logger = AppLogger.createComponentLogger('WorkspaceSidebar');
 
 const workspaceStore = useWorkspaceStore();
 
@@ -186,7 +189,7 @@ const getLabelTooltip = (label: any, index: number): string => {
 
 const showLabelContextMenu = (_event: MouseEvent, label: any) => {
     // TODO: Context menu functionality can be expanded later
-    console.log('Context menu for label:', label.name);
+    logger.info('Context menu for label:', label.name);
 };
 
 // Keyboard shortcuts for label selection
