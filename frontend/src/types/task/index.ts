@@ -11,3 +11,9 @@ export {
     TaskEventType,
     TaskStatus
 } from './task';
+
+export type {
+    TaskFilters,
+    TasksQueryParams,
+    GetTasksResponse
+} from './taskService';
