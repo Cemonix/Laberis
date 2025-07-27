@@ -8,13 +8,16 @@
  * @param expectedDataType - 'object' for single objects, 'array' for arrays
  * @returns true if valid, false otherwise
  */
-export const isValidApiResponse = (response: any, expectedDataType: 'object' | 'array' = 'object'): boolean => {
+export const isValidApiResponse = (response: any, expectedDataType: 'object' | 'array' | 'blob' = 'object'): boolean => {
     if (!response?.data) return false;
-    
-    if (expectedDataType === 'array') {
+
+    else if (expectedDataType === 'blob') {
+        return response.data instanceof Blob;
+    }
+    else if (expectedDataType === 'array') {
         return Array.isArray(response.data);
     }
-    
+
     return typeof response.data === 'object' && response.data !== null;
 };
 

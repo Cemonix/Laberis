@@ -124,7 +124,7 @@ public class LabelSchemesController : ControllerBase
     /// </summary>
     /// <param name="projectId">The ID of the project.</param>
     /// <param name="schemeId">The ID of the label scheme to soft delete.</param>
-    [HttpPost("{schemeId:int}/soft-delete")]
+    [HttpDelete("{schemeId:int}/soft-delete")]
     public async Task<IActionResult> SoftDeleteLabelScheme(int projectId, int schemeId)
     {
         var success = await _labelSchemeService.SoftDeleteLabelSchemeAsync(projectId, schemeId);
@@ -156,7 +156,7 @@ public class LabelSchemesController : ControllerBase
     /// </summary>
     /// <param name="projectId">The ID of the project.</param>
     /// <param name="schemeId">The ID of the label scheme to reactivate.</param>
-    [HttpPost("{schemeId:int}/reactivate")]
+    [HttpPatch("{schemeId:int}/reactivate")]
     public async Task<IActionResult> ReactivateLabelScheme(int projectId, int schemeId)
     {
         var success = await _labelSchemeService.ReactivateLabelSchemeAsync(projectId, schemeId);

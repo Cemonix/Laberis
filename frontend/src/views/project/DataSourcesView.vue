@@ -41,9 +41,9 @@
 <script setup lang="ts">
 import {onMounted, ref} from 'vue';
 import {useRoute} from 'vue-router';
-import DataSourceCard from '@/components/project/DataSourceCard.vue';
+import DataSourceCard from '@/components/project/dataSource/DataSourceCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
-import CreateDataSourceForm from '@/components/project/CreateDataSourceForm.vue';
+import CreateDataSourceForm from '@/components/project/dataSource/CreateDataSourceForm.vue';
 import FloatingActionButton from '@/components/common/FloatingActionButton.vue';
 import {type CreateDataSourceRequest, type DataSource} from '@/types/dataSource';
 import {dataSourceService} from '@/services/api/projects';

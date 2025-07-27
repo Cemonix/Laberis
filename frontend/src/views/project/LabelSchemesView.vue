@@ -40,7 +40,7 @@
         >
             <CreateLabelSchemeForm 
                 @cancel="closeModal" 
-                @save="editingScheme ? handleUpdateScheme : handleCreateScheme" 
+                @save="formData => editingScheme ? handleUpdateScheme(formData) : handleCreateScheme(formData)" 
                 :disabled="isLoading"
                 :initial-data="editingScheme || undefined"
             />
@@ -79,10 +79,10 @@
 <script setup lang="ts">
 import {onMounted, ref} from 'vue';
 import {useRoute} from 'vue-router';
-import LabelSchemeCard from '@/components/labels/LabelSchemeCard.vue';
+import LabelSchemeCard from '@/components/project/labels/LabelSchemeCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
-import CreateLabelSchemeForm from '@/components/labels/CreateLabelSchemeForm.vue';
-import DeletionImpactDialog from '@/components/labels/DeletionImpactDialog.vue';
+import CreateLabelSchemeForm from '@/components/project/labels/CreateLabelSchemeForm.vue';
+import DeletionImpactDialog from '@/components/project/labels/DeletionImpactDialog.vue';
 import FloatingActionButton from '@/components/common/FloatingActionButton.vue';
 import Button from '@/components/common/Button.vue';
 import type {FormPayloadLabelScheme, LabelScheme, LabelSchemeDeletionImpact} from '@/types/label/labelScheme';
@@ -233,7 +233,7 @@ const handleDeleteScheme = async (scheme: LabelScheme) => {
     } catch (error) {
         showError('Error', 'Failed to load deletion impact. Please try again.');
         logger.error('Failed to get deletion impact:', error);
-        closeDeleteModal(); // Close modal on error
+        closeDeleteModal();
     } finally {
         isDeletionImpactLoading.value = false;
     }
