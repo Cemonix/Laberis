@@ -11,12 +11,21 @@ public class LabelSchemeService : ILabelSchemeService
 {
     private readonly ILabelSchemeRepository _labelSchemeRepository;
     private readonly IProjectRepository _projectRepository;
+    private readonly ILabelRepository _labelRepository;
+    private readonly IAnnotationRepository _annotationRepository;
     private readonly ILogger<LabelSchemeService> _logger;
 
-    public LabelSchemeService(ILabelSchemeRepository labelSchemeRepository, IProjectRepository projectRepository, ILogger<LabelSchemeService> logger)
+    public LabelSchemeService(
+        ILabelSchemeRepository labelSchemeRepository, 
+        IProjectRepository projectRepository,
+        ILabelRepository labelRepository,
+        IAnnotationRepository annotationRepository,
+        ILogger<LabelSchemeService> logger)
     {
         _labelSchemeRepository = labelSchemeRepository;
         _projectRepository = projectRepository;
+        _labelRepository = labelRepository;
+        _annotationRepository = annotationRepository;
         _logger = logger;
     }
 
@@ -41,8 +50,10 @@ public class LabelSchemeService : ILabelSchemeService
             Name = ls.Name,
             Description = ls.Description,
             IsDefault = ls.IsDefault,
+            IsActive = ls.IsActive,
             ProjectId = ls.ProjectId,
-            CreatedAt = ls.CreatedAt
+            CreatedAt = ls.CreatedAt,
+            DeletedAt = ls.DeletedAt
         }).ToArray();
 
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
@@ -68,8 +79,10 @@ public class LabelSchemeService : ILabelSchemeService
             Name = scheme.Name,
             Description = scheme.Description,
             IsDefault = scheme.IsDefault,
+            IsActive = scheme.IsActive,
             ProjectId = scheme.ProjectId,
-            CreatedAt = scheme.CreatedAt
+            CreatedAt = scheme.CreatedAt,
+            DeletedAt = scheme.DeletedAt
         };
     }
 
@@ -114,7 +127,7 @@ public class LabelSchemeService : ILabelSchemeService
 
     public async Task<LabelSchemeDto?> UpdateLabelSchemeAsync(int projectId, int schemeId, UpdateLabelSchemeDto updateDto)
     {
-        var existingScheme = (await _labelSchemeRepository.FindAsync(ls => ls.LabelSchemeId == schemeId && ls.ProjectId == projectId)).FirstOrDefault();
+        var existingScheme = (await _labelSchemeRepository.FindAsync(ls => ls.LabelSchemeId == schemeId && ls.ProjectId == projectId && ls.IsActive)).FirstOrDefault();
         if (existingScheme == null) return null;
 
         var updatedScheme = existingScheme with
@@ -141,11 +154,117 @@ public class LabelSchemeService : ILabelSchemeService
 
     public async Task<bool> DeleteLabelSchemeAsync(int projectId, int schemeId)
     {
-        var scheme = (await _labelSchemeRepository.FindAsync(ls => ls.LabelSchemeId == schemeId && ls.ProjectId == projectId)).FirstOrDefault();
+        var scheme = (await _labelSchemeRepository.FindAsync(ls => ls.LabelSchemeId == schemeId && ls.ProjectId == projectId && ls.IsActive)).FirstOrDefault();
         if (scheme == null) return false;
 
         // TODO: This is hard delete, which will remove all associated labels. Consider if this is the desired behavior.
         _labelSchemeRepository.Remove(scheme);
+        await _labelSchemeRepository.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> SoftDeleteLabelSchemeAsync(int projectId, int schemeId)
+    {
+        var scheme = (await _labelSchemeRepository.FindAsync(ls => ls.LabelSchemeId == schemeId && ls.ProjectId == projectId && ls.IsActive)).FirstOrDefault();
+        if (scheme == null) return false;
+
+        var now = DateTime.UtcNow;
+        
+        // Soft delete the scheme
+        var updatedScheme = scheme with
+        {
+            IsActive = false,
+            DeletedAt = now,
+            UpdatedAt = now
+        };
+
+        _labelSchemeRepository.Update(updatedScheme);
+
+        // Soft delete all labels in the scheme
+        var labels = await _labelRepository.FindAsync(l => l.LabelSchemeId == schemeId && l.IsActive);
+        foreach (var label in labels)
+        {
+            var updatedLabel = label with
+            {
+                IsActive = false,
+                DeletedAt = now,
+                UpdatedAt = now
+            };
+            _labelRepository.Update(updatedLabel);
+        }
+
+        await _labelSchemeRepository.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<LabelSchemeDeletionImpactDto?> GetDeletionImpactAsync(int projectId, int schemeId)
+    {
+        var scheme = (await _labelSchemeRepository.FindAsync(ls => ls.LabelSchemeId == schemeId && ls.ProjectId == projectId && ls.IsActive)).FirstOrDefault();
+        if (scheme == null) return null;
+
+        var labels = await _labelRepository.FindAsync(l => l.LabelSchemeId == schemeId && l.IsActive);
+        var labelImpacts = new List<LabelImpactDto>();
+
+        foreach (var label in labels)
+        {
+            var annotationsCount = await _annotationRepository.CountAsync(a => a.LabelId == label.LabelId);
+            labelImpacts.Add(new LabelImpactDto
+            {
+                LabelId = label.LabelId,
+                LabelName = label.Name,
+                LabelColor = label.Color,
+                AnnotationsCount = annotationsCount
+            });
+        }
+
+        return new LabelSchemeDeletionImpactDto
+        {
+            LabelSchemeId = scheme.LabelSchemeId,
+            LabelSchemeName = scheme.Name,
+            TotalLabelsCount = labels.Count(),
+            TotalAnnotationsCount = labelImpacts.Sum(li => li.AnnotationsCount),
+            LabelImpacts = labelImpacts
+        };
+    }
+
+    public async Task<bool> ReactivateLabelSchemeAsync(int projectId, int schemeId)
+    {
+        var scheme = (await _labelSchemeRepository.FindAsync(ls => ls.LabelSchemeId == schemeId && ls.ProjectId == projectId && !ls.IsActive)).FirstOrDefault();
+        if (scheme == null) return false;
+
+        var now = DateTime.UtcNow;
+        
+        // Check for name conflicts with active schemes
+        var existingActiveScheme = (await _labelSchemeRepository.FindAsync(ls => ls.ProjectId == projectId && ls.Name == scheme.Name && ls.IsActive)).FirstOrDefault();
+        if (existingActiveScheme != null)
+        {
+            _logger.LogWarning("Cannot reactivate label scheme {SchemeId} because another active scheme with name '{Name}' already exists", schemeId, scheme.Name);
+            return false;
+        }
+
+        // Reactivate the scheme
+        var updatedScheme = scheme with
+        {
+            IsActive = true,
+            DeletedAt = null,
+            UpdatedAt = now
+        };
+
+        _labelSchemeRepository.Update(updatedScheme);
+
+        // Reactivate all labels in the scheme (check for conflicts too)
+        var labels = await _labelRepository.FindAsync(l => l.LabelSchemeId == schemeId && !l.IsActive);
+        foreach (var label in labels)
+        {
+            var updatedLabel = label with
+            {
+                IsActive = true,
+                DeletedAt = null,
+                UpdatedAt = now
+            };
+            _labelRepository.Update(updatedLabel);
+        }
+
         await _labelSchemeRepository.SaveChangesAsync();
         return true;
     }
