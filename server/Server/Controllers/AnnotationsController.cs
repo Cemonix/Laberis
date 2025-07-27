@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 namespace server.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/projects/{projectId:int}/[controller]")]
 [ApiController]
 [Authorize]
 [EnableRateLimiting("project")]
