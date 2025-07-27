@@ -134,18 +134,14 @@ public class ProjectMemberService : IProjectMemberService
             return null;
         }
 
-        var updatedMember = member with
-        {
-            Role = updateDto.Role,
-            UpdatedAt = DateTime.UtcNow
-        };
+        member.Role = updateDto.Role;
+        member.UpdatedAt = DateTime.UtcNow;
 
-        _projectMemberRepository.Update(updatedMember);
         await _projectMemberRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully updated project member for project: {ProjectId}, user: {UserId}", projectId, userId);
         
-        return MapToDto(updatedMember);
+        return MapToDto(member);
     }
 
     public async Task<bool> RemoveProjectMemberAsync(int projectId, string userId)
@@ -182,19 +178,15 @@ public class ProjectMemberService : IProjectMemberService
             return null;
         }
 
-        var updatedMember = member with
-        {
-            Role = updateDto.Role,
-            UpdatedAt = DateTime.UtcNow
-        };
+        member.Role = updateDto.Role;
+        member.UpdatedAt = DateTime.UtcNow;
 
-        _projectMemberRepository.Update(updatedMember);
         await _projectMemberRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully updated project member role for project: {ProjectId}, email: {Email}, new role: {Role}", 
             projectId, email, updateDto.Role);
         
-        return MapToDto(updatedMember);
+        return MapToDto(member);
     }
 
     public async Task<bool> RemoveProjectMemberByEmailAsync(int projectId, string email)

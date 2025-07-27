@@ -195,21 +195,17 @@ public class ProjectService : IProjectService
             return null;
         }
 
-        var updatedProject = existingProject with
-        {
-            Name = updateDto.Name,
-            Description = updateDto.Description ?? existingProject.Description,
-            Status = updateDto.Status,
-            AnnotationGuidelinesUrl = updateDto.AnnotationGuidelinesUrl,
-            UpdatedAt = DateTime.UtcNow
-        };
+        existingProject.Name = updateDto.Name ?? existingProject.Name;
+        existingProject.Description = updateDto.Description ?? existingProject.Description;
+        existingProject.AnnotationGuidelinesUrl = updateDto.AnnotationGuidelinesUrl ?? existingProject.AnnotationGuidelinesUrl;
+        existingProject.Status = updateDto.Status;
+        existingProject.UpdatedAt = DateTime.UtcNow;
 
-        _projectRepository.Update(updatedProject);
         await _projectRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully updated project with ID: {ProjectId}", id);
 
-        return MapToDto(updatedProject);
+        return MapToDto(existingProject);
     }
 
     public async Task<bool> DeleteProjectAsync(int id)
@@ -224,13 +220,9 @@ public class ProjectService : IProjectService
         }
 
         // Instead of deleting, we change the project's status.
-        var archivedProject = project with
-        {
-            Status = ProjectStatus.PENDING_DELETION,
-            UpdatedAt = DateTime.UtcNow
-        };
+        project.Status = ProjectStatus.PENDING_DELETION;
+        project.UpdatedAt = DateTime.UtcNow;
 
-        _projectRepository.Update(archivedProject);
         await _projectRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully marked project {ProjectId} as PENDING_DELETION.", id);

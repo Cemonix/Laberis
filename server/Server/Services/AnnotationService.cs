@@ -141,25 +141,22 @@ public class AnnotationService : IAnnotationService
             return null;
         }
 
-        // Create a new entity with updated values
-        var updatedAnnotation = existingAnnotation with
-        {
-            Data = updateDto.Data ?? existingAnnotation.Data,
-            LabelId = updateDto.LabelId ?? existingAnnotation.LabelId,
-            IsPrediction = updateDto.IsPrediction ?? existingAnnotation.IsPrediction,
-            ConfidenceScore = updateDto.ConfidenceScore ?? existingAnnotation.ConfidenceScore,
-            IsGroundTruth = updateDto.IsGroundTruth ?? existingAnnotation.IsGroundTruth,
-            Notes = updateDto.Notes ?? existingAnnotation.Notes,
-            UpdatedAt = DateTime.UtcNow
-        };
+        existingAnnotation.Data = updateDto.Data ?? existingAnnotation.Data;
+        existingAnnotation.LabelId = updateDto.LabelId ?? existingAnnotation.LabelId;
+        existingAnnotation.IsPrediction = updateDto.IsPrediction ??
+        existingAnnotation.IsPrediction;
+        existingAnnotation.ConfidenceScore = updateDto.ConfidenceScore ??
+        existingAnnotation.ConfidenceScore;
+        existingAnnotation.IsGroundTruth = updateDto.IsGroundTruth ??
+        existingAnnotation.IsGroundTruth;
+        existingAnnotation.Notes = updateDto.Notes ?? existingAnnotation.Notes;
+        existingAnnotation.Version++; // Increment version for updates
+        existingAnnotation.UpdatedAt = DateTime.UtcNow;
 
-        // Detach the existing entity to avoid tracking conflicts
-        _annotationRepository.Detach(existingAnnotation);
-        _annotationRepository.Update(updatedAnnotation);
         await _annotationRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully updated annotation with ID: {AnnotationId}", annotationId);
-        return MapToDto(updatedAnnotation);
+        return MapToDto(existingAnnotation);
     }
 
     public async Task<bool> DeleteAnnotationAsync(long annotationId)

@@ -2,32 +2,32 @@ using server.Models.Domain.Enums;
 
 namespace server.Models.Domain;
 
-public record class Asset
+public class Asset
 {
-    public int AssetId { get; init; }
-    public string ExternalId { get; init; } = string.Empty;
-    public string Filename { get; init; } = string.Empty;
-    public string? MimeType { get; init; }
-    public long? SizeBytes { get; init; }
-    public int? Width { get; init; }
-    public int? Height { get; init; }
-    public int? DurationMs { get; init; }
-    public string? Metadata { get; init; }
-    public AssetStatus Status { get; init; }
-    public DateTime? DeletedAt { get; init; }
+    public int AssetId { get; set; }
+    public string ExternalId { get; set; } = string.Empty;
+    public string Filename { get; set; } = string.Empty;
+    public string? MimeType { get; set; }
+    public long? SizeBytes { get; set; }
+    public int? Width { get; set; }
+    public int? Height { get; set; }
+    public int? DurationMs { get; set; }
+    public string? Metadata { get; set; }
+    public AssetStatus Status { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
-    public DateTime CreatedAt { get; init; }
-    public DateTime UpdatedAt { get; init; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     // Foreign Keys
-    public int ProjectId { get; init; }
-    public int DataSourceId { get; init; }
+    public int ProjectId { get; set; }
+    public int DataSourceId { get; set; }
 
     // Navigation Properties
-    public virtual Project Project { get; init; } = null!;
-    public virtual DataSource DataSource { get; init; } = null!;
+    public virtual Project Project { get; set; } = null!;
+    public virtual DataSource DataSource { get; set; } = null!;
 
-    public virtual ICollection<Task> Tasks { get; init; } = [];
-    public virtual ICollection<Annotation> Annotations { get; init; } = [];
-    public virtual ICollection<Issue> Issues { get; init; } = [];
+    public virtual ICollection<Task> Tasks { get; set; } = [];
+    public virtual ICollection<Annotation> Annotations { get; set; } = [];
+    public virtual ICollection<Issue> Issues { get; set; } = [];
 }

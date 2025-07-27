@@ -108,26 +108,22 @@ public class WorkflowStageService : IWorkflowStageService
             return null;
         }
 
-        var updatedStage = stage with
-        {
-            Name = updateDto.Name,
-            Description = updateDto.Description,
-            StageOrder = updateDto.StageOrder,
-            StageType = updateDto.StageType,
-            IsInitialStage = updateDto.IsInitialStage,
-            IsFinalStage = updateDto.IsFinalStage,
-            UiConfiguration = updateDto.UiConfiguration,
-            InputDataSourceId = updateDto.InputDataSourceId,
-            TargetDataSourceId = updateDto.TargetDataSourceId,
-            UpdatedAt = DateTime.UtcNow
-        };
+        stage.Name = updateDto.Name ?? stage.Name;
+        stage.Description = updateDto.Description ?? stage.Description;
+        stage.StageOrder = updateDto.StageOrder;
+        stage.StageType = updateDto.StageType ?? stage.StageType;
+        stage.IsInitialStage = updateDto.IsInitialStage;
+        stage.IsFinalStage = updateDto.IsFinalStage;
+        stage.UiConfiguration = updateDto.UiConfiguration ?? stage.UiConfiguration;
+        stage.InputDataSourceId = updateDto.InputDataSourceId ?? stage.InputDataSourceId;
+        stage.TargetDataSourceId = updateDto.TargetDataSourceId ?? stage.TargetDataSourceId;
+        stage.UpdatedAt = DateTime.UtcNow;
 
-        _workflowStageRepository.Update(updatedStage);
         await _workflowStageRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully updated workflow stage with ID: {StageId}", stageId);
         
-        return MapToDto(updatedStage);
+        return MapToDto(stage);
     }
 
     public async Task<bool> DeleteWorkflowStageAsync(int stageId)
@@ -162,13 +158,10 @@ public class WorkflowStageService : IWorkflowStageService
             {
                 if (stageOrderMap.TryGetValue(stage.WorkflowStageId, out var newOrder))
                 {
-                    var updatedStage = stage with
-                    {
-                        StageOrder = newOrder,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    _workflowStageRepository.Update(updatedStage);
+                    stage.StageOrder = newOrder;
+                    stage.UpdatedAt = DateTime.UtcNow;
                 }
+                
             }
 
             await _workflowStageRepository.SaveChangesAsync();

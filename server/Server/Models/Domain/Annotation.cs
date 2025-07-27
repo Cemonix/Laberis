@@ -3,34 +3,34 @@ using server.Models.Domain.Enums;
 
 namespace server.Models.Domain;
 
-public record Annotation
+public class Annotation
 {
-    public long AnnotationId { get; init; }
-    public AnnotationType AnnotationType { get; init; }
-    public string Data { get; init; } = string.Empty;
-    public bool IsPrediction { get; init; }
-    public double? ConfidenceScore { get; init; }
-    public bool IsGroundTruth { get; init; }
-    public int Version { get; init; }
-    public string? Notes { get; init; }
+    public long AnnotationId { get; set; }
+    public AnnotationType AnnotationType { get; set; }
+    public string Data { get; set; } = string.Empty;
+    public bool IsPrediction { get; set; }
+    public double? ConfidenceScore { get; set; }
+    public bool IsGroundTruth { get; set; }
+    public int Version { get; set; }
+    public string? Notes { get; set; }
 
-    public DateTime CreatedAt { get; init; }
-    public DateTime UpdatedAt { get; init; }
-    public DateTime? DeletedAt { get; init; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
     // Foreign Keys
-    public int TaskId { get; init; }
-    public int AssetId { get; init; }
-    public int LabelId { get; init; }
-    public string AnnotatorUserId { get; init; } = string.Empty;
-    public long? ParentAnnotationId { get; init; }
+    public int TaskId { get; set; }
+    public int AssetId { get; set; }
+    public int LabelId { get; set; }
+    public string AnnotatorUserId { get; set; } = string.Empty;
+    public long? ParentAnnotationId { get; set; }
 
     // Navigation Properties
-    public virtual Task Task { get; init; } = null!;
-    public virtual Asset Asset { get; init; } = null!;
-    public virtual Label Label { get; init; } = null!;
-    public virtual ApplicationUser AnnotatorUser { get; init; } = null!;
-    public virtual Annotation? ParentAnnotation { get; init; }
-    public virtual ICollection<Annotation> ChildAnnotations { get; init; } = [];
-    public virtual ICollection<Issue> Issues { get; init; } = [];
+    public virtual Task Task { get; set; } = null!;
+    public virtual Asset Asset { get; set; } = null!;
+    public virtual Label Label { get; set; } = null!;
+    public virtual ApplicationUser AnnotatorUser { get; set; } = null!;
+    public virtual Annotation? ParentAnnotation { get; set; }
+    public virtual ICollection<Annotation> ChildAnnotations { get; set; } = [];
+    public virtual ICollection<Issue> Issues { get; set; } = [];
 }

@@ -6,5 +6,5 @@ public class ApplicationUser : IdentityUser
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiryTime { get; set; }
     
-    public virtual ICollection<WorkflowStage> WorkflowStages { get; init; } = [];
+    public virtual ICollection<WorkflowStage> WorkflowStages { get; set; } = [];
 }

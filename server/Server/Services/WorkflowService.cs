@@ -224,19 +224,15 @@ public class WorkflowService : IWorkflowService
             return null;
         }
 
-        var updatedWorkflow = workflow with
-        {
-            Name = updateDto.Name,
-            Description = updateDto.Description,
-            UpdatedAt = DateTime.UtcNow
-        };
+        workflow.Name = updateDto.Name ?? workflow.Name;
+        workflow.Description = updateDto.Description ?? workflow.Description;
+        workflow.UpdatedAt = DateTime.UtcNow;
 
-        _workflowRepository.Update(updatedWorkflow);
         await _workflowRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully updated workflow with ID: {WorkflowId}", workflowId);
         
-        return MapToDto(updatedWorkflow);
+        return MapToDto(workflow);
     }
 
     public async Task<bool> DeleteWorkflowAsync(int workflowId)

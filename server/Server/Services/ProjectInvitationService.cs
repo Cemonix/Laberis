@@ -179,14 +179,9 @@ public class ProjectInvitationService : IProjectInvitationService
         await _projectMemberRepository.AddAsync(projectMember);
 
         // Mark invitation as accepted
-        var updatedInvitation = invitation with
-        {
-            IsAccepted = true,
-            UpdatedAt = DateTime.UtcNow
-        };
+        invitation.IsAccepted = true;
+        invitation.UpdatedAt = DateTime.UtcNow;
 
-        _invitationRepository.Detach(invitation);
-        _invitationRepository.Update(updatedInvitation); 
         await _invitationRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully processed invitation token {Token} for user {UserId}", token, userId);

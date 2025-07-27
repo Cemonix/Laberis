@@ -130,17 +130,14 @@ public class LabelSchemeService : ILabelSchemeService
         var existingScheme = (await _labelSchemeRepository.FindAsync(ls => ls.LabelSchemeId == schemeId && ls.ProjectId == projectId && ls.IsActive)).FirstOrDefault();
         if (existingScheme == null) return null;
 
-        var updatedScheme = existingScheme with
-        {
-            Name = updateDto.Name,
-            Description = updateDto.Description,
-            IsDefault = updateDto.IsDefault,
-            UpdatedAt = DateTime.UtcNow
-        };
+        // Update properties directly on the tracked entity
+        existingScheme.Name = updateDto.Name ?? existingScheme.Name;
+        existingScheme.Description = updateDto.Description;
+        existingScheme.UpdatedAt = DateTime.UtcNow;
 
         try
         {
-            _labelSchemeRepository.Update(updatedScheme);
+            // No need to call Update() - EF will detect changes automatically
             await _labelSchemeRepository.SaveChangesAsync();
         }
         catch (DbUpdateException ex)
@@ -149,7 +146,7 @@ public class LabelSchemeService : ILabelSchemeService
             return null; // TODO: Rethrow or handle this more gracefully in the future
         }
 
-        return await GetLabelSchemeByIdAsync(projectId, updatedScheme.LabelSchemeId);
+        return await GetLabelSchemeByIdAsync(projectId, existingScheme.LabelSchemeId);
     }
 
     public async Task<bool> DeleteLabelSchemeAsync(int projectId, int schemeId)
@@ -170,27 +167,18 @@ public class LabelSchemeService : ILabelSchemeService
 
         var now = DateTime.UtcNow;
         
-        // Soft delete the scheme
-        var updatedScheme = scheme with
-        {
-            IsActive = false,
-            DeletedAt = now,
-            UpdatedAt = now
-        };
-
-        _labelSchemeRepository.Update(updatedScheme);
+        // Soft delete the scheme - update properties directly
+        scheme.IsActive = false;
+        scheme.DeletedAt = now;
+        scheme.UpdatedAt = now;
 
         // Soft delete all labels in the scheme
         var labels = await _labelRepository.FindAsync(l => l.LabelSchemeId == schemeId && l.IsActive);
         foreach (var label in labels)
         {
-            var updatedLabel = label with
-            {
-                IsActive = false,
-                DeletedAt = now,
-                UpdatedAt = now
-            };
-            _labelRepository.Update(updatedLabel);
+            label.IsActive = false;
+            label.DeletedAt = now;
+            label.UpdatedAt = now;
         }
 
         await _labelSchemeRepository.SaveChangesAsync();
@@ -242,27 +230,18 @@ public class LabelSchemeService : ILabelSchemeService
             return false;
         }
 
-        // Reactivate the scheme
-        var updatedScheme = scheme with
-        {
-            IsActive = true,
-            DeletedAt = null,
-            UpdatedAt = now
-        };
-
-        _labelSchemeRepository.Update(updatedScheme);
+        // Reactivate the scheme - update properties directly
+        scheme.IsActive = true;
+        scheme.DeletedAt = null;
+        scheme.UpdatedAt = now;
 
         // Reactivate all labels in the scheme (check for conflicts too)
         var labels = await _labelRepository.FindAsync(l => l.LabelSchemeId == schemeId && !l.IsActive);
         foreach (var label in labels)
         {
-            var updatedLabel = label with
-            {
-                IsActive = true,
-                DeletedAt = null,
-                UpdatedAt = now
-            };
-            _labelRepository.Update(updatedLabel);
+            label.IsActive = true;
+            label.DeletedAt = null;
+            label.UpdatedAt = now;
         }
 
         await _labelSchemeRepository.SaveChangesAsync();

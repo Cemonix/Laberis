@@ -2,35 +2,35 @@ using Microsoft.AspNetCore.Identity;
 
 namespace server.Models.Domain;
 
-public record class Task
+public class Task
 {
-    public int TaskId { get; init; }
-    public int Priority { get; init; }
-    public DateTime? DueDate { get; init; }
-    public string? Metadata { get; init; } // TODO: For JSONB, store as string for now
-    public DateTime? CompletedAt { get; init; }
-    public DateTime? ArchivedAt { get; init; }
+    public int TaskId { get; set; }
+    public int Priority { get; set; }
+    public DateTime? DueDate { get; set; }
+    public string? Metadata { get; set; } // TODO: For JSONB, store as string for now
+    public DateTime? CompletedAt { get; set; }
+    public DateTime? ArchivedAt { get; set; }
 
-    public DateTime CreatedAt { get; init; }
-    public DateTime UpdatedAt { get; init; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     // Foreign Keys
-    public int AssetId { get; init; }
-    public int ProjectId { get; init; }
-    public int WorkflowId { get; init; }
-    public int CurrentWorkflowStageId { get; init; }
-    public string? AssignedToUserId { get; init; }
-    public string? LastWorkedOnByUserId { get; init; }
+    public int AssetId { get; set; }
+    public int ProjectId { get; set; }
+    public int WorkflowId { get; set; }
+    public int CurrentWorkflowStageId { get; set; }
+    public string? AssignedToUserId { get; set; }
+    public string? LastWorkedOnByUserId { get; set; }
 
     // Navigation Properties
-    public virtual Asset Asset { get; init; } = null!;
-    public virtual Project Project { get; init; } = null!;
-    public virtual Workflow Workflow { get; init; } = null!;
-    public virtual WorkflowStage CurrentWorkflowStage { get; init; } = null!;
-    public virtual ApplicationUser? AssignedToUser { get; init; }
-    public virtual ApplicationUser? LastWorkedOnByUser { get; init; }
+    public virtual Asset Asset { get; set; } = null!;
+    public virtual Project Project { get; set; } = null!;
+    public virtual Workflow Workflow { get; set; } = null!;
+    public virtual WorkflowStage CurrentWorkflowStage { get; set; } = null!;
+    public virtual ApplicationUser? AssignedToUser { get; set; }
+    public virtual ApplicationUser? LastWorkedOnByUser { get; set; }
 
-    public virtual ICollection<Annotation> Annotations { get; init; } = [];
-    public virtual ICollection<TaskEvent> TaskEvents { get; init; } = [];
-    public virtual ICollection<Issue> Issues { get; init; } = [];
+    public virtual ICollection<Annotation> Annotations { get; set; } = [];
+    public virtual ICollection<TaskEvent> TaskEvents { get; set; } = [];
+    public virtual ICollection<Issue> Issues { get; set; } = [];
 }

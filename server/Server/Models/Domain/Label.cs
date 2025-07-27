@@ -1,23 +1,23 @@
 namespace server.Models.Domain;
 
-public record class Label
+public class Label
 {
-    public int LabelId { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public string? Color { get; init; }
-    public string? Description { get; init; }
-    public string? Metadata { get; init; }
-    public string? OriginalName { get; init; }
-    public bool IsActive { get; init; } = true;
+    public int LabelId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Color { get; set; }
+    public string? Description { get; set; }
+    public string? Metadata { get; set; }
+    public string? OriginalName { get; set; }
+    public bool IsActive { get; set; } = true;
 
-    public DateTime CreatedAt { get; init; }
-    public DateTime UpdatedAt { get; init; }
-    public DateTime? DeletedAt { get; init; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
     // Foreign Key to LabelScheme
-    public int LabelSchemeId { get; init; }
+    public int LabelSchemeId { get; set; }
 
     // Navigation Properties
-    public virtual LabelScheme LabelScheme { get; init; } = null!;
-    public virtual ICollection<Annotation> Annotations { get; init; } = [];
+    public virtual LabelScheme LabelScheme { get; set; } = null!;
+    public virtual ICollection<Annotation> Annotations { get; set; } = [];
 }

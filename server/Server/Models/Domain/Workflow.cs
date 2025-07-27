@@ -1,23 +1,23 @@
 namespace server.Models.Domain;
 
-public record class Workflow
+public class Workflow
 {
-    public int WorkflowId { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public string? Description { get; init; }
+    public int WorkflowId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
 
-    public DateTime CreatedAt { get; init; }
-    public DateTime UpdatedAt { get; init; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     // Foreign Key to Project
-    public int ProjectId { get; init; }
+    public int ProjectId { get; set; }
 
     // Navigation Properties
-    public virtual Project Project { get; init; } = null!;
+    public virtual Project Project { get; set; } = null!;
 
     // A workflow consists of multiple stages
-    public virtual ICollection<WorkflowStage> WorkflowStages { get; init; } = [];
+    public virtual ICollection<WorkflowStage> WorkflowStages { get; set; } = [];
 
     // A workflow definition is used by many tasks
-    public virtual ICollection<Task> Tasks { get; init; } = [];
+    public virtual ICollection<Task> Tasks { get; set; } = [];
 }

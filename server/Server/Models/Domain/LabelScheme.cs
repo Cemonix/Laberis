@@ -1,21 +1,21 @@
 namespace server.Models.Domain;
 
-public record class LabelScheme
+public class LabelScheme
 {
-    public int LabelSchemeId { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public string? Description { get; init; }
-    public bool IsDefault { get; init; }
-    public bool IsActive { get; init; } = true;
+    public int LabelSchemeId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsDefault { get; set; }
+    public bool IsActive { get; set; } = true;
 
-    public DateTime CreatedAt { get; init; }
-    public DateTime UpdatedAt { get; init; }
-    public DateTime? DeletedAt { get; init; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
     // Foreign Key to Project
-    public int ProjectId { get; init; }
+    public int ProjectId { get; set; }
 
     // Navigation Properties
-    public virtual Project Project { get; init; } = null!;
-    public virtual ICollection<Label> Labels { get; init; } = [];
+    public virtual Project Project { get; set; } = null!;
+    public virtual ICollection<Label> Labels { get; set; } = [];
 }

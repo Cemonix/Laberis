@@ -70,20 +70,16 @@ public class WorkflowStageConnectionService : IWorkflowStageConnectionService
             return null;
         }
 
-        var updatedConnection = connection with
-        {
-            FromStageId = updateDto.FromStageId,
-            ToStageId = updateDto.ToStageId,
-            Condition = updateDto.Condition,
-            UpdatedAt = DateTime.UtcNow
-        };
+        connection.FromStageId = updateDto.FromStageId;
+        connection.ToStageId = updateDto.ToStageId;
+        connection.Condition = updateDto.Condition ?? connection.Condition;
+        connection.UpdatedAt = DateTime.UtcNow;
 
-        _connectionRepository.Update(updatedConnection);
         await _connectionRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully updated connection with ID: {ConnectionId}", connectionId);
         
-        return MapToDto(updatedConnection);
+        return MapToDto(connection);
     }
 
     public async Task<bool> DeleteConnectionAsync(int connectionId)

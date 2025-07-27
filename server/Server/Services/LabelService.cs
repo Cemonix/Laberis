@@ -89,14 +89,11 @@ namespace server.Services
             var existingLabel = await _labelRepository.GetByIdAsync(labelId);
             if (existingLabel == null) return null;
             
-            var updatedLabel = existingLabel with
-            {
-                Name = updateDto.Name,
-                Description = updateDto.Description,
-                Color = updateDto.Color
-            };
-
-            _labelRepository.Update(updatedLabel);
+            // Update properties directly on the tracked entity
+            existingLabel.Name = updateDto.Name ?? existingLabel.Name;
+            existingLabel.Description = updateDto.Description;
+            existingLabel.Color = updateDto.Color ?? existingLabel.Color;
+            
             await _labelRepository.SaveChangesAsync();
 
             return await GetLabelByIdAsync(labelId);

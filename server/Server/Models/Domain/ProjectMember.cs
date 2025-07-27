@@ -3,22 +3,22 @@ using server.Models.Domain.Enums;
 
 namespace server.Models.Domain;
 
-public record class ProjectMember
+public class ProjectMember
 {
-    public int ProjectMemberId { get; init; }
-    public ProjectRole Role { get; init; } = ProjectRole.VIEWER;
-    public DateTime InvitedAt { get; init; }
-    public DateTime? JoinedAt { get; init; }
+    public int ProjectMemberId { get; set; }
+    public ProjectRole Role { get; set; } = ProjectRole.VIEWER;
+    public DateTime InvitedAt { get; set; }
+    public DateTime? JoinedAt { get; set; }
 
-    public DateTime CreatedAt { get; init; }
-    public DateTime UpdatedAt { get; init; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     // Foreign Keys
-    public int ProjectId { get; init; }
-    public string UserId { get; init; } = string.Empty;
+    public int ProjectId { get; set; }
+    public string UserId { get; set; } = string.Empty;
 
     // Navigation Properties
-    public virtual Project Project { get; init; } = null!;
-    public virtual ApplicationUser User { get; init; } = null!;
-    public virtual ICollection<WorkflowStageAssignment> WorkflowStageAssignments { get; init; } = [];
+    public virtual Project Project { get; set; } = null!;
+    public virtual ApplicationUser User { get; set; } = null!;
+    public virtual ICollection<WorkflowStageAssignment> WorkflowStageAssignments { get; set; } = [];
 }
