@@ -5,11 +5,13 @@
             <p>Manage collections of assets for annotation. Data sources can be buckets from S3-compatible storage or other origins.</p>
         </div>
         
+        <!-- TODO: Add bulk operations (select multiple, batch delete/archive) -->
         <div class="data-sources-list">
             <div v-if="isLoading" class="loading-message">
                 Loading data sources...
             </div>
             <template v-else>
+                <!-- TODO: Add data source health status indicators -->
                 <DataSourceCard
                     v-for="source in dataSources"
                     :key="source.id"
@@ -18,6 +20,7 @@
                 />
                 <p v-if="!dataSources || dataSources.length === 0" class="no-content-message">
                     No data sources have been created for this project yet.
+                    <!-- TODO: Add quick setup guide for first data source -->
                 </p>
             </template>
         </div>
@@ -98,7 +101,7 @@ const handleCreateDataSource = async (formData: CreateDataSourceRequest) => {
         logger.info(`Created data source: ${newDataSource.name} (ID: ${newDataSource.id})`);
         closeModal();
         
-        // Optionally reload data sources to ensure we have the most up-to-date information
+        // TODO: Implement smart refresh - only reload if necessary
         // await loadDataSources();
     } catch (error) {
         logger.error('Failed to create data source', error);
