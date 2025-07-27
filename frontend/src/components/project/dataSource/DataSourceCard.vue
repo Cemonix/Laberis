@@ -38,7 +38,7 @@ import {computed, ref} from "vue";
 import type {DataSource} from "@/types/dataSource/dataSource";
 import Card from "@/components/common/Card.vue";
 import Button from "@/components/common/Button.vue";
-import UploadImagesModal from "./UploadImagesModal.vue";
+import UploadImagesModal from "@/components/project/UploadImagesModal.vue";
 
 const props = defineProps<{
     dataSource: DataSource;

@@ -145,7 +145,7 @@ class LabelSchemeService extends BaseProjectService {
         this.logger.info('Soft deleting label scheme', { projectId, schemeId });
 
         const url = this.buildProjectUrl(projectId, `labelschemes/${schemeId}/soft-delete`);
-        await this.post(url, {});
+        await this.delete(url);
         
         this.logger.info('Successfully soft deleted label scheme', { projectId, schemeId });
     }
@@ -175,7 +175,7 @@ class LabelSchemeService extends BaseProjectService {
         this.logger.info('Reactivating label scheme', { projectId, schemeId });
 
         const url = this.buildProjectUrl(projectId, `labelschemes/${schemeId}/reactivate`);
-        await this.post(url, {});
+        await this.patch(url, {}, false);
         
         this.logger.info('Successfully reactivated label scheme', { projectId, schemeId });
     }

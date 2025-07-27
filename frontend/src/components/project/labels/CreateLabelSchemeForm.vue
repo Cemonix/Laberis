@@ -30,7 +30,7 @@
                 >Cancel</Button
             >
             <Button 
-                type="submit" 
+                type="submit"
                 class="btn btn-primary"
                 :disabled="props.disabled"
             >
