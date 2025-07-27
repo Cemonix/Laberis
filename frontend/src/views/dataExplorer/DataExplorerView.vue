@@ -35,24 +35,59 @@
             </div>
             
             <div v-else class="content-container">
-                <div v-if="assets.length === 0" class="empty-state">
-                    <h3>No assets found</h3>
-                    <p>This data source doesn't contain any assets yet.</p>
-                    <Button variant="primary" @click="openUploadModal">
-                        Upload Your First Asset
-                    </Button>
-                </div>
-                
-                <div v-else>
-                    <div class="assets-header">
-                        <div class="assets-count">
-                            {{ paginationInfo.totalItems }} asset{{ paginationInfo.totalItems !== 1 ? 's' : '' }}
-                        </div>
-                        <div class="view-controls">
-                            <!-- Add sorting/filtering controls here later -->
+                <div class="assets-header">
+                    <div class="assets-count">
+                        {{ paginationInfo.totalItems }} asset{{ paginationInfo.totalItems !== 1 ? 's' : '' }}
+                    </div>
+                    <div class="view-controls">
+                        <div class="filter-controls">
+                            <!-- TODO: Add more advanced filtering options (date range, file type, size) -->
+                            <select v-model="filterStatus" @change="handleFilterChange" class="filter-select">
+                                <option value="">All Statuses</option>
+                                <option v-for="status in assetStatuses" :key="status.value" :value="status.value">
+                                    {{ status.text }}
+                                </option>
+                            </select>
+                            <!-- TODO: Add autocomplete functionality for filename search -->
+                            <input 
+                                v-model="searchQuery" 
+                                @input="handleSearchChange"
+                                type="text" 
+                                placeholder="Search files..." 
+                                class="search-input"
+                            >
+                            <!-- TODO: Add sort direction toggle and column selector -->
+                            <Button 
+                                v-if="filterStatus || searchQuery"
+                                variant="secondary"
+                                @click="clearFilters"
+                                class="clear-filters-button"
+                            >
+                                Clear Filters
+                            </Button>
                         </div>
                     </div>
-                    
+                </div>
+
+                <!-- Content area that changes based on asset state -->
+                <div v-if="assets.length === 0" class="empty-state">
+                    <div v-if="hasActiveFilters" class="no-results-message">
+                        <h3>No assets match your filters</h3>
+                        <p>Try adjusting your search criteria or clearing the filters.</p>
+                        <Button variant="secondary" @click="clearFilters">
+                            Clear All Filters
+                        </Button>
+                    </div>
+                    <div v-else class="no-assets-message">
+                        <h3>No assets found</h3>
+                        <p>This data source doesn't contain any assets yet.</p>
+                        <Button variant="primary" @click="openUploadModal">
+                            Upload Your First Asset
+                        </Button>
+                    </div>
+                </div>
+                
+                <div v-else class="assets-content">
                     <div class="asset-grid">
                         <AssetThumbnail 
                             v-for="asset in assets" 
@@ -74,8 +109,12 @@
             </div>
         </main>
 
-        <!-- Upload Modal placeholder -->
-        <!-- <UploadModal v-if="isUploadModalOpen" @close="closeUploadModal" /> -->
+        <UploadImagesModal
+            v-if="currentDataSource"
+            v-model:isOpen="isUploadModalOpen"
+            :dataSource="currentDataSource"
+            @upload-complete="handleUploadComplete"
+        />
     </div>
 </template>
 
@@ -84,9 +123,12 @@ import {computed, onMounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {faHome} from '@fortawesome/free-solid-svg-icons';
-import type {Asset, AssetListParams} from '@/types/asset';
+import {type Asset, type AssetListParams} from '@/types/asset';
+import {AssetStatus} from '@/types/asset';
+import type {DataSource} from '@/types/dataSource';
 import AssetThumbnail from '@/components/project/AssetThumbnail.vue';
 import Button from '@/components/common/Button.vue';
+import UploadImagesModal from '@/components/project/UploadImagesModal.vue';
 import {assetService, dataSourceService} from '@/services/api/projects';
 import {useAlert} from '@/composables/useAlert';
 import {AppLogger} from '@/utils/logger';
@@ -101,11 +143,33 @@ const dataSourceId = Number(route.params.dataSourceId);
 
 // Reactive state
 const dataSourceName = ref('Loading...');
+const currentDataSource = ref<DataSource | null>(null);
 const assets = ref<Asset[]>([]);
 const isLoading = ref(false);
 const isLoadingMore = ref(false);
 const error = ref<string | null>(null);
 const isUploadModalOpen = ref(false);
+const filterStatus = ref('');
+const searchQuery = ref('');
+const searchTimeout = ref<NodeJS.Timeout | null>(null);
+
+const assetStatuses = ref([
+    { value: AssetStatus.PENDING_IMPORT, text: 'Pending Import' },
+    { value: AssetStatus.IMPORTED, text: 'Imported' },
+    { value: AssetStatus.IMPORT_ERROR, text: 'Import Error' },
+    { value: AssetStatus.PENDING_PROCESSING, text: 'Pending Processing' },
+    { value: AssetStatus.PROCESSING, text: 'Processing' },
+    { value: AssetStatus.PROCESSING_ERROR, text: 'Processing Error' },
+    { value: AssetStatus.READY_FOR_ANNOTATION, text: 'Ready for Annotation' },
+    { value: AssetStatus.ANNOTATION_IN_PROGRESS, text: 'Annotation in Progress' },
+    { value: AssetStatus.ANNOTATED, text: 'Annotated' },
+    { value: AssetStatus.PENDING_REVIEW, text: 'Pending Review' },
+    { value: AssetStatus.REVIEW_IN_PROGRESS, text: 'Review in Progress' },
+    { value: AssetStatus.REVIEW_ACCEPTED, text: 'Review Accepted' },
+    { value: AssetStatus.REVIEW_REJECTED, text: 'Review Rejected' },
+    { value: AssetStatus.EXPORTED, text: 'Exported' },
+    { value: AssetStatus.ARCHIVED, text: 'Archived' }
+]);
 
 // Pagination state
 const currentPage = ref(1);
@@ -121,14 +185,19 @@ const hasMoreAssets = computed(() =>
     paginationInfo.value.currentPage < paginationInfo.value.totalPages
 );
 
+const hasActiveFilters = computed(() => 
+    Boolean(filterStatus.value || (searchQuery.value && searchQuery.value.trim()))
+);
+
 // Methods
 const navigateToProject = () => {
-    router.push(`/projects/${projectId}`);
+    router.push(`/projects/${projectId}/data-sources`);
 };
 
 const loadDataSource = async () => {
     try {
         const dataSource = await dataSourceService.getDataSource(projectId, dataSourceId);
+        currentDataSource.value = dataSource;
         dataSourceName.value = dataSource.name;
         logger.info(`Loaded data source: ${dataSource.name}`);
     } catch (err) {
@@ -152,12 +221,21 @@ const loadAssets = async (page: number = 1, append: boolean = false) => {
             pageSize: pageSize.value,
             dataSourceId: dataSourceId,
             sortBy: 'createdAt',
-            sortOrder: 'desc'
+            isAscending: false // desc order for newest first
         };
+
+        // Add filter parameters only if they have values
+        if (filterStatus.value) {
+            params.filterOn = 'status';
+            params.filterQuery = filterStatus.value;
+        } else if (searchQuery.value && searchQuery.value.trim()) {
+            params.filterOn = 'filename';
+            params.filterQuery = searchQuery.value.trim();
+        }
 
         const response = await assetService.getAssets(projectId, params);
 
-        // TODO: Handle empty response gracefully
+        // TODO: Implement empty response handling with user-friendly messages
 
         if (append) {
             assets.value.push(...response.data);
@@ -200,8 +278,37 @@ const refreshAssets = async () => {
 
 const openUploadModal = () => {
     isUploadModalOpen.value = true;
-    // TODO: Implement upload modal
-    logger.info('Upload modal would open here');
+};
+
+const handleUploadComplete = async (count: number) => {
+    isUploadModalOpen.value = false;
+    logger.info(`Upload completed: ${count} assets`);
+    await showAlert('Success', `Successfully uploaded ${count} asset${count !== 1 ? 's' : ''}`);
+    // Refresh assets to show newly uploaded ones
+    await refreshAssets();
+};
+
+const handleFilterChange = () => {
+    currentPage.value = 1;
+    loadAssets(1, false);
+};
+
+const handleSearchChange = () => {
+    // Debounce search to avoid too many API calls
+    if (searchTimeout.value) {
+        clearTimeout(searchTimeout.value);
+    }
+    searchTimeout.value = setTimeout(() => {
+        currentPage.value = 1;
+        loadAssets(1, false);
+    }, 500);
+};
+
+const clearFilters = () => {
+    filterStatus.value = '';
+    searchQuery.value = '';
+    currentPage.value = 1;
+    loadAssets(1, false);
 };
 
 // Lifecycle
@@ -213,7 +320,7 @@ onMounted(async () => {
 });
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .explorer-container {
     display: flex;
     flex-direction: column;
@@ -229,7 +336,7 @@ onMounted(async () => {
     background-color: var(--color-white);
     border-bottom: 1px solid var(--color-gray-400);
     flex-shrink: 0;
-    box-shadow: 0 1px 3px rgba(var(--color-black), 0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .breadcrumbs {
@@ -237,33 +344,34 @@ onMounted(async () => {
     align-items: center;
     gap: 0.5rem;
     font-size: 1.25rem;
+}
 
-    .home-button {
-        min-width: 32px;
-        height: 32px;
-        padding: 0;
-        margin-right: 0.5rem;
-        font-size: 1.2rem;
-        font-weight: bold;
-    }
+.breadcrumbs .home-button {
+    min-width: 32px;
+    height: 32px;
+    padding: 0;
+    margin-right: 0.5rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
 
-    a {
-        color: var(--color-primary);
-        text-decoration: none;
-        &:hover {
-            text-decoration: underline;
-        }
-    }
-    
-    .separator {
-        color: var(--color-gray-600);
-        margin: 0 0.25rem;
-    }
+.breadcrumbs a {
+    color: var(--color-primary);
+    text-decoration: none;
+}
 
-    .current-source-name {
-        color: var(--color-gray-800);
-        font-weight: 600;
-    }
+.breadcrumbs a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumbs .separator {
+    color: var(--color-gray-600);
+    margin: 0 0.25rem;
+}
+
+.breadcrumbs .current-source-name {
+    color: var(--color-gray-800);
+    font-weight: 600;
 }
 
 .header-right {
@@ -306,19 +414,27 @@ onMounted(async () => {
     min-height: 50vh;
     gap: 1.5rem;
     text-align: center;
+}
 
-    h3 {
-        font-size: 1.5rem;
-        color: var(--color-gray-800);
-        margin: 0;
-    }
+.no-results-message,
+.no-assets-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
 
-    p {
-        font-size: 1.25rem;
-        color: var(--color-gray-600);
-        margin: 0;
-        max-width: 50ch;
-    }
+.empty-state h3 {
+    font-size: 1.5rem;
+    color: var(--color-gray-800);
+    margin: 0;
+}
+
+.empty-state p {
+    font-size: 1.25rem;
+    color: var(--color-gray-600);
+    margin: 0;
+    max-width: 50ch;
 }
 
 .assets-header {
@@ -336,6 +452,49 @@ onMounted(async () => {
     color: var(--color-gray-800);
 }
 
+.view-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.filter-select,
+.search-input {
+    padding: 0.5rem;
+    border: 1px solid var(--color-gray-400);
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    background-color: var(--color-white);
+}
+
+.filter-select {
+    min-width: 160px;
+}
+
+.search-input {
+    min-width: 200px;
+}
+
+.filter-select:focus,
+.search-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.clear-filters-button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    margin-left: 0.5rem;
+}
+
 .asset-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -349,7 +508,6 @@ onMounted(async () => {
     padding: 1.5rem 0;
 }
 
-// Responsive adjustments
 @media (max-width: 768px) {
     .explorer-header {
         flex-direction: column;
@@ -363,6 +521,23 @@ onMounted(async () => {
 
     .header-right {
         justify-content: center;
+    }
+
+    .assets-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+
+    .filter-controls {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .filter-select,
+    .search-input {
+        min-width: auto;
+        width: 100%;
     }
 
     .asset-grid {
