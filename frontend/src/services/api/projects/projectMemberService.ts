@@ -37,6 +37,24 @@ class ProjectMemberService extends BaseProjectService {
     }
 
     /**
+     * Gets the current user's membership info for a project
+     */
+    async getCurrentUserMembership(projectId: number): Promise<ProjectMember | null> {
+        this.logger.info(`Fetching current user membership for project ${projectId}`);
+        
+        try {
+            const url = this.buildProjectUrl(projectId, 'projectmembers/my-membership');
+            const response = await this.get<ProjectMember>(url);
+            
+            this.logger.info(`Current user role in project ${projectId}: ${response.role}`);
+            return response;
+        } catch (error) {
+            this.logger.warn(`Current user is not a member of project ${projectId}`, error);
+            return null;
+        }
+    }
+
+    /**
      * Removes a member from the project by email
      */
     async removeMember(projectId: number, email: string): Promise<void> {

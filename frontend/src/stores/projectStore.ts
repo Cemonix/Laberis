@@ -6,6 +6,7 @@ import type { Label } from "@/types/label/label";
 import type { ProjectRole } from "@/types/project/project";
 import { useErrorHandler } from "@/composables/useErrorHandler";
 import { AppLogger } from "@/utils/logger";
+import { LastProjectManager } from "@/core/storage";
 
 const logger = AppLogger.createServiceLogger("ProjectStore");
 
@@ -60,6 +61,9 @@ export const useProjectStore = defineStore("project", {
                 const project = await projectService.getProject(projectId);
                 this.currentProject = project;
                 logger.info(`Loaded project: ${project.name} (ID: ${projectId})`);
+
+                // Save this project as the user's last accessed project
+                LastProjectManager.saveLastProject(projectId, project.name);
 
                 // Load related data in parallel
                 await Promise.all([
@@ -160,6 +164,18 @@ export const useProjectStore = defineStore("project", {
             this.teamMembers = [];
             this.projectLabels = [];
             logger.info("Cleared project data");
+        },
+
+        clearLastProject(): void {
+            LastProjectManager.clearLastProject();
+        },
+
+        getLastProject() {
+            return LastProjectManager.getLastProject();
+        },
+
+        hasLastProject(): boolean {
+            return LastProjectManager.hasLastProject();
         },
 
         async refreshTeamMembers(): Promise<void> {
