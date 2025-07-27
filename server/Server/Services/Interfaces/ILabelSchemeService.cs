@@ -55,4 +55,28 @@ public interface ILabelSchemeService
     /// <param name="schemeId">The ID of the label scheme to delete.</param>
     /// <returns>True if the label scheme was successfully deleted, otherwise false.</returns>
     Task<bool> DeleteLabelSchemeAsync(int projectId, int schemeId);
+
+    /// <summary>
+    /// Soft deletes a label scheme and all its labels, keeping annotations intact.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="schemeId">The ID of the label scheme to soft delete.</param>
+    /// <returns>True if the label scheme was successfully soft deleted, otherwise false.</returns>
+    Task<bool> SoftDeleteLabelSchemeAsync(int projectId, int schemeId);
+
+    /// <summary>
+    /// Gets statistics about potential impact of deleting a label scheme.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="schemeId">The ID of the label scheme.</param>
+    /// <returns>Statistics about annotations that would be affected.</returns>
+    Task<LabelSchemeDeletionImpactDto?> GetDeletionImpactAsync(int projectId, int schemeId);
+
+    /// <summary>
+    /// Reactivates a soft-deleted label scheme.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="schemeId">The ID of the label scheme to reactivate.</param>
+    /// <returns>True if the label scheme was successfully reactivated, otherwise false.</returns>
+    Task<bool> ReactivateLabelSchemeAsync(int projectId, int schemeId);
 }

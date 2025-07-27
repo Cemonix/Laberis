@@ -41,10 +41,21 @@ public class LabelSchemeConfiguration : IEntityTypeConfiguration<LabelScheme>
             .HasDefaultValueSql("CURRENT_TIMESTAMP")
             .ValueGeneratedOnAddOrUpdate();
 
+        entity.Property(ls => ls.DeletedAt)
+            .HasColumnName("deleted_at")
+            .IsRequired(false);
+
+        entity.Property(ls => ls.IsActive)
+            .HasColumnName("is_active")
+            .IsRequired()
+            .HasDefaultValue(true);
+
         entity.Property(ls => ls.ProjectId).HasColumnName("project_id");
 
-        // Unique constraint for Name within a Project
-        entity.HasIndex(ls => new { ls.ProjectId, ls.Name }).IsUnique();
+        // Unique constraint for Name within a Project (only for active schemes)
+        entity.HasIndex(ls => new { ls.ProjectId, ls.Name, ls.IsActive })
+            .IsUnique()
+            .HasFilter("is_active = true");
 
         // Relationship: LabelScheme to Labels (One-to-Many)
         entity.HasMany(ls => ls.Labels)

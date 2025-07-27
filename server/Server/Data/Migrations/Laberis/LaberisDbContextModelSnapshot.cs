@@ -583,9 +583,19 @@ namespace server.Data.Migrations.Laberis
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
 
                     b.Property<int>("LabelSchemeId")
                         .HasColumnType("integer")
@@ -601,6 +611,11 @@ namespace server.Data.Migrations.Laberis
                         .HasColumnType("character varying(255)")
                         .HasColumnName("name");
 
+                    b.Property<string>("OriginalName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("original_name");
+
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("timestamp with time zone")
@@ -609,8 +624,9 @@ namespace server.Data.Migrations.Laberis
 
                     b.HasKey("LabelId");
 
-                    b.HasIndex("LabelSchemeId", "Name")
-                        .IsUnique();
+                    b.HasIndex("LabelSchemeId", "Name", "IsActive")
+                        .IsUnique()
+                        .HasFilter("is_active = true");
 
                     b.ToTable("labels", (string)null);
                 });
@@ -630,9 +646,19 @@ namespace server.Data.Migrations.Laberis
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
 
                     b.Property<bool>("IsDefault")
                         .ValueGeneratedOnAdd()
@@ -658,8 +684,9 @@ namespace server.Data.Migrations.Laberis
 
                     b.HasKey("LabelSchemeId");
 
-                    b.HasIndex("ProjectId", "Name")
-                        .IsUnique();
+                    b.HasIndex("ProjectId", "Name", "IsActive")
+                        .IsUnique()
+                        .HasFilter("is_active = true");
 
                     b.ToTable("label_schemes", (string)null);
                 });
