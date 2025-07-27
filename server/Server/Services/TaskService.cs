@@ -141,23 +141,20 @@ public class TaskService : ITaskService
             return null;
         }
 
-        var updatedTask = existingTask with
-        {
-            Priority = updateDto.Priority,
-            AssignedToUserId = updateDto.AssignedToUserId ?? existingTask.AssignedToUserId,
-            CurrentWorkflowStageId = updateDto.CurrentWorkflowStageId ?? existingTask.CurrentWorkflowStageId,
-            DueDate = updateDto.DueDate ?? existingTask.DueDate,
-            Metadata = updateDto.Metadata ?? existingTask.Metadata,
-            CompletedAt = updateDto.CompletedAt ?? existingTask.CompletedAt,
-            ArchivedAt = updateDto.ArchivedAt ?? existingTask.ArchivedAt,
-            UpdatedAt = DateTime.UtcNow
-        };
+        // Update the task properties
+        existingTask.Priority = updateDto.Priority;
+        existingTask.AssignedToUserId = updateDto.AssignedToUserId ?? existingTask.AssignedToUserId;
+        existingTask.CurrentWorkflowStageId = updateDto.CurrentWorkflowStageId ?? existingTask.CurrentWorkflowStageId;
+        existingTask.DueDate = updateDto.DueDate ?? existingTask.DueDate;
+        existingTask.Metadata = updateDto.Metadata ?? existingTask.Metadata;
+        existingTask.CompletedAt = updateDto.CompletedAt ?? existingTask.CompletedAt;
+        existingTask.ArchivedAt = updateDto.ArchivedAt ?? existingTask.ArchivedAt;
+        existingTask.UpdatedAt = DateTime.UtcNow;
 
-        _taskRepository.Update(updatedTask);
         await _taskRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully updated task with ID: {TaskId}", taskId);
-        return MapToDto(updatedTask);
+        return MapToDto(existingTask);
     }
 
     public async Task<bool> DeleteTaskAsync(int taskId)
@@ -190,13 +187,9 @@ public class TaskService : ITaskService
             return null;
         }
 
-        var updatedTask = existingTask with
-        {
-            AssignedToUserId = userId,
-            UpdatedAt = DateTime.UtcNow
-        };
+        existingTask.AssignedToUserId = userId;
+        existingTask.UpdatedAt = DateTime.UtcNow;
 
-        _taskRepository.Update(updatedTask);
         await _taskRepository.SaveChangesAsync();
 
         // Create a task event for the assignment
@@ -213,7 +206,7 @@ public class TaskService : ITaskService
         await _taskEventRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully assigned task {TaskId} to user: {UserId}", taskId, userId);
-        return MapToDto(updatedTask);
+        return MapToDto(existingTask);
     }
 
     public async Task<TaskDto?> MoveTaskToStageAsync(int taskId, int workflowStageId, string userId)
@@ -229,13 +222,9 @@ public class TaskService : ITaskService
 
         var previousStageId = existingTask.CurrentWorkflowStageId;
 
-        var updatedTask = existingTask with
-        {
-            CurrentWorkflowStageId = workflowStageId,
-            UpdatedAt = DateTime.UtcNow
-        };
+        existingTask.CurrentWorkflowStageId = workflowStageId;
+        existingTask.UpdatedAt = DateTime.UtcNow;
 
-        _taskRepository.Update(updatedTask);
         await _taskRepository.SaveChangesAsync();
 
         // Create a task event for the stage movement
@@ -254,7 +243,7 @@ public class TaskService : ITaskService
         await _taskEventRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully moved task {TaskId} to workflow stage: {WorkflowStageId}", taskId, workflowStageId);
-        return MapToDto(updatedTask);
+        return MapToDto(existingTask);
     }
 
     public async Task<int> CreateTasksForAllAssetsAsync(int projectId, int workflowId, int initialStageId)

@@ -3,37 +3,37 @@ using server.Models.Domain.Enums;
 
 namespace server.Models.Domain;
 
-public record class WorkflowStage
+public class WorkflowStage
 {
-    public int WorkflowStageId { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public string? Description { get; init; }
-    public int StageOrder { get; init; }
-    public WorkflowStageType? StageType { get; init; }
-    public bool IsInitialStage { get; init; }
-    public bool IsFinalStage { get; init; }
-    public string? UiConfiguration { get; init; } // TODO: Remove this column
+    public int WorkflowStageId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int StageOrder { get; set; }
+    public WorkflowStageType? StageType { get; set; }
+    public bool IsInitialStage { get; set; }
+    public bool IsFinalStage { get; set; }
+    public string? UiConfiguration { get; set; } // TODO: Remove this column
 
-    public DateTime CreatedAt { get; init; }
-    public DateTime UpdatedAt { get; init; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     // Foreign Keys
-    public int WorkflowId { get; init; }
-    public int? InputDataSourceId { get; init; }
-    public int? TargetDataSourceId { get; init; }
+    public int WorkflowId { get; set; }
+    public int? InputDataSourceId { get; set; }
+    public int? TargetDataSourceId { get; set; }
 
     // Navigation Properties
-    public virtual Workflow Workflow { get; init; } = null!; // Required parent workflow
-    public virtual DataSource? InputDataSource { get; init; }
-    public virtual DataSource? TargetDataSource { get; init; }
+    public virtual Workflow Workflow { get; set; } = null!; // Required parent workflow
+    public virtual DataSource? InputDataSource { get; set; }
+    public virtual DataSource? TargetDataSource { get; set; }
 
     // Stage Pipeline Relationships via connections
-    public virtual ICollection<WorkflowStageConnection> IncomingConnections { get; init; } = [];
-    public virtual ICollection<WorkflowStageConnection> OutgoingConnections { get; init; } = [];
+    public virtual ICollection<WorkflowStageConnection> IncomingConnections { get; set; } = [];
+    public virtual ICollection<WorkflowStageConnection> OutgoingConnections { get; set; } = [];
 
     // Tasks currently at this stage
-    public virtual ICollection<Task> TasksAtThisStage { get; init; } = [];
+    public virtual ICollection<Task> TasksAtThisStage { get; set; } = [];
 
     // User assignments with roles for this stage
-    public virtual ICollection<WorkflowStageAssignment> StageAssignments { get; init; } = [];
+    public virtual ICollection<WorkflowStageAssignment> StageAssignments { get; set; } = [];
 }

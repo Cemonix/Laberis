@@ -179,26 +179,22 @@ public class AssetService : IAssetService
             return null;
         }
 
-        var updatedAsset = asset with
-        {
-            Filename = updateDto.Filename ?? asset.Filename,
-            MimeType = updateDto.MimeType ?? asset.MimeType,
-            SizeBytes = updateDto.SizeBytes ?? asset.SizeBytes,
-            Width = updateDto.Width ?? asset.Width,
-            Height = updateDto.Height ?? asset.Height,
-            DurationMs = updateDto.DurationMs ?? asset.DurationMs,
-            Metadata = updateDto.Metadata ?? asset.Metadata,
-            Status = updateDto.Status,
-            DataSourceId = updateDto.DataSourceId ?? asset.DataSourceId,
-            UpdatedAt = DateTime.UtcNow
-        };
+        asset.Filename = updateDto.Filename ?? asset.Filename;
+        asset.MimeType = updateDto.MimeType ?? asset.MimeType;
+        asset.SizeBytes = updateDto.SizeBytes ?? asset.SizeBytes;
+        asset.Width = updateDto.Width ?? asset.Width;
+        asset.Height = updateDto.Height ?? asset.Height;
+        asset.DurationMs = updateDto.DurationMs ?? asset.DurationMs;
+        asset.Metadata = updateDto.Metadata ?? asset.Metadata;
+        asset.Status = updateDto.Status;
+        asset.DataSourceId = updateDto.DataSourceId ?? asset.DataSourceId;
+        asset.UpdatedAt = DateTime.UtcNow;
 
-        _assetRepository.Update(updatedAsset);
         await _assetRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully updated asset with ID: {AssetId}", assetId);
         
-        return MapToDto(updatedAsset);
+        return MapToDto(asset);
     }
 
     public async Task<bool> DeleteAssetAsync(int assetId)

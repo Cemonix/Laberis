@@ -138,22 +138,18 @@ public class IssueService : IIssueService
             return null;
         }
 
-        var updatedIssue = existingIssue with
-        {
-            Description = updateDto.Description ?? existingIssue.Description,
-            Status = updateDto.Status ?? existingIssue.Status,
-            Priority = updateDto.Priority ?? existingIssue.Priority,
-            IssueType = updateDto.IssueType ?? existingIssue.IssueType,
-            ResolutionDetails = updateDto.ResolutionDetails ?? existingIssue.ResolutionDetails,
-            AssignedToUserId = updateDto.AssignedToUserId ?? existingIssue.AssignedToUserId,
-            UpdatedAt = DateTime.UtcNow
-        };
+        existingIssue.Description = updateDto.Description ?? existingIssue.Description;
+        existingIssue.Status = updateDto.Status ?? existingIssue.Status;
+        existingIssue.Priority = updateDto.Priority ?? existingIssue.Priority;
+        existingIssue.IssueType = updateDto.IssueType ?? existingIssue.IssueType;
+        existingIssue.ResolutionDetails = updateDto.ResolutionDetails ?? existingIssue.ResolutionDetails;
+        existingIssue.AssignedToUserId = updateDto.AssignedToUserId ?? existingIssue.AssignedToUserId;
+        existingIssue.UpdatedAt = DateTime.UtcNow;
 
-        _issueRepository.Update(updatedIssue);
         await _issueRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully updated issue with ID: {IssueId}", issueId);
-        return MapToDto(updatedIssue);
+        return MapToDto(existingIssue);
     }
 
     public async Task<bool> DeleteIssueAsync(int issueId)

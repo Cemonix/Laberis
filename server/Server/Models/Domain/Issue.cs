@@ -3,31 +3,31 @@ using server.Models.Domain.Enums;
 
 namespace server.Models.Domain;
 
-public record class Issue
+public class Issue
 {
-    public int IssueId { get; init; }
-    public string Description { get; init; } = string.Empty;
-    public IssueStatus Status { get; init; }
-    public int Priority { get; init; }
-    public IssueType? IssueType { get; init; }
-    public string? ResolutionDetails { get; init; }
-    public DateTime? ResolvedAt { get; init; }
+    public int IssueId { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public IssueStatus Status { get; set; }
+    public int Priority { get; set; }
+    public IssueType? IssueType { get; set; }
+    public string? ResolutionDetails { get; set; }
+    public DateTime? ResolvedAt { get; set; }
 
-    public DateTime CreatedAt { get; init; }
-    public DateTime UpdatedAt { get; init; }
-    public DateTime? DeletedAt { get; init; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
     // Foreign Keys
-    public int? TaskId { get; init; }
-    public int AssetId { get; init; }
-    public long? AnnotationId { get; init; }
-    public string ReportedByUserId { get; init; } = string.Empty;
-    public string? AssignedToUserId { get; init; }
+    public int? TaskId { get; set; }
+    public int AssetId { get; set; }
+    public long? AnnotationId { get; set; }
+    public string ReportedByUserId { get; set; } = string.Empty;
+    public string? AssignedToUserId { get; set; }
 
     // Navigation Properties
-    public virtual Task? Task { get; init; }
-    public virtual Asset Asset { get; init; } = null!;
-    public virtual Annotation? Annotation { get; init; }
-    public virtual ApplicationUser ReportedByUser { get; init; } = null!;
-    public virtual ApplicationUser? AssignedToUser { get; init; }
+    public virtual Task? Task { get; set; }
+    public virtual Asset Asset { get; set; } = null!;
+    public virtual Annotation? Annotation { get; set; }
+    public virtual ApplicationUser ReportedByUser { get; set; } = null!;
+    public virtual ApplicationUser? AssignedToUser { get; set; }
 }

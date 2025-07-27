@@ -134,16 +134,12 @@ namespace server.Services
             var existingDataSource = await _dataSourceRepository.GetByIdAsync(dataSourceId);
             if (existingDataSource == null) return null;
 
-            var updatedDataSource = existingDataSource with
-            {
-                Name = updateDto.Name,
-                Description = updateDto.Description,
-                Status = updateDto.Status,
-                ConnectionDetails = updateDto.ConnectionDetails,
-                UpdatedAt = DateTime.UtcNow
-            };
-            
-            _dataSourceRepository.Update(updatedDataSource);
+            existingDataSource.Name = updateDto.Name ?? existingDataSource.Name;
+            existingDataSource.Description = updateDto.Description ?? existingDataSource.Description;
+            existingDataSource.Status = updateDto.Status;
+            existingDataSource.ConnectionDetails = updateDto.ConnectionDetails ?? existingDataSource.ConnectionDetails;
+            existingDataSource.UpdatedAt = DateTime.UtcNow;
+
             await _dataSourceRepository.SaveChangesAsync();
 
             return await GetDataSourceByIdAsync(dataSourceId);
