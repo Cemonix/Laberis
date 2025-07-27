@@ -169,7 +169,7 @@ import {ApiResponseError, NetworkError, ServerError} from '@/types/common/errors
 import {AppLogger} from '@/utils/logger';
 import {useAlert} from '@/composables/useAlert';
 import {useToast} from '@/composables/useToast';
-import assetService from '@/services/api/assetService';
+import {assetService} from '@/services/api/projects';
 
 const logger = AppLogger.createComponentLogger('UploadImagesModal');
 

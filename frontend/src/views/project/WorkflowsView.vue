@@ -44,7 +44,7 @@ import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateWorkflowWizard from '@/components/project/workflow/CreateWorkflowWizard.vue';
 import Button from '@/components/common/Button.vue';
 import {type CreateWorkflowWithStagesRequest, type Workflow} from '@/types/workflow';
-import {workflowService} from '@/services/api/workflowService';
+import {workflowService} from '@/services/api/workflows';
 import {useAlert} from '@/composables/useAlert';
 import {AppLogger} from '@/utils/logger';
 import {useConfirm} from '@/composables/useConfirm';

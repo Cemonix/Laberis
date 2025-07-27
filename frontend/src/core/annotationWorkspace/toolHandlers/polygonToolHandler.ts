@@ -38,7 +38,7 @@ export class PolygonToolHandler implements ToolHandler {
         const clickPoint = { x: imageX, y: imageY };
 
         // Set image dimensions for speed mode calculations
-        if (store.getCurrentAsset && store.getCurrentAsset) {
+        if (store.getCurrentAsset && store.getCurrentAsset.width && store.getCurrentAsset.height) {
             const asset = store.getCurrentAsset;
             this.imageDimensions = { width: asset.width, height: asset.height };
         }

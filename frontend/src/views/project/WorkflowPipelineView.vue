@@ -27,7 +27,7 @@ import {onMounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import WorkflowPipelineViewer from '@/components/project/workflow/WorkflowPipelineViewer.vue';
 import type {WorkflowStagePipeline} from '@/types/workflow';
-import {workflowStageService} from '@/services/api/workflowStageService';
+import {workflowStageService} from '@/services/api/workflows';
 import {useErrorHandler} from '@/composables/useErrorHandler';
 import {AppLogger} from '@/utils/logger';
 

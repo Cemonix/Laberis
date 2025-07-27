@@ -1,6 +1,6 @@
 import { ref, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { projectService } from '@/services/api/projectService';
+import { projectService } from '@/services/api/projects';
 import { useProjectStore } from '@/stores/projectStore';
 import { useErrorHandler } from '@/composables/useErrorHandler';
 import { AppLogger } from '@/utils/logger';
