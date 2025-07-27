@@ -1,63 +1,68 @@
-import apiClient from './apiClient';
-import { transformApiError, isValidApiResponse } from '@/services/utils';
+import { BaseService } from './base';
 import type { ProjectInvitationDto } from '@/types/projectInvitation';
 
-class ProjectInvitationService {
+/**
+ * Service class for managing project invitations.
+ * Extends BaseService to inherit common functionality.
+ */
+class ProjectInvitationService extends BaseService {
+    protected readonly baseUrl = '/invitations';
+
+    constructor() {
+        super('ProjectInvitationService');
+    }
+
     /**
      * Validates an invitation token
-     * @param token The invitation token to validate
-     * @returns The invitation details if valid, throws error if invalid
      */
     async validateInvitationToken(token: string): Promise<ProjectInvitationDto> {
+        this.logger.info('Validating invitation token', { tokenLength: token.length });
+
         try {
             const encodedToken = encodeURIComponent(token);
-            const response = await apiClient.get<ProjectInvitationDto>(`/invitations/validate/${encodedToken}`);
+            const url = this.getBaseUrl(`validate/${encodedToken}`);
+            const response = await this.get<ProjectInvitationDto>(url);
 
-            if (!isValidApiResponse(response)) {
-                throw new Error('Invalid response format');
-            }
-
-            return response.data;
+            this.logger.info('Invitation token validated successfully');
+            return response;
         } catch (error: any) {
             // Handle 404 as expected business logic (invalid/expired token)
             if (error.response?.status === 404) {
+                this.logger.warn('Invitation token not found or expired');
                 throw new Error('');
             }
             
-            // Handle other errors with the standard error transform
-            throw transformApiError(error, 'Failed to validate invitation token');
+            this.logger.error('Failed to validate invitation token', error);
+            throw error;
         }
     }
 
     /**
      * Accepts an invitation for an existing authenticated user
-     * @param token The invitation token to accept
-     * @returns Success response
      */
     async acceptInvitation(token: string): Promise<void> {
+        this.logger.info('Accepting invitation', { tokenLength: token.length });
+
         try {
             const encodedToken = encodeURIComponent(token);
-            const response = await apiClient.post(`/invitations/accept/${encodedToken}`);
+            const url = this.getBaseUrl(`accept/${encodedToken}`);
+            await this.post<void, void>(url, undefined, false);
 
-            if (!isValidApiResponse(response)) {
-                throw new Error('Invalid response format');
-            }
+            this.logger.info('Invitation accepted successfully');
         } catch (error: any) {
             // Handle specific error cases
             if (error.response?.status === 404) {
+                this.logger.warn('Invitation token not found when accepting');
                 throw new Error('Invalid or expired invitation token');
             }
             
-            if (error.response?.status === 400) {
-                throw new Error('Invalid, expired, or already accepted invitation token');
-            }
-
             if (error.response?.status === 409) {
+                this.logger.warn('User already member of project');
                 throw new Error('You are already a member of this project');
             }
-            
-            // Handle other errors with the standard error transform
-            throw transformApiError(error, 'Failed to accept invitation');
+
+            this.logger.error('Failed to accept invitation', error);
+            throw error;
         }
     }
 }
