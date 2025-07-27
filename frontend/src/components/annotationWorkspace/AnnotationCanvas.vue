@@ -960,7 +960,7 @@ onBeforeUnmount(() => {
 watch(
     () => props.imageUrl,
     (newUrl) => {
-        console.log("imageUrl prop changed to:", newUrl);
+        logger.info("imageUrl prop changed to:", newUrl);
         loadImage(newUrl);
     }
 );

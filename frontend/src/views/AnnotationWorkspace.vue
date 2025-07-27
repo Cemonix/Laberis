@@ -185,20 +185,7 @@ const handleCompletionModalCancel = () => {
 
 onMounted(async () => {
     const taskId = route.query.taskId as string | undefined;
-    console.log(
-        "[WorkspaceView] Mounted. Project ID:",
-        props.projectId,
-        "Asset ID:",
-        props.assetId,
-        "Task ID:",
-        taskId
-    );
     await workspaceStore.loadAsset(props.projectId, props.assetId, taskId);
-    console.log(
-        "[WorkspaceView] loadAsset action dispatched. Image URL from store should be updated now.",
-        "Image URL:",
-        workspaceStore.currentImageUrl
-    );
 });
 
 onUnmounted(() => {
