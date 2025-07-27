@@ -10,7 +10,6 @@ import {
 
 /**
  * Service class for managing annotations within projects.
- * Extends BaseProjectService to inherit common project-related functionality.
  */
 class AnnotationService extends BaseProjectService {
     constructor() {
@@ -23,15 +22,15 @@ class AnnotationService extends BaseProjectService {
     private validateAnnotationType(backendType: string): AnnotationType {
         // Map backend string values to frontend enum
         const typeMapping: Record<string, AnnotationType> = {
-            'point': AnnotationType.POINT,
-            'line': AnnotationType.LINE,
-            'bounding_box': AnnotationType.BOUNDING_BOX,
-            'polyline': AnnotationType.POLYLINE,
-            'polygon': AnnotationType.POLYGON,
-            'text': AnnotationType.TEXT
+            'POINT': AnnotationType.POINT,
+            'LINE': AnnotationType.LINE,
+            'BOUNDING_BOX': AnnotationType.BOUNDING_BOX,
+            'POLYLINE': AnnotationType.POLYLINE,
+            'POLYGON': AnnotationType.POLYGON,
+            'TEXT': AnnotationType.TEXT,
         };
         
-        const mappedType = typeMapping[backendType.toLowerCase()];
+        const mappedType = typeMapping[backendType];
         if (!mappedType) {
             this.logger.warn(
                 `Unknown annotation type from backend: ${backendType}. ` +
@@ -48,6 +47,17 @@ class AnnotationService extends BaseProjectService {
      * Converts AnnotationDto from backend to frontend Annotation object
      */
     private transformAnnotationDto(dto: AnnotationDto): Annotation {
+        // Parse coordinates from data field
+        let coordinates;
+        try {
+            if (dto.data) {
+                coordinates = JSON.parse(dto.data);
+            }
+        } catch (error) {
+            this.logger.warn(`Failed to parse annotation coordinates for annotation ${dto.id}:`, dto.data);
+            coordinates = null;
+        }
+
         return {
             annotationId: dto.id,
             assetId: dto.assetId,
@@ -55,6 +65,7 @@ class AnnotationService extends BaseProjectService {
             taskId: dto.taskId,
             annotationType: this.validateAnnotationType(dto.annotationType),
             data: dto.data,
+            coordinates: coordinates,
             notes: dto.notes,
             confidenceScore: dto.confidenceScore,
             isGroundTruth: dto.isGroundTruth,
@@ -140,6 +151,7 @@ class AnnotationService extends BaseProjectService {
         });
 
         const url = this.buildProjectUrl(projectId, 'annotations');
+        
         const response = await this.post<CreateAnnotationDto, AnnotationDto>(url, annotationData);
         const annotation = this.transformAnnotationDto(response);
 
