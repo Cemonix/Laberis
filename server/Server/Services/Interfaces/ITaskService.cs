@@ -97,6 +97,16 @@ public interface ITaskService
     Task<int> CreateTasksForAllAssetsAsync(int projectId, int workflowId, int initialStageId);
 
     /// <summary>
+    /// Creates tasks for all available assets in a specific data source for a workflow stage.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="workflowId">The ID of the workflow.</param>
+    /// <param name="workflowStageId">The ID of the workflow stage.</param>
+    /// <param name="dataSourceId">The ID of the data source.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the number of tasks created.</returns>
+    Task<int> CreateTasksForDataSourceAsync(int projectId, int workflowId, int workflowStageId, int dataSourceId);
+
+    /// <summary>
     /// Checks if a data source has any assets available for task creation.
     /// </summary>
     /// <param name="projectId">The ID of the project.</param>
@@ -110,4 +120,20 @@ public interface ITaskService
     /// <param name="projectId">The ID of the project.</param>
     /// <returns>A task that represents the asynchronous operation, containing the count of available assets.</returns>
     Task<int> GetAvailableAssetsCountAsync(int projectId);
+
+    /// <summary>
+    /// Marks a task as completed, unlocking the asset for subsequent workflow stages.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to complete.</param>
+    /// <param name="userId">The ID of the user completing the task.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
+    Task<TaskDto?> CompleteTaskAsync(int taskId, string userId);
+
+    /// <summary>
+    /// Marks a task as completed and moves it to the next workflow stage if one exists.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to complete.</param>
+    /// <param name="userId">The ID of the user completing the task.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
+    Task<TaskDto?> CompleteAndMoveTaskAsync(int taskId, string userId);
 }
