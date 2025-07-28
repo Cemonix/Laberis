@@ -21,14 +21,17 @@ class TaskService extends BaseProjectService {
     }
 
     /**
-     * Derives task status from completion and archive state
+     * Derives task status from completion, archive, and suspension state
      */
+    // TODO: Refactor to use TaskStatus enum directly - task status should be received from the API
     private deriveStatus(
         completedAt?: string | null, 
         archivedAt?: string | null, 
+        suspendedAt?: string | null,
         assignedToEmail?: string | null
     ): TaskStatus {
         if (archivedAt) return TaskStatus.ARCHIVED;
+        if (suspendedAt) return TaskStatus.SUSPENDED;
         if (completedAt) return TaskStatus.COMPLETED;
         if (assignedToEmail) return TaskStatus.IN_PROGRESS;
         return TaskStatus.NOT_STARTED;
@@ -44,6 +47,7 @@ class TaskService extends BaseProjectService {
             dueDate: dto.dueDate,
             completedAt: dto.completedAt,
             archivedAt: dto.archivedAt,
+            suspendedAt: dto.suspendedAt,
             createdAt: dto.createdAt,
             updatedAt: dto.updatedAt,
             assetId: dto.assetId,
@@ -52,7 +56,7 @@ class TaskService extends BaseProjectService {
             currentWorkflowStageId: dto.currentWorkflowStageId,
             assignedToEmail: dto.assignedToEmail,
             lastWorkedOnByEmail: dto.lastWorkedOnByEmail,
-            status: this.deriveStatus(dto.completedAt, dto.archivedAt, dto.assignedToEmail)
+            status: this.deriveStatus(dto.completedAt, dto.archivedAt, dto.suspendedAt, dto.assignedToEmail)
         };
     }
 
@@ -96,6 +100,33 @@ class TaskService extends BaseProjectService {
         };
         
         return this.getTasksForProject(projectId, stageParams);
+    }
+
+    /**
+     * Get tasks for a specific workflow stage, properly filtered by the stage's input data source.
+     * This ensures only tasks for assets that belong to the stage's assigned data source are returned.
+     */
+    async getTasksForWorkflowStage(
+        projectId: number,
+        stageId: number,
+        params: TasksQueryParams = {}
+    ): Promise<GetTasksResponse> {
+        this.logger.info(`Fetching tasks for workflow stage ${stageId} in project ${projectId}`, params);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/stage/{stageId}', { stageId });
+        const paginatedResponse = await this.getPaginated<any>(url, params);
+        
+        const tasks: Task[] = paginatedResponse.data.map((dto: any) => this.transformTaskDto(dto));
+
+        this.logger.info(`Fetched ${tasks.length} tasks for workflow stage ${stageId}`);
+
+        return {
+            tasks,
+            totalCount: paginatedResponse.totalItems,
+            currentPage: paginatedResponse.currentPage,
+            pageSize: paginatedResponse.pageSize,
+            totalPages: paginatedResponse.totalPages
+        };
     }
 
     /**
@@ -241,8 +272,8 @@ class TaskService extends BaseProjectService {
     }> {
         this.logger.info(`Fetching enriched tasks for stage ${stageId} in workflow ${workflowId}, project ${projectId}`, params);
 
-        // Get tasks for the stage
-        const tasksResponse = await this.getTasksForStage(projectId, stageId, params);
+        // Get tasks for the stage (using proper data source filtering)
+        const tasksResponse = await this.getTasksForWorkflowStage(projectId, stageId, params);
         
         // Get stage information
         let stageName = 'Unknown Stage';
@@ -368,6 +399,21 @@ class TaskService extends BaseProjectService {
         const task: Task = this.transformTaskDto(dto);
 
         this.logger.info(`Suspended task ${taskId} successfully`);
+        return task;
+    }
+
+    /**
+     * Defer a task (skip for now, keeping it available for later work)
+     */
+    async deferTask(projectId: number, taskId: number): Promise<Task> {
+        this.logger.info(`Deferring task ${taskId} in project ${projectId}`);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/defer', { taskId });
+        const dto = await this.put<undefined, any>(url, undefined);
+        
+        const task: Task = this.transformTaskDto(dto);
+
+        this.logger.info(`Deferred task ${taskId} successfully`);
         return task;
     }
 

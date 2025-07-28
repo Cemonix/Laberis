@@ -31,6 +31,7 @@ export interface Task {
     dueDate?: string;
     completedAt?: string;
     archivedAt?: string;
+    suspendedAt?: string;
     createdAt: string;
     updatedAt: string;
     assetId: number;
