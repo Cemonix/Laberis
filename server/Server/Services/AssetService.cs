@@ -7,6 +7,7 @@ using server.Models.Domain.Enums;
 using server.Utils;
 using server.Exceptions;
 using server.Services.Storage;
+using LaberisTask = server.Models.Domain.Task;
 
 namespace server.Services;
 
@@ -16,6 +17,8 @@ public class AssetService : IAssetService
     private readonly IFileStorageService _fileStorageService;
     private readonly IDataSourceRepository _dataSourceRepository;
     private readonly IStorageService _storageService;
+    private readonly ITaskService _taskService;
+    private readonly IWorkflowStageRepository _workflowStageRepository;
     private readonly ILogger<AssetService> _logger;
 
     public AssetService(
@@ -23,12 +26,16 @@ public class AssetService : IAssetService
         IFileStorageService fileStorageService,
         IDataSourceRepository dataSourceRepository,
         IStorageService storageService,
+        ITaskService taskService,
+        IWorkflowStageRepository workflowStageRepository,
         ILogger<AssetService> logger)
     {
         _assetRepository = assetRepository ?? throw new ArgumentNullException(nameof(assetRepository));
         _fileStorageService = fileStorageService ?? throw new ArgumentNullException(nameof(fileStorageService));
         _dataSourceRepository = dataSourceRepository ?? throw new ArgumentNullException(nameof(dataSourceRepository));
         _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
+        _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
+        _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -187,11 +194,19 @@ public class AssetService : IAssetService
         asset.Height = updateDto.Height ?? asset.Height;
         asset.DurationMs = updateDto.DurationMs ?? asset.DurationMs;
         asset.Metadata = updateDto.Metadata ?? asset.Metadata;
+        // Auto-create tasks if asset was just marked as IMPORTED
+        bool wasJustImported = updateDto.Status == AssetStatus.IMPORTED && asset.Status != AssetStatus.IMPORTED;
+        
         asset.Status = updateDto.Status;
         asset.DataSourceId = updateDto.DataSourceId ?? asset.DataSourceId;
         asset.UpdatedAt = DateTime.UtcNow;
 
         await _assetRepository.SaveChangesAsync();
+
+        if (wasJustImported)
+        {
+            await TryCreateTasksForNewAssetAsync(asset);
+        }
 
         _logger.LogInformation("Successfully updated asset with ID: {AssetId}", assetId);
         
@@ -216,6 +231,62 @@ public class AssetService : IAssetService
         _logger.LogInformation("Successfully deleted asset with ID: {AssetId}", assetId);
         
         return true;
+    }
+
+    /// <summary>
+    /// Attempts to create tasks for a newly imported asset across all active workflows.
+    /// </summary>
+    /// <param name="asset">The asset that was just imported.</param>
+    private async System.Threading.Tasks.Task TryCreateTasksForNewAssetAsync(Asset asset)
+    {
+        try
+        {
+            _logger.LogInformation("Attempting to create tasks for newly imported asset {AssetId} in data source {DataSourceId}", 
+                asset.AssetId, asset.DataSourceId);
+
+            // Find all workflow stages where InputDataSourceId == asset.DataSourceId
+            var workflowStages = await _workflowStageRepository.FindAsync(
+                ws => ws.InputDataSourceId == asset.DataSourceId && 
+                      ws.Workflow.ProjectId == asset.ProjectId);
+
+            var relevantStages = workflowStages.ToList();
+            
+            if (!relevantStages.Any())
+            {
+                _logger.LogInformation("No workflow stages found that use data source {DataSourceId} as input", asset.DataSourceId);
+                return;
+            }
+
+            _logger.LogInformation("Found {StageCount} workflow stages that use data source {DataSourceId} as input", 
+                relevantStages.Count, asset.DataSourceId);
+
+            // For each stage, create tasks for the asset in that workflow/stage
+            foreach (var stage in relevantStages)
+            {
+                try
+                {
+                    var tasksCreated = await _taskService.CreateTasksForDataSourceAsync(
+                        asset.ProjectId, 
+                        stage.WorkflowId, 
+                        stage.WorkflowStageId, 
+                        asset.DataSourceId);
+                        
+                    _logger.LogInformation("Created {TasksCreated} tasks for workflow stage {StageId} ({StageName}) for new asset {AssetId}", 
+                        tasksCreated, stage.WorkflowStageId, stage.Name, asset.AssetId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to create tasks for workflow stage {StageId} for new asset {AssetId}", 
+                        stage.WorkflowStageId, asset.AssetId);
+                    // Continue with other stages even if one fails
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create tasks for newly imported asset {AssetId}", asset.AssetId);
+            // Don't throw - asset import should succeed even if task creation fails
+        }
     }
 
     public async Task<UploadResultDto> UploadAssetAsync(int projectId, UploadAssetDto uploadDto)
