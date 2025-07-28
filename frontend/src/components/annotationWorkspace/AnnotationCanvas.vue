@@ -71,6 +71,7 @@ const viewOffset = computed(() => workspaceStore.viewOffset);
 const zoomLevel = computed(() => workspaceStore.zoomLevel);
 const activeTool = computed(() => workspaceStore.activeTool);
 const annotationsToRender = computed(() => workspaceStore.getAnnotations);
+const isAnnotationEditingDisabled = computed(() => workspaceStore.isAnnotationEditingDisabled);
 
 const canvasCursorStyle = computed(() => {
     switch (activeTool.value) {
@@ -740,15 +741,15 @@ const handleMouseDown = (event: MouseEvent) => {
         // Check for annotation interaction first
         const hit = findAnnotationAtPoint(imagePoint);
         if (hit) {
-            if (hit.handleIndex >= 0) {
-                // Start dragging a handle
+            if (hit.handleIndex >= 0 && !isAnnotationEditingDisabled.value) {
+                // Start dragging a handle (only if editing is enabled)
                 // Store original annotation for potential rollback
                 originalAnnotationBeforeEdit.value = JSON.parse(JSON.stringify(hit.annotation));
                 isDraggingHandle.value = true;
                 draggedPointIndex.value = hit.handleIndex;
                 selectedAnnotationId.value = hit.annotation.annotationId;
             } else {
-                // Select the annotation
+                // Select the annotation (always allowed for viewing)
                 selectedAnnotationId.value = hit.annotation.annotationId;
             }
             nextTick(draw);
@@ -761,7 +762,8 @@ const handleMouseDown = (event: MouseEvent) => {
         // Start panning
         isPanning.value = true;
         lastPanMousePosition.value = { x: event.offsetX, y: event.offsetY };
-    } else {
+    } else if (!isAnnotationEditingDisabled.value) {
+        // Only allow annotation creation if editing is enabled
         try {
             annotationManager.onMouseDown(event);
         }
@@ -809,7 +811,8 @@ const handleMouseMove = (event: MouseEvent) => {
             hoveredAnnotationId.value = hit?.annotation?.annotationId ?? null;
             nextTick(draw);
         }
-    } else {
+    } else if (!isAnnotationEditingDisabled.value) {
+        // Only allow annotation tools if editing is enabled
         annotationManager.onMouseMove(event);
         // Redraw canvas during mouse move for tool preview
         nextTick(draw);
@@ -827,7 +830,8 @@ const handleMouseUp = (event: MouseEvent) => {
         } else if (isPanning.value) {
             isPanning.value = false;
         }
-    } else {
+    } else if (!isAnnotationEditingDisabled.value) {
+        // Only allow annotation tools if editing is enabled
         annotationManager.onMouseUp(event);
         // Redraw canvas after mouse up
         nextTick(draw);
@@ -897,8 +901,8 @@ const handleKeyDown = (event: KeyboardEvent) => {
         // Handle shift key for speed mode
         annotationManager.onKeyDown?.(event);
         nextTick(draw);
-    } else if (event.key === 'Delete' || event.key === 'Backspace') {
-        // Delete selected annotation
+    } else if ((event.key === 'Delete' || event.key === 'Backspace') && !isAnnotationEditingDisabled.value) {
+        // Delete selected annotation (only if editing is enabled)
         if (selectedAnnotationId.value !== null) {
             event.preventDefault();
             handleDeleteSelectedAnnotation();

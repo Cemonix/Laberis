@@ -95,6 +95,7 @@ import {
     faPlus,
     faRefresh,
     faTrash,
+    faUndo,
     faUser,
     faUserCog,
     faUserSlash
@@ -106,12 +107,16 @@ import type {TaskTableRow} from '@/types/task';
 import {TaskStatus} from '@/types/task';
 import type {TableAction, TableColumn, TableRowAction} from '@/types/common';
 import {useErrorHandler} from '@/composables/useErrorHandler';
+import {useProjectPermissions} from '@/composables/useProjectPermissions';
+import {useProjectStore} from '@/stores/projectStore';
 import {taskService} from '@/services/api/projects';
 import {AppLogger} from '@/utils/logger';
 
 const route = useRoute();
 const router = useRouter();
 const { handleError } = useErrorHandler();
+const projectStore = useProjectStore();
+const { canManageProject } = useProjectPermissions();
 const logger = AppLogger.createComponentLogger('TasksView');
 
 const projectId = ref<number>(parseInt(route.params.projectId as string));
@@ -130,6 +135,10 @@ const sortKey = ref<string>('createdAt');
 const sortDirection = ref<'asc' | 'desc'>('desc');
 const hasAvailableAssets = ref<boolean>(true);
 const availableAssetsCount = ref<number>(0);
+
+const canManageTasks = computed(() => {
+    return canManageProject.value;
+});
 
 // Table configuration
 const tableColumns: TableColumn[] = [
@@ -160,24 +169,40 @@ const getTableActions = (): TableAction[] => {
     return actions;
 };
 
-const rowActions: TableRowAction<TaskTableRow>[] = [
-    { 
-        key: 'open', 
-        label: 'Open', 
-        icon: faPlay, 
-        variant: 'primary',
-        disabled: (row: TaskTableRow) => row.status === TaskStatus.COMPLETED || row.status === TaskStatus.ARCHIVED
-    },
-    { key: 'edit', label: 'Edit', icon: faEdit, variant: 'secondary' },
-    { key: 'assign', label: 'Assign', icon: faUserCog, variant: 'secondary' },
-    { 
+const rowActions = computed((): TableRowAction<TaskTableRow>[] => {
+    const actions: TableRowAction<TaskTableRow>[] = [
+        { 
+            key: 'open', 
+            label: 'Open', 
+            icon: faPlay, 
+            variant: 'primary',
+            disabled: (row: TaskTableRow) => row.status === TaskStatus.COMPLETED || row.status === TaskStatus.ARCHIVED
+        },
+        { key: 'edit', label: 'Edit', icon: faEdit, variant: 'secondary' },
+        { key: 'assign', label: 'Assign', icon: faUserCog, variant: 'secondary' }
+    ];
+
+    // Add uncomplete action for managers on completed tasks
+    if (canManageTasks.value) {
+        actions.push({
+            key: 'uncomplete',
+            label: 'Mark as Incomplete',
+            icon: faUndo,
+            variant: 'secondary',
+            disabled: (row: TaskTableRow) => row.status !== TaskStatus.COMPLETED
+        });
+    }
+
+    actions.push({ 
         key: 'delete', 
         label: 'Delete', 
         icon: faTrash, 
         variant: 'secondary',
         disabled: (row: TaskTableRow) => row.status === TaskStatus.IN_PROGRESS
-    },
-];
+    });
+
+    return actions;
+});
 
 const taskTableData = computed((): TaskTableRow[] => {
     return tasks.value;
@@ -348,7 +373,7 @@ const handleTableAction = (actionKey: string) => {
     }
 };
 
-const handleRowAction = (actionKey: string, row: TaskTableRow, index: number) => {
+const handleRowAction = async (actionKey: string, row: TaskTableRow, index: number) => {
     logger.debug('Row action triggered', { actionKey, taskId: row.id, index });
     switch (actionKey) {
         case 'open':
@@ -359,6 +384,9 @@ const handleRowAction = (actionKey: string, row: TaskTableRow, index: number) =>
             break;
         case 'assign':
             // TODO: Show assignment dialog
+            break;
+        case 'uncomplete':
+            await handleUncompleteTask(row);
             break;
         case 'delete':
             // TODO: Show delete confirmation
@@ -381,6 +409,33 @@ const handleTaskClick = (task: TaskTableRow, _index: number) => {
             taskId: task.id.toString() // Pass taskId as query parameter for context
         }
     });
+};
+
+const handleUncompleteTask = async (task: TaskTableRow) => {
+    if (!canManageTasks.value) {
+        logger.warn('User does not have permission to uncomplete tasks');
+        return;
+    }
+
+    if (task.status !== TaskStatus.COMPLETED) {
+        logger.warn('Cannot uncomplete task that is not completed', { taskId: task.id, status: task.status });
+        return;
+    }
+
+    try {
+        logger.info('Uncompleting task', { taskId: task.id, assetName: task.assetName });
+        
+        // Call the uncomplete API
+        await taskService.uncompleteTask(projectId.value, task.id);
+        
+        // Refresh the task list to show updated status
+        await loadTasks();
+        
+        logger.info('Task uncompleted successfully', { taskId: task.id });
+    } catch (error) {
+        logger.error('Failed to uncomplete task', { taskId: task.id, error });
+        handleError(error, 'Failed to mark task as incomplete');
+    }
 };
 
 const handleRefresh = () => {
@@ -455,7 +510,15 @@ const getEmptyDescription = (): string => {
     return 'Tasks will be automatically created when assets are added to this workflow stage.';
 };
 
-onMounted(() => {
+onMounted(async () => {
+    // Load project data first (includes team members for permissions)
+    try {
+        await projectStore.setCurrentProject(projectId.value);
+    } catch (error) {
+        logger.warn('Failed to load project data, continuing with tasks', error);
+    }
+    
+    // Then load tasks
     loadTasks();
 });
 </script>

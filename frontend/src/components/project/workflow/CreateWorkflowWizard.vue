@@ -95,6 +95,7 @@
                                         v-model="form.annotationInputDataSourceId" 
                                         :disabled="isLoading"
                                         class="form-select"
+                                        :class="{ 'error': errors.annotationInputDataSourceId }"
                                         required
                                     >
                                         <option value="">Select input data source...</option>
@@ -106,6 +107,7 @@
                                             {{ dataSource.name }} ({{ dataSource.assetCount || 0 }} assets)
                                         </option>
                                     </select>
+                                    <div v-if="errors.annotationInputDataSourceId" class="field-error">{{ errors.annotationInputDataSourceId }}</div>
                                     <div class="field-help">Choose where annotation tasks will get their input data from</div>
                                 </div>
                             </div>
@@ -121,13 +123,15 @@
 
                             <div class="data-source-selectors">
                                 <div class="form-group">
-                                    <label>Input Data Source</label>
+                                    <label>Input Data Source <span class="required">*</span></label>
                                     <select 
                                         v-model="form.revisionInputDataSourceId" 
                                         :disabled="isLoading"
                                         class="form-select"
+                                        :class="{ 'error': errors.revisionInputDataSourceId }"
+                                        required
                                     >
-                                        <option value="">Use annotation outputs</option>
+                                        <option value="">Select input data source...</option>
                                         <option 
                                             v-for="dataSource in availableDataSourcesForRevision" 
                                             :key="dataSource.id"
@@ -136,7 +140,8 @@
                                             {{ dataSource.name }} ({{ dataSource.assetCount || 0 }} assets)
                                         </option>
                                     </select>
-                                    <div class="field-help">Typically uses outputs from annotation stage</div>
+                                    <div v-if="errors.revisionInputDataSourceId" class="field-error">{{ errors.revisionInputDataSourceId }}</div>
+                                    <div class="field-help">Revision stage requires its own data source for proper workflow tracking</div>
                                 </div>
                             </div>
                         </div>
@@ -438,6 +443,8 @@ const form = reactive<WorkflowWizardForm>({
 // Validation errors
 const errors = reactive({
     name: '',
+    annotationInputDataSourceId: '',
+    revisionInputDataSourceId: '',
     annotationMembers: '',
     completionMembers: ''
 });
@@ -497,7 +504,11 @@ const fetchDataSources = async () => {
 
 // Navigation logic
 const canProceedToNextStep = computed(() => {
-    return !isLoading.value;
+    if (isLoading.value) return false;
+    
+    // Run validation and check if there are no errors
+    validateCurrentStep();
+    return hasNoErrors();
 });
 
 // Stepper event handlers
@@ -519,16 +530,32 @@ const validateCurrentStep = () => {
         errors[key as keyof typeof errors] = '';
     });
 
-    switch (true) {
-        case !form.name.trim():
-            errors.name = 'Workflow name is required';
-            break;
-        case form.annotationMembers.length === 0:
-            errors.annotationMembers = 'At least one member must be assigned to annotation stage';
-            break;
-        case form.completionMembers.length === 0:
-            errors.completionMembers = 'At least one member must be assigned to completion stage';
-            break;
+    // Basic information validation
+    if (!form.name.trim()) {
+        errors.name = 'Workflow name is required';
+        return;
+    }
+
+    // Data source validation - enforce 1:1 mapping for non-completion stages
+    if (!form.annotationInputDataSourceId) {
+        errors.annotationInputDataSourceId = 'Annotation stage must have exactly one input data source';
+        return;
+    }
+
+    if (form.includeRevision && !form.revisionInputDataSourceId) {
+        errors.revisionInputDataSourceId = 'Revision stage must have exactly one input data source';
+        return;
+    }
+
+    // Member assignment validation
+    if (form.annotationMembers.length === 0) {
+        errors.annotationMembers = 'At least one member must be assigned to annotation stage';
+        return;
+    }
+
+    if (form.completionMembers.length === 0) {
+        errors.completionMembers = 'At least one member must be assigned to completion stage';
+        return;
     }
 };
 

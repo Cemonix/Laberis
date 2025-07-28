@@ -75,7 +75,7 @@
                                 <button 
                                     class="action-btn edit-btn"
                                     @click="handleEditLabel(annotation)"
-                                    :disabled="!annotation.annotationId"
+                                    :disabled="!annotation.annotationId || isAnnotationEditingDisabled"
                                     title="Change label"
                                 >
                                     <font-awesome-icon :icon="faEdit" />
@@ -83,7 +83,7 @@
                                 <button 
                                     class="action-btn delete-btn"
                                     @click="handleDeleteAnnotation(annotation.annotationId)"
-                                    :disabled="!annotation.annotationId"
+                                    :disabled="!annotation.annotationId || isAnnotationEditingDisabled"
                                     title="Delete annotation"
                                 >
                                     <font-awesome-icon :icon="faTrash" />
@@ -184,6 +184,7 @@ const selectedNewLabelId = ref<number | null>(null);
 const isLoading = computed(() => workspaceStore.getLoadingState);
 const annotations = computed(() => workspaceStore.getAnnotations);
 const availableLabels = computed(() => workspaceStore.getAvailableLabels);
+const isAnnotationEditingDisabled = computed(() => workspaceStore.isAnnotationEditingDisabled);
 
 const getCurrentLabel = (labelId: number): Label | undefined => {
     return workspaceStore.getLabelById(labelId);
