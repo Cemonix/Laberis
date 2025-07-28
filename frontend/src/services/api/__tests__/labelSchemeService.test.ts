@@ -55,8 +55,8 @@ describe('LabelSchemeService', () => {
                         description: 'A test label scheme',
                         projectId: 1,
                         isDefault: true,
+                        isActive: true,
                         createdAt: '2025-01-01T00:00:00Z',
-                        updatedAt: '2025-01-01T00:00:00Z',
                         labels: []
                     }
                 ],
@@ -140,8 +140,8 @@ describe('LabelSchemeService', () => {
                 description: 'A test label scheme',
                 projectId: 1,
                 isDefault: true,
+                isActive: true,
                 createdAt: '2025-01-01T00:00:00Z',
-                updatedAt: '2025-01-01T00:00:00Z',
                 labels: []
             };
 
@@ -189,8 +189,8 @@ describe('LabelSchemeService', () => {
                 description: 'A new label scheme',
                 projectId: 1,
                 isDefault: false,
+                isActive: true,
                 createdAt: '2025-01-01T00:00:00Z',
-                updatedAt: '2025-01-01T00:00:00Z',
                 labels: []
             };
 
@@ -241,8 +241,8 @@ describe('LabelSchemeService', () => {
                 description: 'An updated description',
                 projectId: 1,
                 isDefault: true,
+                isActive: true,
                 createdAt: '2025-01-01T00:00:00Z',
-                updatedAt: '2025-01-01T01:00:00Z',
                 labels: []
             };
 
