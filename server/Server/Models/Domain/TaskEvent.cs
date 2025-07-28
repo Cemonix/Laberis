@@ -7,7 +7,7 @@ public class TaskEvent
 {
     public long EventId { get; set; }
     public TaskEventType EventType { get; set; }
-    public string? Details { get; set; } // TODO: For JSONB, store as string
+    public string? Details { get; set; }
     public DateTime CreatedAt { get; set; } // No UpdatedAt for immutable events
 
     // Foreign Keys

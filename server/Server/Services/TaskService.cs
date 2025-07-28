@@ -602,6 +602,89 @@ public class TaskService : ITaskService
         return MapToDto(existingTask);
     }
 
+    public async Task<TaskDto?> DeferTaskAsync(int taskId, string userId)
+    {
+        _logger.LogInformation("Deferring task {TaskId} by user {UserId}", taskId, userId);
+
+        var existingTask = await _taskRepository.GetByIdAsync(taskId);
+        if (existingTask == null)
+        {
+            _logger.LogWarning("Task with ID {TaskId} not found for deferring", taskId);
+            return null;
+        }
+
+        if (existingTask.CompletedAt != null)
+        {
+            throw new InvalidOperationException($"Task {taskId} is completed and cannot be deferred");
+        }
+
+        if (existingTask.ArchivedAt != null)
+        {
+            throw new InvalidOperationException($"Task {taskId} is archived and cannot be deferred");
+        }
+
+        if (existingTask.SuspendedAt != null)
+        {
+            throw new InvalidOperationException($"Task {taskId} is suspended and cannot be deferred");
+        }
+
+        // Update task to indicate it was deferred (we'll track this via task event only)
+        existingTask.LastWorkedOnByUserId = userId;
+        existingTask.UpdatedAt = DateTime.UtcNow;
+
+        await _taskRepository.SaveChangesAsync();
+
+        // Create TaskEvent to track deferral
+        var taskEvent = new TaskEvent
+        {
+            EventType = TaskEventType.TASK_DEFERRED,
+            Details = "Task deferred by user",
+            TaskId = taskId,
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _taskEventRepository.AddAsync(taskEvent);
+        await _taskEventRepository.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully deferred task {TaskId}", taskId);
+        return MapToDto(existingTask);
+    }
+
+    public async Task<PaginatedResponse<TaskDto>> GetTasksForWorkflowStageAsync(
+        int projectId,
+        int stageId,
+        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25)
+    {
+        _logger.LogInformation("Fetching tasks for workflow stage {StageId} in project {ProjectId}", stageId, projectId);
+
+        var (tasks, totalCount) = await _taskRepository.GetAllWithCountAsync(
+            filter: t => t.ProjectId == projectId && t.CurrentWorkflowStageId == stageId,
+            filterOn: filterOn,
+            filterQuery: filterQuery,
+            sortBy: sortBy ?? "created_at",
+            isAscending: isAscending,
+            pageNumber: pageNumber,
+            pageSize: pageSize
+        );
+
+        _logger.LogInformation("Fetched {Count} tasks for workflow stage {StageId} in project {ProjectId}", 
+            tasks.Count(), stageId, projectId);
+
+        var taskDtos = tasks.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<TaskDto>
+        {
+            Data = taskDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
+    }
+
     private static TaskDto MapToDto(LaberisTask task)
     {
         return new TaskDto

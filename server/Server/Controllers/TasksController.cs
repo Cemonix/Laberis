@@ -163,7 +163,7 @@ public class TasksController : ControllerBase
         try
         {
             var newTask = await _taskService.CreateTaskAsync(projectId, createTaskDto);
-            return CreatedAtAction(nameof(GetTaskById), 
+            return CreatedAtAction(nameof(GetTaskById),
                 new { projectId, taskId = newTask.Id }, newTask);
         }
         catch (Exception ex)
@@ -338,6 +338,51 @@ public class TasksController : ControllerBase
         }
     }
 
+     /// <summary>
+    /// Gets all tasks for a specific workflow stage, properly filtered by the stage's input data source.
+    /// This ensures only tasks for assets that belong to the stage's assigned data source are returned.
+    /// </summary>
+    /// <param name="projectId">The ID of the project to get tasks for.</param>
+    /// <param name="stageId">The ID of the workflow stage to get tasks for.</param>
+    /// <param name="filterOn">The field to filter on (e.g., "priority", "assigned_to_user_id", "is_completed").</param>
+    /// <param name="filterQuery">The value to filter by.</param>
+    /// <param name="sortBy">The field to sort by (e.g., "priority", "due_date", "created_at", "completed_at").</param>
+    /// <param name="isAscending">Whether to sort in ascending order (true) or descending (false).</param>
+    /// <param name="pageNumber">The page number for pagination (1-based).</param>
+    /// <param name="pageSize">The number of items per page.</param>
+    /// <returns>A list of task DTOs for the workflow stage.</returns>
+    /// <response code="200">Returns the list of task DTOs.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
+    [HttpGet("stage/{stageId:int}")]
+    [ProducesResponseType(typeof(IEnumerable<TaskDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetTasksForWorkflowStage(
+        int projectId,
+        int stageId,
+        [FromQuery] string? filterOn = null,
+        [FromQuery] string? filterQuery = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool isAscending = true,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 25
+    )
+    {
+        try
+        {
+            var tasks = await _taskService.GetTasksForWorkflowStageAsync(
+                projectId, stageId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
+            return Ok(tasks);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while fetching tasks for workflow stage {StageId} in project {ProjectId}.", stageId, projectId);
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                "An unexpected error occurred. Please try again later."
+            );
+        }
+    }
+
     /// <summary>
     /// Marks a task as completed, unlocking the asset for subsequent workflow stages.
     /// </summary>
@@ -504,6 +549,53 @@ public class TasksController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "An error occurred while suspending task {TaskId}.", taskId);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
+    
+    /// <summary>
+    /// Defers a task, marking it as deferred so the user can skip it for now.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to defer.</param>
+    /// <returns>The deferred task.</returns>
+    /// <response code="200">Returns the deferred task.</response>
+    /// <response code="404">If the task is not found.</response>
+    /// <response code="400">If the task cannot be deferred.</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPut("{taskId:int}/defer")]
+    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeferTask(int taskId)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var deferredTask = await _taskService.DeferTaskAsync(taskId, userId);
+
+            if (deferredTask == null)
+            {
+                return NotFound($"Task with ID {taskId} not found.");
+            }
+
+            return Ok(deferredTask);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation while deferring task {TaskId}.", taskId);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while deferring task {TaskId}.", taskId);
             return StatusCode(500, "An unexpected error occurred. Please try again later.");
         }
     }
