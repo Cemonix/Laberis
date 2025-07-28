@@ -160,4 +160,32 @@ public interface ITaskService
     /// <param name="userId">The ID of the user performing the action.</param>
     /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
     Task<TaskDto?> UnsuspendTaskAsync(int taskId, string userId);
+
+    /// <summary>
+    /// Defers a task, marking it as deferred so the user can skip it for now.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to defer.</param>
+    /// <param name="userId">The ID of the user performing the action.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
+    Task<TaskDto?> DeferTaskAsync(int taskId, string userId);
+
+    /// <summary>
+    /// Gets all tasks for a specific workflow stage, properly filtered by the stage's input data source.
+    /// This ensures only tasks for assets that belong to the stage's assigned data source are returned.
+    /// </summary>
+    /// <param name="projectId">The ID of the project to get tasks for.</param>
+    /// <param name="stageId">The ID of the workflow stage to get tasks for.</param>
+    /// <param name="filterOn">The field to filter on (e.g., "priority", "assigned_to_user_id", "is_completed").</param>
+    /// <param name="filterQuery">The value to filter by.</param>
+    /// <param name="sortBy">The field to sort by (e.g., "priority", "due_date", "created_at", "completed_at").</param>
+    /// <param name="isAscending">Whether to sort in ascending order (true) or descending (false).</param>
+    /// <param name="pageNumber">The page number for pagination (1-based).</param>
+    /// <param name="pageSize">The number of items per page.</param>
+    /// <returns>A task that represents the asynchronous operation, containing a paginated collection of TaskDto.</returns>
+    Task<PaginatedResponse<TaskDto>> GetTasksForWorkflowStageAsync(
+        int projectId,
+        int stageId,
+        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25
+    );
 }

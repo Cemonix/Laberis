@@ -21,7 +21,7 @@ public class TaskEventConfiguration : IEntityTypeConfiguration<TaskEvent>
 
         entity.Property(te => te.Details)
             .HasColumnName("details")
-            .HasColumnType("jsonb")
+            .HasColumnType("text")
             .IsRequired(false);
 
         entity.Property(te => te.CreatedAt)
