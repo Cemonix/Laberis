@@ -8,4 +8,5 @@ public record class WorkflowDto
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
     public int ProjectId { get; init; }
+    public int StageCount { get; init; }
 }

@@ -17,9 +17,7 @@ public class WorkflowRepository : GenericRepository<Workflow>, IWorkflowReposito
 
     protected override IQueryable<Workflow> ApplyIncludes(IQueryable<Workflow> query)
     {
-        // Include related data if needed for specific use cases
-        // Example: return query.Include(w => w.Project).Include(w => w.WorkflowStages);
-        return query;
+        return query.Include(w => w.WorkflowStages);
     }
 
     protected override IQueryable<Workflow> ApplyFilter(IQueryable<Workflow> query, string? filterOn, string? filterQuery)

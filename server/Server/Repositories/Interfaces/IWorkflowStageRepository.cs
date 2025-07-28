@@ -17,4 +17,12 @@ public interface IWorkflowStageRepository : IGenericRepository<WorkflowStage>
     /// <param name="stageId">The ID of the workflow stage.</param>
     /// <returns>A task that represents the asynchronous operation, containing the stage with connections if found.</returns>
     Task<WorkflowStage?> GetStageWithConnectionsAsync(int stageId);
+
+    /// <summary>
+    /// Checks if a data source is already being used by other workflows (excluding completion stages).
+    /// </summary>
+    /// <param name="dataSourceId">The data source ID to check.</param>
+    /// <param name="excludeWorkflowId">Optional workflow ID to exclude from the check (for updates).</param>
+    /// <returns>List of conflicting workflow stages using this data source.</returns>
+    Task<IEnumerable<WorkflowStage>> GetConflictingDataSourceUsageAsync(int dataSourceId, int? excludeWorkflowId = null);
 }

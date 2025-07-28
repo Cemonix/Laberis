@@ -119,6 +119,20 @@ public class WorkflowStageAssignmentRepository : GenericRepository<WorkflowStage
                 .ThenInclude(pm => pm.User)
             .FirstOrDefaultAsync(wsa => wsa.WorkflowStageAssignmentId == assignmentId);
     }
+    
+    public async Task<IEnumerable<WorkflowStageAssignment>> GetByIdsWithDetailsAsync(IEnumerable<int> assignmentIds)
+    {
+        var ids = assignmentIds.ToList();
+        _logger.LogInformation("Fetching {Count} assignments with details in bulk", ids.Count);
+        
+        return await _context.Set<WorkflowStageAssignment>()
+            .Include(wsa => wsa.WorkflowStage)
+                .ThenInclude(ws => ws.Workflow)
+            .Include(wsa => wsa.ProjectMember)
+                .ThenInclude(pm => pm.User)
+            .Where(wsa => ids.Contains(wsa.WorkflowStageAssignmentId))
+            .ToListAsync();
+    }
 
     public async Task<IEnumerable<WorkflowStageAssignment>> GetAssignmentsForProjectMemberAsync(int projectMemberId)
     {
