@@ -136,4 +136,28 @@ public interface ITaskService
     /// <param name="userId">The ID of the user completing the task.</param>
     /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
     Task<TaskDto?> CompleteAndMoveTaskAsync(int taskId, string userId);
+
+    /// <summary>
+    /// Marks a completed task as incomplete, allowing it to be worked on again.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to mark as incomplete.</param>
+    /// <param name="userId">The ID of the user performing the action.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
+    Task<TaskDto?> MarkTaskIncompleteAsync(int taskId, string userId);
+
+    /// <summary>
+    /// Suspends a task, marking it as suspended so it can be resumed later.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to suspend.</param>
+    /// <param name="userId">The ID of the user performing the action.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
+    Task<TaskDto?> SuspendTaskAsync(int taskId, string userId);
+
+    /// <summary>
+    /// Unsuspends a task by clearing its suspended status.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to unsuspend.</param>
+    /// <param name="userId">The ID of the user performing the action.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
+    Task<TaskDto?> UnsuspendTaskAsync(int taskId, string userId);
 }

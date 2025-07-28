@@ -149,6 +149,7 @@ public class TaskService : ITaskService
         existingTask.Metadata = updateDto.Metadata ?? existingTask.Metadata;
         existingTask.CompletedAt = updateDto.CompletedAt ?? existingTask.CompletedAt;
         existingTask.ArchivedAt = updateDto.ArchivedAt ?? existingTask.ArchivedAt;
+        existingTask.SuspendedAt = updateDto.SuspendedAt ?? existingTask.SuspendedAt;
         existingTask.UpdatedAt = DateTime.UtcNow;
 
         await _taskRepository.SaveChangesAsync();
@@ -471,6 +472,136 @@ public class TaskService : ITaskService
         return MapToDto(existingTask);
     }
 
+    public async Task<TaskDto?> MarkTaskIncompleteAsync(int taskId, string userId)
+    {
+        _logger.LogInformation("Marking task {TaskId} as incomplete by user {UserId}", taskId, userId);
+
+        var existingTask = await _taskRepository.GetByIdAsync(taskId);
+        if (existingTask == null)
+        {
+            _logger.LogWarning("Task with ID {TaskId} not found for marking incomplete", taskId);
+            return null;
+        }
+
+        if (existingTask.CompletedAt == null)
+        {
+            throw new InvalidOperationException($"Task {taskId} is not completed and cannot be marked as incomplete");
+        }
+
+        // Mark task as incomplete by clearing completion timestamp
+        existingTask.CompletedAt = null;
+        existingTask.LastWorkedOnByUserId = userId;
+        existingTask.UpdatedAt = DateTime.UtcNow;
+
+        await _taskRepository.SaveChangesAsync();
+
+        // Create TaskEvent to track the action
+        var taskEvent = new TaskEvent
+        {
+            EventType = TaskEventType.TASK_REOPENED,
+            Details = "Task marked as incomplete",
+            TaskId = taskId,
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _taskEventRepository.AddAsync(taskEvent);
+        await _taskEventRepository.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully marked task {TaskId} as incomplete", taskId);
+        return MapToDto(existingTask);
+    }
+
+    public async Task<TaskDto?> SuspendTaskAsync(int taskId, string userId)
+    {
+        _logger.LogInformation("Suspending task {TaskId} by user {UserId}", taskId, userId);
+
+        var existingTask = await _taskRepository.GetByIdAsync(taskId);
+        if (existingTask == null)
+        {
+            _logger.LogWarning("Task with ID {TaskId} not found for suspension", taskId);
+            return null;
+        }
+
+        if (existingTask.CompletedAt != null)
+        {
+            throw new InvalidOperationException($"Task {taskId} is completed and cannot be suspended");
+        }
+
+        if (existingTask.ArchivedAt != null)
+        {
+            throw new InvalidOperationException($"Task {taskId} is archived and cannot be suspended");
+        }
+
+        if (existingTask.SuspendedAt != null)
+        {
+            throw new InvalidOperationException($"Task {taskId} is already suspended");
+        }
+
+        // Mark task as suspended
+        existingTask.SuspendedAt = DateTime.UtcNow;
+        existingTask.LastWorkedOnByUserId = userId;
+        existingTask.UpdatedAt = DateTime.UtcNow;
+
+        await _taskRepository.SaveChangesAsync();
+
+        // Create TaskEvent to track suspension
+        var taskEvent = new TaskEvent
+        {
+            EventType = TaskEventType.TASK_SUSPENDED,
+            Details = "Task suspended",
+            TaskId = taskId,
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _taskEventRepository.AddAsync(taskEvent);
+        await _taskEventRepository.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully suspended task {TaskId}", taskId);
+        return MapToDto(existingTask);
+    }
+
+    public async Task<TaskDto?> UnsuspendTaskAsync(int taskId, string userId)
+    {
+        _logger.LogInformation("Unsuspending task {TaskId} by user {UserId}", taskId, userId);
+
+        var existingTask = await _taskRepository.GetByIdAsync(taskId);
+        if (existingTask == null)
+        {
+            _logger.LogWarning("Task with ID {TaskId} not found for unsuspension", taskId);
+            return null;
+        }
+
+        if (existingTask.SuspendedAt == null)
+        {
+            throw new InvalidOperationException($"Task {taskId} is not suspended and cannot be unsuspended");
+        }
+
+        // Clear the suspended status
+        existingTask.SuspendedAt = null;
+        existingTask.LastWorkedOnByUserId = userId;
+        existingTask.UpdatedAt = DateTime.UtcNow;
+
+        await _taskRepository.SaveChangesAsync();
+
+        // Create TaskEvent to track unsuspension
+        var taskEvent = new TaskEvent
+        {
+            EventType = TaskEventType.TASK_REOPENED, // Using TASK_REOPENED as it's semantically similar
+            Details = "Task unsuspended",
+            TaskId = taskId,
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _taskEventRepository.AddAsync(taskEvent);
+        await _taskEventRepository.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully unsuspended task {TaskId}", taskId);
+        return MapToDto(existingTask);
+    }
+
     private static TaskDto MapToDto(LaberisTask task)
     {
         return new TaskDto
@@ -480,6 +611,7 @@ public class TaskService : ITaskService
             DueDate = task.DueDate,
             CompletedAt = task.CompletedAt,
             ArchivedAt = task.ArchivedAt,
+            SuspendedAt = task.SuspendedAt,
             CreatedAt = task.CreatedAt,
             UpdatedAt = task.UpdatedAt,
             AssetId = task.AssetId,

@@ -17,4 +17,6 @@ public record class UpdateTaskDto
     public DateTime? CompletedAt { get; init; }
 
     public DateTime? ArchivedAt { get; init; }
+
+    public DateTime? SuspendedAt { get; init; }
 }

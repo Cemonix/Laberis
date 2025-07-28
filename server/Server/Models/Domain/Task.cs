@@ -10,6 +10,7 @@ public class Task
     public string? Metadata { get; set; } // TODO: For JSONB, store as string for now
     public DateTime? CompletedAt { get; set; }
     public DateTime? ArchivedAt { get; set; }
+    public DateTime? SuspendedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
