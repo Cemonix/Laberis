@@ -74,6 +74,7 @@ export interface UpdateTaskRequest {
     dueDate?: string;
     currentWorkflowStageId?: number;
     assignedToUserId?: string;
+    status?: TaskStatus;
 }
 
 export interface TaskWithDetails extends Task {

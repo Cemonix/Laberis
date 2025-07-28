@@ -9,7 +9,8 @@
                     class="tool-button"
                     :class="{ 'active-tool': tool.id === activeToolId }"
                     @click="selectTool(tool.id)"
-                    :title="tool.name"
+                    :disabled="tool.id !== 'CURSOR' && isAnnotationEditingDisabled"
+                    :title="tool.id !== 'CURSOR' && isAnnotationEditingDisabled ? 'Editing disabled - task is completed' : tool.name"
                 >
                     <font-awesome-icon v-if="tool.iconDefinition" :icon="tool.iconDefinition" class="tool-icon" />
                 </Button>
@@ -67,10 +68,10 @@
                 <div 
                     v-for="(label, index) in filteredLabels" 
                     :key="label.labelId"
-                    :class="['label-item', { 'label-selected': label.labelId === selectedLabelId }]"
-                    @click="selectLabel(label.labelId)"
+                    :class="['label-item', { 'label-selected': label.labelId === selectedLabelId, 'disabled': isAnnotationEditingDisabled }]"
+                    @click="!isAnnotationEditingDisabled && selectLabel(label.labelId)"
                     @contextmenu.prevent="showLabelContextMenu($event, label)"
-                    :title="getLabelTooltip(label, index)"
+                    :title="isAnnotationEditingDisabled ? 'Editing disabled - task is completed' : getLabelTooltip(label, index)"
                     :data-index="index"
                 >
                     <div class="label-header">
@@ -132,6 +133,7 @@ const selectedLabelId = computed(() => workspaceStore.getSelectedLabelId);
 const currentLabelScheme = computed(() => workspaceStore.getCurrentLabelScheme);
 const availableLabelSchemes = computed(() => workspaceStore.getAvailableLabelSchemes);
 const annotations = computed(() => workspaceStore.getAnnotations);
+const isAnnotationEditingDisabled = computed(() => workspaceStore.isAnnotationEditingDisabled);
 
 // Track selected scheme ID and search functionality
 const selectedSchemeId = ref<number | null>(null);
@@ -199,8 +201,8 @@ const handleKeydown = (event: KeyboardEvent) => {
         return;
     }
 
-    // Handle number keys 1-9 for quick label selection
-    if (event.key >= '1' && event.key <= '9' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    // Handle number keys 1-9 for quick label selection (only if editing is enabled)
+    if (event.key >= '1' && event.key <= '9' && !event.ctrlKey && !event.altKey && !event.metaKey && !isAnnotationEditingDisabled.value) {
         event.preventDefault();
         const labelIndex = parseInt(event.key) - 1;
         const targetLabel = filteredLabels.value[labelIndex];
@@ -380,6 +382,15 @@ onUnmounted(() => {
 .label-item.label-selected {
     border-color: var(--color-primary);
     background-color: rgba(var(--color-primary), 0.1);
+}
+.label-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.label-item.disabled:hover {
+    background-color: var(--color-dark-blue-3);
+    border-color: transparent;
 }
 .label-color-indicator {
     width: 20px;

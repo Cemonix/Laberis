@@ -22,7 +22,13 @@
         <template v-else>
             <div class="workspace-top-bar">
                 <div class="workspace-top-bar-left">
-                    <router-link class="nav-link underline-animation" to="/home">Home</router-link>
+                    <button 
+                        @click="handleBackToTasks"
+                        class="nav-link back-to-tasks-btn"
+                        title="Return to tasks view"
+                    >
+                        ← Back to Tasks
+                    </button>
                 </div>
                 <div class="workspace-top-bar-center">
                     <Button 
@@ -38,11 +44,42 @@
                     >
                         {{ canNavigateToNext ? 'Next' : 'All Done' }}
                     </Button>
+                    <div class="task-actions">
+                        <div v-if="isTaskCompleted" class="task-preview-indicator">
+                            <span class="preview-badge">📋 Preview Only</span>
+                            <small>This task is completed</small>
+                        </div>
+                        <template v-else>
+                            <button 
+                                @click="handleSuspendTask"
+                                :disabled="!currentTask"
+                                class="task-action-btn suspend-btn"
+                                title="Suspend task (pause work)"
+                            >
+                                <font-awesome-icon :icon="faPause" />
+                            </button>
+                            <button 
+                                @click="handleDeferTask"
+                                :disabled="!currentTask"
+                                class="task-action-btn defer-btn"
+                                title="Defer task (skip for now)"
+                            >
+                                <font-awesome-icon :icon="faForward" />
+                            </button>
+                            <Button 
+                                @click="handleCompleteTaskAndNext"
+                                :disabled="!canCompleteTask"
+                                variant="success"
+                                class="complete-btn"
+                                title="Complete annotation and move to next task"
+                            >
+                                Complete & Next
+                            </Button>
+                        </template>
+                    </div>
                 </div>
                 <div class="workspace-top-bar-right">
-                    <span class="zoom-display"
-                        >Zoom: {{ zoomPercentageDisplay }}</span
-                    >
+                    <span class="zoom-display">Zoom: {{ zoomPercentageDisplay }}</span>
                     <span>{{ displayedTime }}</span>
                 </div>
             </div>
@@ -60,16 +97,16 @@
         </template>
         <ModalWindow
             :is-open="showCompletionModal"
-            title="Workflow Complete"
+            title="All Tasks Complete"
             @close="handleCompletionModalCancel"
-            hide-footer
         >
-            <template>
-                <p>You have reached the last task in this workflow stage. Would you like to return to the tasks view?</p>
-            </template>
+            <div class="completion-modal-content">
+                <p>🎉 Great work! You have completed all available tasks in this workflow stage.</p>
+                <p>You can either stay in the workspace or return to the tasks view to see your progress.</p>
+            </div>
             <template #footer>
-                <Button @click="handleCompletionModalCancel">Stay</Button>
-                <Button @click="handleCompletionModalConfirm" variant="primary">Go to Tasks</Button>
+                <Button @click="handleCompletionModalCancel">Stay in Workspace</Button>
+                <Button @click="handleCompletionModalConfirm" variant="primary">Back to Tasks</Button>
             </template>
         </ModalWindow>
     </div>
@@ -84,6 +121,8 @@ import WorkspaceSidebar from "@/components/annotationWorkspace/WorkspaceSidebar.
 import AnnotationsPanel from "@/components/annotationWorkspace/AnnotationsPanel.vue";
 import {useRoute, useRouter} from "vue-router";
 import ModalWindow from "@/components/common/modal/ModalWindow.vue";
+import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
+import {faPause, faForward} from "@fortawesome/free-solid-svg-icons";
 
 const props = defineProps({
     projectId: {
@@ -107,6 +146,9 @@ const displayedTime = computed(() => workspaceStore.elapsedTimeDisplay);
 const taskNavigationInfo = computed(() => workspaceStore.getTaskNavigationInfo);
 const canNavigateToPrevious = computed(() => workspaceStore.canNavigateToPrevious);
 const canNavigateToNext = computed(() => workspaceStore.canNavigateToNext);
+const canCompleteTask = computed(() => workspaceStore.canCompleteCurrentTask);
+const currentTask = computed(() => workspaceStore.getCurrentTask);
+const isTaskCompleted = computed(() => workspaceStore.isTaskCompleted);
 const zoomPercentageDisplay = computed(() => {
     const zoomLevel = workspaceStore.zoomLevel;
     return `${(zoomLevel * 100).toFixed(0)}%`;
@@ -183,6 +225,121 @@ const handleCompletionModalCancel = () => {
     showCompletionModal.value = false;
 };
 
+const handleBackToTasks = () => {
+    const task = currentTask.value;
+    if (task) {
+        router.push({
+            name: 'StageTasks',
+            params: {
+                projectId: props.projectId,
+                workflowId: task.workflowId.toString(),
+                stageId: task.currentWorkflowStageId.toString()
+            }
+        });
+    } else {
+        // Fallback to project view if no current task
+        router.push({
+            name: 'ProjectDashboard',
+            params: {
+                projectId: props.projectId
+            }
+        });
+    }
+};
+
+const handleCompleteTaskAndNext = async () => {
+    try {
+        const success = await workspaceStore.completeAndMoveToNextTask();
+        if (!success) {
+            // Error handling is already done in the store
+            return;
+        }
+        
+        // Try to get next available task automatically
+        const nextTaskInfo = await workspaceStore.getNextAvailableTask();
+        if (nextTaskInfo) {
+            // Load the next task seamlessly without leaving the workspace
+            await workspaceStore.loadAsset(nextTaskInfo.projectId, nextTaskInfo.assetId, nextTaskInfo.taskId);
+            
+            // Update URL without triggering route change
+            await router.replace({
+                name: 'AnnotationWorkspace',
+                params: {
+                    projectId: nextTaskInfo.projectId,
+                    assetId: nextTaskInfo.assetId
+                },
+                query: {
+                    taskId: nextTaskInfo.taskId
+                }
+            });
+        } else {
+            // No more tasks available - show completion modal or go back to tasks view
+            showCompletionModal.value = true;
+        }
+    } catch (error) {
+        console.error('Error in handleCompleteTaskAndNext:', error);
+    }
+};
+
+const handleSuspendTask = async () => {
+    if (!currentTask.value) return;
+    
+    try {
+        const success = await workspaceStore.suspendCurrentTask();
+        if (success) {
+            // Move to next task after suspending
+            const nextTaskInfo = await workspaceStore.getNextAvailableTask();
+            if (nextTaskInfo) {
+                await workspaceStore.loadAsset(nextTaskInfo.projectId, nextTaskInfo.assetId, nextTaskInfo.taskId);
+                await router.replace({
+                    name: 'AnnotationWorkspace',
+                    params: {
+                        projectId: nextTaskInfo.projectId,
+                        assetId: nextTaskInfo.assetId
+                    },
+                    query: {
+                        taskId: nextTaskInfo.taskId
+                    }
+                });
+            } else {
+                showCompletionModal.value = true;
+            }
+        }
+    } catch (error) {
+        console.error('Error in handleSuspendTask:', error);
+    }
+};
+
+const handleDeferTask = async () => {
+    if (!currentTask.value) return;
+    
+    try {
+        const success = await workspaceStore.deferCurrentTask();
+        if (success) {
+            // Move to next task after deferring
+            const nextTaskInfo = await workspaceStore.getNextAvailableTask();
+            if (nextTaskInfo) {
+                await workspaceStore.loadAsset(nextTaskInfo.projectId, nextTaskInfo.assetId, nextTaskInfo.taskId);
+                await router.replace({
+                    name: 'AnnotationWorkspace',
+                    params: {
+                        projectId: nextTaskInfo.projectId,
+                        assetId: nextTaskInfo.assetId
+                    },
+                    query: {
+                        taskId: nextTaskInfo.taskId
+                    }
+                });
+            } else {
+                showCompletionModal.value = true;
+            }
+        }
+    } catch (error) {
+        console.error('Error in handleDeferTask:', error);
+    }
+};
+
+
 onMounted(async () => {
     const taskId = route.query.taskId as string | undefined;
     await workspaceStore.loadAsset(props.projectId, props.assetId, taskId);
@@ -224,13 +381,125 @@ onUnmounted(() => {
             text-decoration: none;
             padding: 0.5rem 0;
         }
+        
+        .back-to-tasks-btn {
+            background: none;
+            border: none;
+            color: var(--color-gray-200);
+            text-decoration: none;
+            padding: 0.5rem 0;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: color 0.2s ease-in-out;
+            
+            &:hover {
+                color: var(--color-blue-400);
+            }
+        }
     }
     .workspace-top-bar-center {
         display: flex;
         justify-content: center;
         align-items: center;
         gap: 0.5rem;
+        flex-wrap: wrap;
     }
+    
+    .task-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-left: 1rem;
+        padding-left: 1rem;
+        border-left: 1px solid var(--color-accent-blue);
+    }
+    
+    .task-action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: all 0.2s ease-in-out;
+        
+        &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        &:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+    }
+    
+    .suspend-btn {
+        background-color: var(--color-yellow-500);
+        color: var(--color-white);
+        
+        &:hover:not(:disabled) {
+            background-color: var(--color-yellow-600);
+        }
+    }
+    
+    .defer-btn {
+        background-color: var(--color-turquoise-500);
+        color: var(--color-white);
+        
+        &:hover:not(:disabled) {
+            background-color: var(--color-turquoise-600);
+        }
+    }
+    
+    .complete-btn {
+        background-color: var(--color-green-500);
+        color: var(--color-white);
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-left: 0.5rem;
+    }
+    
+    .complete-btn:hover:not(:disabled) {
+        background-color: var(--color-green-600);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+    }
+    
+    .complete-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .task-preview-indicator {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.5rem 1rem;
+        background-color: var(--color-blue-100);
+        border: 1px solid var(--color-blue-300);
+        border-radius: 6px;
+        margin-left: 0.5rem;
+    }
+    
+    .preview-badge {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--color-blue-700);
+    }
+    
+    .task-preview-indicator small {
+        font-size: 0.75rem;
+        color: var(--color-blue-600);
+        margin: 0;
+    }
+    
     .workspace-top-bar-right {
         display: flex;
         justify-content: flex-end;
@@ -350,5 +619,21 @@ onUnmounted(() => {
     margin-left: 1rem;
     color: var(--color-gray-300);
     font-style: italic;
+}
+
+.completion-modal-content {
+    padding: 1rem 0;
+    text-align: center;
+}
+
+.completion-modal-content p {
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.completion-modal-content p:first-child {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-green-600);
 }
 </style>

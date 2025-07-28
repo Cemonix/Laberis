@@ -297,6 +297,81 @@ class TaskService extends BaseProjectService {
     }
 
     /**
+     * Complete a task (marks as completed but doesn't move to next stage)
+     */
+    async completeTask(projectId: number, taskId: number): Promise<Task> {
+        this.logger.info(`Completing task ${taskId} in project ${projectId}`);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/complete', { taskId });
+        const dto = await this.put<undefined, any>(url, undefined);
+        
+        const task: Task = this.transformTaskDto(dto);
+
+        this.logger.info(`Completed task ${taskId} successfully`);
+        return task;
+    }
+
+    /**
+     * Complete a task and automatically move it to the next workflow stage
+     */
+    async completeAndMoveTask(projectId: number, taskId: number): Promise<Task> {
+        this.logger.info(`Completing and moving task ${taskId} to next stage in project ${projectId}`);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/complete-and-move', { taskId });
+        const dto = await this.put<undefined, any>(url, undefined);
+        
+        const task: Task = this.transformTaskDto(dto);
+
+        this.logger.info(`Completed and moved task ${taskId} to next stage successfully`);
+        return task;
+    }
+
+    /**
+     * Assign a task to a user by user ID
+     */
+    async assignTaskByUserId(projectId: number, taskId: number, userId: string): Promise<Task> {
+        this.logger.info(`Assigning task ${taskId} to user ${userId} in project ${projectId}`);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/assign/{userId}', { taskId, userId });
+        const dto = await this.post<undefined, any>(url, undefined);
+        
+        const task: Task = this.transformTaskDto(dto);
+
+        this.logger.info(`Assigned task ${taskId} to user ${userId} successfully`);
+        return task;
+    }
+
+    /**
+     * Mark a completed task as uncomplete
+     */
+    async uncompleteTask(projectId: number, taskId: number): Promise<Task> {
+        this.logger.info(`Uncompleting task ${taskId} in project ${projectId}`);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/incomplete', { taskId });
+        const dto = await this.put<undefined, any>(url, undefined);
+        
+        const task: Task = this.transformTaskDto(dto);
+
+        this.logger.info(`Uncompleted task ${taskId} successfully`);
+        return task;
+    }
+
+    /**
+     * Suspend a task (mark as suspended)
+     */
+    async suspendTask(projectId: number, taskId: number): Promise<Task> {
+        this.logger.info(`Suspending task ${taskId} in project ${projectId}`);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/suspend', { taskId });
+        const dto = await this.put<undefined, any>(url, undefined);
+        
+        const task: Task = this.transformTaskDto(dto);
+
+        this.logger.info(`Suspended task ${taskId} successfully`);
+        return task;
+    }
+
+    /**
      * Check if there are assets available for task creation in a project
      */
     async checkAssetsAvailable(projectId: number): Promise<{ 

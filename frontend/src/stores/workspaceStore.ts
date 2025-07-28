@@ -131,6 +131,13 @@ export const useWorkspaceStore = defineStore("workspace", {
                 total: state.availableTasks.length
             };
         },
+        isTaskCompleted(state): boolean {
+            return state.currentTaskData?.completedAt !== null && state.currentTaskData?.completedAt !== undefined;
+        },
+        isAnnotationEditingDisabled(): boolean {
+            // Annotation editing is disabled when task is completed (preview mode)
+            return this.isTaskCompleted;
+        },
         canNavigateToPrevious(state): boolean {
             if (!state.currentTaskData || state.availableTasks.length === 0) return false;
             const currentIndex = state.availableTasks.findIndex(task => task.id === state.currentTaskData?.id);
@@ -140,6 +147,23 @@ export const useWorkspaceStore = defineStore("workspace", {
             if (!state.currentTaskData || state.availableTasks.length === 0) return false;
             const currentIndex = state.availableTasks.findIndex(task => task.id === state.currentTaskData?.id);
             return currentIndex < state.availableTasks.length - 1;
+        },
+        canCompleteCurrentTask(state): boolean {
+            if (!state.currentTaskData) {
+                return false;
+            }
+
+            // Check if task is already completed
+            if (state.currentTaskData.completedAt) {
+                return false;
+            }
+
+            // Check if there are any annotations for this task
+            const taskAnnotations = state.annotations.filter(annotation => 
+                annotation.taskId === state.currentTaskData?.id
+            );
+
+            return taskAnnotations.length > 0;
         },
     },
 
@@ -645,6 +669,224 @@ export const useWorkspaceStore = defineStore("workspace", {
                 taskId: nextTask.id.toString()
             };
         },
+
+        /**
+         * Complete the current task (annotation workflow)
+         */
+        async completeCurrentTask(): Promise<boolean> {
+            if (!this.currentTaskData || !this.currentProjectId) {
+                logger.error('Cannot complete task: no current task or project');
+                return false;
+            }
+
+            try {
+                const numericProjectId = parseInt(this.currentProjectId);
+                const updatedTask = await taskService.completeTask(numericProjectId, this.currentTaskData.id);
+                
+                // Update the current task data
+                this.currentTaskData = updatedTask;
+                
+                // Update the task in the available tasks list
+                const taskIndex = this.availableTasks.findIndex(task => task.id === updatedTask.id);
+                if (taskIndex !== -1) {
+                    this.availableTasks[taskIndex] = updatedTask;
+                }
+
+                logger.info(`Successfully completed task ${this.currentTaskData.id}`);
+                return true;
+            } catch (error) {
+                logger.error('Failed to complete task:', error);
+                this.error = error instanceof Error ? error.message : 'Failed to complete task';
+                return false;
+            }
+        },
+
+        /**
+         * Complete the current task and move to next workflow stage
+         */
+        async completeAndMoveCurrentTask(): Promise<boolean> {
+            if (!this.currentTaskData || !this.currentProjectId) {
+                logger.error('Cannot complete and move task: no current task or project');
+                return false;
+            }
+
+            try {
+                const numericProjectId = parseInt(this.currentProjectId);
+                const updatedTask = await taskService.completeAndMoveTask(numericProjectId, this.currentTaskData.id);
+                
+                // Update the current task data
+                this.currentTaskData = updatedTask;
+                
+                // Update the task in the available tasks list
+                const taskIndex = this.availableTasks.findIndex(task => task.id === updatedTask.id);
+                if (taskIndex !== -1) {
+                    this.availableTasks[taskIndex] = updatedTask;
+                }
+
+                logger.info(`Successfully completed and moved task ${this.currentTaskData.id} to next stage`);
+                return true;
+            } catch (error) {
+                logger.error('Failed to complete and move task:', error);
+                this.error = error instanceof Error ? error.message : 'Failed to complete and move task';
+                return false;
+            }
+        },
+
+        /**
+         * Complete current task and automatically move to next workflow stage
+         */
+        async completeAndMoveToNextTask(): Promise<boolean> {
+            if (!this.currentTaskData || !this.currentProjectId) {
+                logger.error('Cannot complete task: no current task or project');
+                return false;
+            }
+
+            try {
+                const numericProjectId = parseInt(this.currentProjectId);
+                const updatedTask = await taskService.completeAndMoveTask(numericProjectId, this.currentTaskData.id);
+                
+                // Update the current task data
+                this.currentTaskData = updatedTask;
+                
+                // Update the task in the available tasks list
+                const taskIndex = this.availableTasks.findIndex(task => task.id === updatedTask.id);
+                if (taskIndex !== -1) {
+                    this.availableTasks[taskIndex] = updatedTask;
+                }
+
+                logger.info(`Successfully completed and moved task ${this.currentTaskData.id} to next stage`);
+                return true;
+            } catch (error) {
+                logger.error('Failed to complete and move task:', error);
+                this.error = error instanceof Error ? error.message : 'Failed to complete and move task';
+                return false;
+            }
+        },
+
+        /**
+         * Mark a completed task as uncomplete
+         */
+        async uncompleteCurrentTask(): Promise<boolean> {
+            if (!this.currentTaskData || !this.currentProjectId) {
+                logger.error('Cannot uncomplete task: no current task or project');
+                return false;
+            }
+
+            try {
+                const numericProjectId = parseInt(this.currentProjectId);
+                const updatedTask = await taskService.uncompleteTask(numericProjectId, this.currentTaskData.id);
+                
+                // Update the current task data
+                this.currentTaskData = updatedTask;
+                
+                // Update the task in the available tasks list
+                const taskIndex = this.availableTasks.findIndex(task => task.id === updatedTask.id);
+                if (taskIndex !== -1) {
+                    this.availableTasks[taskIndex] = updatedTask;
+                }
+
+                logger.info(`Successfully uncompleted task ${this.currentTaskData.id}`);
+                return true;
+            } catch (error) {
+                logger.error('Failed to uncomplete task:', error);
+                this.error = error instanceof Error ? error.message : 'Failed to uncomplete task';
+                return false;
+            }
+        },
+
+        /**
+         * Suspend the current task
+         */
+        async suspendCurrentTask(): Promise<boolean> {
+            if (!this.currentTaskData || !this.currentProjectId) {
+                logger.error('Cannot suspend task: no current task or project');
+                return false;
+            }
+
+            try {
+                const numericProjectId = parseInt(this.currentProjectId);
+                
+                // Use the task service suspend method (handles local suspend for now)
+                const suspendedTask = await taskService.suspendTask(numericProjectId, this.currentTaskData.id);
+                
+                // Update the current task data
+                this.currentTaskData = suspendedTask;
+                
+                // Update the task in the available tasks list
+                const taskIndex = this.availableTasks.findIndex(task => task.id === suspendedTask.id);
+                if (taskIndex !== -1) {
+                    this.availableTasks[taskIndex] = suspendedTask;
+                }
+                
+                logger.info(`Successfully suspended task ${this.currentTaskData.id}`);
+                return true;
+            } catch (error) {
+                logger.error('Failed to suspend task:', error);
+                this.error = error instanceof Error ? error.message : 'Failed to suspend task';
+                return false;
+            }
+        },
+
+        /**
+         * Defer the current task (skip for now)
+         */
+        async deferCurrentTask(): Promise<boolean> {
+            if (!this.currentTaskData || !this.currentProjectId) {
+                logger.error('Cannot defer task: no current task or project');
+                return false;
+            }
+
+            try {
+                // For defer, we just move to the next task without updating the current one
+                // The task remains in the queue but user moves on
+                logger.info(`Deferred task ${this.currentTaskData.id}`);
+                return true;
+            } catch (error) {
+                logger.error('Failed to defer task:', error);
+                this.error = error instanceof Error ? error.message : 'Failed to defer task';
+                return false;
+            }
+        },
+
+        /**
+         * Get the next available task for seamless transitions
+         */
+        async getNextAvailableTask(): Promise<{ projectId: string; assetId: string; taskId: string } | null> {
+            if (!this.currentTaskData || this.availableTasks.length === 0) {
+                logger.warn('Cannot get next task: no current task or available tasks');
+                return null;
+            }
+
+            const currentIndex = this.availableTasks.findIndex(task => task.id === this.currentTaskData?.id);
+
+            // Look for next uncompleted task
+            for (let i = currentIndex + 1; i < this.availableTasks.length; i++) {
+                const task = this.availableTasks[i];
+                if (!task.completedAt) {
+                    return {
+                        projectId: this.currentProjectId!,
+                        assetId: task.assetId.toString(),
+                        taskId: task.id.toString()
+                    };
+                }
+            }
+
+            // If no task found after current, wrap around to beginning
+            for (let i = 0; i < currentIndex; i++) {
+                const task = this.availableTasks[i];
+                if (!task.completedAt) {
+                    return {
+                        projectId: this.currentProjectId!,
+                        assetId: task.assetId.toString(),
+                        taskId: task.id.toString()
+                    };
+                }
+            }
+
+            logger.info('No more uncompleted tasks available');
+            return null;
+        },
+
 
     },
 });
