@@ -413,4 +413,98 @@ public class TasksController : ControllerBase
             return StatusCode(500, "An unexpected error occurred. Please try again later.");
         }
     }
+
+    /// <summary>
+    /// Marks a completed task as incomplete, allowing it to be worked on again.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to mark as incomplete.</param>
+    /// <returns>The uncompleted task.</returns>
+    /// <response code="200">Returns the uncompleted task.</response>
+    /// <response code="404">If the task is not found.</response>
+    /// <response code="400">If the task is not in a completed state.</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPut("{taskId:int}/incomplete")]
+    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> MarkTaskIncomplete(int taskId)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var uncompletedTask = await _taskService.MarkTaskIncompleteAsync(taskId, userId);
+
+            if (uncompletedTask == null)
+            {
+                return NotFound($"Task with ID {taskId} not found.");
+            }
+
+            return Ok(uncompletedTask);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation while marking task {TaskId} as incomplete.", taskId);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while marking task {TaskId} as incomplete.", taskId);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
+
+    /// <summary>
+    /// Suspends a task, marking it as suspended so it can be resumed later.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to suspend.</param>
+    /// <returns>The suspended task.</returns>
+    /// <response code="200">Returns the suspended task.</response>
+    /// <response code="404">If the task is not found.</response>
+    /// <response code="400">If the task cannot be suspended.</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPut("{taskId:int}/suspend")]
+    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> SuspendTask(int taskId)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var suspendedTask = await _taskService.SuspendTaskAsync(taskId, userId);
+
+            if (suspendedTask == null)
+            {
+                return NotFound($"Task with ID {taskId} not found.");
+            }
+
+            return Ok(suspendedTask);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation while suspending task {TaskId}.", taskId);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while suspending task {TaskId}.", taskId);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
 }

@@ -19,6 +19,7 @@ public class TaskConfiguration : IEntityTypeConfiguration<Task>
         entity.Property(t => t.Metadata).HasColumnName("metadata").HasColumnType("jsonb").IsRequired(false);
         entity.Property(t => t.CompletedAt).HasColumnName("completed_at").IsRequired(false);
         entity.Property(t => t.ArchivedAt).HasColumnName("archived_at").IsRequired(false);
+        entity.Property(t => t.SuspendedAt).HasColumnName("suspended_at").IsRequired(false);
 
         entity.Property(t => t.CreatedAt)
             .HasColumnName("created_at")

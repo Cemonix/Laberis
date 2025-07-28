@@ -160,7 +160,7 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
     {
         _logger.LogInformation("Getting available assets for task creation in project {ProjectId}", projectId);
 
-        // Get all assets in the project that are imported and don't have active (incomplete) tasks
+        // Get all assets in the project that are imported and don't have active (uncomplete) tasks
         var availableAssets = await _context.Assets
             .Where(a => a.ProjectId == projectId 
                        && a.Status == Models.Domain.Enums.AssetStatus.IMPORTED
