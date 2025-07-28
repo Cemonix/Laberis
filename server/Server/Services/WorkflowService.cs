@@ -281,7 +281,8 @@ public class WorkflowService : IWorkflowService
             Description = workflow.Description,
             CreatedAt = workflow.CreatedAt,
             UpdatedAt = workflow.UpdatedAt,
-            ProjectId = workflow.ProjectId
+            ProjectId = workflow.ProjectId,
+            StageCount = workflow.WorkflowStages?.Count ?? 0
         };
     }
 }

@@ -2,6 +2,7 @@ using server.Models.Domain;
 using server.Models.DTOs.WorkflowStage;
 using server.Models.DTOs.ProjectMember;
 using server.Models.Common;
+using server.Models.Domain.Enums;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 
@@ -72,6 +73,10 @@ public class WorkflowStageService : IWorkflowStageService
     {
         _logger.LogInformation("Creating new workflow stage for workflow: {WorkflowId}", workflowId);
 
+        // Validate data source exclusivity (unless this is a completion stage)
+        await ValidateDataSourceExclusivityAsync(createDto.InputDataSourceId, createDto.StageType, workflowId, "input");
+        await ValidateDataSourceExclusivityAsync(createDto.TargetDataSourceId, createDto.StageType, workflowId, "target");
+
         var stage = new WorkflowStage
         {
             Name = createDto.Name,
@@ -108,15 +113,30 @@ public class WorkflowStageService : IWorkflowStageService
             return null;
         }
 
+        // Validate data source exclusivity if data sources are being changed
+        var newStageType = updateDto.StageType ?? stage.StageType;
+        var newInputDataSourceId = updateDto.InputDataSourceId ?? stage.InputDataSourceId;
+        var newTargetDataSourceId = updateDto.TargetDataSourceId ?? stage.TargetDataSourceId;
+
+        // Only validate if data sources are actually changing
+        if (newInputDataSourceId != stage.InputDataSourceId)
+        {
+            await ValidateDataSourceExclusivityAsync(newInputDataSourceId, newStageType, stage.WorkflowId, "input");
+        }
+        if (newTargetDataSourceId != stage.TargetDataSourceId)
+        {
+            await ValidateDataSourceExclusivityAsync(newTargetDataSourceId, newStageType, stage.WorkflowId, "target");
+        }
+
         stage.Name = updateDto.Name ?? stage.Name;
         stage.Description = updateDto.Description ?? stage.Description;
         stage.StageOrder = updateDto.StageOrder;
-        stage.StageType = updateDto.StageType ?? stage.StageType;
+        stage.StageType = newStageType;
         stage.IsInitialStage = updateDto.IsInitialStage;
         stage.IsFinalStage = updateDto.IsFinalStage;
         stage.UiConfiguration = updateDto.UiConfiguration ?? stage.UiConfiguration;
-        stage.InputDataSourceId = updateDto.InputDataSourceId ?? stage.InputDataSourceId;
-        stage.TargetDataSourceId = updateDto.TargetDataSourceId ?? stage.TargetDataSourceId;
+        stage.InputDataSourceId = newInputDataSourceId;
+        stage.TargetDataSourceId = newTargetDataSourceId;
         stage.UpdatedAt = DateTime.UtcNow;
 
         await _workflowStageRepository.SaveChangesAsync();
@@ -260,6 +280,37 @@ public class WorkflowStageService : IWorkflowStageService
                 UpdatedAt = a.UpdatedAt
             }).ToList() ?? []
         };
+    }
+
+    /// <summary>
+    /// Validates that a data source is not already in use by other workflows (unless for completion stages).
+    /// </summary>
+    /// <param name="dataSourceId">The data source ID to validate.</param>
+    /// <param name="stageType">The type of stage being created.</param>
+    /// <param name="currentWorkflowId">The current workflow ID (to exclude from conflict check).</param>
+    /// <param name="dataSourceType">Type description (input/target) for error messages.</param>
+    private async System.Threading.Tasks.Task ValidateDataSourceExclusivityAsync(int? dataSourceId, WorkflowStageType? stageType, int currentWorkflowId, string dataSourceType)
+    {
+        if (!dataSourceId.HasValue) return;
+
+        // Allow sharing for completion stages
+        if (stageType == WorkflowStageType.COMPLETION)
+        {
+            _logger.LogInformation("Allowing data source {DataSourceId} sharing for completion stage", dataSourceId.Value);
+            return;
+        }
+
+        var conflictingStages = await _workflowStageRepository.GetConflictingDataSourceUsageAsync(dataSourceId.Value, currentWorkflowId);
+        
+        if (conflictingStages.Any())
+        {
+            var conflictDescriptions = conflictingStages.Select(s => $"'{s.Name}' in workflow '{s.Workflow.Name}' (ID: {s.Workflow.WorkflowId})");
+            var conflictList = string.Join(", ", conflictDescriptions);
+            
+            throw new InvalidOperationException(
+                $"Data source {dataSourceId} cannot be used as {dataSourceType} data source because it is already in use by other workflow stages: {conflictList}. " +
+                $"Data sources can only be shared by completion stages. Consider creating a dedicated data source for this workflow stage.");
+        }
     }
 
     public async Task<bool> ValidateStageBelongsToWorkflowAsync(int stageId, int workflowId)

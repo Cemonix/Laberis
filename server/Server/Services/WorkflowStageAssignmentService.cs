@@ -104,18 +104,10 @@ public class WorkflowStageAssignmentService : IWorkflowStageAssignmentService
         _logger.LogInformation("Successfully created {Count} assignments for workflow stage {WorkflowStageId}", 
             assignments.Count, workflowStageId);
 
-        // Fetch the complete assignments with navigation properties
-        var createdAssignments = new List<WorkflowStageAssignmentDto>();
-        // TODO: Consider optimizing this to reduce database calls
-        // Fetch assignments in bulk if possible
-        foreach (var assignment in assignments)
-        {
-            var createdAssignment = await _assignmentRepository.GetByIdWithDetailsAsync(assignment.WorkflowStageAssignmentId);
-            if (createdAssignment != null)
-            {
-                createdAssignments.Add(MapToDto(createdAssignment));
-            }
-        }
+        // Fetch the complete assignments with navigation properties in a single query
+        var assignmentIds = assignments.Select(a => a.WorkflowStageAssignmentId).ToList();
+        var createdAssignmentsWithDetails = await _assignmentRepository.GetByIdsWithDetailsAsync(assignmentIds);
+        var createdAssignments = createdAssignmentsWithDetails.Select(MapToDto).ToList();
 
         return createdAssignments;
     }

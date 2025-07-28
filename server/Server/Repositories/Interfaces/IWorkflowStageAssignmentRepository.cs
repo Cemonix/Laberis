@@ -17,6 +17,13 @@ public interface IWorkflowStageAssignmentRepository : IGenericRepository<Workflo
     /// <param name="assignmentId">The ID of the assignment.</param>
     /// <returns>A task that represents the asynchronous operation, containing the assignment with details if found.</returns>
     Task<WorkflowStageAssignment?> GetByIdWithDetailsAsync(int assignmentId);
+    
+    /// <summary>
+    /// Gets multiple assignments by their IDs with all related data included in a single query.
+    /// </summary>
+    /// <param name="assignmentIds">The IDs of the assignments to retrieve.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the assignments with details.</returns>
+    Task<IEnumerable<WorkflowStageAssignment>> GetByIdsWithDetailsAsync(IEnumerable<int> assignmentIds);
 
     /// <summary>
     /// Gets all assignments for a specific project member.
