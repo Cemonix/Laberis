@@ -287,6 +287,52 @@ public class TaskService : ITaskService
         return tasksCreated;
     }
 
+    public async Task<int> CreateTasksForDataSourceAsync(int projectId, int workflowId, int workflowStageId, int dataSourceId)
+    {
+        _logger.LogInformation("Creating tasks for data source {DataSourceId} in project {ProjectId} for workflow stage {WorkflowStageId}", 
+            dataSourceId, projectId, workflowStageId);
+
+        // Get available assets from the specific data source
+        var availableAssets = await _taskRepository.GetAvailableAssetsFromDataSourceAsync(projectId, dataSourceId);
+        
+        if (!availableAssets.Any())
+        {
+            _logger.LogInformation("No available assets found in data source {DataSourceId} for project {ProjectId}", 
+                dataSourceId, projectId);
+            return 0;
+        }
+
+        var tasksCreated = 0;
+        foreach (var asset in availableAssets)
+        {
+            var createTaskDto = new CreateTaskDto
+            {
+                AssetId = asset.AssetId,
+                WorkflowId = workflowId,
+                CurrentWorkflowStageId = workflowStageId,
+                Priority = 1, // Default priority
+                Metadata = null,
+                AssignedToUserId = null
+            };
+
+            try
+            {
+                await CreateTaskAsync(projectId, createTaskDto);
+                tasksCreated++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create task for asset {AssetId} in data source {DataSourceId}", 
+                    asset.AssetId, dataSourceId);
+            }
+        }
+
+        _logger.LogInformation("Successfully created {TasksCreated} tasks for data source {DataSourceId} in project {ProjectId}", 
+            tasksCreated, dataSourceId, projectId);
+
+        return tasksCreated;
+    }
+
     public async Task<bool> HasAssetsAvailableAsync(int projectId, int dataSourceId)
     {
         _logger.LogInformation("Checking if data source {DataSourceId} has assets available for project {ProjectId}", dataSourceId, projectId);
@@ -306,6 +352,123 @@ public class TaskService : ITaskService
         
         _logger.LogInformation("Project {ProjectId} has {AssetsCount} available assets", projectId, count);
         return count;
+    }
+
+    public async Task<TaskDto?> CompleteTaskAsync(int taskId, string userId)
+    {
+        _logger.LogInformation("Completing task {TaskId} by user {UserId}", taskId, userId);
+
+        var existingTask = await _taskRepository.GetByIdAsync(taskId);
+        if (existingTask == null)
+        {
+            _logger.LogWarning("Task with ID {TaskId} not found for completion", taskId);
+            return null;
+        }
+
+        if (existingTask.CompletedAt != null)
+        {
+            _logger.LogWarning("Task {TaskId} is already completed", taskId);
+            return MapToDto(existingTask);
+        }
+
+        // Mark task as completed
+        existingTask.CompletedAt = DateTime.UtcNow;
+        existingTask.LastWorkedOnByUserId = userId;
+        existingTask.UpdatedAt = DateTime.UtcNow;
+
+        await _taskRepository.SaveChangesAsync();
+
+        // Create TaskEvent to track completion
+        var taskEvent = new TaskEvent
+        {
+            EventType = TaskEventType.TASK_COMPLETED,
+            Details = "Task completed",
+            TaskId = taskId,
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _taskEventRepository.AddAsync(taskEvent);
+        await _taskEventRepository.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully completed task {TaskId}", taskId);
+        return MapToDto(existingTask);
+    }
+
+    public async Task<TaskDto?> CompleteAndMoveTaskAsync(int taskId, string userId)
+    {
+        _logger.LogInformation("Completing and moving task {TaskId} by user {UserId}", taskId, userId);
+
+        var existingTask = await _taskRepository.GetByIdAsync(taskId);
+        if (existingTask == null)
+        {
+            _logger.LogWarning("Task with ID {TaskId} not found for completion and move", taskId);
+            return null;
+        }
+
+        if (existingTask.CompletedAt != null)
+        {
+            _logger.LogWarning("Task {TaskId} is already completed", taskId);
+            return MapToDto(existingTask);
+        }
+
+        // Find next workflow stage
+        var nextStage = await _taskRepository.GetNextWorkflowStageAsync(existingTask.CurrentWorkflowStageId);
+        
+        if (nextStage == null)
+        {
+            _logger.LogInformation("No next stage found for task {TaskId}, marking as completed only", taskId);
+            return await CompleteTaskAsync(taskId, userId);
+        }
+
+        // Complete current task
+        existingTask.CompletedAt = DateTime.UtcNow;
+        existingTask.LastWorkedOnByUserId = userId;
+        existingTask.UpdatedAt = DateTime.UtcNow;
+
+        await _taskRepository.SaveChangesAsync();
+
+        // Create TaskEvent for completion
+        var completionEvent = new TaskEvent
+        {
+            EventType = TaskEventType.TASK_COMPLETED,
+            Details = $"Task completed and moved to next workflow stage",
+            TaskId = taskId,
+            UserId = userId,
+            FromWorkflowStageId = existingTask.CurrentWorkflowStageId,
+            ToWorkflowStageId = nextStage.WorkflowStageId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _taskEventRepository.AddAsync(completionEvent);
+        await _taskEventRepository.SaveChangesAsync();
+
+        // Create new task for next stage using data source-specific creation
+        if (nextStage.InputDataSourceId.HasValue)
+        {
+            try
+            {
+                var tasksCreated = await CreateTasksForDataSourceAsync(
+                    existingTask.ProjectId, 
+                    existingTask.WorkflowId, 
+                    nextStage.WorkflowStageId, 
+                    nextStage.InputDataSourceId.Value);
+
+                _logger.LogInformation("Created {TasksCreated} tasks for next stage {NextStageId}", 
+                    tasksCreated, nextStage.WorkflowStageId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create tasks for next stage {NextStageId} after completing task {TaskId}", 
+                    nextStage.WorkflowStageId, taskId);
+                // Don't fail the completion if we can't create next stage tasks
+            }
+        }
+
+        _logger.LogInformation("Successfully completed and moved task {TaskId} to next stage {NextStageId}", 
+            taskId, nextStage.WorkflowStageId);
+
+        return MapToDto(existingTask);
     }
 
     private static TaskDto MapToDto(LaberisTask task)
