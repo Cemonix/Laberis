@@ -337,4 +337,80 @@ public class TasksController : ControllerBase
             return StatusCode(500, "An unexpected error occurred. Please try again later.");
         }
     }
+
+    /// <summary>
+    /// Marks a task as completed, unlocking the asset for subsequent workflow stages.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to complete.</param>
+    /// <returns>The completed task.</returns>
+    /// <response code="200">Returns the completed task.</response>
+    /// <response code="404">If the task is not found.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPut("{taskId:int}/complete")]
+    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CompleteTask(int taskId)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var completedTask = await _taskService.CompleteTaskAsync(taskId, userId);
+
+            if (completedTask == null)
+            {
+                return NotFound($"Task with ID {taskId} not found.");
+            }
+
+            return Ok(completedTask);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while completing task {TaskId}.", taskId);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
+
+    /// <summary>
+    /// Marks a task as completed and moves it to the next workflow stage if one exists.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to complete and move.</param>
+    /// <returns>The completed task.</returns>
+    /// <response code="200">Returns the completed task.</response>
+    /// <response code="404">If the task is not found.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPut("{taskId:int}/complete-and-move")]
+    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CompleteAndMoveTask(int taskId)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var completedTask = await _taskService.CompleteAndMoveTaskAsync(taskId, userId);
+
+            if (completedTask == null)
+            {
+                return NotFound($"Task with ID {taskId} not found.");
+            }
+
+            return Ok(completedTask);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while completing and moving task {TaskId}.", taskId);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
 }

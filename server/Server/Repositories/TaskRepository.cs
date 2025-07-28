@@ -160,13 +160,11 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
     {
         _logger.LogInformation("Getting available assets for task creation in project {ProjectId}", projectId);
 
-        // Get all assets in the project that are imported and don't have tasks yet
-        // TODO: This correlated subquery can lead to performance issues on large datasets; 
-        //       consider using a left join or grouping approach to filter out assets without tasks more efficiently.
+        // Get all assets in the project that are imported and don't have active (incomplete) tasks
         var availableAssets = await _context.Assets
             .Where(a => a.ProjectId == projectId 
                        && a.Status == Models.Domain.Enums.AssetStatus.IMPORTED
-                       && !_context.Tasks.Any(t => t.AssetId == a.AssetId))
+                       && !_context.Tasks.Any(t => t.AssetId == a.AssetId && t.CompletedAt == null))
             .ToListAsync();
 
         _logger.LogInformation("Found {Count} available assets for task creation in project {ProjectId}", 
@@ -183,7 +181,7 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
         var query = _context.Assets
             .Where(a => a.ProjectId == projectId 
                        && a.Status == Models.Domain.Enums.AssetStatus.IMPORTED
-                       && !_context.Tasks.Any(t => t.AssetId == a.AssetId));
+                       && !_context.Tasks.Any(t => t.AssetId == a.AssetId && t.CompletedAt == null));
 
         if (dataSourceId.HasValue)
         {
@@ -196,5 +194,73 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
             count, projectId, dataSourceId);
 
         return count;
+    }
+
+    public async Task<IEnumerable<Asset>> GetAvailableAssetsFromDataSourceAsync(int projectId, int dataSourceId)
+    {
+        _logger.LogInformation("Getting available assets from data source {DataSourceId} in project {ProjectId}", 
+            dataSourceId, projectId);
+
+        var availableAssets = await _context.Assets
+            .Where(a => a.ProjectId == projectId 
+                       && a.DataSourceId == dataSourceId
+                       && a.Status == Models.Domain.Enums.AssetStatus.IMPORTED
+                       && !_context.Tasks.Any(t => t.AssetId == a.AssetId && t.CompletedAt == null))
+            .ToListAsync();
+
+        _logger.LogInformation("Found {Count} available assets from data source {DataSourceId} in project {ProjectId}", 
+            availableAssets.Count, dataSourceId, projectId);
+
+        return availableAssets;
+    }
+
+    public async Task<WorkflowStage?> GetNextWorkflowStageAsync(int currentStageId, string? condition = null)
+    {
+        _logger.LogInformation("Finding next workflow stage for stage {CurrentStageId} with condition '{Condition}'", 
+            currentStageId, condition ?? "none");
+
+        WorkflowStage? nextStage = null;
+        
+        if (!string.IsNullOrEmpty(condition))
+        {
+            // First, try to find a connection with the exact condition
+            nextStage = await _context.WorkflowStageConnections
+                .Where(c => c.FromStageId == currentStageId && c.Condition == condition)
+                .Select(c => c.ToStage)
+                .FirstOrDefaultAsync();
+                
+            if (nextStage != null)
+            {
+                _logger.LogInformation("Found next stage via condition-based routing: {NextStageId} with condition '{Condition}'", 
+                    nextStage.WorkflowStageId, condition);
+            }
+        }
+        
+        // If no stage found with specific condition, look for default connection (no condition)
+        if (nextStage == null)
+        {
+            nextStage = await _context.WorkflowStageConnections
+                .Where(c => c.FromStageId == currentStageId && c.Condition == null)
+                .Select(c => c.ToStage)
+                .FirstOrDefaultAsync();
+                
+            if (nextStage != null)
+            {
+                _logger.LogInformation("Found next stage via default routing: {NextStageId} (no condition)", 
+                    nextStage.WorkflowStageId);
+            }
+        }
+
+        if (nextStage != null)
+        {
+            _logger.LogInformation("Found next stage: {NextStageId} ({NextStageName})", 
+                nextStage.WorkflowStageId, nextStage.Name);
+        }
+        else
+        {
+            _logger.LogInformation("No next stage found for stage {CurrentStageId}", currentStageId);
+        }
+
+        return nextStage;
     }
 }
