@@ -19,4 +19,6 @@ public record class UpdateTaskDto
     public DateTime? ArchivedAt { get; init; }
 
     public DateTime? SuspendedAt { get; init; }
+
+    public DateTime? DeferredAt { get; init; }
 }

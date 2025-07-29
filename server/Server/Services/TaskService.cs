@@ -5,6 +5,7 @@ using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 using LaberisTask = server.Models.Domain.Task;
+using TaskStatus = server.Models.Domain.Enums.TaskStatus;
 
 namespace server.Services;
 
@@ -150,6 +151,7 @@ public class TaskService : ITaskService
         existingTask.CompletedAt = updateDto.CompletedAt ?? existingTask.CompletedAt;
         existingTask.ArchivedAt = updateDto.ArchivedAt ?? existingTask.ArchivedAt;
         existingTask.SuspendedAt = updateDto.SuspendedAt ?? existingTask.SuspendedAt;
+        existingTask.DeferredAt = updateDto.DeferredAt ?? existingTask.DeferredAt;
         existingTask.UpdatedAt = DateTime.UtcNow;
 
         await _taskRepository.SaveChangesAsync();
@@ -186,6 +188,20 @@ public class TaskService : ITaskService
         {
             _logger.LogWarning("Task with ID: {TaskId} not found for assignment.", taskId);
             return null;
+        }
+
+        // Prevent assignment of suspended tasks
+        if (existingTask.SuspendedAt.HasValue)
+        {
+            _logger.LogWarning("Attempted to assign suspended task {TaskId}. Suspended tasks cannot be assigned.", taskId);
+            throw new InvalidOperationException($"Task {taskId} is suspended and cannot be assigned.");
+        }
+
+        // Prevent assignment of deferred tasks
+        if (existingTask.DeferredAt.HasValue)
+        {
+            _logger.LogWarning("Attempted to assign deferred task {TaskId}. Deferred tasks cannot be assigned.", taskId);
+            throw new InvalidOperationException($"Task {taskId} is deferred and cannot be assigned.");
         }
 
         existingTask.AssignedToUserId = userId;
@@ -372,8 +388,11 @@ public class TaskService : ITaskService
             return MapToDto(existingTask);
         }
 
-        // Mark task as completed
+        // Mark task as completed and clear conflicting state timestamps
         existingTask.CompletedAt = DateTime.UtcNow;
+        existingTask.SuspendedAt = null;  // Clear suspended state
+        existingTask.DeferredAt = null;   // Clear deferred state
+        // Note: Don't clear ArchivedAt here - completed tasks can still be archived later
         existingTask.LastWorkedOnByUserId = userId;
         existingTask.UpdatedAt = DateTime.UtcNow;
 
@@ -490,6 +509,8 @@ public class TaskService : ITaskService
 
         // Mark task as incomplete by clearing completion timestamp
         existingTask.CompletedAt = null;
+        // Note: Don't clear SuspendedAt/DeferredAt here - task can be marked incomplete
+        // while still being suspended/deferred (they're overlay states)
         existingTask.LastWorkedOnByUserId = userId;
         existingTask.UpdatedAt = DateTime.UtcNow;
 
@@ -538,8 +559,11 @@ public class TaskService : ITaskService
             throw new InvalidOperationException($"Task {taskId} is already suspended");
         }
 
-        // Mark task as suspended
+        // Mark task as suspended and clear conflicting state timestamps
         existingTask.SuspendedAt = DateTime.UtcNow;
+        existingTask.DeferredAt = null;  // Clear deferred state
+        existingTask.CompletedAt = null; // Clear completed state  
+        existingTask.ArchivedAt = null;  // Clear archived state
         existingTask.LastWorkedOnByUserId = userId;
         existingTask.UpdatedAt = DateTime.UtcNow;
 
@@ -578,8 +602,10 @@ public class TaskService : ITaskService
             throw new InvalidOperationException($"Task {taskId} is not suspended and cannot be unsuspended");
         }
 
-        // Clear the suspended status
+        // Clear the suspended status (task returns to its natural state based on assignment)
         existingTask.SuspendedAt = null;
+        // Note: Don't clear other timestamps here - if task was completed before suspension,
+        // unsuspending should NOT uncomplete it. Only clear suspended state.
         existingTask.LastWorkedOnByUserId = userId;
         existingTask.UpdatedAt = DateTime.UtcNow;
 
@@ -628,7 +654,11 @@ public class TaskService : ITaskService
             throw new InvalidOperationException($"Task {taskId} is suspended and cannot be deferred");
         }
 
-        // Update task to indicate it was deferred (we'll track this via task event only)
+        // Mark task as deferred and clear conflicting state timestamps
+        existingTask.DeferredAt = DateTime.UtcNow;
+        existingTask.SuspendedAt = null;  // Clear suspended state
+        existingTask.CompletedAt = null;  // Clear completed state
+        existingTask.ArchivedAt = null;   // Clear archived state
         existingTask.LastWorkedOnByUserId = userId;
         existingTask.UpdatedAt = DateTime.UtcNow;
 
@@ -685,6 +715,37 @@ public class TaskService : ITaskService
         };
     }
 
+    private static TaskStatus CalculateTaskStatus(LaberisTask task, string? stageType = null)
+    {
+        // With mutual exclusion, only one timestamp can be set at a time
+        // Check in logical order of finality
+        
+        if (task.ArchivedAt.HasValue) return TaskStatus.ARCHIVED;
+        if (task.SuspendedAt.HasValue) return TaskStatus.SUSPENDED;
+        if (task.DeferredAt.HasValue) return TaskStatus.DEFERRED;
+        if (task.CompletedAt.HasValue) return TaskStatus.COMPLETED;
+        
+        // Determine working state based on assignment
+        if (!string.IsNullOrEmpty(task.AssignedToUserId))
+        {
+            return TaskStatus.IN_PROGRESS;
+        }
+        
+        // Context-aware status for unstarted tasks based on workflow stage type
+        if (!string.IsNullOrEmpty(stageType))
+        {
+            return stageType.ToUpperInvariant() switch
+            {
+                "ANNOTATION" => TaskStatus.READY_FOR_ANNOTATION,
+                "REVISION" => TaskStatus.READY_FOR_REVIEW,
+                "COMPLETION" => TaskStatus.READY_FOR_COMPLETION,
+                _ => TaskStatus.NOT_STARTED
+            };
+        }
+        
+        return TaskStatus.NOT_STARTED;
+    }
+
     private static TaskDto MapToDto(LaberisTask task)
     {
         return new TaskDto
@@ -695,6 +756,8 @@ public class TaskService : ITaskService
             CompletedAt = task.CompletedAt,
             ArchivedAt = task.ArchivedAt,
             SuspendedAt = task.SuspendedAt,
+            DeferredAt = task.DeferredAt,
+            Status = CalculateTaskStatus(task, task.CurrentWorkflowStage?.StageType?.ToString()),
             CreatedAt = task.CreatedAt,
             UpdatedAt = task.UpdatedAt,
             AssetId = task.AssetId,

@@ -18,9 +18,11 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
 
     protected override IQueryable<LaberisTask> ApplyIncludes(IQueryable<LaberisTask> query)
     {
-        // Include related data if needed for specific use cases
-        // Example: return query.Include(t => t.Asset).Include(t => t.Workflow).Include(t => t.CurrentWorkflowStage);
-        return query;
+        // Include related data needed for status calculation and user info
+        return query
+            .Include(t => t.CurrentWorkflowStage)
+            .Include(t => t.AssignedToUser)
+            .Include(t => t.LastWorkedOnByUser);
     }
 
     protected override IQueryable<LaberisTask> ApplyFilter(IQueryable<LaberisTask> query, string? filterOn, string? filterQuery)
