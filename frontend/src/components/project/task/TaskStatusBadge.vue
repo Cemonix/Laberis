@@ -8,7 +8,7 @@
 <script setup lang="ts">
 import {computed} from 'vue';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
-import {faArchive, faCheckCircle, faHourglass, faPause, faPlay} from '@fortawesome/free-solid-svg-icons';
+import {faArchive, faCheckCircle, faHourglass, faPause, faPlay, faForward, faPen, faEye, faFlag} from '@fortawesome/free-solid-svg-icons';
 import type {TaskStatus} from '@/types/task';
 
 interface Props {
@@ -42,6 +42,26 @@ const statusConfig = {
         label: 'Suspended',
         icon: faPause,
         class: 'suspended'
+    },
+    DEFERRED: {
+        label: 'Deferred',
+        icon: faForward,
+        class: 'deferred'
+    },
+    READY_FOR_ANNOTATION: {
+        label: 'Ready for Annotation',
+        icon: faPen,
+        class: 'ready-annotation'
+    },
+    READY_FOR_REVIEW: {
+        label: 'Ready for Review',
+        icon: faEye,
+        class: 'ready-review'
+    },
+    READY_FOR_COMPLETION: {
+        label: 'Ready for Completion',
+        icon: faFlag,
+        class: 'ready-completion'
     }
 };
 
@@ -92,6 +112,30 @@ const statusClass = computed(() => statusInfo.value.class);
         background: var(--color-warning-light);
         color: var(--color-warning-dark);
         border: 1px solid var(--color-warning);
+    }
+    
+    &.deferred {
+        background: var(--color-purple-100);
+        color: var(--color-purple-700);
+        border: 1px solid var(--color-purple-500);
+    }
+    
+    &.ready-annotation {
+        background: var(--color-blue-100);
+        color: var(--color-blue-700);
+        border: 1px solid var(--color-blue-600);
+    }
+    
+    &.ready-review {
+        background: var(--color-amber-100);
+        color: var(--color-amber-600);
+        border: 1px solid var(--color-amber-500);
+    }
+    
+    &.ready-completion {
+        background: var(--color-emerald-100);
+        color: var(--color-emerald-600);
+        border: 1px solid var(--color-emerald-500);
     }
     
     svg {
