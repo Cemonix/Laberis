@@ -47,33 +47,18 @@ class WorkflowService extends BaseProjectService {
     }
 
     /**
-     * Creates a new workflow within a project
+     * Creates a new workflow within a project (supports both simple workflows and workflows with stages)
      */
-    async createWorkflow(projectId: number, data: CreateWorkflowRequest): Promise<Workflow> {
+    async createWorkflow(projectId: number, data: CreateWorkflowRequest | CreateWorkflowWithStagesRequest): Promise<Workflow> {
         this.logger.info(`Creating workflow in project ${projectId}`, data);
         
         const url = this.buildProjectUrl(projectId, 'workflows');
-        const response = await this.post<CreateWorkflowRequest, Workflow>(url, data);
+        const response = await this.post<CreateWorkflowRequest | CreateWorkflowWithStagesRequest, Workflow>(url, data);
         
         this.logger.info(`Created workflow: ${response.name} (ID: ${response.id}) in project ${projectId}`);
         return response;
     }
 
-    /**
-     * Creates a new workflow with stages in a single operation
-     */
-    async createWorkflowWithStages(
-        projectId: number, 
-        data: CreateWorkflowWithStagesRequest
-    ): Promise<Workflow> {
-        this.logger.info(`Creating workflow with stages in project ${projectId}`, data);
-        
-        const url = this.buildProjectUrl(projectId, 'workflows/with-stages');
-        const response = await this.post<CreateWorkflowWithStagesRequest, Workflow>(url, data);
-        
-        this.logger.info(`Created workflow with stages: ${response.name} (ID: ${response.id}) in project ${projectId}`);
-        return response;
-    }
 
     /**
      * Updates an existing workflow
