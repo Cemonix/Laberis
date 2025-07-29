@@ -1,5 +1,8 @@
 using server.Models.Common;
 using server.Models.DTOs.Asset;
+using server.Models.Domain;
+using server.Models.Domain.Enums;
+using TaskStatus = server.Models.Domain.Enums.TaskStatus;
 
 namespace server.Services.Interfaces;
 
@@ -80,4 +83,44 @@ public interface IAssetService
     /// <param name="projectId">The ID of the project.</param>
     /// <returns>A task that represents the asynchronous operation, returning true if the asset belongs to the project.</returns>
     Task<bool> ValidateAssetBelongsToProjectAsync(int assetId, int projectId);
+
+    /// <summary>
+    /// Handles asset movement as part of task workflow progression.
+    /// </summary>
+    /// <param name="task">The task that is being completed or status changed.</param>
+    /// <param name="targetStatus">The target status the task is changing to.</param>
+    /// <param name="userId">The ID of the user performing the action.</param>
+    /// <returns>A task that represents the asynchronous operation, containing information about the movement.</returns>
+    Task<AssetMovementResult> HandleTaskWorkflowAssetMovementAsync(server.Models.Domain.Task task, TaskStatus targetStatus, string userId);
+}
+
+/// <summary>
+/// Result information for asset movement operations during workflow progression.
+/// </summary>
+public class AssetMovementResult
+{
+    /// <summary>
+    /// Whether the asset was moved to a different data source.
+    /// </summary>
+    public bool AssetMoved { get; set; }
+
+    /// <summary>
+    /// Whether the current task should be archived.
+    /// </summary>
+    public bool ShouldArchiveTask { get; set; }
+
+    /// <summary>
+    /// The number of new tasks created in the next workflow stage.
+    /// </summary>
+    public int NewTasksCreated { get; set; }
+
+    /// <summary>
+    /// The ID of the workflow stage where new tasks were created, if any.
+    /// </summary>
+    public int? TargetWorkflowStageId { get; set; }
+
+    /// <summary>
+    /// Any error messages that occurred during the process.
+    /// </summary>
+    public string? ErrorMessage { get; set; }
 }
