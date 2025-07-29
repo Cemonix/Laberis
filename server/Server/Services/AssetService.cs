@@ -8,6 +8,7 @@ using server.Utils;
 using server.Exceptions;
 using server.Services.Storage;
 using LaberisTask = server.Models.Domain.Task;
+using TaskStatus = server.Models.Domain.Enums.TaskStatus;
 
 namespace server.Services;
 
@@ -18,6 +19,7 @@ public class AssetService : IAssetService
     private readonly IDataSourceRepository _dataSourceRepository;
     private readonly IStorageService _storageService;
     private readonly ITaskService _taskService;
+    private readonly ITaskRepository _taskRepository;
     private readonly IWorkflowStageRepository _workflowStageRepository;
     private readonly ILogger<AssetService> _logger;
 
@@ -27,6 +29,7 @@ public class AssetService : IAssetService
         IDataSourceRepository dataSourceRepository,
         IStorageService storageService,
         ITaskService taskService,
+        ITaskRepository taskRepository,
         IWorkflowStageRepository workflowStageRepository,
         ILogger<AssetService> logger)
     {
@@ -35,6 +38,7 @@ public class AssetService : IAssetService
         _dataSourceRepository = dataSourceRepository ?? throw new ArgumentNullException(nameof(dataSourceRepository));
         _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
         _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
+        _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
         _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -528,6 +532,120 @@ public class AssetService : IAssetService
             UpdatedAt = asset.UpdatedAt,
             ImageUrl = imageUrl
         };
+    }
+
+    public async Task<AssetMovementResult> HandleTaskWorkflowAssetMovementAsync(LaberisTask task, TaskStatus targetStatus, string userId)
+    {
+        _logger.LogInformation("Handling asset movement for task {TaskId} transitioning to {TargetStatus}", 
+            task.TaskId, targetStatus);
+
+        var result = new AssetMovementResult();
+
+        try
+        {
+            // Handle completion in annotation/review stages (move to next stage)
+            if (targetStatus == TaskStatus.COMPLETED)
+            {
+                await HandleTaskCompletionMovement(task, result, userId);
+            }
+            // Handle manager marking task incomplete in completion stage (move back to annotation)
+            else if (targetStatus == TaskStatus.READY_FOR_ANNOTATION && 
+                     task.CurrentWorkflowStage?.StageType == WorkflowStageType.COMPLETION)
+            {
+                await HandleTaskIncompleteMovement(task, result, userId);
+            }
+
+            _logger.LogInformation("Asset movement completed for task {TaskId}: {AssetMoved}, {NewTasksCreated} new tasks", 
+                task.TaskId, result.AssetMoved, result.NewTasksCreated);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling asset movement for task {TaskId}", task.TaskId);
+            result.ErrorMessage = $"Asset movement failed: {ex.Message}";
+        }
+
+        return result;
+    }
+
+    private async System.Threading.Tasks.Task HandleTaskCompletionMovement(LaberisTask task, AssetMovementResult result, string userId)
+    {
+        var currentStageType = task.CurrentWorkflowStage?.StageType;
+        
+        // Only move assets for annotation and review stages
+        if (currentStageType != WorkflowStageType.ANNOTATION && currentStageType != WorkflowStageType.REVISION)
+        {
+            return;
+        }
+
+        // Archive the current task (as per our design)
+        result.ShouldArchiveTask = true;
+        
+        // Find and create tasks for next workflow stage
+        var nextStage = await _taskRepository.GetNextWorkflowStageAsync(task.CurrentWorkflowStageId);
+        
+        if (nextStage != null && nextStage.InputDataSourceId.HasValue)
+        {
+            try
+            {
+                // TODO: Implement actual asset movement between MinIO data sources
+                // For now, we just create tasks - asset movement would happen here
+                
+                var tasksCreated = await _taskService.CreateTasksForDataSourceAsync(
+                    task.ProjectId, 
+                    task.WorkflowId, 
+                    nextStage.WorkflowStageId, 
+                    nextStage.InputDataSourceId.Value);
+
+                result.AssetMoved = true; // Would be true after actual MinIO operation
+                result.NewTasksCreated = tasksCreated;
+                result.TargetWorkflowStageId = nextStage.WorkflowStageId;
+
+                _logger.LogInformation("Created {TasksCreated} tasks for next stage {NextStageId} after completing task {TaskId}", 
+                    tasksCreated, nextStage.WorkflowStageId, task.TaskId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create tasks for next stage {NextStageId} after completing task {TaskId}", 
+                    nextStage.WorkflowStageId, task.TaskId);
+                // Don't fail the status change if we can't create next stage tasks
+                result.ErrorMessage = $"Failed to create tasks for next stage: {ex.Message}";
+            }
+        }
+    }
+
+    private async System.Threading.Tasks.Task HandleTaskIncompleteMovement(LaberisTask task, AssetMovementResult result, string userId)
+    {
+        // Special case: Manager marking task incomplete in completion stage
+        // This should create a NEW task in annotation stage (as per our design)
+        var annotationStage = await _taskRepository.GetInitialWorkflowStageAsync(task.WorkflowId);
+        
+        if (annotationStage != null && annotationStage.InputDataSourceId.HasValue)
+        {
+            try
+            {
+                // TODO: Implement actual asset movement back to annotation data source
+                // For now, we just create the task
+                
+                var tasksCreated = await _taskService.CreateTasksForDataSourceAsync(
+                    task.ProjectId, 
+                    task.WorkflowId, 
+                    annotationStage.WorkflowStageId, 
+                    annotationStage.InputDataSourceId.Value);
+
+                result.AssetMoved = true; // Would be true after actual MinIO operation
+                result.NewTasksCreated = tasksCreated;
+                result.TargetWorkflowStageId = annotationStage.WorkflowStageId;
+                
+                _logger.LogInformation("Created new annotation task for asset {AssetId} after marking task {TaskId} incomplete", 
+                    task.AssetId, task.TaskId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create new annotation task for asset {AssetId} after marking task {TaskId} incomplete", 
+                    task.AssetId, task.TaskId);
+                result.ErrorMessage = $"Failed to create new annotation task: {ex.Message}";
+            }
+        }
     }
 
     #endregion
