@@ -11,6 +11,7 @@ public class Task
     public DateTime? CompletedAt { get; set; }
     public DateTime? ArchivedAt { get; set; }
     public DateTime? SuspendedAt { get; set; }
+    public DateTime? DeferredAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

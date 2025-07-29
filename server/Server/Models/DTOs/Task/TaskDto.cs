@@ -1,3 +1,5 @@
+using server.Models.Domain.Enums;
+
 namespace server.Models.DTOs.Task;
 
 public record class TaskDto
@@ -8,6 +10,8 @@ public record class TaskDto
     public DateTime? CompletedAt { get; init; }
     public DateTime? ArchivedAt { get; init; }
     public DateTime? SuspendedAt { get; init; }
+    public DateTime? DeferredAt { get; init; }
+    public server.Models.Domain.Enums.TaskStatus Status { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
     public int AssetId { get; init; }
