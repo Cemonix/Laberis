@@ -13,15 +13,24 @@ public class TaskService : ITaskService
 {
     private readonly ITaskRepository _taskRepository;
     private readonly ITaskEventRepository _taskEventRepository;
+    private readonly ITaskEventService _taskEventService;
+    private readonly ITaskStatusValidator _taskStatusValidator;
+    private readonly IAssetService _assetService;
     private readonly ILogger<TaskService> _logger;
 
     public TaskService(
         ITaskRepository taskRepository,
         ITaskEventRepository taskEventRepository,
+        ITaskEventService taskEventService,
+        ITaskStatusValidator taskStatusValidator,
+        IAssetService assetService,
         ILogger<TaskService> logger)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
         _taskEventRepository = taskEventRepository ?? throw new ArgumentNullException(nameof(taskEventRepository));
+        _taskEventService = taskEventService ?? throw new ArgumentNullException(nameof(taskEventService));
+        _taskStatusValidator = taskStatusValidator ?? throw new ArgumentNullException(nameof(taskStatusValidator));
+        _assetService = assetService ?? throw new ArgumentNullException(nameof(assetService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -104,6 +113,41 @@ public class TaskService : ITaskService
         _logger.LogInformation("Successfully fetched task with ID: {TaskId}", taskId);
         return MapToDto(task);
     }
+
+    public async Task<PaginatedResponse<TaskDto>> GetTasksForWorkflowStageAsync(
+        int projectId,
+        int stageId,
+        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25)
+    {
+        _logger.LogInformation("Fetching tasks for workflow stage {StageId} in project {ProjectId}", stageId, projectId);
+
+        var (tasks, totalCount) = await _taskRepository.GetAllWithCountAsync(
+            filter: t => t.ProjectId == projectId && t.CurrentWorkflowStageId == stageId,
+            filterOn: filterOn,
+            filterQuery: filterQuery,
+            sortBy: sortBy ?? "created_at",
+            isAscending: isAscending,
+            pageNumber: pageNumber,
+            pageSize: pageSize
+        );
+
+        _logger.LogInformation("Fetched {Count} tasks for workflow stage {StageId} in project {ProjectId}", 
+            tasks.Count(), stageId, projectId);
+
+        var taskDtos = tasks.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<TaskDto>
+        {
+            Data = taskDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
+    }
+
 
     public async Task<TaskDto> CreateTaskAsync(int projectId, CreateTaskDto createDto)
     {
@@ -681,39 +725,102 @@ public class TaskService : ITaskService
         return MapToDto(existingTask);
     }
 
-    public async Task<PaginatedResponse<TaskDto>> GetTasksForWorkflowStageAsync(
-        int projectId,
-        int stageId,
-        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
-        bool isAscending = true, int pageNumber = 1, int pageSize = 25)
+    public async Task<TaskDto?> ChangeTaskStatusAsync(int taskId, server.Models.Domain.Enums.TaskStatus targetStatus, string userId, bool moveAsset = true)
     {
-        _logger.LogInformation("Fetching tasks for workflow stage {StageId} in project {ProjectId}", stageId, projectId);
+        _logger.LogInformation("Changing task {TaskId} status to {TargetStatus} by user {UserId} (moveAsset: {MoveAsset})", 
+            taskId, targetStatus, userId, moveAsset);
 
-        var (tasks, totalCount) = await _taskRepository.GetAllWithCountAsync(
-            filter: t => t.ProjectId == projectId && t.CurrentWorkflowStageId == stageId,
-            filterOn: filterOn,
-            filterQuery: filterQuery,
-            sortBy: sortBy ?? "created_at",
-            isAscending: isAscending,
-            pageNumber: pageNumber,
-            pageSize: pageSize
-        );
-
-        _logger.LogInformation("Fetched {Count} tasks for workflow stage {StageId} in project {ProjectId}", 
-            tasks.Count(), stageId, projectId);
-
-        var taskDtos = tasks.Select(MapToDto).ToArray();
-        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-
-        return new PaginatedResponse<TaskDto>
+        var existingTask = await _taskRepository.GetByIdAsync(taskId);
+        if (existingTask == null)
         {
-            Data = taskDtos,
-            PageSize = pageSize,
-            CurrentPage = pageNumber,
-            TotalPages = totalPages,
-            TotalItems = totalCount
-        };
+            _logger.LogWarning("Task with ID {TaskId} not found for status change", taskId);
+            return null;
+        }
+
+        var currentStatus = CalculateTaskStatus(existingTask, existingTask.CurrentWorkflowStage?.StageType?.ToString());
+        
+        // Skip if already in target status
+        if (currentStatus == targetStatus)
+        {
+            _logger.LogInformation("Task {TaskId} is already in status {Status}", taskId, targetStatus);
+            return MapToDto(existingTask);
+        }
+
+        // Validate the status transition
+        var validationResult = _taskStatusValidator.ValidateStatusTransition(existingTask, currentStatus, targetStatus, userId);
+        if (!validationResult.IsValid)
+        {
+            throw new InvalidOperationException(validationResult.ErrorMessage);
+        }
+
+        // Apply the status change
+        ApplyStatusChange(existingTask, targetStatus, userId);
+
+        // Handle asset movement and workflow progression if needed
+        if (moveAsset)
+        {
+            var assetMovementResult = await _assetService.HandleTaskWorkflowAssetMovementAsync(existingTask, targetStatus, userId);
+            
+            // Apply archiving if the asset service determined it should happen
+            if (assetMovementResult.ShouldArchiveTask && targetStatus == TaskStatus.COMPLETED)
+            {
+                existingTask.ArchivedAt = DateTime.UtcNow;
+            }
+            
+            // Log any asset movement errors as warnings (don't fail the status change)
+            if (!string.IsNullOrEmpty(assetMovementResult.ErrorMessage))
+            {
+                _logger.LogWarning("Asset movement warning for task {TaskId}: {ErrorMessage}", 
+                    taskId, assetMovementResult.ErrorMessage);
+            }
+        }
+
+        await _taskRepository.SaveChangesAsync();
+
+        // Create TaskEvent to track the status change
+        await _taskEventService.LogStatusChangeEventAsync(taskId, currentStatus, targetStatus, userId);
+
+        _logger.LogInformation("Successfully changed task {TaskId} status from {CurrentStatus} to {TargetStatus}", 
+            taskId, currentStatus, targetStatus);
+        
+        return MapToDto(existingTask);
     }
+
+
+    private static void ApplyStatusChange(LaberisTask task, TaskStatus targetStatus, string userId)
+    {
+        var now = DateTime.UtcNow;
+        
+        // Clear all state timestamps first (mutual exclusion)
+        task.SuspendedAt = null;
+        task.DeferredAt = null;
+        task.CompletedAt = null;
+        task.ArchivedAt = null;
+        
+        // Set the appropriate timestamp for the target status
+        switch (targetStatus)
+        {
+            case TaskStatus.SUSPENDED:
+                task.SuspendedAt = now;
+                break;
+            case TaskStatus.DEFERRED:
+                task.DeferredAt = now;
+                break;
+            case TaskStatus.COMPLETED:
+                task.CompletedAt = now;
+                break;
+            case TaskStatus.ARCHIVED:
+                task.ArchivedAt = now;
+                task.CompletedAt = now; // Archived tasks must be completed
+                break;
+            // IN_PROGRESS, READY_FOR_* statuses are calculated based on assignment and no timestamps are set
+        }
+        
+        task.LastWorkedOnByUserId = userId;
+        task.UpdatedAt = now;
+    }
+
+
 
     private static TaskStatus CalculateTaskStatus(LaberisTask task, string? stageType = null)
     {
