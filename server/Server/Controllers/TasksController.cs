@@ -599,4 +599,53 @@ public class TasksController : ControllerBase
             return StatusCode(500, "An unexpected error occurred. Please try again later.");
         }
     }
+
+    /// <summary>
+    /// Changes the status of a task using the unified status change system with workflow-aware validation.
+    /// This endpoint handles all task status transitions according to workflow stage rules.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to change status for.</param>
+    /// <param name="dto">The status change request containing target status and options.</param>
+    /// <returns>The updated task with the new status.</returns>
+    /// <response code="200">Returns the updated task.</response>
+    /// <response code="400">If the status transition is invalid or request data is malformed.</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="404">If the task is not found.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPut("{taskId:int}/status")]
+    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ChangeTaskStatus(int taskId, [FromBody] ChangeTaskStatusDto dto)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID claim not found in token.");
+            }
+
+            var updatedTask = await _taskService.ChangeTaskStatusAsync(taskId, dto.TargetStatus, userId, dto.MoveAsset);
+
+            if (updatedTask == null)
+            {
+                return NotFound($"Task with ID {taskId} not found.");
+            }
+
+            return Ok(updatedTask);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation while changing status of task {TaskId} to {TargetStatus}.", taskId, dto.TargetStatus);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while changing status of task {TaskId} to {TargetStatus}.", taskId, dto.TargetStatus);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
 }
