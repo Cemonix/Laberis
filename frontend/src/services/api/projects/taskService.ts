@@ -9,7 +9,7 @@ import type {
     GetTasksResponse
 } from '@/types/task';
 import { TaskStatus } from '@/types/task';
-import { workflowStageService } from '../workflows';
+import { workflowStageService } from './workflowStageService';
 import { assetService } from './assetService';
 
 /**
@@ -21,26 +21,59 @@ class TaskService extends BaseProjectService {
     }
 
     /**
-     * Derives task status from completion, archive, and suspension state
+     * Converts backend TaskStatus enum to frontend TaskStatus enum
      */
-    // TODO: Refactor to use TaskStatus enum directly - task status should be received from the API
-    private deriveStatus(
-        completedAt?: string | null, 
-        archivedAt?: string | null, 
-        suspendedAt?: string | null,
-        assignedToEmail?: string | null
-    ): TaskStatus {
-        if (archivedAt) return TaskStatus.ARCHIVED;
-        if (suspendedAt) return TaskStatus.SUSPENDED;
-        if (completedAt) return TaskStatus.COMPLETED;
-        if (assignedToEmail) return TaskStatus.IN_PROGRESS;
-        return TaskStatus.NOT_STARTED;
+    private parseTaskStatus(backendStatus: string | number | undefined | null): TaskStatus {
+        // Handle null, undefined, or empty values
+        if (backendStatus === null || backendStatus === undefined || backendStatus === '') {
+            this.logger.warn('Received null/undefined/empty status, defaulting to NOT_STARTED', { backendStatus });
+            return TaskStatus.NOT_STARTED;
+        }
+
+        // Handle both string and numeric enum values from backend
+        const statusStr = typeof backendStatus === 'number' ? 
+            this.getTaskStatusString(backendStatus) : String(backendStatus).toUpperCase();
+            
+        switch (statusStr) {
+            case 'NOT_STARTED': return TaskStatus.NOT_STARTED;
+            case 'IN_PROGRESS': return TaskStatus.IN_PROGRESS;
+            case 'COMPLETED': return TaskStatus.COMPLETED;
+            case 'ARCHIVED': return TaskStatus.ARCHIVED;
+            case 'SUSPENDED': return TaskStatus.SUSPENDED;
+            case 'DEFERRED': return TaskStatus.DEFERRED;
+            case 'READY_FOR_ANNOTATION': return TaskStatus.READY_FOR_ANNOTATION;
+            case 'READY_FOR_REVIEW': return TaskStatus.READY_FOR_REVIEW;
+            case 'READY_FOR_COMPLETION': return TaskStatus.READY_FOR_COMPLETION;
+            default: 
+                this.logger.warn('Unknown task status received, defaulting to NOT_STARTED', { backendStatus, statusStr });
+                return TaskStatus.NOT_STARTED;
+        }
+    }
+
+    /**
+     * Convert numeric enum value to string (for JSON serialization compatibility)
+     */
+    private getTaskStatusString(enumValue: number): string {
+        const statusMap: Record<number, string> = {
+            0: 'NOT_STARTED',
+            1: 'IN_PROGRESS',
+            2: 'COMPLETED',
+            3: 'ARCHIVED',
+            4: 'SUSPENDED',
+            5: 'DEFERRED',
+            6: 'READY_FOR_ANNOTATION',
+            7: 'READY_FOR_REVIEW',
+            8: 'READY_FOR_COMPLETION'
+        };
+        return statusMap[enumValue] || 'NOT_STARTED';
     }
 
     /**
      * Transforms a task DTO from the API to a Task object
      */
     private transformTaskDto(dto: any): Task {
+        const status = this.parseTaskStatus(dto.status);
+        
         return {
             id: dto.id,
             priority: dto.priority,
@@ -48,6 +81,7 @@ class TaskService extends BaseProjectService {
             completedAt: dto.completedAt,
             archivedAt: dto.archivedAt,
             suspendedAt: dto.suspendedAt,
+            deferredAt: dto.deferredAt,
             createdAt: dto.createdAt,
             updatedAt: dto.updatedAt,
             assetId: dto.assetId,
@@ -56,9 +90,10 @@ class TaskService extends BaseProjectService {
             currentWorkflowStageId: dto.currentWorkflowStageId,
             assignedToEmail: dto.assignedToEmail,
             lastWorkedOnByEmail: dto.lastWorkedOnByEmail,
-            status: this.deriveStatus(dto.completedAt, dto.archivedAt, dto.suspendedAt, dto.assignedToEmail)
+            status: status
         };
     }
+
 
     /**
      * Get all tasks for a specific project with optional filtering and pagination
@@ -414,6 +449,22 @@ class TaskService extends BaseProjectService {
         const task: Task = this.transformTaskDto(dto);
 
         this.logger.info(`Deferred task ${taskId} successfully`);
+        return task;
+    }
+
+
+    /**
+     * Unsuspend a task (backend determines appropriate ready status based on workflow stage)
+     */
+    async unsuspendTask(projectId: number, taskId: number): Promise<Task> {
+        this.logger.info(`Unsuspending task ${taskId} in project ${projectId}`);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/unsuspend', { taskId });
+        const dto = await this.put<undefined, any>(url, undefined);
+        
+        const task: Task = this.transformTaskDto(dto);
+
+        this.logger.info(`Unsuspended task ${taskId} successfully`);
         return task;
     }
 

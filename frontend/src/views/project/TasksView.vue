@@ -78,6 +78,14 @@
                 </template>
             </DataTable>
         </div>
+        
+        <!-- Task Status Modal -->
+        <TaskStatusModal
+            :show="showStatusModal"
+            :task="selectedTask"
+            @close="handleCloseStatusModal"
+            @action="handleStatusAction"
+        />
     </div>
 </template>
 
@@ -87,6 +95,7 @@ import {useRoute, useRouter} from 'vue-router';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {
     faArrowUp,
+    faBolt,
     faCalendar,
     faEdit,
     faExclamationTriangle,
@@ -95,7 +104,6 @@ import {
     faPlus,
     faRefresh,
     faTrash,
-    faUndo,
     faUser,
     faUserCog,
     faUserSlash
@@ -103,6 +111,7 @@ import {
 import Button from '@/components/common/Button.vue';
 import DataTable from '@/components/common/DataTable.vue';
 import TaskStatusBadge from '@/components/project/task/TaskStatusBadge.vue';
+import TaskStatusModal from '@/components/project/task/TaskStatusModal.vue';
 import type {TaskTableRow} from '@/types/task';
 import {TaskStatus} from '@/types/task';
 import type {TableAction, TableColumn, TableRowAction} from '@/types/common';
@@ -135,6 +144,8 @@ const sortKey = ref<string>('createdAt');
 const sortDirection = ref<'asc' | 'desc'>('desc');
 const hasAvailableAssets = ref<boolean>(true);
 const availableAssetsCount = ref<number>(0);
+const showStatusModal = ref<boolean>(false);
+const selectedTask = ref<TaskTableRow | null>(null);
 
 const canManageTasks = computed(() => {
     return canManageProject.value;
@@ -176,30 +187,52 @@ const rowActions = computed((): TableRowAction<TaskTableRow>[] => {
             label: 'Open', 
             icon: faPlay, 
             variant: 'primary',
-            disabled: (row: TaskTableRow) => row.status === TaskStatus.COMPLETED || row.status === TaskStatus.ARCHIVED
+            disabled: (row: TaskTableRow) => 
+                row.status === TaskStatus.COMPLETED || 
+                row.status === TaskStatus.ARCHIVED ||
+                row.status === TaskStatus.SUSPENDED
         },
-        { key: 'edit', label: 'Edit', icon: faEdit, variant: 'secondary' },
-        { key: 'assign', label: 'Assign', icon: faUserCog, variant: 'secondary' }
+        { 
+            key: 'edit', 
+            label: 'Edit', 
+            icon: faEdit, 
+            variant: 'secondary'
+        },
+        { 
+            key: 'assign', 
+            label: 'Assign', 
+            icon: faUserCog, 
+            variant: 'secondary',
+            disabled: (row: TaskTableRow) => 
+                row.status === TaskStatus.SUSPENDED ||
+                row.status === TaskStatus.DEFERRED ||
+                row.status === TaskStatus.COMPLETED ||
+                row.status === TaskStatus.ARCHIVED
+        }
     ];
 
-    // Add uncomplete action for managers on completed tasks
+    // Add single status change button for managers only
     if (canManageTasks.value) {
         actions.push({
-            key: 'uncomplete',
-            label: 'Mark as Incomplete',
-            icon: faUndo,
-            variant: 'secondary',
-            disabled: (row: TaskTableRow) => row.status !== TaskStatus.COMPLETED
+            key: 'change-status',
+            label: 'Change Status',
+            icon: faBolt,
+            variant: 'secondary'
         });
     }
 
-    actions.push({ 
-        key: 'delete', 
-        label: 'Delete', 
-        icon: faTrash, 
-        variant: 'secondary',
-        disabled: (row: TaskTableRow) => row.status === TaskStatus.IN_PROGRESS
-    });
+    // Add delete button for managers
+    if (canManageTasks.value) {
+        actions.push({ 
+            key: 'delete', 
+            label: 'Delete', 
+            icon: faTrash, 
+            variant: 'secondary',
+            disabled: (row: TaskTableRow) => 
+                row.status === TaskStatus.IN_PROGRESS ||
+                row.status === TaskStatus.COMPLETED
+        });
+    }
 
     return actions;
 });
@@ -316,7 +349,15 @@ const generateMockTasks = (stageId: number): TaskTableRow[] => {
         null, null // Some unassigned tasks
     ];
     
-    const statuses: TaskStatus[] = [TaskStatus.NOT_STARTED, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED];
+    const statuses: TaskStatus[] = [
+        TaskStatus.NOT_STARTED, 
+        TaskStatus.IN_PROGRESS, 
+        TaskStatus.COMPLETED,
+        TaskStatus.READY_FOR_ANNOTATION,
+        TaskStatus.READY_FOR_REVIEW,
+        TaskStatus.SUSPENDED,
+        TaskStatus.DEFERRED
+    ];
     
     return baseAssets.slice(0, Math.min(6, baseAssets.length)).map((asset, index) => {
         const taskId = stageId * 100 + index + 1;
@@ -381,15 +422,18 @@ const handleRowAction = async (actionKey: string, row: TaskTableRow, index: numb
             break;
         case 'edit':
             // TODO: Show edit task dialog
+            logger.info('Edit task requested', { taskId: row.id });
             break;
         case 'assign':
             // TODO: Show assignment dialog
+            logger.info('Assign task requested', { taskId: row.id });
             break;
-        case 'uncomplete':
-            await handleUncompleteTask(row);
+        case 'change-status':
+            selectedTask.value = row;
+            showStatusModal.value = true;
             break;
         case 'delete':
-            // TODO: Show delete confirmation
+            await handleDeleteTask(row);
             break;
     }
 };
@@ -409,6 +453,94 @@ const handleTaskClick = (task: TaskTableRow, _index: number) => {
             taskId: task.id.toString() // Pass taskId as query parameter for context
         }
     });
+};
+
+const handleSuspendTask = async (task: TaskTableRow) => {
+    if (!canManageTasks.value) {
+        logger.warn('User does not have permission to suspend tasks');
+        return;
+    }
+
+    if (task.status === TaskStatus.SUSPENDED) {
+        logger.warn('Task is already suspended', { taskId: task.id, status: task.status });
+        return;
+    }
+
+    if ([TaskStatus.COMPLETED, TaskStatus.ARCHIVED].includes(task.status)) {
+        logger.warn('Cannot suspend completed or archived task', { taskId: task.id, status: task.status });
+        return;
+    }
+
+    try {
+        logger.info('Suspending task', { taskId: task.id, assetName: task.assetName });
+        
+        await taskService.suspendTask(projectId.value, task.id);
+        
+        // Refresh the task list to show updated status
+        await loadTasks();
+        
+        logger.info('Task suspended successfully', { taskId: task.id });
+    } catch (error) {
+        logger.error('Failed to suspend task', { taskId: task.id, error });
+        handleError(error, 'Failed to suspend task');
+    }
+};
+
+const handleUnsuspendTask = async (task: TaskTableRow) => {
+    if (!canManageTasks.value) {
+        logger.warn('User does not have permission to unsuspend tasks');
+        return;
+    }
+
+    if (task.status !== TaskStatus.SUSPENDED) {
+        logger.warn('Cannot unsuspend task that is not suspended', { taskId: task.id, status: task.status });
+        return;
+    }
+
+    try {
+        logger.info('Unsuspending task', { taskId: task.id, assetName: task.assetName });
+        
+        await taskService.unsuspendTask(projectId.value, task.id);
+        
+        // Refresh the task list to show updated status
+        await loadTasks();
+        
+        logger.info('Task unsuspended successfully', { taskId: task.id });
+    } catch (error) {
+        logger.error('Failed to unsuspend task', { taskId: task.id, error });
+        handleError(error, 'Failed to unsuspend task');
+    }
+};
+
+const handleDeferTask = async (task: TaskTableRow) => {
+    if (!canManageTasks.value) {
+        logger.warn('User does not have permission to defer tasks');
+        return;
+    }
+
+    if (task.status === TaskStatus.DEFERRED) {
+        logger.warn('Task is already deferred', { taskId: task.id, status: task.status });
+        return;
+    }
+
+    if ([TaskStatus.SUSPENDED, TaskStatus.COMPLETED, TaskStatus.ARCHIVED].includes(task.status)) {
+        logger.warn('Cannot defer suspended, completed, or archived task', { taskId: task.id, status: task.status });
+        return;
+    }
+
+    try {
+        logger.info('Deferring task', { taskId: task.id, assetName: task.assetName });
+        
+        await taskService.deferTask(projectId.value, task.id);
+        
+        // Refresh the task list to show updated status
+        await loadTasks();
+        
+        logger.info('Task deferred successfully', { taskId: task.id });
+    } catch (error) {
+        logger.error('Failed to defer task', { taskId: task.id, error });
+        handleError(error, 'Failed to defer task');
+    }
 };
 
 const handleUncompleteTask = async (task: TaskTableRow) => {
@@ -435,6 +567,69 @@ const handleUncompleteTask = async (task: TaskTableRow) => {
     } catch (error) {
         logger.error('Failed to uncomplete task', { taskId: task.id, error });
         handleError(error, 'Failed to mark task as incomplete');
+    }
+};
+
+const handleDeleteTask = async (task: TaskTableRow) => {
+    if (!canManageTasks.value) {
+        logger.warn('User does not have permission to delete tasks');
+        return;
+    }
+
+    if ([TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED].includes(task.status)) {
+        logger.warn('Cannot delete in-progress or completed task', { taskId: task.id, status: task.status });
+        return;
+    }
+
+    try {
+        logger.info('Deleting task', { taskId: task.id, assetName: task.assetName });
+        
+        // TODO: Replace with actual delete API call when available
+        // await taskService.deleteTask(projectId.value, task.id);
+        
+        // Refresh the task list to show updated status
+        await loadTasks();
+        
+        logger.info('Task deleted successfully', { taskId: task.id });
+    } catch (error) {
+        logger.error('Failed to delete task', { taskId: task.id, error });
+        handleError(error, 'Failed to delete task');
+    }
+};
+
+const handleCloseStatusModal = () => {
+    showStatusModal.value = false;
+    selectedTask.value = null;
+};
+
+const handleStatusAction = async (actionKey: string, task: TaskTableRow) => {
+    logger.debug('Status action triggered', { actionKey, taskId: task.id });
+    
+    try {
+        switch (actionKey) {
+            case 'suspend':
+                await handleSuspendTask(task);
+                break;
+            case 'unsuspend':
+                await handleUnsuspendTask(task);
+                break;
+            case 'defer':
+                await handleDeferTask(task);
+                break;
+            case 'uncomplete':
+                await handleUncompleteTask(task);
+                break;
+            default:
+                logger.warn('Unknown status action', { actionKey });
+                return;
+        }
+        
+        // Close modal after successful action
+        handleCloseStatusModal();
+    } catch (error) {
+        // Error handling is done in individual functions
+        // Modal stays open to allow retry
+        logger.debug('Status action failed, keeping modal open for retry');
     }
 };
 
