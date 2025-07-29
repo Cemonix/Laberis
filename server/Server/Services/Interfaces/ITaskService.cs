@@ -188,4 +188,15 @@ public interface ITaskService
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25
     );
+
+    /// <summary>
+    /// Changes the status of a task with workflow-aware validation and optional asset movement.
+    /// This unified method handles all task status transitions according to the workflow stage rules.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to change status for.</param>
+    /// <param name="targetStatus">The target status to change the task to.</param>
+    /// <param name="userId">The ID of the user performing the action.</param>
+    /// <param name="moveAsset">Whether to move the asset based on workflow progression (default: true).</param>
+    /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
+    Task<TaskDto?> ChangeTaskStatusAsync(int taskId, server.Models.Domain.Enums.TaskStatus targetStatus, string userId, bool moveAsset = true);
 }

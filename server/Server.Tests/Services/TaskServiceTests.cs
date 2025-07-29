@@ -1,6 +1,7 @@
 using Moq;
 using Microsoft.Extensions.Logging;
 using server.Services;
+using server.Services.Interfaces;
 using server.Repositories.Interfaces;
 using server.Models.DTOs.Task;
 using LaberisTask = server.Models.Domain.Task;
@@ -11,6 +12,9 @@ namespace Server.Tests.Services
     {
         private readonly Mock<ITaskRepository> _mockTaskRepository;
         private readonly Mock<ITaskEventRepository> _mockTaskEventRepository;
+        private readonly Mock<ITaskEventService> _mockTaskEventService;
+        private readonly Mock<ITaskStatusValidator> _mockTaskStatusValidator;
+        private readonly Mock<IAssetService> _mockAssetService;
         private readonly Mock<ILogger<TaskService>> _mockLogger;
         private readonly TaskService _taskService;
 
@@ -18,11 +22,17 @@ namespace Server.Tests.Services
         {
             _mockTaskRepository = new Mock<ITaskRepository>();
             _mockTaskEventRepository = new Mock<ITaskEventRepository>();
+            _mockTaskEventService = new Mock<ITaskEventService>();
+            _mockTaskStatusValidator = new Mock<ITaskStatusValidator>();
+            _mockAssetService = new Mock<IAssetService>();
             _mockLogger = new Mock<ILogger<TaskService>>();
             
             _taskService = new TaskService(
                 _mockTaskRepository.Object, 
-                _mockTaskEventRepository.Object, 
+                _mockTaskEventRepository.Object,
+                _mockTaskEventService.Object,
+                _mockTaskStatusValidator.Object,
+                _mockAssetService.Object,
                 _mockLogger.Object
             );
         }
