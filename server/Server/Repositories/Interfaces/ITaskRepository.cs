@@ -35,4 +35,11 @@ public interface ITaskRepository : IGenericRepository<LaberisTask>
     /// <param name="condition">Optional condition for stage transition (e.g., "approved", "rejected").</param>
     /// <returns>The next workflow stage if found, otherwise null.</returns>
     Task<WorkflowStage?> GetNextWorkflowStageAsync(int currentStageId, string? condition = null);
+
+    /// <summary>
+    /// Gets the initial workflow stage for a workflow (annotation stage).
+    /// </summary>
+    /// <param name="workflowId">The ID of the workflow.</param>
+    /// <returns>The initial workflow stage if found, otherwise null.</returns>
+    Task<WorkflowStage?> GetInitialWorkflowStageAsync(int workflowId);
 }

@@ -265,4 +265,25 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
 
         return nextStage;
     }
+
+    public async Task<WorkflowStage?> GetInitialWorkflowStageAsync(int workflowId)
+    {
+        _logger.LogInformation("Finding initial workflow stage for workflow {WorkflowId}", workflowId);
+
+        var initialStage = await _context.WorkflowStages
+            .Where(ws => ws.WorkflowId == workflowId && ws.IsInitialStage)
+            .FirstOrDefaultAsync();
+
+        if (initialStage != null)
+        {
+            _logger.LogInformation("Found initial stage: {StageId} ({StageName})", 
+                initialStage.WorkflowStageId, initialStage.Name);
+        }
+        else
+        {
+            _logger.LogWarning("No initial stage found for workflow {WorkflowId}", workflowId);
+        }
+
+        return initialStage;
+    }
 }
