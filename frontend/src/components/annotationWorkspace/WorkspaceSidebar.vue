@@ -9,8 +9,8 @@
                     class="tool-button"
                     :class="{ 'active-tool': tool.id === activeToolId }"
                     @click="selectTool(tool.id)"
-                    :disabled="tool.id !== 'CURSOR' && isAnnotationEditingDisabled"
-                    :title="tool.id !== 'CURSOR' && isAnnotationEditingDisabled ? 'Editing disabled - task is completed' : tool.name"
+                    :disabled="tool.id !== ToolName.CURSOR && isAnnotationEditingDisabled"
+                    :title="tool.id !== ToolName.CURSOR && isAnnotationEditingDisabled ? 'Editing disabled - task is completed' : tool.name"
                 >
                     <font-awesome-icon v-if="tool.iconDefinition" :icon="tool.iconDefinition" class="tool-icon" />
                 </Button>
@@ -116,7 +116,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import type { ToolName } from '@/types/workspace/tools';
+import { ToolName } from '@/types/workspace/tools';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import Button from '@/components/common/Button.vue';
 import { AppLogger } from '@/utils/logger';
