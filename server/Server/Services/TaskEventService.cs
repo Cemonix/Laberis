@@ -1,8 +1,10 @@
 using server.Models.Domain;
 using server.Models.DTOs.TaskEvent;
 using server.Models.Common;
+using server.Models.Domain.Enums;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
+using TaskStatus = server.Models.Domain.Enums.TaskStatus;
 
 namespace server.Services;
 
@@ -86,6 +88,40 @@ public class TaskEventService : ITaskEventService
 
         _logger.LogInformation("Successfully logged task event with ID: {EventId}", taskEvent.EventId);
 
+        return MapToDto(taskEvent);
+    }
+
+    public async Task<TaskEventDto> LogStatusChangeEventAsync(int taskId, TaskStatus fromStatus, TaskStatus toStatus, string userId)
+    {
+        _logger.LogInformation("Logging status change event for task {TaskId}: {FromStatus} → {ToStatus} by user {UserId}", 
+            taskId, fromStatus, toStatus, userId);
+
+        var eventType = toStatus switch
+        {
+            TaskStatus.COMPLETED => TaskEventType.TASK_COMPLETED,
+            TaskStatus.SUSPENDED => TaskEventType.TASK_SUSPENDED,
+            TaskStatus.DEFERRED => TaskEventType.TASK_DEFERRED,
+            TaskStatus.ARCHIVED => TaskEventType.TASK_ARCHIVED,
+            TaskStatus.IN_PROGRESS when fromStatus == TaskStatus.SUSPENDED => TaskEventType.TASK_REOPENED,
+            TaskStatus.IN_PROGRESS => TaskEventType.STATUS_CHANGED,
+            TaskStatus.READY_FOR_ANNOTATION => TaskEventType.TASK_REOPENED,
+            _ => TaskEventType.STATUS_CHANGED
+        };
+
+        var taskEvent = new TaskEvent
+        {
+            EventType = eventType,
+            Details = $"Task status changed from {fromStatus} to {toStatus}",
+            TaskId = taskId,
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _taskEventRepository.AddAsync(taskEvent);
+        await _taskEventRepository.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully logged status change event for task {TaskId}", taskId);
+        
         return MapToDto(taskEvent);
     }
 

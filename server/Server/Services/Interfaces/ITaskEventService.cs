@@ -1,5 +1,6 @@
 using server.Models.Common;
 using server.Models.DTOs.TaskEvent;
+using TaskStatus = server.Models.Domain.Enums.TaskStatus;
 
 namespace server.Services.Interfaces;
 
@@ -36,4 +37,14 @@ public interface ITaskEventService
     /// <param name="userId">The ID of the user performing the action (optional).</param>
     /// <returns>A task that represents the asynchronous operation, containing the newly created TaskEventDto.</returns>
     Task<TaskEventDto> LogTaskEventAsync(CreateTaskEventDto createDto, string? userId = null);
+
+    /// <summary>
+    /// Creates a task event specifically for status changes, with appropriate event type mapping.
+    /// </summary>
+    /// <param name="taskId">The ID of the task whose status changed.</param>
+    /// <param name="fromStatus">The previous status of the task.</param>
+    /// <param name="toStatus">The new status of the task.</param>
+    /// <param name="userId">The ID of the user who performed the status change.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the newly created TaskEventDto.</returns>
+    Task<TaskEventDto> LogStatusChangeEventAsync(int taskId, TaskStatus fromStatus, TaskStatus toStatus, string userId);
 }
