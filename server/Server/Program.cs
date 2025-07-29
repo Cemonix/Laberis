@@ -161,6 +161,7 @@ public class Program
         builder.Services.AddScoped<IProjectInvitationService, ProjectInvitationService>();
         builder.Services.AddScoped<ITaskService, TaskService>();
         builder.Services.AddScoped<ITaskEventService, TaskEventService>();
+        builder.Services.AddScoped<ITaskStatusValidator, TaskStatusValidator>();
         builder.Services.AddScoped<IWorkflowService, WorkflowService>();
         builder.Services.AddScoped<IWorkflowStageService, WorkflowStageService>();
         builder.Services.AddScoped<IWorkflowStageConnectionService, WorkflowStageConnectionService>();
