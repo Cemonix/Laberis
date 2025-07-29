@@ -507,8 +507,10 @@ const canProceedToNextStep = computed(() => {
     if (isLoading.value) return false;
     
     // Run validation and check if there are no errors
-    validateCurrentStep();
-    return hasNoErrors();
+    if (!isCurrentStepValid()) {
+        return false;
+    }
+    return true;
 });
 
 // Stepper event handlers
@@ -523,44 +525,56 @@ const handleStepChange = (currentStep: number, previousStep: number) => {
     }
 };
 
-// Validation
-const validateCurrentStep = () => {
-    // Clear previous errors
-    Object.keys(errors).forEach(key => {
-        errors[key as keyof typeof errors] = '';
-    });
+const getCurrentStepName = () => {
+    return stepperSteps[0].id;
+};
 
-    // Basic information validation
-    if (!form.name.trim()) {
-        errors.name = 'Workflow name is required';
-        return;
-    }
-
-    // Data source validation - enforce 1:1 mapping for non-completion stages
-    if (!form.annotationInputDataSourceId) {
-        errors.annotationInputDataSourceId = 'Annotation stage must have exactly one input data source';
-        return;
-    }
-
-    if (form.includeRevision && !form.revisionInputDataSourceId) {
-        errors.revisionInputDataSourceId = 'Revision stage must have exactly one input data source';
-        return;
-    }
-
-    // Member assignment validation
-    if (form.annotationMembers.length === 0) {
-        errors.annotationMembers = 'At least one member must be assigned to annotation stage';
-        return;
-    }
-
-    if (form.completionMembers.length === 0) {
-        errors.completionMembers = 'At least one member must be assigned to completion stage';
-        return;
+const isCurrentStepValid = () => {
+    switch (getCurrentStepName()) {
+        case 'basic':
+            return validateFirstStep();
+        case 'datasources':
+            return validateSecondStep();
+        case 'members':
+            return validateThirdStep();
+        default:
+            return true;
     }
 };
 
-const hasNoErrors = () => {
-    return Object.values(errors).every(error => error === '');
+const validateFirstStep = () => {
+    // Basic validation for the first step
+    if (!form.name.trim()) {
+        errors.name = 'Workflow name is required';
+        return false;
+    }
+    return true;
+};
+
+const validateSecondStep = () => {
+    // Data source validation for the second step
+    if (!form.annotationInputDataSourceId) {
+        errors.annotationInputDataSourceId = 'Annotation stage must have exactly one input data source';
+        return false;
+    }
+    if (form.includeRevision && !form.revisionInputDataSourceId) {
+        errors.revisionInputDataSourceId = 'Revision stage must have exactly one input data source';
+        return false;
+    }
+    return true;
+};
+
+const validateThirdStep = () => {
+    // Member assignment validation for the third step
+    if (form.annotationMembers.length === 0) {
+        errors.annotationMembers = 'At least one member must be assigned to annotation stage';
+        return false;
+    }
+    if (form.completionMembers.length === 0) {
+        errors.completionMembers = 'At least one member must be assigned to completion stage';
+        return false;
+    }
+    return true;
 };
 
 // Member assignment helpers
@@ -583,8 +597,7 @@ const getSelectedMemberNames = (memberIds: number[]) => {
 
 // Form submission
 const handleSubmit = async () => {
-    validateCurrentStep();
-    if (!hasNoErrors()) {
+    if (!isCurrentStepValid()) {
         return;
     }
 
