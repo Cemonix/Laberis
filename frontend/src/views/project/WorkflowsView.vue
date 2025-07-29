@@ -50,7 +50,8 @@ import CreateWorkflowWizard from '@/components/project/workflow/CreateWorkflowWi
 import FloatingActionButton from '@/components/common/FloatingActionButton.vue';
 import {type CreateWorkflowWithStagesRequest, type Workflow, type WorkflowStage} from '@/types/workflow';
 import {type ProjectRole} from '@/types/project/project';
-import {workflowService, workflowStageService} from '@/services/api/workflows';
+import {workflowService} from '@/services/api/projects/workflowService';
+import {workflowStageService} from '@/services/api/projects/workflowStageService';
 import {projectMemberService} from '@/services/api/projects';
 import {useAlert} from '@/composables/useAlert';
 import {AppLogger} from '@/utils/logger';
@@ -152,7 +153,7 @@ const handleCreateWorkflow = async (formData: CreateWorkflowWithStagesRequest) =
 
     isCreating.value = true;
     try {
-        const newWorkflow = await workflowService.createWorkflowWithStages(projectId, formData);
+        const newWorkflow = await workflowService.createWorkflow(projectId, formData);
         workflows.value.push(newWorkflow);
         logger.info(`Created workflow with stages: ${newWorkflow.name} (ID: ${newWorkflow.id})`);
         closeModal();

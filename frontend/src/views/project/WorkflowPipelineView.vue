@@ -26,8 +26,8 @@
 import {onMounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import WorkflowPipelineViewer from '@/components/project/workflow/WorkflowPipelineViewer.vue';
-import type {WorkflowStagePipeline} from '@/types/workflow';
-import {workflowStageService} from '@/services/api/workflows';
+import type {WorkflowStagePipeline, WorkflowStage, WorkflowStageConnection} from '@/types/workflow';
+import {workflowStageService} from '@/services/api/projects';
 import {useErrorHandler} from '@/composables/useErrorHandler';
 import {AppLogger} from '@/utils/logger';
 
@@ -70,7 +70,7 @@ const loadPipelineData = async () => {
         workflowName.value = workflowWithStages.name;
         
         // Transform WorkflowStage[] to WorkflowStagePipeline[]
-        pipelineStages.value = workflowWithStages.stages.map(stage => ({
+        pipelineStages.value = workflowWithStages.stages.map((stage: WorkflowStage) => ({
             id: stage.id,
             name: stage.name,
             description: stage.description,
@@ -78,8 +78,8 @@ const loadPipelineData = async () => {
             stageType: stage.stageType,
             isInitialStage: stage.isInitialStage,
             isFinalStage: stage.isFinalStage,
-            previousStageIds: stage.incomingConnections?.map(conn => conn.fromStageId) || [],
-            nextStageIds: stage.outgoingConnections?.map(conn => conn.toStageId) || [],
+            previousStageIds: stage.incomingConnections?.map((conn: WorkflowStageConnection) => conn.fromStageId) || [],
+            nextStageIds: stage.outgoingConnections?.map((conn: WorkflowStageConnection) => conn.toStageId) || [],
             assignedUserCount: stage.assignments?.length || 0,
         }));
         
