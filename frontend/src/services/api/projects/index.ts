@@ -6,3 +6,6 @@ export { assetService } from './assetService';
 export { projectMemberService } from './projectMemberService';
 export { taskService } from './taskService';
 export { annotationService } from './annotationService';
+export { workflowService } from './workflowService';
+export { workflowStageService } from './workflowStageService';
+export { workflowStageConnectionService } from './workflowStageConnectionService';
