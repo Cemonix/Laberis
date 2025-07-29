@@ -14,7 +14,9 @@ export enum TaskEventType {
     DUE_DATE_CHANGED = "DUE_DATE_CHANGED",
     TASK_COMPLETED = "TASK_COMPLETED",
     TASK_ARCHIVED = "TASK_ARCHIVED",
-    TASK_SUSPENDED = "TASK_SUSPENDED"
+    TASK_SUSPENDED = "TASK_SUSPENDED",
+    TASK_DEFERRED = "TASK_DEFERRED",
+    TASK_REOPENED = "TASK_REOPENED"
 }
 
 export enum TaskStatus {
@@ -22,7 +24,11 @@ export enum TaskStatus {
     IN_PROGRESS = "IN_PROGRESS", 
     COMPLETED = "COMPLETED",
     ARCHIVED = "ARCHIVED",
-    SUSPENDED = "SUSPENDED"
+    SUSPENDED = "SUSPENDED",
+    DEFERRED = "DEFERRED",
+    READY_FOR_ANNOTATION = "READY_FOR_ANNOTATION",
+    READY_FOR_REVIEW = "READY_FOR_REVIEW",
+    READY_FOR_COMPLETION = "READY_FOR_COMPLETION"
 }
 
 export interface Task {
@@ -32,6 +38,7 @@ export interface Task {
     completedAt?: string;
     archivedAt?: string;
     suspendedAt?: string;
+    deferredAt?: string;
     createdAt: string;
     updatedAt: string;
     assetId: number;
