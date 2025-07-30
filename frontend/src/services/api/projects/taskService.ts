@@ -6,7 +6,8 @@ import type {
     UpdateTaskRequest,
     TaskTableRow,
     TasksQueryParams,
-    GetTasksResponse
+    GetTasksResponse,
+    ChangeTaskStatusDto
 } from '@/types/task';
 import { TaskStatus } from '@/types/task';
 import { workflowStageService } from './workflowStageService';
@@ -362,35 +363,6 @@ class TaskService extends BaseProjectService {
         };
     }
 
-    /**
-     * Complete a task (marks as completed but doesn't move to next stage)
-     */
-    async completeTask(projectId: number, taskId: number): Promise<Task> {
-        this.logger.info(`Completing task ${taskId} in project ${projectId}`);
-
-        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/complete', { taskId });
-        const dto = await this.put<undefined, any>(url, undefined);
-        
-        const task: Task = this.transformTaskDto(dto);
-
-        this.logger.info(`Completed task ${taskId} successfully`);
-        return task;
-    }
-
-    /**
-     * Complete a task and automatically move it to the next workflow stage
-     */
-    async completeAndMoveTask(projectId: number, taskId: number): Promise<Task> {
-        this.logger.info(`Completing and moving task ${taskId} to next stage in project ${projectId}`);
-
-        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/complete-and-move', { taskId });
-        const dto = await this.put<undefined, any>(url, undefined);
-        
-        const task: Task = this.transformTaskDto(dto);
-
-        this.logger.info(`Completed and moved task ${taskId} to next stage successfully`);
-        return task;
-    }
 
     /**
      * Assign a task to a user by user ID
@@ -408,65 +380,37 @@ class TaskService extends BaseProjectService {
     }
 
     /**
-     * Mark a completed task as uncomplete
+     * Assign a task to the current authenticated user
      */
-    async uncompleteTask(projectId: number, taskId: number): Promise<Task> {
-        this.logger.info(`Uncompleting task ${taskId} in project ${projectId}`);
+    async assignTaskToCurrentUser(projectId: number, taskId: number): Promise<Task> {
+        this.logger.info(`Assigning task ${taskId} to current user in project ${projectId}`);
 
-        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/incomplete', { taskId });
-        const dto = await this.put<undefined, any>(url, undefined);
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/assign-to-me', { taskId });
+        const dto = await this.post<undefined, any>(url, undefined);
         
         const task: Task = this.transformTaskDto(dto);
 
-        this.logger.info(`Uncompleted task ${taskId} successfully`);
-        return task;
-    }
-
-    /**
-     * Suspend a task (mark as suspended)
-     */
-    async suspendTask(projectId: number, taskId: number): Promise<Task> {
-        this.logger.info(`Suspending task ${taskId} in project ${projectId}`);
-
-        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/suspend', { taskId });
-        const dto = await this.put<undefined, any>(url, undefined);
-        
-        const task: Task = this.transformTaskDto(dto);
-
-        this.logger.info(`Suspended task ${taskId} successfully`);
-        return task;
-    }
-
-    /**
-     * Defer a task (skip for now, keeping it available for later work)
-     */
-    async deferTask(projectId: number, taskId: number): Promise<Task> {
-        this.logger.info(`Deferring task ${taskId} in project ${projectId}`);
-
-        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/defer', { taskId });
-        const dto = await this.put<undefined, any>(url, undefined);
-        
-        const task: Task = this.transformTaskDto(dto);
-
-        this.logger.info(`Deferred task ${taskId} successfully`);
+        this.logger.info(`Assigned task ${taskId} to current user successfully`);
         return task;
     }
 
 
     /**
-     * Unsuspend a task (backend determines appropriate ready status based on workflow stage)
+     * Change task status using the unified endpoint with optional asset movement
      */
-    async unsuspendTask(projectId: number, taskId: number): Promise<Task> {
-        this.logger.info(`Unsuspending task ${taskId} in project ${projectId}`);
+    async changeTaskStatus(projectId: number, taskId: number, requestDto: ChangeTaskStatusDto): Promise<Task> {
+        this.logger.info(`Changing task ${taskId} status to ${requestDto.targetStatus} in project ${projectId}`, { moveAsset: requestDto.moveAsset });
 
-        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/unsuspend', { taskId });
-        const dto = await this.put<undefined, any>(url, undefined);
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/status', { taskId });
+        const dto = await this.put<ChangeTaskStatusDto, any>(url, requestDto);
         
         const task: Task = this.transformTaskDto(dto);
 
-        this.logger.info(`Unsuspended task ${taskId} successfully`);
+        this.logger.info(`Changed task ${taskId} status to ${requestDto.targetStatus} successfully`);
         return task;
     }
+
+
 
     /**
      * Check if there are assets available for task creation in a project

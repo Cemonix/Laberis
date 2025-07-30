@@ -15,6 +15,7 @@ import {
     labelService,
     taskService 
 } from '@/services/api/projects';
+import { taskStatusService } from '@/services/taskStatusService';
 import type { Asset } from '@/types/asset/asset';
 import type { Task } from '@/types/task';
 import { AppLogger } from '@/utils/logger';
@@ -246,7 +247,38 @@ export const useWorkspaceStore = defineStore("workspace", {
                         this.currentTaskData = currentTask;
                         this.currentTaskId = currentTask.id;
                         
-                        const taskIndex = this.availableTasks.findIndex(task => task.id === currentTask?.id);
+                        // Auto-assign task to current user if not already assigned (makes it IN_PROGRESS)
+                        try {
+                            if (!currentTask.assignedToEmail) {
+                                const { useAuthStore } = await import('@/stores/authStore');
+                                const authStore = useAuthStore();
+                                
+                                if (authStore.currentUser?.email) {
+                                    logger.info(`Auto-assigning task ${currentTask.id} to current user ${authStore.currentUser.email}`);
+                                    const assignedTask = await taskService.assignTaskToCurrentUser(numericProjectId, currentTask.id);
+                                    
+                                    // Update the current task data with the assigned task
+                                    this.currentTaskData = assignedTask;
+                                    
+                                    // Update the task in the available tasks list
+                                    const taskIndex = this.availableTasks.findIndex(task => task.id === assignedTask.id);
+                                    if (taskIndex !== -1) {
+                                        this.availableTasks[taskIndex] = assignedTask;
+                                    }
+                                    
+                                    logger.info(`Successfully auto-assigned task ${currentTask.id} to ${authStore.currentUser.email} - status should now be IN_PROGRESS`);
+                                } else {
+                                    logger.warn('Cannot auto-assign task: no current user email available');
+                                }
+                            } else {
+                                logger.info(`Task ${currentTask.id} is already assigned to ${currentTask.assignedToEmail}`);
+                            }
+                        } catch (assignError) {
+                            logger.warn('Failed to auto-assign task to current user:', assignError);
+                            // Don't fail the load process if assignment fails
+                        }
+                        
+                        const taskIndex = this.availableTasks.findIndex(task => task.id === this.currentTaskData?.id);
                         logger.info(`Loaded ${this.availableTasks.length} tasks for stage ${workflowStageId}, current task is at index ${taskIndex}`);
                     } else {
                         logger.warn(`No tasks found for asset ${assetId}`);
@@ -681,7 +713,9 @@ export const useWorkspaceStore = defineStore("workspace", {
 
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
-                const updatedTask = await taskService.completeTask(numericProjectId, this.currentTaskData.id);
+                
+                // Use the smart task status service that understands workflow context
+                const updatedTask = await taskStatusService.completeTask(numericProjectId, this.currentTaskData, false);
                 
                 // Update the current task data
                 this.currentTaskData = updatedTask;
@@ -712,7 +746,9 @@ export const useWorkspaceStore = defineStore("workspace", {
 
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
-                const updatedTask = await taskService.completeAndMoveTask(numericProjectId, this.currentTaskData.id);
+                
+                // Use the smart task status service (same as completeCurrentTask now)
+                const updatedTask = await taskStatusService.completeTask(numericProjectId, this.currentTaskData, false);
                 
                 // Update the current task data
                 this.currentTaskData = updatedTask;
@@ -743,7 +779,9 @@ export const useWorkspaceStore = defineStore("workspace", {
 
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
-                const updatedTask = await taskService.completeAndMoveTask(numericProjectId, this.currentTaskData.id);
+                
+                // Use the smart task status service (same as other complete methods now)
+                const updatedTask = await taskStatusService.completeTask(numericProjectId, this.currentTaskData, false);
                 
                 // Update the current task data
                 this.currentTaskData = updatedTask;
@@ -774,7 +812,9 @@ export const useWorkspaceStore = defineStore("workspace", {
 
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
-                const updatedTask = await taskService.uncompleteTask(numericProjectId, this.currentTaskData.id);
+                
+                // Use the smart task status service
+                const updatedTask = await taskStatusService.uncompleteTask(numericProjectId, this.currentTaskData, false);
                 
                 // Update the current task data
                 this.currentTaskData = updatedTask;
@@ -806,8 +846,8 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
-                // Use the task service suspend method (handles local suspend for now)
-                const suspendedTask = await taskService.suspendTask(numericProjectId, this.currentTaskData.id);
+                // Use the smart task status service
+                const suspendedTask = await taskStatusService.suspendTask(numericProjectId, this.currentTaskData, false);
                 
                 // Update the current task data
                 this.currentTaskData = suspendedTask;

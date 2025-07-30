@@ -119,6 +119,7 @@ import {useErrorHandler} from '@/composables/useErrorHandler';
 import {useProjectPermissions} from '@/composables/useProjectPermissions';
 import {useProjectStore} from '@/stores/projectStore';
 import {taskService} from '@/services/api/projects';
+import {taskStatusService} from '@/services/taskStatusService';
 import {AppLogger} from '@/utils/logger';
 
 const route = useRoute();
@@ -150,6 +151,28 @@ const selectedTask = ref<TaskTableRow | null>(null);
 const canManageTasks = computed(() => {
     return canManageProject.value;
 });
+
+// Helper to convert TaskTableRow to minimal Task for status service
+const createTaskFromRow = (taskRow: TaskTableRow): Task => {
+    return {
+        id: taskRow.id,
+        priority: taskRow.priority,
+        dueDate: taskRow.dueDate,
+        completedAt: taskRow.completedAt,
+        archivedAt: undefined, // Not available in TaskTableRow
+        suspendedAt: undefined, // Not available in TaskTableRow
+        deferredAt: undefined, // Not available in TaskTableRow
+        createdAt: taskRow.createdAt,
+        updatedAt: taskRow.createdAt, // Fallback to createdAt
+        assetId: taskRow.assetId,
+        projectId: projectId.value,
+        workflowId: workflowId.value,
+        currentWorkflowStageId: stageId.value,
+        assignedToEmail: taskRow.assignedTo,
+        lastWorkedOnByEmail: undefined, // Not available in TaskTableRow
+        status: taskRow.status
+    };
+};
 
 // Table configuration
 const tableColumns: TableColumn[] = [
@@ -456,25 +479,11 @@ const handleTaskClick = (task: TaskTableRow, _index: number) => {
 };
 
 const handleSuspendTask = async (task: TaskTableRow) => {
-    if (!canManageTasks.value) {
-        logger.warn('User does not have permission to suspend tasks');
-        return;
-    }
-
-    if (task.status === TaskStatus.SUSPENDED) {
-        logger.warn('Task is already suspended', { taskId: task.id, status: task.status });
-        return;
-    }
-
-    if ([TaskStatus.COMPLETED, TaskStatus.ARCHIVED].includes(task.status)) {
-        logger.warn('Cannot suspend completed or archived task', { taskId: task.id, status: task.status });
-        return;
-    }
-
     try {
         logger.info('Suspending task', { taskId: task.id, assetName: task.assetName });
         
-        await taskService.suspendTask(projectId.value, task.id);
+        const taskData = createTaskFromRow(task);
+        await taskStatusService.suspendTask(projectId.value, taskData, canManageTasks.value);
         
         // Refresh the task list to show updated status
         await loadTasks();
@@ -487,20 +496,11 @@ const handleSuspendTask = async (task: TaskTableRow) => {
 };
 
 const handleUnsuspendTask = async (task: TaskTableRow) => {
-    if (!canManageTasks.value) {
-        logger.warn('User does not have permission to unsuspend tasks');
-        return;
-    }
-
-    if (task.status !== TaskStatus.SUSPENDED) {
-        logger.warn('Cannot unsuspend task that is not suspended', { taskId: task.id, status: task.status });
-        return;
-    }
-
     try {
         logger.info('Unsuspending task', { taskId: task.id, assetName: task.assetName });
         
-        await taskService.unsuspendTask(projectId.value, task.id);
+        const taskData = createTaskFromRow(task);
+        await taskStatusService.resumeTask(projectId.value, taskData, canManageTasks.value);
         
         // Refresh the task list to show updated status
         await loadTasks();
@@ -513,25 +513,11 @@ const handleUnsuspendTask = async (task: TaskTableRow) => {
 };
 
 const handleDeferTask = async (task: TaskTableRow) => {
-    if (!canManageTasks.value) {
-        logger.warn('User does not have permission to defer tasks');
-        return;
-    }
-
-    if (task.status === TaskStatus.DEFERRED) {
-        logger.warn('Task is already deferred', { taskId: task.id, status: task.status });
-        return;
-    }
-
-    if ([TaskStatus.SUSPENDED, TaskStatus.COMPLETED, TaskStatus.ARCHIVED].includes(task.status)) {
-        logger.warn('Cannot defer suspended, completed, or archived task', { taskId: task.id, status: task.status });
-        return;
-    }
-
     try {
         logger.info('Deferring task', { taskId: task.id, assetName: task.assetName });
         
-        await taskService.deferTask(projectId.value, task.id);
+        const taskData = createTaskFromRow(task);
+        await taskStatusService.deferTask(projectId.value, taskData, canManageTasks.value);
         
         // Refresh the task list to show updated status
         await loadTasks();
@@ -543,22 +529,29 @@ const handleDeferTask = async (task: TaskTableRow) => {
     }
 };
 
+const handleUndeferTask = async (task: TaskTableRow) => {
+    try {
+        logger.info('Undeferring task', { taskId: task.id, assetName: task.assetName });
+        
+        const taskData = createTaskFromRow(task);
+        await taskStatusService.undeferTask(projectId.value, taskData, canManageTasks.value);
+        
+        // Refresh the task list to show updated status
+        await loadTasks();
+        
+        logger.info('Task undeferred successfully', { taskId: task.id });
+    } catch (error) {
+        logger.error('Failed to undefer task', { taskId: task.id, error });
+        handleError(error, 'Failed to undefer task');
+    }
+};
+
 const handleUncompleteTask = async (task: TaskTableRow) => {
-    if (!canManageTasks.value) {
-        logger.warn('User does not have permission to uncomplete tasks');
-        return;
-    }
-
-    if (task.status !== TaskStatus.COMPLETED) {
-        logger.warn('Cannot uncomplete task that is not completed', { taskId: task.id, status: task.status });
-        return;
-    }
-
     try {
         logger.info('Uncompleting task', { taskId: task.id, assetName: task.assetName });
         
-        // Call the uncomplete API
-        await taskService.uncompleteTask(projectId.value, task.id);
+        const taskData = createTaskFromRow(task);
+        await taskStatusService.uncompleteTask(projectId.value, taskData, canManageTasks.value);
         
         // Refresh the task list to show updated status
         await loadTasks();
@@ -615,6 +608,9 @@ const handleStatusAction = async (actionKey: string, task: TaskTableRow) => {
                 break;
             case 'defer':
                 await handleDeferTask(task);
+                break;
+            case 'undefer':
+                await handleUndeferTask(task);
                 break;
             case 'uncomplete':
                 await handleUncompleteTask(task);

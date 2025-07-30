@@ -81,7 +81,9 @@ describe('LabelSchemeService', () => {
                 description: 'A test label scheme',
                 projectId: 1,
                 isDefault: true,
-                createdAt: '2025-01-01T00:00:00Z'
+                createdAt: '2025-01-01T00:00:00Z',
+                deferredAt: undefined,
+                isActive: true,
             });
             expect(result.currentPage).toBe(1);
             expect(result.pageSize).toBe(25);
@@ -159,7 +161,9 @@ describe('LabelSchemeService', () => {
                 description: 'A test label scheme',
                 projectId: 1,
                 isDefault: true,
-                createdAt: '2025-01-01T00:00:00Z'
+                createdAt: '2025-01-01T00:00:00Z',
+                deferredAt: undefined,
+                isActive: true
             });
         });
 
@@ -208,7 +212,10 @@ describe('LabelSchemeService', () => {
                 description: 'A new label scheme',
                 projectId: 1,
                 isDefault: false,
-                createdAt: '2025-01-01T00:00:00Z'
+                createdAt: '2025-01-01T00:00:00Z',
+                deferredAt: undefined,
+                isActive: true
+
             });
         });
 
