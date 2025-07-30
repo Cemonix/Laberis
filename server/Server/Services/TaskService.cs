@@ -816,7 +816,11 @@ public class TaskService : ITaskService
             // IN_PROGRESS, READY_FOR_* statuses are calculated based on assignment and no timestamps are set
         }
         
-        task.LastWorkedOnByUserId = userId;
+        // Update LastWorkedOnByUserId only for statuses representing actual work  
+        if (targetStatus == TaskStatus.IN_PROGRESS || targetStatus == TaskStatus.COMPLETED)  
+        {  
+            task.LastWorkedOnByUserId = userId;  
+        }  
         task.UpdatedAt = now;
     }
 
