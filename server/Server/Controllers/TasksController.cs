@@ -274,6 +274,46 @@ public class TasksController : ControllerBase
     }
 
     /// <summary>
+    /// Assigns a task to the current authenticated user.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to assign to current user.</param>
+    /// <returns>The updated task.</returns>
+    /// <response code="200">Returns the updated task.</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="404">If the task is not found.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPost("{taskId:int}/assign-to-me")]
+    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> AssignTaskToCurrentUser(int taskId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized("User ID claim not found in token.");
+        }
+
+        try
+        {
+            var updatedTask = await _taskService.AssignTaskAsync(taskId, userId);
+
+            if (updatedTask == null)
+            {
+                return NotFound($"Task with ID {taskId} not found.");
+            }
+
+            return Ok(updatedTask);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while assigning task {TaskId} to current user {UserId}.", taskId, userId);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
+
+    /// <summary>
     /// Moves a task to a different workflow stage.
     /// </summary>
     /// <param name="taskId">The ID of the task to move.</param>

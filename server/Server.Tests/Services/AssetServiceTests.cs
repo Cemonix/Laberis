@@ -31,14 +31,11 @@ namespace Server.Tests.Services
             _mockTaskRepository = new Mock<ITaskRepository>();
             _mockWorkflowStageRepository = new Mock<IWorkflowStageRepository>();
             _mockLogger = new Mock<ILogger<AssetService>>();
-            var mockTaskService = new Mock<ITaskService>();
-
             _assetService = new AssetService(
                 _mockAssetRepository.Object,
                 _mockFileStorageService.Object,
                 _mockDataSourceRepository.Object,
                 _mockStorageService.Object,
-                mockTaskService.Object,
                 _mockTaskRepository.Object,
                 _mockWorkflowStageRepository.Object,
                 _mockLogger.Object
