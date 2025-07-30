@@ -112,7 +112,7 @@ import Button from '@/components/common/Button.vue';
 import DataTable from '@/components/common/DataTable.vue';
 import TaskStatusBadge from '@/components/project/task/TaskStatusBadge.vue';
 import TaskStatusModal from '@/components/project/task/TaskStatusModal.vue';
-import type {TaskTableRow} from '@/types/task';
+import type {Task, TaskTableRow} from '@/types/task';
 import {TaskStatus} from '@/types/task';
 import type {TableAction, TableColumn, TableRowAction} from '@/types/common';
 import {useErrorHandler} from '@/composables/useErrorHandler';
