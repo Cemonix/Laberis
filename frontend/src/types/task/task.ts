@@ -104,3 +104,9 @@ export interface TaskTableRow {
     createdAt: string;
     stage: string;
 }
+
+// For unified status change requests
+export interface ChangeTaskStatusDto {
+    targetStatus: TaskStatus;
+    moveAsset?: boolean;
+}

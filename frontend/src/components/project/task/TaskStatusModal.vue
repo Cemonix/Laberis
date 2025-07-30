@@ -41,12 +41,12 @@
                         <Button
                             v-if="canDefer"
                             variant="secondary"
-                            @click="handleAction('defer')"
+                            @click="handleAction(task?.status === TaskStatus.DEFERRED ? 'undefer' : 'defer')"
                             :disabled="actionInProgress"
                             class="status-action-button"
                         >
                             <font-awesome-icon :icon="faForward" />
-                            Defer
+                            {{ task?.status === TaskStatus.DEFERRED ? 'Undefer' : 'Defer' }}
                         </Button>
                         
                         <Button
@@ -121,9 +121,13 @@ const canSuspend = computed(() => {
 const canDefer = computed(() => {
     if (!props.task) return false;
     
-    // Can defer if not already deferred, suspended, completed, or archived
+    // Can defer if not already suspended, completed, or archived
+    // Can also undefer if currently deferred
+    if (props.task.status === TaskStatus.DEFERRED) {
+        return true; // Can undefer
+    }
+    
     return ![
-        TaskStatus.DEFERRED,
         TaskStatus.SUSPENDED,
         TaskStatus.COMPLETED,
         TaskStatus.ARCHIVED
