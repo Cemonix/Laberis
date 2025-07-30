@@ -266,7 +266,7 @@ public class AssetService : IAssetService
             {
                 try
                 {
-                    // Note: Task creation will be handled by TaskService
+                    // FIXME: Task creation will be handled by TaskService
                     _logger.LogInformation("Asset {AssetId} ready for task creation in workflow stage {StageId} ({StageName})", 
                         asset.AssetId, stage.WorkflowStageId, stage.Name);
                 }
