@@ -18,7 +18,6 @@ public class AssetService : IAssetService
     private readonly IFileStorageService _fileStorageService;
     private readonly IDataSourceRepository _dataSourceRepository;
     private readonly IStorageService _storageService;
-    private readonly ITaskService _taskService;
     private readonly ITaskRepository _taskRepository;
     private readonly IWorkflowStageRepository _workflowStageRepository;
     private readonly ILogger<AssetService> _logger;
@@ -28,7 +27,6 @@ public class AssetService : IAssetService
         IFileStorageService fileStorageService,
         IDataSourceRepository dataSourceRepository,
         IStorageService storageService,
-        ITaskService taskService,
         ITaskRepository taskRepository,
         IWorkflowStageRepository workflowStageRepository,
         ILogger<AssetService> logger)
@@ -37,7 +35,6 @@ public class AssetService : IAssetService
         _fileStorageService = fileStorageService ?? throw new ArgumentNullException(nameof(fileStorageService));
         _dataSourceRepository = dataSourceRepository ?? throw new ArgumentNullException(nameof(dataSourceRepository));
         _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
-        _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
         _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -269,14 +266,9 @@ public class AssetService : IAssetService
             {
                 try
                 {
-                    var tasksCreated = await _taskService.CreateTasksForDataSourceAsync(
-                        asset.ProjectId, 
-                        stage.WorkflowId, 
-                        stage.WorkflowStageId, 
-                        asset.DataSourceId);
-                        
-                    _logger.LogInformation("Created {TasksCreated} tasks for workflow stage {StageId} ({StageName}) for new asset {AssetId}", 
-                        tasksCreated, stage.WorkflowStageId, stage.Name, asset.AssetId);
+                    // Note: Task creation will be handled by TaskService
+                    _logger.LogInformation("Asset {AssetId} ready for task creation in workflow stage {StageId} ({StageName})", 
+                        asset.AssetId, stage.WorkflowStageId, stage.Name);
                 }
                 catch (Exception ex)
                 {
@@ -555,8 +547,8 @@ public class AssetService : IAssetService
                 await HandleTaskIncompleteMovement(task, result, userId);
             }
 
-            _logger.LogInformation("Asset movement completed for task {TaskId}: {AssetMoved}, {NewTasksCreated} new tasks", 
-                task.TaskId, result.AssetMoved, result.NewTasksCreated);
+            _logger.LogInformation("Asset movement completed for task {TaskId}: {AssetMoved}, target stage: {TargetStageId}", 
+                task.TaskId, result.AssetMoved, result.TargetWorkflowStageId);
         }
         catch (Exception ex)
         {
@@ -587,28 +579,36 @@ public class AssetService : IAssetService
         {
             try
             {
-                // TODO: Implement actual asset movement between MinIO data sources
-                // For now, we just create tasks - asset movement would happen here
+                // Get the asset for this task
+                var asset = await _assetRepository.GetByIdAsync(task.AssetId);
+                if (asset == null)
+                {
+                    result.ErrorMessage = "Asset not found for task";
+                    return;
+                }
+
+                // Transfer asset to the next workflow stage's data source
+                var transferSuccess = await TransferAssetToDataSourceAsync(asset, nextStage.InputDataSourceId.Value);
                 
-                var tasksCreated = await _taskService.CreateTasksForDataSourceAsync(
-                    task.ProjectId, 
-                    task.WorkflowId, 
-                    nextStage.WorkflowStageId, 
-                    nextStage.InputDataSourceId.Value);
+                if (transferSuccess)
+                {
+                    result.AssetMoved = true;
+                    result.TargetWorkflowStageId = nextStage.WorkflowStageId;
+                    result.TargetDataSourceId = nextStage.InputDataSourceId.Value;
 
-                result.AssetMoved = true; // Would be true after actual MinIO operation
-                result.NewTasksCreated = tasksCreated;
-                result.TargetWorkflowStageId = nextStage.WorkflowStageId;
-
-                _logger.LogInformation("Created {TasksCreated} tasks for next stage {NextStageId} after completing task {TaskId}", 
-                    tasksCreated, nextStage.WorkflowStageId, task.TaskId);
+                    _logger.LogInformation("Successfully transferred asset {AssetId} to data source {DataSourceId} for next stage {NextStageId}. TaskService will create tasks.", 
+                        asset.AssetId, nextStage.InputDataSourceId.Value, nextStage.WorkflowStageId);
+                }
+                else
+                {
+                    result.ErrorMessage = "Failed to transfer asset to next workflow stage";
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to create tasks for next stage {NextStageId} after completing task {TaskId}", 
+                _logger.LogError(ex, "Failed to move asset and create tasks for next stage {NextStageId} after completing task {TaskId}", 
                     nextStage.WorkflowStageId, task.TaskId);
-                // Don't fail the status change if we can't create next stage tasks
-                result.ErrorMessage = $"Failed to create tasks for next stage: {ex.Message}";
+                result.ErrorMessage = $"Failed to move asset to next stage: {ex.Message}";
             }
         }
     }
@@ -623,28 +623,170 @@ public class AssetService : IAssetService
         {
             try
             {
-                // TODO: Implement actual asset movement back to annotation data source
-                // For now, we just create the task
-                
-                var tasksCreated = await _taskService.CreateTasksForDataSourceAsync(
-                    task.ProjectId, 
-                    task.WorkflowId, 
-                    annotationStage.WorkflowStageId, 
-                    annotationStage.InputDataSourceId.Value);
+                // Get the asset for this task
+                var asset = await _assetRepository.GetByIdAsync(task.AssetId);
+                if (asset == null)
+                {
+                    result.ErrorMessage = "Asset not found for task";
+                    return;
+                }
 
-                result.AssetMoved = true; // Would be true after actual MinIO operation
-                result.NewTasksCreated = tasksCreated;
-                result.TargetWorkflowStageId = annotationStage.WorkflowStageId;
+                // Transfer asset back to annotation data source
+                var transferSuccess = await TransferAssetToDataSourceAsync(asset, annotationStage.InputDataSourceId.Value);
                 
-                _logger.LogInformation("Created new annotation task for asset {AssetId} after marking task {TaskId} incomplete", 
-                    task.AssetId, task.TaskId);
+                if (transferSuccess)
+                {
+                    result.AssetMoved = true;
+                    result.TargetWorkflowStageId = annotationStage.WorkflowStageId;
+                    result.TargetDataSourceId = annotationStage.InputDataSourceId.Value;
+                    
+                    _logger.LogInformation("Successfully transferred asset {AssetId} back to annotation data source {DataSourceId}. TaskService will create new tasks.", 
+                        asset.AssetId, annotationStage.InputDataSourceId.Value);
+                }
+                else
+                {
+                    result.ErrorMessage = "Failed to transfer asset back to annotation stage";
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to create new annotation task for asset {AssetId} after marking task {TaskId} incomplete", 
+                _logger.LogError(ex, "Failed to move asset back to annotation and create new task for asset {AssetId} after marking task {TaskId} incomplete", 
                     task.AssetId, task.TaskId);
-                result.ErrorMessage = $"Failed to create new annotation task: {ex.Message}";
+                result.ErrorMessage = $"Failed to move asset back to annotation: {ex.Message}";
             }
+        }
+    }
+
+    /// <summary>
+    /// Transfers an asset from its current data source to a target data source.
+    /// This involves copying the file in MinIO and updating the database record.
+    /// </summary>
+    /// <param name="asset">The asset to transfer</param>
+    /// <param name="targetDataSourceId">The ID of the target data source</param>
+    /// <returns>True if the transfer was successful, false otherwise</returns>
+    private async Task<bool> TransferAssetToDataSourceAsync(Asset asset, int targetDataSourceId)
+    {
+        try
+        {
+            _logger.LogInformation("Starting asset transfer for asset {AssetId} from data source {CurrentDataSourceId} to {TargetDataSourceId}", 
+                asset.AssetId, asset.DataSourceId, targetDataSourceId);
+
+            // Skip transfer if asset is already in the target data source
+            if (asset.DataSourceId == targetDataSourceId)
+            {
+                _logger.LogInformation("Asset {AssetId} is already in target data source {DataSourceId}, skipping transfer", 
+                    asset.AssetId, targetDataSourceId);
+                return true;
+            }
+
+            // Get both data sources
+            var currentDataSource = await _dataSourceRepository.GetByIdAsync(asset.DataSourceId);
+            var targetDataSource = await _dataSourceRepository.GetByIdAsync(targetDataSourceId);
+
+            if (currentDataSource == null)
+            {
+                _logger.LogError("Current data source {DataSourceId} not found for asset {AssetId}", 
+                    asset.DataSourceId, asset.AssetId);
+                return false;
+            }
+
+            if (targetDataSource == null)
+            {
+                _logger.LogError("Target data source {DataSourceId} not found for asset {AssetId}", 
+                    targetDataSourceId, asset.AssetId);
+                return false;
+            }
+
+            // Generate bucket names
+            var sourceBucketName = _storageService.GenerateBucketName(asset.ProjectId, currentDataSource.Name);
+            var targetBucketName = _storageService.GenerateBucketName(asset.ProjectId, targetDataSource.Name);
+
+            _logger.LogDebug("Transferring asset {AssetId} from bucket {SourceBucket} to {TargetBucket}", 
+                asset.AssetId, sourceBucketName, targetBucketName);
+
+            // Perform the MinIO copy operation
+            var copySuccess = await CopyAssetInMinIOAsync(sourceBucketName, targetBucketName, asset.ExternalId, asset.Filename);
+            
+            if (!copySuccess)
+            {
+                _logger.LogError("Failed to copy asset {AssetId} in MinIO from {SourceBucket} to {TargetBucket}", 
+                    asset.AssetId, sourceBucketName, targetBucketName);
+                return false;
+            }
+
+            // Update the asset's data source in the database
+            asset.DataSourceId = targetDataSourceId;
+            asset.UpdatedAt = DateTime.UtcNow;
+            
+            await _assetRepository.SaveChangesAsync();
+
+            _logger.LogInformation("Successfully transferred asset {AssetId} to data source {TargetDataSourceId}", 
+                asset.AssetId, targetDataSourceId);
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error transferring asset {AssetId} to data source {TargetDataSourceId}", 
+                asset.AssetId, targetDataSourceId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Copies an asset file from one MinIO bucket to another.
+    /// Uses download and upload since MinIO client doesn't have a direct copy method.
+    /// </summary>
+    /// <param name="sourceBucketName">Source bucket name</param>
+    /// <param name="targetBucketName">Target bucket name</param>
+    /// <param name="objectName">Object name/path in MinIO</param>
+    /// <param name="filename">Original filename for logging</param>
+    /// <returns>True if copy was successful, false otherwise</returns>
+    private async Task<bool> CopyAssetInMinIOAsync(string sourceBucketName, string targetBucketName, string objectName, string filename)
+    {
+        try
+        {
+            _logger.LogDebug("Copying MinIO object {ObjectName} from bucket {SourceBucket} to {TargetBucket}", 
+                objectName, sourceBucketName, targetBucketName);
+
+            // Ensure target bucket exists
+            if (!await _storageService.BucketExistsAsync(targetBucketName))
+            {
+                _logger.LogInformation("Creating target bucket {TargetBucket} for asset transfer", targetBucketName);
+                await _storageService.CreateBucketAsync(targetBucketName);
+            }
+
+            // Check if file exists in source bucket
+            if (!await _fileStorageService.FileExistsAsync(sourceBucketName, objectName))
+            {
+                _logger.LogError("Source file {ObjectName} does not exist in bucket {SourceBucket}", 
+                    objectName, sourceBucketName);
+                return false;
+            }
+
+            // Check if file already exists in target bucket
+            if (await _fileStorageService.FileExistsAsync(targetBucketName, objectName))
+            {
+                _logger.LogInformation("File {ObjectName} already exists in target bucket {TargetBucket}, skipping copy", 
+                    objectName, targetBucketName);
+                return true;
+            }
+
+            // Download from source bucket
+            using (var sourceStream = await _fileStorageService.DownloadFileAsync(sourceBucketName, objectName))
+            {
+                // Upload to target bucket
+                var targetPath = await _fileStorageService.UploadFileAsync(sourceStream, targetBucketName, objectName);
+                
+                _logger.LogDebug("Successfully copied asset to target path: {TargetPath}", targetPath);
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to copy MinIO object {ObjectName} from {SourceBucket} to {TargetBucket}", 
+                objectName, sourceBucketName, targetBucketName);
+            return false;
         }
     }
 

@@ -57,6 +57,7 @@ public class TaskStatusValidator : ITaskStatusValidator
         {
             TaskStatus.READY_FOR_ANNOTATION or TaskStatus.READY_FOR_REVIEW or TaskStatus.READY_FOR_COMPLETION => (true, string.Empty),
             TaskStatus.SUSPENDED => (true, string.Empty), // Unsuspending
+            TaskStatus.DEFERRED => (true, string.Empty), // Undefer
             TaskStatus.NOT_STARTED => (true, string.Empty),
             _ => (false, $"Cannot change status from {currentStatus} to IN_PROGRESS")
         };

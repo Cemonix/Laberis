@@ -110,14 +110,16 @@ public class AssetMovementResult
     public bool ShouldArchiveTask { get; set; }
 
     /// <summary>
-    /// The number of new tasks created in the next workflow stage.
-    /// </summary>
-    public int NewTasksCreated { get; set; }
-
-    /// <summary>
-    /// The ID of the workflow stage where new tasks were created, if any.
+    /// The ID of the workflow stage where tasks should be created, if any.
+    /// TaskService will handle the actual task creation.
     /// </summary>
     public int? TargetWorkflowStageId { get; set; }
+
+    /// <summary>
+    /// The data source ID where tasks should be created, if any.
+    /// TaskService will use this information to create tasks.
+    /// </summary>
+    public int? TargetDataSourceId { get; set; }
 
     /// <summary>
     /// Any error messages that occurred during the process.
