@@ -158,19 +158,40 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
         return query;
     }
 
-    public async Task<IEnumerable<Asset>> GetAvailableAssetsForTaskCreationAsync(int projectId)
+    public async Task<IEnumerable<Asset>> GetAvailableAssetsForTaskCreationAsync(int projectId, int? workflowStageId = null)
     {
-        _logger.LogInformation("Getting available assets for task creation in project {ProjectId}", projectId);
+        _logger.LogInformation("Getting available assets for task creation in project {ProjectId} for workflow stage {WorkflowStageId}", 
+            projectId, workflowStageId);
 
-        // Get all assets in the project that are imported and don't have active (uncomplete) tasks
-        var availableAssets = await _context.Assets
+        var query = _context.Assets
             .Where(a => a.ProjectId == projectId 
-                       && a.Status == Models.Domain.Enums.AssetStatus.IMPORTED
-                       && !_context.Tasks.Any(t => t.AssetId == a.AssetId && t.CompletedAt == null))
-            .ToListAsync();
+                && a.Status == Models.Domain.Enums.AssetStatus.IMPORTED
+                && !_context.Tasks.Any(t => t.AssetId == a.AssetId && t.CompletedAt == null));
 
-        _logger.LogInformation("Found {Count} available assets for task creation in project {ProjectId}", 
-            availableAssets.Count, projectId);
+        // If a workflow stage is specified, filter assets to only those in the stage's input data source
+        if (workflowStageId.HasValue)
+        {
+            var workflowStage = await _context.WorkflowStages
+                .FirstOrDefaultAsync(ws => ws.WorkflowStageId == workflowStageId.Value);
+
+            if (workflowStage?.InputDataSourceId.HasValue == true)
+            {
+                _logger.LogInformation("Filtering assets by input data source {DataSourceId} for workflow stage {WorkflowStageId}", 
+                    workflowStage.InputDataSourceId, workflowStageId);
+                    
+                query = query.Where(a => a.DataSourceId == workflowStage.InputDataSourceId.Value);
+            }
+            else
+            {
+                _logger.LogWarning("Workflow stage {WorkflowStageId} has no input data source, returning empty result", workflowStageId);
+                return [];
+            }
+        }
+
+        var availableAssets = await query.ToListAsync();
+
+        _logger.LogInformation("Found {Count} available assets for task creation in project {ProjectId} for workflow stage {WorkflowStageId}", 
+            availableAssets.Count, projectId, workflowStageId);
 
         return availableAssets;
     }
@@ -182,8 +203,8 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
 
         var query = _context.Assets
             .Where(a => a.ProjectId == projectId 
-                       && a.Status == Models.Domain.Enums.AssetStatus.IMPORTED
-                       && !_context.Tasks.Any(t => t.AssetId == a.AssetId && t.CompletedAt == null));
+                && a.Status == Models.Domain.Enums.AssetStatus.IMPORTED
+                && !_context.Tasks.Any(t => t.AssetId == a.AssetId && t.CompletedAt == null));
 
         if (dataSourceId.HasValue)
         {
