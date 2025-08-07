@@ -16,6 +16,7 @@ public class TaskService : ITaskService
     private readonly ITaskEventService _taskEventService;
     private readonly ITaskStatusValidator _taskStatusValidator;
     private readonly IAssetService _assetService;
+    private readonly IWorkflowStageRepository _workflowStageRepository;
     private readonly ILogger<TaskService> _logger;
 
     public TaskService(
@@ -24,6 +25,7 @@ public class TaskService : ITaskService
         ITaskEventService taskEventService,
         ITaskStatusValidator taskStatusValidator,
         IAssetService assetService,
+        IWorkflowStageRepository workflowStageRepository,
         ILogger<TaskService> logger)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
@@ -31,6 +33,7 @@ public class TaskService : ITaskService
         _taskEventService = taskEventService ?? throw new ArgumentNullException(nameof(taskEventService));
         _taskStatusValidator = taskStatusValidator ?? throw new ArgumentNullException(nameof(taskStatusValidator));
         _assetService = assetService ?? throw new ArgumentNullException(nameof(assetService));
+        _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -114,6 +117,61 @@ public class TaskService : ITaskService
         return MapToDto(task);
     }
 
+    public async Task<TaskDto?> GetTaskByIdWithAutoAssignAsync(int taskId, string userId)
+    {
+        _logger.LogInformation("Fetching task with ID: {TaskId} for user: {UserId} with auto-assignment", taskId, userId);
+
+        var task = await _taskRepository.GetByIdAsync(taskId);
+
+        if (task == null)
+        {
+            _logger.LogWarning("Task with ID: {TaskId} not found.", taskId);
+            return null;
+        }
+
+        // Auto-assign task if it's unassigned and in a valid state for assignment
+        if (string.IsNullOrEmpty(task.AssignedToUserId) && CanAutoAssignTask(task))
+        {
+            try
+            {
+                _logger.LogInformation("Auto-assigning unassigned task {TaskId} to user {UserId}", taskId, userId);
+                
+                // Use existing AssignTaskAsync method to handle assignment logic
+                var assignedTask = await AssignTaskAsync(taskId, userId);
+                if (assignedTask != null)
+                {
+                    _logger.LogInformation("Successfully auto-assigned task {TaskId} to user {UserId}", taskId, userId);
+                    return assignedTask;
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to auto-assign task {TaskId} to user {UserId}, returning original task", taskId, userId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to auto-assign task {TaskId} to user {UserId}, returning original task", taskId, userId);
+                // Continue and return the original task even if auto-assignment fails
+            }
+        }
+
+        _logger.LogInformation("Successfully fetched task with ID: {TaskId}", taskId);
+        return MapToDto(task);
+    }
+
+    private static bool CanAutoAssignTask(LaberisTask task)
+    {
+        // Don't auto-assign tasks that are:
+        // - Already completed
+        // - Archived 
+        // - Deferred (these require manual intervention)
+        // - Suspended (these should be manually resumed first)
+        return task.CompletedAt == null && 
+               task.ArchivedAt == null && 
+               task.DeferredAt == null && 
+               task.SuspendedAt == null;
+    }
+
     public async Task<PaginatedResponse<TaskDto>> GetTasksForWorkflowStageAsync(
         int projectId,
         int stageId,
@@ -170,9 +228,17 @@ public class TaskService : ITaskService
         await _taskRepository.AddAsync(task);
         await _taskRepository.SaveChangesAsync();
 
+        // Reload the task with includes to ensure proper status calculation
+        var createdTaskWithIncludes = await _taskRepository.GetByIdAsync(task.TaskId);
+        if (createdTaskWithIncludes == null)
+        {
+            _logger.LogError("Failed to reload created task with ID: {TaskId}", task.TaskId);
+            return MapToDto(task); // Fallback to original task
+        }
+
         _logger.LogInformation("Successfully created task with ID: {TaskId}", task.TaskId);
 
-        return MapToDto(task);
+        return MapToDto(createdTaskWithIncludes);
     }
 
     public async Task<TaskDto?> UpdateTaskAsync(int taskId, UpdateTaskDto updateDto)
@@ -234,11 +300,23 @@ public class TaskService : ITaskService
             return null;
         }
 
-        // Prevent assignment of suspended tasks
+        // Auto-resume suspended tasks when assigning them
         if (existingTask.SuspendedAt.HasValue)
         {
-            _logger.LogWarning("Attempted to assign suspended task {TaskId}. Suspended tasks cannot be assigned.", taskId);
-            throw new InvalidOperationException($"Task {taskId} is suspended and cannot be assigned.");
+            _logger.LogInformation("Task {TaskId} is suspended, auto-resuming before assignment", taskId);
+            existingTask.SuspendedAt = null; // Clear suspended state
+            existingTask.UpdatedAt = DateTime.UtcNow;
+            
+            // Create TaskEvent for auto-resume
+            var resumeEvent = new TaskEvent
+            {
+                EventType = TaskEventType.STATUS_CHANGED,
+                Details = "Task automatically resumed during assignment",
+                TaskId = taskId,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _taskEventRepository.AddAsync(resumeEvent);
         }
 
         // Prevent assignment of deferred tasks
@@ -311,8 +389,8 @@ public class TaskService : ITaskService
     {
         _logger.LogInformation("Creating tasks for all assets in project {ProjectId} for workflow {WorkflowId}", projectId, workflowId);
 
-        // Get all imported assets for the project that don't already have tasks
-        var availableAssets = await _taskRepository.GetAvailableAssetsForTaskCreationAsync(projectId);
+        // Get all imported assets for the project that don't already have tasks, filtered by the initial stage's input data source
+        var availableAssets = await _taskRepository.GetAvailableAssetsForTaskCreationAsync(projectId, initialStageId);
 
         if (!availableAssets.Any())
         {
@@ -345,6 +423,57 @@ public class TaskService : ITaskService
         }
 
         _logger.LogInformation("Successfully created {TasksCreated} tasks for project {ProjectId}", tasksCreated, projectId);
+        return tasksCreated;
+    }
+
+    public async Task<int> CreateTasksForWorkflowStageAsync(int projectId, int workflowId, int workflowStageId)
+    {
+        _logger.LogInformation("Creating tasks for workflow stage {WorkflowStageId} in project {ProjectId}", workflowStageId, projectId);
+
+        // Get the workflow stage to access its type for proper status calculation
+        var workflowStage = await _workflowStageRepository.GetByIdAsync(workflowStageId);
+        if (workflowStage == null)
+        {
+            _logger.LogError("Workflow stage {WorkflowStageId} not found", workflowStageId);
+            return 0;
+        }
+
+        // Get assets specifically from the workflow stage's input data source
+        var availableAssets = await _taskRepository.GetAvailableAssetsForTaskCreationAsync(projectId, workflowStageId);
+
+        if (!availableAssets.Any())
+        {
+            _logger.LogInformation("No available assets found for workflow stage {WorkflowStageId} in project {ProjectId}", workflowStageId, projectId);
+            return 0;
+        }
+
+        var tasksCreated = 0;
+        foreach (var asset in availableAssets)
+        {
+            var createTaskDto = new CreateTaskDto
+            {
+                AssetId = asset.AssetId,
+                WorkflowId = workflowId,
+                CurrentWorkflowStageId = workflowStageId,
+                Priority = 1, // Default priority
+                Metadata = null,
+                AssignedToUserId = null
+            };
+
+            try
+            {
+                var createdTask = await CreateTaskAsync(projectId, createTaskDto);
+                _logger.LogDebug("Created task {TaskId} with status {Status} for asset {AssetId} in {StageType} stage", 
+                    createdTask.Id, createdTask.Status, asset.AssetId, workflowStage.StageType);
+                tasksCreated++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to create task for asset {AssetId} in workflow stage {WorkflowStageId}", asset.AssetId, workflowStageId);
+            }
+        }
+
+        _logger.LogInformation("Successfully created {TasksCreated} tasks for workflow stage {WorkflowStageId} in project {ProjectId}", tasksCreated, workflowStageId, projectId);
         return tasksCreated;
     }
 
@@ -445,7 +574,7 @@ public class TaskService : ITaskService
         // Create TaskEvent to track completion
         var taskEvent = new TaskEvent
         {
-            EventType = TaskEventType.TASK_COMPLETED,
+            EventType = TaskEventType.STATUS_CHANGED,
             Details = "Task completed",
             TaskId = taskId,
             UserId = userId,
@@ -495,7 +624,7 @@ public class TaskService : ITaskService
         // Create TaskEvent for completion
         var completionEvent = new TaskEvent
         {
-            EventType = TaskEventType.TASK_COMPLETED,
+            EventType = TaskEventType.STATUS_CHANGED,
             Details = $"Task completed and moved to next workflow stage",
             TaskId = taskId,
             UserId = userId,
@@ -507,23 +636,34 @@ public class TaskService : ITaskService
         await _taskEventRepository.AddAsync(completionEvent);
         await _taskEventRepository.SaveChangesAsync();
 
-        // Create new task for next stage using data source-specific creation
+        // Handle asset movement to next stage and create tasks
         if (nextStage.InputDataSourceId.HasValue)
         {
             try
             {
-                var tasksCreated = await CreateTasksForDataSourceAsync(
-                    existingTask.ProjectId, 
-                    existingTask.WorkflowId, 
-                    nextStage.WorkflowStageId, 
-                    nextStage.InputDataSourceId.Value);
+                // Use the same asset movement logic as ChangeTaskStatusAsync for consistency
+                var assetMovementResult = await _assetService.HandleTaskWorkflowAssetMovementAsync(existingTask, TaskStatus.COMPLETED, userId);
+                
+                if (assetMovementResult.AssetMoved && assetMovementResult.TargetWorkflowStageId.HasValue)
+                {
+                    // Create tasks for the next workflow stage
+                    var tasksCreated = await CreateTasksForWorkflowStageAsync(
+                        existingTask.ProjectId, 
+                        existingTask.WorkflowId, 
+                        assetMovementResult.TargetWorkflowStageId.Value);
 
-                _logger.LogInformation("Created {TasksCreated} tasks for next stage {NextStageId}", 
-                    tasksCreated, nextStage.WorkflowStageId);
+                    _logger.LogInformation("Moved asset and created {TasksCreated} tasks for next stage {NextStageId}", 
+                        tasksCreated, nextStage.WorkflowStageId);
+                }
+                else if (!string.IsNullOrEmpty(assetMovementResult.ErrorMessage))
+                {
+                    _logger.LogWarning("Asset movement failed for task {TaskId}: {ErrorMessage}", 
+                        taskId, assetMovementResult.ErrorMessage);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to create tasks for next stage {NextStageId} after completing task {TaskId}", 
+                _logger.LogError(ex, "Failed to move asset and create tasks for next stage {NextStageId} after completing task {TaskId}", 
                     nextStage.WorkflowStageId, taskId);
                 // Don't fail the completion if we can't create next stage tasks
             }
@@ -563,7 +703,7 @@ public class TaskService : ITaskService
         // Create TaskEvent to track the action
         var taskEvent = new TaskEvent
         {
-            EventType = TaskEventType.TASK_REOPENED,
+            EventType = TaskEventType.STATUS_CHANGED,
             Details = "Task marked as incomplete",
             TaskId = taskId,
             UserId = userId,
@@ -616,7 +756,7 @@ public class TaskService : ITaskService
         // Create TaskEvent to track suspension
         var taskEvent = new TaskEvent
         {
-            EventType = TaskEventType.TASK_SUSPENDED,
+            EventType = TaskEventType.STATUS_CHANGED,
             Details = "Task suspended",
             TaskId = taskId,
             UserId = userId,
@@ -658,7 +798,7 @@ public class TaskService : ITaskService
         // Create TaskEvent to track unsuspension
         var taskEvent = new TaskEvent
         {
-            EventType = TaskEventType.TASK_REOPENED, // Using TASK_REOPENED as it's semantically similar
+            EventType = TaskEventType.STATUS_CHANGED,
             Details = "Task unsuspended",
             TaskId = taskId,
             UserId = userId,
@@ -669,6 +809,82 @@ public class TaskService : ITaskService
         await _taskEventRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully unsuspended task {TaskId}", taskId);
+        return MapToDto(existingTask);
+    }
+
+    public async Task<TaskDto?> ReturnTaskForReworkAsync(int taskId, string userId, string? reason = null)
+    {
+        _logger.LogInformation("Returning task {TaskId} for rework by user {UserId} (reviewer or manager)", taskId, userId);
+
+        var existingTask = await _taskRepository.GetByIdAsync(taskId);
+        if (existingTask == null)
+        {
+            _logger.LogWarning("Task with ID {TaskId} not found for return", taskId);
+            return null;
+        }
+
+        // Allow returning tasks in review stages (by reviewers) or completion stages (by managers)
+        var currentStageType = existingTask.CurrentWorkflowStage?.StageType;
+        if (currentStageType != WorkflowStageType.REVISION && currentStageType != WorkflowStageType.COMPLETION)
+        {
+            throw new InvalidOperationException($"Task {taskId} is not in a review or completion stage and cannot be returned for rework");
+        }
+
+        if (existingTask.ArchivedAt != null)
+        {
+            throw new InvalidOperationException($"Task {taskId} is archived and cannot be returned");
+        }
+
+        // Archive the current review task (it's been rejected)
+        existingTask.ArchivedAt = DateTime.UtcNow;
+        existingTask.LastWorkedOnByUserId = userId;
+        existingTask.UpdatedAt = DateTime.UtcNow;
+
+        await _taskRepository.SaveChangesAsync();
+
+        // Create TaskEvent for the return/rejection
+        var returnEvent = new TaskEvent
+        {
+            EventType = TaskEventType.STATUS_CHANGED,
+            Details = $"Task returned for rework{(string.IsNullOrEmpty(reason) ? "" : $": {reason}")}",
+            TaskId = taskId,
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _taskEventRepository.AddAsync(returnEvent);
+        await _taskEventRepository.SaveChangesAsync();
+
+        // Handle asset movement back to annotation stage and create new task
+        try
+        {
+            var assetMovementResult = await _assetService.HandleTaskWorkflowAssetMovementAsync(
+                existingTask, TaskStatus.READY_FOR_ANNOTATION, userId);
+            
+            if (assetMovementResult.AssetMoved && assetMovementResult.TargetWorkflowStageId.HasValue)
+            {
+                // Create new tasks for the annotation workflow stage
+                var tasksCreated = await CreateTasksForWorkflowStageAsync(
+                    existingTask.ProjectId, 
+                    existingTask.WorkflowId, 
+                    assetMovementResult.TargetWorkflowStageId.Value);
+                
+                _logger.LogInformation("Created {TasksCreated} new annotation tasks after returning task {TaskId} for rework", 
+                    tasksCreated, taskId);
+            }
+            else if (!string.IsNullOrEmpty(assetMovementResult.ErrorMessage))
+            {
+                _logger.LogWarning("Asset movement failed when returning task {TaskId} for rework: {ErrorMessage}", 
+                    taskId, assetMovementResult.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to move asset back to annotation when returning task {TaskId} for rework", taskId);
+            // Don't fail the return operation if asset movement fails
+        }
+
+        _logger.LogInformation("Successfully returned task {TaskId} for rework", taskId);
         return MapToDto(existingTask);
     }
 
@@ -711,7 +927,7 @@ public class TaskService : ITaskService
         // Create TaskEvent to track deferral
         var taskEvent = new TaskEvent
         {
-            EventType = TaskEventType.TASK_DEFERRED,
+            EventType = TaskEventType.STATUS_CHANGED,
             Details = "Task deferred by user",
             TaskId = taskId,
             UserId = userId,
@@ -765,6 +981,27 @@ public class TaskService : ITaskService
             if (assetMovementResult.ShouldArchiveTask && targetStatus == TaskStatus.COMPLETED)
             {
                 existingTask.ArchivedAt = DateTime.UtcNow;
+            }
+            
+            // Create tasks for the next workflow stage if asset was successfully moved
+            if (assetMovementResult.AssetMoved && assetMovementResult.TargetWorkflowStageId.HasValue)
+            {
+                try
+                {
+                    var tasksCreated = await CreateTasksForWorkflowStageAsync(
+                        existingTask.ProjectId, 
+                        existingTask.WorkflowId, 
+                        assetMovementResult.TargetWorkflowStageId.Value);
+                    
+                    _logger.LogInformation("Created {TasksCreated} new tasks for workflow stage {TargetStageId} after moving asset for completed task {TaskId}", 
+                        tasksCreated, assetMovementResult.TargetWorkflowStageId.Value, taskId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to create tasks for next workflow stage {TargetStageId} after asset movement for task {TaskId}", 
+                        assetMovementResult.TargetWorkflowStageId.Value, taskId);
+                    // Don't fail the status change if task creation fails - log as warning
+                }
             }
             
             // Log any asset movement errors as warnings (don't fail the status change)

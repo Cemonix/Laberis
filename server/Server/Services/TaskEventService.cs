@@ -96,17 +96,8 @@ public class TaskEventService : ITaskEventService
         _logger.LogInformation("Logging status change event for task {TaskId}: {FromStatus} → {ToStatus} by user {UserId}", 
             taskId, fromStatus, toStatus, userId);
 
-        var eventType = toStatus switch
-        {
-            TaskStatus.COMPLETED => TaskEventType.TASK_COMPLETED,
-            TaskStatus.SUSPENDED => TaskEventType.TASK_SUSPENDED,
-            TaskStatus.DEFERRED => TaskEventType.TASK_DEFERRED,
-            TaskStatus.ARCHIVED => TaskEventType.TASK_ARCHIVED,
-            TaskStatus.IN_PROGRESS when fromStatus == TaskStatus.SUSPENDED => TaskEventType.TASK_REOPENED,
-            TaskStatus.IN_PROGRESS => TaskEventType.STATUS_CHANGED,
-            TaskStatus.READY_FOR_ANNOTATION => TaskEventType.TASK_REOPENED,
-            _ => TaskEventType.STATUS_CHANGED
-        };
+        // All status changes now use STATUS_CHANGED with specific details
+        var eventType = TaskEventType.STATUS_CHANGED;
 
         var taskEvent = new TaskEvent
         {

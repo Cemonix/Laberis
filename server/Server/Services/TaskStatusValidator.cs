@@ -88,9 +88,9 @@ public class TaskStatusValidator : ITaskStatusValidator
         return currentStatus switch
         {
             TaskStatus.IN_PROGRESS or TaskStatus.READY_FOR_ANNOTATION or TaskStatus.READY_FOR_REVIEW or TaskStatus.READY_FOR_COMPLETION => (true, string.Empty),
+            TaskStatus.SUSPENDED => (false, "Cannot defer a suspended task - please unsuspend first"),
             TaskStatus.COMPLETED => (false, "Cannot defer a completed task"),
             TaskStatus.ARCHIVED => (false, "Cannot defer an archived task"),
-            TaskStatus.SUSPENDED => (false, "Cannot defer a suspended task"),
             _ => (false, $"Cannot defer task from status {currentStatus}")
         };
     }
