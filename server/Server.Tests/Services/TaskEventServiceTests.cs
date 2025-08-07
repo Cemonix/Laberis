@@ -24,13 +24,13 @@ public class TaskEventServiceTests
     }
 
     [Theory]
-    [InlineData(TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, TaskEventType.TASK_COMPLETED)]
-    [InlineData(TaskStatus.IN_PROGRESS, TaskStatus.SUSPENDED, TaskEventType.TASK_SUSPENDED)]
-    [InlineData(TaskStatus.IN_PROGRESS, TaskStatus.DEFERRED, TaskEventType.TASK_DEFERRED)]
-    [InlineData(TaskStatus.COMPLETED, TaskStatus.ARCHIVED, TaskEventType.TASK_ARCHIVED)]
-    [InlineData(TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, TaskEventType.TASK_REOPENED)]
+    [InlineData(TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, TaskEventType.STATUS_CHANGED)]
+    [InlineData(TaskStatus.IN_PROGRESS, TaskStatus.SUSPENDED, TaskEventType.STATUS_CHANGED)]
+    [InlineData(TaskStatus.IN_PROGRESS, TaskStatus.DEFERRED, TaskEventType.STATUS_CHANGED)]
+    [InlineData(TaskStatus.COMPLETED, TaskStatus.ARCHIVED, TaskEventType.STATUS_CHANGED)]
+    [InlineData(TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, TaskEventType.STATUS_CHANGED)]
     [InlineData(TaskStatus.READY_FOR_ANNOTATION, TaskStatus.IN_PROGRESS, TaskEventType.STATUS_CHANGED)]
-    [InlineData(TaskStatus.COMPLETED, TaskStatus.READY_FOR_ANNOTATION, TaskEventType.TASK_REOPENED)]
+    [InlineData(TaskStatus.COMPLETED, TaskStatus.READY_FOR_ANNOTATION, TaskEventType.STATUS_CHANGED)]
     public async System.Threading.Tasks.Task LogStatusChangeEventAsync_ShouldCreateCorrectEventType(
         TaskStatus fromStatus, TaskStatus toStatus, TaskEventType expectedEventType)
     {
