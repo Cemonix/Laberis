@@ -15,6 +15,7 @@ using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 using server.Services;
 using server.Services.Storage;
+using server.Services.EventHandlers;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using server.Authentication;
@@ -394,7 +395,66 @@ public class Program
 
         #endregion
 
+        #region Repository and Service Registration
+        
+        // Repositories
+        builder.Services.AddScoped<IAssetRepository, AssetRepository>();
+        builder.Services.AddScoped<IDataSourceRepository, DataSourceRepository>();
+        builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+        builder.Services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
+        builder.Services.AddScoped<IProjectInvitationRepository, ProjectInvitationRepository>();
+        builder.Services.AddScoped<ILabelSchemeRepository, LabelSchemeRepository>();
+        builder.Services.AddScoped<ILabelRepository, LabelRepository>();
+        builder.Services.AddScoped<IAnnotationRepository, AnnotationRepository>();
+        builder.Services.AddScoped<IIssueRepository, IssueRepository>();
+        builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+        builder.Services.AddScoped<ITaskEventRepository, TaskEventRepository>();
+        builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
+        builder.Services.AddScoped<IWorkflowStageRepository, WorkflowStageRepository>();
+        builder.Services.AddScoped<IWorkflowStageAssignmentRepository, WorkflowStageAssignmentRepository>();
+        builder.Services.AddScoped<IWorkflowStageConnectionRepository, WorkflowStageConnectionRepository>();
+
+        // Storage Services
+        builder.Services.AddScoped<IStorageServiceFactory, StorageServiceFactory>();
+        builder.Services.AddScoped<IFileStorageService, MinioStorageService>();
+        
+        // Domain Event Service (Singleton for event handling)
+        builder.Services.AddSingleton<IDomainEventService, DomainEventService>();
+        
+        // Domain Event Handlers
+        builder.Services.AddScoped<AssetImportedEventHandler>();
+        
+        // Business Services
+        builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped<IEmailService, EmailService>();
+        builder.Services.AddScoped<IProjectService, ProjectService>();
+        builder.Services.AddScoped<IProjectMemberService, ProjectMemberService>();
+        builder.Services.AddScoped<IProjectInvitationService, ProjectInvitationService>();
+        builder.Services.AddScoped<IDataSourceService, DataSourceService>();
+        builder.Services.AddScoped<IAssetService, AssetService>();
+        builder.Services.AddScoped<ILabelSchemeService, LabelSchemeService>();
+        builder.Services.AddScoped<ILabelService, LabelService>();
+        builder.Services.AddScoped<IAnnotationService, AnnotationService>();
+        builder.Services.AddScoped<IIssueService, IssueService>();
+        builder.Services.AddScoped<IWorkflowService, WorkflowService>();
+        builder.Services.AddScoped<IWorkflowStageService, WorkflowStageService>();
+        builder.Services.AddScoped<IWorkflowStageAssignmentService, WorkflowStageAssignmentService>();
+        builder.Services.AddScoped<IWorkflowStageConnectionService, WorkflowStageConnectionService>();
+        builder.Services.AddScoped<ITaskService, TaskService>();
+        builder.Services.AddScoped<ITaskEventService, TaskEventService>();
+        builder.Services.AddScoped<ITaskStatusValidator, TaskStatusValidator>();
+
+        #endregion
+
         var app = builder.Build();
+
+        // Register domain event handlers after the app is built
+        using (var scope = app.Services.CreateScope())
+        {
+            var domainEventService = scope.ServiceProvider.GetRequiredService<IDomainEventService>();
+            var assetImportedHandler = scope.ServiceProvider.GetRequiredService<AssetImportedEventHandler>();
+            domainEventService.Subscribe(assetImportedHandler);
+        }
 
         // Skip startup validation and DataSeeder during testing to avoid database provider conflicts
         if (!app.Environment.IsEnvironment("Testing"))

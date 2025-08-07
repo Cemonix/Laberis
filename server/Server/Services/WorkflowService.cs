@@ -1,8 +1,10 @@
 using server.Models.Domain;
 using server.Models.DTOs.Workflow;
 using server.Models.DTOs.WorkflowStage;
+using server.Models.DTOs.DataSource;
 using server.Models.Common;
 using server.Models.Domain.Enums;
+using server.Models.Internal;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 using System.Threading.Tasks;
@@ -15,6 +17,7 @@ public class WorkflowService : IWorkflowService
     private readonly IWorkflowStageService _workflowStageService;
     private readonly IWorkflowStageAssignmentService _workflowStageAssignmentService;
     private readonly ITaskService _taskService;
+    private readonly IDataSourceService _dataSourceService;
     private readonly ILogger<WorkflowService> _logger;
 
     public WorkflowService(
@@ -22,12 +25,14 @@ public class WorkflowService : IWorkflowService
         IWorkflowStageService workflowStageService,
         IWorkflowStageAssignmentService workflowStageAssignmentService,
         ITaskService taskService,
+        IDataSourceService dataSourceService,
         ILogger<WorkflowService> logger)
     {
         _workflowRepository = workflowRepository ?? throw new ArgumentNullException(nameof(workflowRepository));
         _workflowStageService = workflowStageService ?? throw new ArgumentNullException(nameof(workflowStageService));
         _workflowStageAssignmentService = workflowStageAssignmentService ?? throw new ArgumentNullException(nameof(workflowStageAssignmentService));
         _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
+        _dataSourceService = dataSourceService ?? throw new ArgumentNullException(nameof(dataSourceService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -122,50 +127,80 @@ public class WorkflowService : IWorkflowService
         var stageOrder = 1;
         int? initialStageId = null;
 
+        // Get project ID to find/create data sources
+        var workflow = await _workflowRepository.GetByIdAsync(workflowId);
+        if (workflow == null)
+        {
+            _logger.LogError("Workflow {WorkflowId} not found when creating stages", workflowId);
+            return null;
+        }
+
+        var projectId = workflow.ProjectId;
+
         // Create default stages if requested
         if (createDto.CreateDefaultStages)
         {
-            _logger.LogInformation("Creating default stages for workflow: {WorkflowId}", workflowId);
+            _logger.LogInformation("Creating default stages with proper data source connections for workflow: {WorkflowId}", workflowId);
 
-            // Annotation stage (always created first if default stages requested)
+            // Get or ensure required data sources exist
+            var dataSources = await EnsureRequiredDataSourcesExistAsync(projectId, createDto.IncludeReviewStage);
+            
+            if (dataSources.AnnotationDataSource == null)
+            {
+                _logger.LogError("No annotation data source available for project {ProjectId}", projectId);
+                return null;
+            }
+
+            // Create Annotation Stage (connected to default/annotation data source)
             var annotationStage = new CreateWorkflowStageDto
             {
                 Name = "Annotation",
-                Description = "Initial annotation stage",
+                Description = "Initial annotation stage for labeling assets",
                 StageType = WorkflowStageType.ANNOTATION,
                 StageOrder = stageOrder++,
                 IsInitialStage = true,
-                IsFinalStage = false
+                IsFinalStage = !createDto.IncludeReviewStage, // If no review stage, this is final
+                InputDataSourceId = dataSources.AnnotationDataSource.Id,
+                TargetDataSourceId = createDto.IncludeReviewStage ? dataSources.ReviewDataSource?.Id : dataSources.CompletionDataSource?.Id
             };
             var createdAnnotationStage = await _workflowStageService.CreateWorkflowStageAsync(workflowId, annotationStage);
-            initialStageId = createdAnnotationStage.Id; // This is the initial stage
+            initialStageId = createdAnnotationStage.Id; // This is where tasks are first created
 
-            // Revision stage (if review stage is requested)
-            if (createDto.IncludeReviewStage)
+            // Create Review Stage (if requested)
+            if (createDto.IncludeReviewStage && dataSources.ReviewDataSource != null)
             {
                 var revisionStage = new CreateWorkflowStageDto
                 {
-                    Name = "Revision",
-                    Description = "Review and revision stage",
+                    Name = "Review",
+                    Description = "Review and quality control stage",
                     StageType = WorkflowStageType.REVISION,
                     StageOrder = stageOrder++,
                     IsInitialStage = false,
-                    IsFinalStage = false
+                    IsFinalStage = false,
+                    InputDataSourceId = dataSources.ReviewDataSource.Id,
+                    TargetDataSourceId = dataSources.CompletionDataSource?.Id
                 };
                 await _workflowStageService.CreateWorkflowStageAsync(workflowId, revisionStage);
             }
 
-            // Completion stage (always created last if default stages requested)
-            var completionStage = new CreateWorkflowStageDto
+            // Create Completion Stage (final stage)
+            if (dataSources.CompletionDataSource != null)
             {
-                Name = "Completion",
-                Description = "Final completion stage",
-                StageType = WorkflowStageType.COMPLETION,
-                StageOrder = stageOrder++,
-                IsInitialStage = false,
-                IsFinalStage = true
-            };
-            await _workflowStageService.CreateWorkflowStageAsync(workflowId, completionStage);
+                var completionStage = new CreateWorkflowStageDto
+                {
+                    Name = "Completion",
+                    Description = "Final completion and export stage",
+                    StageType = WorkflowStageType.COMPLETION,
+                    StageOrder = stageOrder++,
+                    IsInitialStage = false,
+                    IsFinalStage = true,
+                    InputDataSourceId = dataSources.CompletionDataSource.Id,
+                    TargetDataSourceId = null // Final stage - no target needed
+                };
+                await _workflowStageService.CreateWorkflowStageAsync(workflowId, completionStage);
+            }
+
+            _logger.LogInformation("Successfully created default workflow stages with data source connections for workflow {WorkflowId}", workflowId);
         }
 
         // Create custom stages if provided
@@ -210,6 +245,82 @@ public class WorkflowService : IWorkflowService
         }
 
         return initialStageId;
+    }
+
+    /// <summary>
+    /// Ensures that the required data sources exist for the workflow stages.
+    /// Creates missing data sources automatically to support the complete workflow pipeline.
+    /// </summary>
+    private async Task<WorkflowDataSources> EnsureRequiredDataSourcesExistAsync(int projectId, bool includeReviewStage)
+    {
+        _logger.LogInformation("Ensuring required data sources exist for project {ProjectId}, includeReview: {IncludeReview}", 
+            projectId, includeReviewStage);
+
+        // Get all existing data sources for the project
+        var existingDataSources = await _dataSourceService.GetAllDataSourcesForProjectAsync(
+            projectId, pageNumber: 1, pageSize: 100); // Get all data sources
+
+        var result = new WorkflowDataSources
+        {
+            // Find or create annotation data source (look for default first)
+            AnnotationDataSource = existingDataSources.Data.FirstOrDefault(ds => ds.IsDefault)
+                ?? existingDataSources.Data.FirstOrDefault()
+        };
+
+        if (result.AnnotationDataSource == null)
+        {
+            _logger.LogWarning("No data sources exist for project {ProjectId} - creating default annotation data source", projectId);
+            
+            result.AnnotationDataSource = await _dataSourceService.CreateDataSourceAsync(projectId, new CreateDataSourceDto
+            {
+                Name = "Default Annotation Source",
+                Description = "Default data source for annotation assets",
+                SourceType = DataSourceType.MINIO_BUCKET
+            });
+        }
+
+        // Create or find review data source (if review stage requested)
+        if (includeReviewStage)
+        {
+            result.ReviewDataSource = existingDataSources.Data.FirstOrDefault(ds =>
+                ds.Name.Contains("review", StringComparison.CurrentCultureIgnoreCase)
+                || ds.Name.Contains("revision", StringComparison.CurrentCultureIgnoreCase));
+
+            if (result.ReviewDataSource == null)
+            {
+                _logger.LogInformation("Creating review data source for project {ProjectId}", projectId);
+                
+                result.ReviewDataSource = await _dataSourceService.CreateDataSourceAsync(projectId, new CreateDataSourceDto
+                {
+                    Name = "Review Stage Source",
+                    Description = "Data source for assets in review stage",
+                    SourceType = DataSourceType.MINIO_BUCKET
+                });
+            }
+        }
+
+        // Create or find completion data source
+        result.CompletionDataSource = existingDataSources.Data.FirstOrDefault(ds =>
+            ds.Name.Contains("completion", StringComparison.CurrentCultureIgnoreCase)
+            || ds.Name.Contains("final", StringComparison.CurrentCultureIgnoreCase)
+            || ds.Name.Contains("complete", StringComparison.CurrentCultureIgnoreCase));
+
+        if (result.CompletionDataSource == null)
+        {
+            _logger.LogInformation("Creating completion data source for project {ProjectId}", projectId);
+            
+            result.CompletionDataSource = await _dataSourceService.CreateDataSourceAsync(projectId, new CreateDataSourceDto
+            {
+                Name = "Completion Stage Source",
+                Description = "Data source for completed and exported assets",
+                SourceType = DataSourceType.MINIO_BUCKET
+            });
+        }
+
+        _logger.LogInformation("Data sources configured - Annotation: {AnnotationId}, Review: {ReviewId}, Completion: {CompletionId}",
+            result.AnnotationDataSource?.Id, result.ReviewDataSource?.Id, result.CompletionDataSource?.Id);
+
+        return result;
     }
 
     public async Task<WorkflowDto?> UpdateWorkflowAsync(int workflowId, UpdateWorkflowDto updateDto)
