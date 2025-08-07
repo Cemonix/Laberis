@@ -21,6 +21,7 @@ public class TaskServiceUnifiedStatusTests
     private readonly Mock<ITaskEventService> _mockTaskEventService;
     private readonly Mock<ITaskStatusValidator> _mockTaskStatusValidator;
     private readonly Mock<IAssetService> _mockAssetService;
+    private readonly Mock<IWorkflowStageRepository> _mockWorkflowStageRepository;
     private readonly Mock<ILogger<TaskService>> _mockLogger;
     private readonly TaskService _taskService;
 
@@ -31,6 +32,7 @@ public class TaskServiceUnifiedStatusTests
         _mockTaskEventService = new Mock<ITaskEventService>();
         _mockTaskStatusValidator = new Mock<ITaskStatusValidator>();
         _mockAssetService = new Mock<IAssetService>();
+        _mockWorkflowStageRepository = new Mock<IWorkflowStageRepository>();
         _mockLogger = new Mock<ILogger<TaskService>>();
 
         // Setup default asset service behavior
@@ -44,6 +46,7 @@ public class TaskServiceUnifiedStatusTests
             _mockTaskEventService.Object,
             _mockTaskStatusValidator.Object,
             _mockAssetService.Object,
+            _mockWorkflowStageRepository.Object,
             _mockLogger.Object
         );
     }
@@ -142,7 +145,7 @@ public class TaskServiceUnifiedStatusTests
 
         _mockTaskEventService
             .Setup(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.SUSPENDED, userId))
-            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.TASK_SUSPENDED });
+            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act
         var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.SUSPENDED, userId);
@@ -154,7 +157,7 @@ public class TaskServiceUnifiedStatusTests
         Assert.Null(existingTask.CompletedAt);
         Assert.Null(existingTask.DeferredAt);
         Assert.Null(existingTask.ArchivedAt);
-        Assert.Equal(userId, existingTask.LastWorkedOnByUserId);
+        Assert.Null(existingTask.LastWorkedOnByUserId);
 
         _mockTaskRepository.Verify(x => x.SaveChangesAsync(), Times.Once);
         _mockTaskEventService.Verify(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.SUSPENDED, userId), Times.Once);
@@ -183,7 +186,7 @@ public class TaskServiceUnifiedStatusTests
 
         _mockTaskEventService
             .Setup(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, userId))
-            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.TASK_COMPLETED });
+            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act - disable asset movement to test pure status change
         var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.COMPLETED, userId, moveAsset: false);
@@ -225,7 +228,7 @@ public class TaskServiceUnifiedStatusTests
 
         _mockTaskEventService
             .Setup(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId))
-            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.TASK_REOPENED });
+            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act
         var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.IN_PROGRESS, userId);
@@ -265,7 +268,7 @@ public class TaskServiceUnifiedStatusTests
 
         _mockTaskEventService
             .Setup(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.COMPLETED, TaskStatus.ARCHIVED, userId))
-            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.TASK_ARCHIVED });
+            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act
         var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.ARCHIVED, userId);
@@ -305,7 +308,7 @@ public class TaskServiceUnifiedStatusTests
 
         _mockTaskEventService
             .Setup(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, userId))
-            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.TASK_COMPLETED });
+            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act - disable asset movement
         var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.COMPLETED, userId, moveAsset: false);
@@ -350,7 +353,7 @@ public class TaskServiceUnifiedStatusTests
 
         _mockTaskEventService
             .Setup(x => x.LogStatusChangeEventAsync(It.IsAny<int>(), It.IsAny<TaskStatus>(), TaskStatus.SUSPENDED, userId))
-            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.TASK_SUSPENDED });
+            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act
         var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.SUSPENDED, userId);

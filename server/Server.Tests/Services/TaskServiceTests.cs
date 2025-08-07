@@ -15,6 +15,7 @@ namespace Server.Tests.Services
         private readonly Mock<ITaskEventService> _mockTaskEventService;
         private readonly Mock<ITaskStatusValidator> _mockTaskStatusValidator;
         private readonly Mock<IAssetService> _mockAssetService;
+        private readonly Mock<IWorkflowStageRepository> _mockWorkflowStageRepository;
         private readonly Mock<ILogger<TaskService>> _mockLogger;
         private readonly TaskService _taskService;
 
@@ -25,6 +26,7 @@ namespace Server.Tests.Services
             _mockTaskEventService = new Mock<ITaskEventService>();
             _mockTaskStatusValidator = new Mock<ITaskStatusValidator>();
             _mockAssetService = new Mock<IAssetService>();
+            _mockWorkflowStageRepository = new Mock<IWorkflowStageRepository>();
             _mockLogger = new Mock<ILogger<TaskService>>();
             
             _taskService = new TaskService(
@@ -33,6 +35,7 @@ namespace Server.Tests.Services
                 _mockTaskEventService.Object,
                 _mockTaskStatusValidator.Object,
                 _mockAssetService.Object,
+                _mockWorkflowStageRepository.Object,
                 _mockLogger.Object
             );
         }

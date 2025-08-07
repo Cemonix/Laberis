@@ -80,7 +80,7 @@ namespace Server.Tests.Controllers
                     Filename = "test2.png",
                     MimeType = "image/png",
                     SizeBytes = 2048,
-                    Status = AssetStatus.READY_FOR_ANNOTATION,
+                    Status = AssetStatus.IMPORTED,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                 }
@@ -369,7 +369,7 @@ namespace Server.Tests.Controllers
             {
                 Filename = "updated-asset.jpg",
                 MimeType = "image/jpeg",
-                Status = AssetStatus.READY_FOR_ANNOTATION,
+                Status = AssetStatus.IMPORTED,
                 SizeBytes = 2048
             };
 
@@ -408,7 +408,7 @@ namespace Server.Tests.Controllers
             var updateAssetDto = new UpdateAssetDto
             {
                 Filename = "updated-asset.jpg",
-                Status = AssetStatus.READY_FOR_ANNOTATION
+                Status = AssetStatus.IMPORTED
             };
 
             _mockAssetService.Setup(s => s.UpdateAssetAsync(assetId, updateAssetDto))
@@ -434,7 +434,7 @@ namespace Server.Tests.Controllers
             var updateAssetDto = new UpdateAssetDto
             {
                 Filename = "updated-asset.jpg",
-                Status = AssetStatus.READY_FOR_ANNOTATION
+                Status = AssetStatus.IMPORTED
             };
 
             _mockAssetService.Setup(s => s.UpdateAssetAsync(assetId, updateAssetDto))
