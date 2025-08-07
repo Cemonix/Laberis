@@ -113,18 +113,39 @@ public class TasksController : ControllerBase
     }
 
     /// <summary>
-    /// Gets a specific task by its unique ID.
+    /// Gets a specific task by its unique ID, with optional auto-assignment to the requesting user.
     /// </summary>
     /// <param name="taskId">The ID of the task.</param>
+    /// <param name="autoAssign">Whether to automatically assign the task to the requesting user if it's unassigned (default: true).</param>
     /// <returns>The requested task.</returns>
     [HttpGet("{taskId:int}")]
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetTaskById(int taskId)
+    public async Task<IActionResult> GetTaskById(
+        int taskId,
+        [FromQuery] bool autoAssign = true)
     {
         try
         {
-            var task = await _taskService.GetTaskByIdAsync(taskId);
+            TaskDto? task;
+            
+            if (autoAssign)
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    task = await _taskService.GetTaskByIdWithAutoAssignAsync(taskId, userId);
+                }
+                else
+                {
+                    // Fallback to regular get if user ID is not available
+                    task = await _taskService.GetTaskByIdAsync(taskId);
+                }
+            }
+            else
+            {
+                task = await _taskService.GetTaskByIdAsync(taskId);
+            }
 
             if (task == null)
             {
@@ -636,6 +657,57 @@ public class TasksController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "An error occurred while deferring task {TaskId}.", taskId);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
+
+    /// <summary>
+    /// Returns a task for rework, available to reviewers (from review stages) and managers (from completion stages).
+    /// This will archive the current task and move the asset back to annotation stage for rework.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to return for rework.</param>
+    /// <param name="dto">The return request containing optional reason.</param>
+    /// <returns>The archived task that was returned.</returns>
+    /// <response code="200">Returns the archived task.</response>
+    /// <response code="400">If the task cannot be returned (wrong stage, already archived, etc.).</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="404">If the task is not found.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPost("{taskId:int}/return-for-rework")]
+    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ReturnTaskForRework(
+        int taskId,
+        [FromBody] ReturnTaskForReworkDto? dto = null)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized("User ID claim not found in token.");
+        }
+
+        try
+        {
+            var returnedTask = await _taskService.ReturnTaskForReworkAsync(taskId, userId, dto?.Reason);
+
+            if (returnedTask == null)
+            {
+                return NotFound($"Task with ID {taskId} not found.");
+            }
+
+            return Ok(returnedTask);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation when returning task {TaskId} for rework by user {UserId}", taskId, userId);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while returning task {TaskId} for rework by user {UserId}", taskId, userId);
             return StatusCode(500, "An unexpected error occurred. Please try again later.");
         }
     }
