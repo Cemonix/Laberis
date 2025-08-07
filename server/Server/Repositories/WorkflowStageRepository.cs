@@ -168,8 +168,8 @@ public class WorkflowStageRepository : GenericRepository<WorkflowStage>, IWorkfl
         var conflictingStages = await _context.Set<WorkflowStage>()
             .Include(ws => ws.Workflow)
             .Where(ws => (ws.InputDataSourceId == dataSourceId || ws.TargetDataSourceId == dataSourceId) &&
-                        ws.StageType != WorkflowStageType.COMPLETION && // Allow sharing for completion stages
-                        (excludeWorkflowId == null || ws.WorkflowId != excludeWorkflowId.Value))
+                ws.StageType != WorkflowStageType.COMPLETION && // Allow sharing for completion stages
+                (excludeWorkflowId == null || ws.WorkflowId != excludeWorkflowId.Value))
             .ToListAsync();
 
         _logger.LogInformation("Found {ConflictCount} conflicting stages for data source {DataSourceId}", 

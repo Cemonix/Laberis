@@ -47,6 +47,14 @@ public interface ITaskService
     Task<TaskDto?> GetTaskByIdAsync(int taskId);
 
     /// <summary>
+    /// Retrieves a task by its ID and automatically assigns it to the user if it's unassigned.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to retrieve.</param>
+    /// <param name="userId">The ID of the user to auto-assign the task to.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the TaskDto if found, otherwise null.</returns>
+    Task<TaskDto?> GetTaskByIdWithAutoAssignAsync(int taskId, string userId);
+
+    /// <summary>
     /// Creates a new task.
     /// </summary>
     /// <param name="projectId">The ID of the project to create the task for.</param>
@@ -95,6 +103,15 @@ public interface ITaskService
     /// <param name="initialStageId">The ID of the initial workflow stage.</param>
     /// <returns>A task that represents the asynchronous operation, containing the number of tasks created.</returns>
     Task<int> CreateTasksForAllAssetsAsync(int projectId, int workflowId, int initialStageId);
+
+    /// <summary>
+    /// Creates tasks for all available assets in a specific workflow stage based on its input data source.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="workflowId">The ID of the workflow.</param>
+    /// <param name="workflowStageId">The ID of the workflow stage.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the number of tasks created.</returns>
+    Task<int> CreateTasksForWorkflowStageAsync(int projectId, int workflowId, int workflowStageId);
 
     /// <summary>
     /// Creates tasks for all available assets in a specific data source for a workflow stage.
@@ -160,6 +177,16 @@ public interface ITaskService
     /// <param name="userId">The ID of the user performing the action.</param>
     /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
     Task<TaskDto?> UnsuspendTaskAsync(int taskId, string userId);
+
+    /// <summary>
+    /// Returns a task for rework by moving the asset back to annotation stage and creating a new annotation task.
+    /// Reviewers can return tasks from review stages, managers can return tasks from completion stages.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to return for rework.</param>
+    /// <param name="userId">The ID of the user (reviewer or manager) performing the return action.</param>
+    /// <param name="reason">Optional reason for returning the task.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the archived TaskDto if successful, otherwise null.</returns>
+    Task<TaskDto?> ReturnTaskForReworkAsync(int taskId, string userId, string? reason = null);
 
     /// <summary>
     /// Defers a task, marking it as deferred so the user can skip it for now.

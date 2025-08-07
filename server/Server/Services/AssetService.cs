@@ -4,6 +4,7 @@ using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 using server.Models.Domain.Enums;
+using server.Models.Internal;
 using server.Utils;
 using server.Exceptions;
 using server.Services.Storage;
@@ -20,6 +21,7 @@ public class AssetService : IAssetService
     private readonly IStorageService _storageService;
     private readonly ITaskRepository _taskRepository;
     private readonly IWorkflowStageRepository _workflowStageRepository;
+    private readonly IDomainEventService _domainEventService;
     private readonly ILogger<AssetService> _logger;
 
     public AssetService(
@@ -29,6 +31,7 @@ public class AssetService : IAssetService
         IStorageService storageService,
         ITaskRepository taskRepository,
         IWorkflowStageRepository workflowStageRepository,
+        IDomainEventService domainEventService,
         ILogger<AssetService> logger)
     {
         _assetRepository = assetRepository ?? throw new ArgumentNullException(nameof(assetRepository));
@@ -37,6 +40,7 @@ public class AssetService : IAssetService
         _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
         _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
+        _domainEventService = domainEventService ?? throw new ArgumentNullException(nameof(domainEventService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -235,52 +239,26 @@ public class AssetService : IAssetService
     }
 
     /// <summary>
-    /// Attempts to create tasks for a newly imported asset across all active workflows.
+    /// Publishes domain event for a newly imported asset to trigger task creation
     /// </summary>
     /// <param name="asset">The asset that was just imported.</param>
     private async System.Threading.Tasks.Task TryCreateTasksForNewAssetAsync(Asset asset)
     {
         try
         {
-            _logger.LogInformation("Attempting to create tasks for newly imported asset {AssetId} in data source {DataSourceId}", 
+            _logger.LogInformation("Publishing asset imported event for asset {AssetId} in data source {DataSourceId}", 
                 asset.AssetId, asset.DataSourceId);
 
-            // Find all workflow stages where InputDataSourceId == asset.DataSourceId
-            var workflowStages = await _workflowStageRepository.FindAsync(
-                ws => ws.InputDataSourceId == asset.DataSourceId && 
-                      ws.Workflow.ProjectId == asset.ProjectId);
-
-            var relevantStages = workflowStages.ToList();
+            // Publish domain event - this will be handled by AssetImportedEventHandler
+            // which will create the appropriate tasks
+            var assetImportedEvent = new AssetImportedEvent(asset);
+            await _domainEventService.PublishAsync(assetImportedEvent);
             
-            if (!relevantStages.Any())
-            {
-                _logger.LogInformation("No workflow stages found that use data source {DataSourceId} as input", asset.DataSourceId);
-                return;
-            }
-
-            _logger.LogInformation("Found {StageCount} workflow stages that use data source {DataSourceId} as input", 
-                relevantStages.Count, asset.DataSourceId);
-
-            // For each stage, create tasks for the asset in that workflow/stage
-            foreach (var stage in relevantStages)
-            {
-                try
-                {
-                    // FIXME: Task creation will be handled by TaskService
-                    _logger.LogInformation("Asset {AssetId} ready for task creation in workflow stage {StageId} ({StageName})", 
-                        asset.AssetId, stage.WorkflowStageId, stage.Name);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to create tasks for workflow stage {StageId} for new asset {AssetId}", 
-                        stage.WorkflowStageId, asset.AssetId);
-                    // Continue with other stages even if one fails
-                }
-            }
+            _logger.LogInformation("Successfully published asset imported event for asset {AssetId}", asset.AssetId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create tasks for newly imported asset {AssetId}", asset.AssetId);
+            _logger.LogError(ex, "Failed to publish asset imported event for asset {AssetId}", asset.AssetId);
             // Don't throw - asset import should succeed even if task creation fails
         }
     }
