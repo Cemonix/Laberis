@@ -92,6 +92,14 @@ public interface IAssetService
     /// <param name="userId">The ID of the user performing the action.</param>
     /// <returns>A task that represents the asynchronous operation, containing information about the movement.</returns>
     Task<AssetMovementResult> HandleTaskWorkflowAssetMovementAsync(server.Models.Domain.Task task, TaskStatus targetStatus, string userId);
+
+    /// <summary>
+    /// Handles asset movement back to annotation stage when a task is vetoed/returned for rework.
+    /// </summary>
+    /// <param name="task">The task that is being vetoed.</param>
+    /// <param name="userId">The ID of the user performing the veto action.</param>
+    /// <returns>A task that represents the asynchronous operation, containing information about the movement.</returns>
+    Task<AssetMovementResult> HandleTaskVetoAssetMovementAsync(server.Models.Domain.Task task, string userId);
 }
 
 /// <summary>
