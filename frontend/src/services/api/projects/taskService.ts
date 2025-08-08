@@ -7,7 +7,8 @@ import type {
     TaskTableRow,
     TasksQueryParams,
     GetTasksResponse,
-    ChangeTaskStatusDto
+    ChangeTaskStatusDto,
+    ReturnTaskForReworkDto
 } from '@/types/task';
 import { TaskStatus } from '@/types/task';
 import { workflowStageService } from './workflowStageService';
@@ -205,11 +206,13 @@ class TaskService extends BaseProjectService {
     /**
      * Get a single task by ID
      */
-    async getTaskById(projectId: number, taskId: number): Promise<TaskWithDetails> {
-        this.logger.info(`Fetching task ${taskId} from project ${projectId}`);
+    async getTaskById(projectId: number, taskId: number, autoAssign: boolean = true): Promise<TaskWithDetails> {
+        this.logger.info(`Fetching task ${taskId} from project ${projectId}`, { autoAssign });
 
         const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}', { taskId });
-        const dto = await this.get<any>(url);
+        const queryParams = autoAssign ? '?autoAssign=true' : '';
+        const fullUrl = url + queryParams;
+        const dto = await this.get<any>(fullUrl);
         
         const task: TaskWithDetails = this.transformTaskDto(dto) as TaskWithDetails;
 
@@ -239,7 +242,7 @@ class TaskService extends BaseProjectService {
         this.logger.info(`Updating task ${taskId} in project ${projectId}`, updates);
 
         const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}', { taskId });
-        const dto = await this.patch<UpdateTaskRequest, any>(url, updates);
+        const dto = await this.put<UpdateTaskRequest, any>(url, updates);
         
         const task: Task = this.transformTaskDto(dto);
 
@@ -407,6 +410,37 @@ class TaskService extends BaseProjectService {
         const task: Task = this.transformTaskDto(dto);
 
         this.logger.info(`Changed task ${taskId} status to ${requestDto.targetStatus} successfully`);
+        return task;
+    }
+
+    /**
+     * Complete a task and move asset to next workflow stage (dedicated endpoint with automatic asset movement)
+     */
+    async completeAndMoveTask(projectId: number, taskId: number): Promise<Task> {
+        this.logger.info(`Completing and moving task ${taskId} in project ${projectId}`);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/complete-and-move', { taskId });
+        const dto = await this.put<undefined, any>(url, undefined);
+        
+        const task: Task = this.transformTaskDto(dto);
+
+        this.logger.info(`Successfully completed and moved task ${taskId}`);
+        return task;
+    }
+
+    /**
+     * Return a task for rework (available to reviewers and managers)
+     */
+    async returnTaskForRework(projectId: number, taskId: number, reason?: string): Promise<Task> {
+        this.logger.info(`Returning task ${taskId} for rework in project ${projectId}`, { reason });
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/return-for-rework', { taskId });
+        const requestDto: ReturnTaskForReworkDto = reason ? { reason } : {};
+        const dto = await this.post<ReturnTaskForReworkDto, any>(url, requestDto);
+        
+        const task: Task = this.transformTaskDto(dto);
+
+        this.logger.info(`Returned task ${taskId} for rework successfully`);
         return task;
     }
 
