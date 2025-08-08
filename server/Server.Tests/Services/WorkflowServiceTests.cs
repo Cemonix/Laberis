@@ -4,6 +4,8 @@ using server.Models.Domain;
 using server.Repositories.Interfaces;
 using server.Services;
 using server.Services.Interfaces;
+using server.Data;
+using Server.Tests.Factories;
 
 namespace Server.Tests.Services;
 
@@ -12,8 +14,10 @@ public class WorkflowServiceTests
     private readonly Mock<IWorkflowRepository> _mockWorkflowRepository;
     private readonly Mock<IWorkflowStageService> _mockWorkflowStageService;
     private readonly Mock<IWorkflowStageAssignmentService> _mockWorkflowStageAssignmentService;
+    private readonly Mock<IWorkflowStageConnectionService> _mockWorkflowStageConnectionService;
     private readonly Mock<ITaskService> _mockTaskService;
     private readonly Mock<IDataSourceService> _mockDataSourceService;
+    private readonly DbContextFactory _dbContextFactory;
     private readonly Mock<ILogger<WorkflowService>> _mockLogger;
     private readonly WorkflowService _workflowService;
 
@@ -22,16 +26,20 @@ public class WorkflowServiceTests
         _mockWorkflowRepository = new Mock<IWorkflowRepository>();
         _mockWorkflowStageService = new Mock<IWorkflowStageService>();
         _mockWorkflowStageAssignmentService = new Mock<IWorkflowStageAssignmentService>();
+        _mockWorkflowStageConnectionService = new Mock<IWorkflowStageConnectionService>();
         _mockTaskService = new Mock<ITaskService>();
         _mockDataSourceService = new Mock<IDataSourceService>();
+        _dbContextFactory = new DbContextFactory();
         _mockLogger = new Mock<ILogger<WorkflowService>>();
 
         _workflowService = new WorkflowService(
             _mockWorkflowRepository.Object,
             _mockWorkflowStageService.Object,
             _mockWorkflowStageAssignmentService.Object,
+            _mockWorkflowStageConnectionService.Object,
             _mockTaskService.Object,
             _mockDataSourceService.Object,
+            _dbContextFactory.Context,
             _mockLogger.Object
         );
     }

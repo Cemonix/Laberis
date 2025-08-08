@@ -117,7 +117,7 @@ public class AssetTransferTests
 
         // Assert
         Assert.True(result.AssetMoved);
-        Assert.True(result.ShouldArchiveTask);
+        Assert.False(result.ShouldArchiveTask); // Task remains completed, not archived, for veto operations
         Assert.Equal(nextDataSourceId, result.TargetDataSourceId);
         Assert.Equal(nextStageId, result.TargetWorkflowStageId);
         Assert.Null(result.ErrorMessage);
@@ -132,7 +132,7 @@ public class AssetTransferTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task HandleTaskWorkflowAssetMovementAsync_TaskIncomplete_ShouldTransferAssetBackToAnnotation()
+    public async System.Threading.Tasks.Task HandleTaskVetoAssetMovementAsync_ShouldTransferAssetBackToAnnotation()
     {
         // Arrange
         const int taskId = 1;
@@ -198,11 +198,10 @@ public class AssetTransferTests
             .ReturnsAsync(1);
 
         // Act
-        var result = await _assetService.HandleTaskWorkflowAssetMovementAsync(task, TaskStatus.READY_FOR_ANNOTATION, userId);
+        var result = await _assetService.HandleTaskVetoAssetMovementAsync(task, userId);
 
         // Assert
         Assert.True(result.AssetMoved);
-        Assert.False(result.ShouldArchiveTask);
         Assert.Equal(annotationDataSourceId, result.TargetDataSourceId);
         Assert.Equal(annotationStageId, result.TargetWorkflowStageId);
         Assert.Null(result.ErrorMessage);
@@ -243,7 +242,7 @@ public class AssetTransferTests
 
         // Assert
         Assert.True(result.AssetMoved);
-        Assert.True(result.ShouldArchiveTask);
+        Assert.False(result.ShouldArchiveTask); // Task remains completed for veto operations
         Assert.Equal(dataSourceId, result.TargetDataSourceId);
         Assert.Equal(nextStageId, result.TargetWorkflowStageId);
         Assert.Null(result.ErrorMessage);
@@ -315,7 +314,7 @@ public class AssetTransferTests
 
         // Assert
         Assert.True(result.AssetMoved);
-        Assert.True(result.ShouldArchiveTask);
+        Assert.False(result.ShouldArchiveTask); // Task remains completed for veto operations
         Assert.Equal(nextDataSourceId, result.TargetDataSourceId);
         Assert.Equal(nextStageId, result.TargetWorkflowStageId);
         Assert.Null(result.ErrorMessage);
@@ -516,13 +515,13 @@ public class AssetTransferTests
         };
     }
 
-    private static WorkflowStage CreateTestWorkflowStage(int stageId, int? inputDataSourceId)
+    private static WorkflowStage CreateTestWorkflowStage(int stageId, int? inputDataSourceId, WorkflowStageType stageType = WorkflowStageType.REVISION)
     {
         return new WorkflowStage
         {
             WorkflowStageId = stageId,
             Name = $"Stage {stageId}",
-            StageType = WorkflowStageType.ANNOTATION,
+            StageType = stageType,
             WorkflowId = 1,
             InputDataSourceId = inputDataSourceId,
             CreatedAt = DateTime.UtcNow.AddDays(-1),

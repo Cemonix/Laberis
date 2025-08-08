@@ -1,9 +1,11 @@
 using Moq;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Identity;
 using server.Services;
 using server.Services.Interfaces;
 using server.Repositories.Interfaces;
 using server.Models.DTOs.Task;
+using server.Models.Domain;
 using LaberisTask = server.Models.Domain.Task;
 
 namespace Server.Tests.Services
@@ -16,6 +18,7 @@ namespace Server.Tests.Services
         private readonly Mock<ITaskStatusValidator> _mockTaskStatusValidator;
         private readonly Mock<IAssetService> _mockAssetService;
         private readonly Mock<IWorkflowStageRepository> _mockWorkflowStageRepository;
+        private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
         private readonly Mock<ILogger<TaskService>> _mockLogger;
         private readonly TaskService _taskService;
 
@@ -27,6 +30,7 @@ namespace Server.Tests.Services
             _mockTaskStatusValidator = new Mock<ITaskStatusValidator>();
             _mockAssetService = new Mock<IAssetService>();
             _mockWorkflowStageRepository = new Mock<IWorkflowStageRepository>();
+            _mockUserManager = MockUserManager();
             _mockLogger = new Mock<ILogger<TaskService>>();
             
             _taskService = new TaskService(
@@ -36,6 +40,7 @@ namespace Server.Tests.Services
                 _mockTaskStatusValidator.Object,
                 _mockAssetService.Object,
                 _mockWorkflowStageRepository.Object,
+                _mockUserManager.Object,
                 _mockLogger.Object
             );
         }
@@ -126,6 +131,12 @@ namespace Server.Tests.Services
                 t.AssetId == createDto.AssetId &&
                 t.ProjectId == projectId)), Times.Once);
             _mockTaskRepository.Verify(r => r.SaveChangesAsync(), Times.Once);
+        }
+
+        private static Mock<UserManager<ApplicationUser>> MockUserManager()
+        {
+            var store = new Mock<IUserStore<ApplicationUser>>();
+            return new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
         }
     }
 }
