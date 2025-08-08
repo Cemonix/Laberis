@@ -2,6 +2,8 @@ import { computed } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { ProjectRole } from '@/types/project/project';
+import { AppLogger } from '@/utils/logger';
+import { env } from '@/config/env';
 
 /**
  * Composable for checking project-level permissions
@@ -10,39 +12,43 @@ import { ProjectRole } from '@/types/project/project';
 export function useProjectPermissions() {
     const authStore = useAuthStore();
     const projectStore = useProjectStore();
+    const logger = AppLogger.createServiceLogger('ProjectPermissions');
 
     /**
      * Get the current user's role in the currently loaded project
+     * Only considers members who have actually joined (accepted their invitation)
      */
     const currentUserProjectRole = computed((): ProjectRole | null => {
         const currentUser = authStore.currentUser;
-        const projectMembers = projectStore.activeMembers;
+        const joinedMembers = projectStore.joinedMembers;
         
-        // Debug logging for development
-        if (process.env.NODE_ENV === 'development') {
-            console.log('[ProjectPermissions] Debug info:', {
+        if (env.IS_DEVELOPMENT) {
+            logger.debug('Debug info:', {
                 currentUserEmail: currentUser?.email,
-                projectMembersCount: projectMembers.length,
-                projectMembers: projectMembers.map(m => ({ email: m.email, role: m.role }))
+                joinedMembersCount: joinedMembers?.length || 0,
+                activeMembersCount: projectStore.activeMembers?.length || 0,
+                joinedMembers: joinedMembers?.map(m => ({ email: m.email, role: m.role, joinedAt: m.joinedAt })) || []
             });
         }
-        
-        if (!currentUser?.email || !projectMembers.length) {
-            console.log('[ProjectPermissions] Missing data:', {
+
+        if (!currentUser?.email || !joinedMembers?.length) {
+            logger.debug('Missing data or user not joined:', {
                 hasCurrentUser: !!currentUser?.email,
-                hasMembersLoaded: projectMembers.length > 0
+                hasJoinedMembersLoaded: (joinedMembers?.length || 0) > 0,
+                totalMembersCount: projectStore.activeMembers?.length || 0
             });
             return null;
         }
 
-        const memberRecord = projectMembers.find(member => 
+        const memberRecord = joinedMembers.find(member => 
             member.email.toLowerCase() === currentUser.email.toLowerCase()
         );
         
-        if (process.env.NODE_ENV === 'development') {
-            console.log('[ProjectPermissions] Member lookup result:', {
+        if (env.IS_DEVELOPMENT) {
+            logger.debug('Member lookup result:', {
                 searchEmail: currentUser.email,
-                foundMember: memberRecord ? { email: memberRecord.email, role: memberRecord.role } : null
+                foundJoinedMember: memberRecord ? { email: memberRecord.email, role: memberRecord.role, joinedAt: memberRecord.joinedAt } : null,
+                userStatus: memberRecord ? 'joined' : 'not-joined-or-not-invited'
             });
         }
         
@@ -116,9 +122,39 @@ export function useProjectPermissions() {
     });
 
     /**
-     * Check if the user is a member of the current project
+     * Check if the user is a member of the current project (has joined)
      */
     const isProjectMember = computed(() => currentUserProjectRole.value !== null);
+
+    /**
+     * Check if the user has a pending invitation to the current project
+     */
+    const hasPendingInvitation = computed((): boolean => {
+        const currentUser = authStore.currentUser;
+        const pendingMembers = projectStore.pendingMembers;
+        
+        if (!currentUser?.email || !pendingMembers?.length) {
+            return false;
+        }
+
+        return pendingMembers.some(member => 
+            member.email.toLowerCase() === currentUser.email.toLowerCase()
+        );
+    });
+
+    /**
+     * Check if the user is associated with the project in any way (invited or joined)
+     */
+    const isAssociatedWithProject = computed(() => isProjectMember.value || hasPendingInvitation.value);
+
+    /**
+     * Get the user's invitation status in the project
+     */
+    const invitationStatus = computed((): 'not-invited' | 'pending' | 'joined' => {
+        if (isProjectMember.value) return 'joined';
+        if (hasPendingInvitation.value) return 'pending';
+        return 'not-invited';
+    });
 
     return {
         // Role checking
@@ -132,8 +168,13 @@ export function useProjectPermissions() {
         canReview,
         canView,
         
+        // Membership status
+        isProjectMember,
+        hasPendingInvitation,
+        isAssociatedWithProject,
+        invitationStatus,
+        
         // Utility
-        currentRoleLabel,
-        isProjectMember
+        currentRoleLabel
     };
 }
