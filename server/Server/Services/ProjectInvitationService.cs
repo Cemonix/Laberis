@@ -94,6 +94,27 @@ public class ProjectInvitationService : IProjectInvitationService
         };
 
         await _invitationRepository.AddAsync(invitation);
+        
+        // Create ProjectMember record immediately for both existing and new users
+        // For existing users, we use their userId; for new users, we'll use a placeholder that gets updated later
+        var projectMember = new ProjectMember
+        {
+            ProjectId = projectId,
+            UserId = existingUser?.Id ?? string.Empty, // Will be updated when new user registers
+            Role = createDto.Role,
+            InvitedAt = DateTime.UtcNow,
+            JoinedAt = null, // Will be set when invitation is accepted
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        // Only add ProjectMember for existing users for now
+        // For new users, we'll create the ProjectMember when they accept the invitation
+        if (existingUser != null)
+        {
+            await _projectMemberRepository.AddAsync(projectMember);
+        }
+        
         await _invitationRepository.SaveChangesAsync();
 
         // Send appropriate email based on whether user exists
@@ -164,19 +185,35 @@ public class ProjectInvitationService : IProjectInvitationService
             return false;
         }
 
-        // Add user to project
-        var projectMember = new ProjectMember
-        {
-            ProjectId = invitation.ProjectId,
-            UserId = userId,
-            Role = invitation.Role,
-            InvitedAt = invitation.CreatedAt,
-            JoinedAt = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+        // Check if user is already a project member (in case they were invited as an existing user)
+        var existingMembers = await _projectMemberRepository.FindAsync(
+            pm => pm.ProjectId == invitation.ProjectId && pm.UserId == userId);
+        var existingMember = existingMembers.FirstOrDefault();
 
-        await _projectMemberRepository.AddAsync(projectMember);
+        if (existingMember != null)
+        {
+            // Update existing member's JoinedAt timestamp
+            existingMember.JoinedAt = DateTime.UtcNow;
+            existingMember.UpdatedAt = DateTime.UtcNow;
+            _logger.LogInformation("Updated existing project member {UserId} for project {ProjectId}", userId, invitation.ProjectId);
+        }
+        else
+        {
+            // Add new user to project (this happens for new users who registered via invitation)
+            var projectMember = new ProjectMember
+            {
+                ProjectId = invitation.ProjectId,
+                UserId = userId,
+                Role = invitation.Role,
+                InvitedAt = invitation.CreatedAt,
+                JoinedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _projectMemberRepository.AddAsync(projectMember);
+            _logger.LogInformation("Added new project member {UserId} to project {ProjectId}", userId, invitation.ProjectId);
+        }
 
         // Mark invitation as accepted
         invitation.IsAccepted = true;
