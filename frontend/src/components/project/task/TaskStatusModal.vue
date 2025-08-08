@@ -60,6 +60,28 @@
                             Mark as Incomplete
                         </Button>
                         
+                        <Button
+                            v-if="canReturnForRework"
+                            variant="danger"
+                            @click="handleAction('return_for_rework')"
+                            :disabled="actionInProgress"
+                            class="status-action-button"
+                        >
+                            <font-awesome-icon :icon="faArrowLeft" />
+                            Return for Rework
+                        </Button>
+                        
+                        <Button
+                            v-if="canArchive"
+                            variant="danger"
+                            @click="handleAction('archive')"
+                            :disabled="actionInProgress"
+                            class="status-action-button"
+                        >
+                            <font-awesome-icon :icon="faArchive" />
+                            Archive Task
+                        </Button>
+                        
                     </div>
                     
                     <div v-if="!hasAvailableActions" class="no-actions">
@@ -81,6 +103,8 @@
 import {computed, ref} from 'vue';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {
+    faArchive,
+    faArrowLeft,
     faForward,
     faPause,
     faTimes,
@@ -94,6 +118,9 @@ import {TaskStatus} from '@/types/task';
 interface Props {
     show: boolean;
     task: TaskTableRow | null;
+    canReview?: boolean;
+    canManage?: boolean;
+    stageType?: string;  // Current workflow stage type
 }
 
 interface Emits {
@@ -114,8 +141,8 @@ const canSuspend = computed(() => {
         return true; // Can unsuspend
     }
     
-    // Can suspend if not already completed or archived
-    return ![TaskStatus.COMPLETED, TaskStatus.ARCHIVED].includes(props.task.status);
+    // Can suspend if not already deferred, completed or archived
+    return ![TaskStatus.DEFERRED, TaskStatus.COMPLETED, TaskStatus.ARCHIVED].includes(props.task.status);
 });
 
 const canDefer = computed(() => {
@@ -137,12 +164,40 @@ const canDefer = computed(() => {
 const canUncomplete = computed(() => {
     if (!props.task) return false;
     
-    // Can only uncomplete completed tasks
+    // Can only uncomplete completed tasks, but NOT in completion stage
+    // For completion stage, use "Return for Rework" instead
+    if (props.stageType === 'COMPLETION') return false;
+    
+    return props.task.status === TaskStatus.COMPLETED;
+});
+
+const canReturnForRework = computed(() => {
+    if (!props.task) return false;
+    
+    // Only reviewers and managers can return tasks for rework
+    if (!props.canReview && !props.canManage) return false;
+    
+    // Return for rework is only available in review and completion stages, not annotation
+    if (props.stageType === 'ANNOTATION') return false;
+    
+    // Can return completed tasks in review and completion stages
+    return props.task.status === TaskStatus.COMPLETED;
+});
+
+const canArchive = computed(() => {
+    if (!props.task) return false;
+    
+    // Only managers can archive tasks
+    if (!props.canManage) return false;
+    
+    // Can only archive completed tasks in completion stage
+    if (props.stageType !== 'COMPLETION') return false;
+    
     return props.task.status === TaskStatus.COMPLETED;
 });
 
 const hasAvailableActions = computed(() => {
-    return canSuspend.value || canDefer.value || canUncomplete.value;
+    return canSuspend.value || canDefer.value || canUncomplete.value || canReturnForRework.value || canArchive.value;
 });
 
 const handleAction = async (actionKey: string) => {
