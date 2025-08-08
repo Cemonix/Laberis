@@ -82,6 +82,7 @@ export interface UpdateTaskRequest {
     dueDate?: string;
     currentWorkflowStageId?: number;
     assignedToUserId?: string;
+    assignedToEmail?: string | null;
     status?: TaskStatus;
 }
 
@@ -109,4 +110,9 @@ export interface TaskTableRow {
 export interface ChangeTaskStatusDto {
     targetStatus: TaskStatus;
     moveAsset?: boolean;
+}
+
+// For returning tasks for rework
+export interface ReturnTaskForReworkDto {
+    reason?: string;
 }
