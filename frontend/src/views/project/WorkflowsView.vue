@@ -156,9 +156,22 @@ const handleCreateWorkflow = async (formData: CreateWorkflowWithStagesRequest) =
         const newWorkflow = await workflowService.createWorkflow(projectId, formData);
         workflows.value.push(newWorkflow);
         logger.info(`Created workflow with stages: ${newWorkflow.name} (ID: ${newWorkflow.id})`);
+        
+        // Load stages for the newly created workflow
+        await loadWorkflowStages(projectId, newWorkflow.id);
+        
         closeModal();
         showCreateSuccess("Workflow", newWorkflow.name);
-    } catch (error) {
+    } catch (error: any) {
+        // Handle specific data source conflict errors
+        if (error?.response?.status === 400 && error?.response?.data?.message) {
+            const errorMessage = error.response.data.message as string;
+            if (errorMessage.includes('cannot be used as input data source because it is already in use')) {
+                showError('Data Source Conflict', errorMessage);
+                return;
+            }
+        }
+        // Fall back to generic error handler
         handleError(error, 'Failed to create workflow');
     } finally {
         isCreating.value = false;
