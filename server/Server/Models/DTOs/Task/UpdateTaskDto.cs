@@ -13,6 +13,8 @@ public record class UpdateTaskDto
     public int? CurrentWorkflowStageId { get; init; }
 
     public string? AssignedToUserId { get; init; }
+    
+    public string? AssignedToEmail { get; init; }
 
     public DateTime? CompletedAt { get; init; }
 

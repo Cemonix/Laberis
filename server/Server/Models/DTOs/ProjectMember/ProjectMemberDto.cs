@@ -5,6 +5,7 @@ namespace server.Models.DTOs.ProjectMember;
 public record class ProjectMemberDto
 {
     public int Id { get; init; }
+    public string UserId { get; init; } = string.Empty;
     public ProjectRole Role { get; init; }
     public DateTime InvitedAt { get; init; }
     public DateTime? JoinedAt { get; init; }
