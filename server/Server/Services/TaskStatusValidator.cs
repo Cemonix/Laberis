@@ -59,6 +59,10 @@ public class TaskStatusValidator : ITaskStatusValidator
             TaskStatus.SUSPENDED => (true, string.Empty), // Unsuspending
             TaskStatus.DEFERRED => (true, string.Empty), // Undefer
             TaskStatus.NOT_STARTED => (true, string.Empty),
+            TaskStatus.COMPLETED when stageType == WorkflowStageType.COMPLETION => (
+                false, "Cannot mark completion stage tasks as incomplete. Use return-for-rework endpoint instead."
+            ),
+            TaskStatus.COMPLETED => (true, string.Empty), // Allow uncompleting tasks in annotation/review stages
             _ => (false, $"Cannot change status from {currentStatus} to IN_PROGRESS")
         };
     }
@@ -76,7 +80,11 @@ public class TaskStatusValidator : ITaskStatusValidator
     {
         return currentStatus switch
         {
-            TaskStatus.IN_PROGRESS or TaskStatus.READY_FOR_ANNOTATION or TaskStatus.READY_FOR_REVIEW or TaskStatus.READY_FOR_COMPLETION => (true, string.Empty),
+            TaskStatus.IN_PROGRESS
+            or TaskStatus.READY_FOR_ANNOTATION
+            or TaskStatus.READY_FOR_REVIEW
+            or TaskStatus.READY_FOR_COMPLETION
+            or TaskStatus.NOT_STARTED => (true, string.Empty),
             TaskStatus.COMPLETED => (false, "Cannot suspend a completed task"),
             TaskStatus.ARCHIVED => (false, "Cannot suspend an archived task"),
             _ => (false, $"Cannot suspend task from status {currentStatus}")
@@ -87,7 +95,11 @@ public class TaskStatusValidator : ITaskStatusValidator
     {
         return currentStatus switch
         {
-            TaskStatus.IN_PROGRESS or TaskStatus.READY_FOR_ANNOTATION or TaskStatus.READY_FOR_REVIEW or TaskStatus.READY_FOR_COMPLETION => (true, string.Empty),
+            TaskStatus.IN_PROGRESS
+            or TaskStatus.READY_FOR_ANNOTATION
+            or TaskStatus.READY_FOR_REVIEW
+            or TaskStatus.READY_FOR_COMPLETION
+            or TaskStatus.NOT_STARTED => (true, string.Empty),
             TaskStatus.SUSPENDED => (false, "Cannot defer a suspended task - please unsuspend first"),
             TaskStatus.COMPLETED => (false, "Cannot defer a completed task"),
             TaskStatus.ARCHIVED => (false, "Cannot defer an archived task"),
@@ -106,12 +118,9 @@ public class TaskStatusValidator : ITaskStatusValidator
 
     private static (bool IsValid, string ErrorMessage) ValidateReadyForAnnotationTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
     {
-        // This is mainly for manager marking task incomplete in completion stage
-        return stageType switch
-        {
-            WorkflowStageType.COMPLETION when currentStatus == TaskStatus.COMPLETED => (true, string.Empty),
-            _ => (false, $"Cannot change to READY_FOR_ANNOTATION from {currentStatus} in {stageType} stage")
-        };
+        // READY_FOR_ANNOTATION status changes are not allowed via direct status transitions
+        // Use the return-for-rework API endpoint instead for vetoing completed tasks
+        return (false, $"Cannot change to READY_FOR_ANNOTATION from {currentStatus}. Use return-for-rework endpoint instead for vetoing tasks.");
     }
 
     private static (bool IsValid, string ErrorMessage) ValidateReadyForReviewTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
