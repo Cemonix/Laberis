@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Identity;
 using Moq;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
@@ -22,6 +23,7 @@ public class TaskServiceUnifiedStatusTests
     private readonly Mock<ITaskStatusValidator> _mockTaskStatusValidator;
     private readonly Mock<IAssetService> _mockAssetService;
     private readonly Mock<IWorkflowStageRepository> _mockWorkflowStageRepository;
+    private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly Mock<ILogger<TaskService>> _mockLogger;
     private readonly TaskService _taskService;
 
@@ -33,6 +35,7 @@ public class TaskServiceUnifiedStatusTests
         _mockTaskStatusValidator = new Mock<ITaskStatusValidator>();
         _mockAssetService = new Mock<IAssetService>();
         _mockWorkflowStageRepository = new Mock<IWorkflowStageRepository>();
+        _mockUserManager = MockUserManager();
         _mockLogger = new Mock<ILogger<TaskService>>();
 
         // Setup default asset service behavior
@@ -47,6 +50,7 @@ public class TaskServiceUnifiedStatusTests
             _mockTaskStatusValidator.Object,
             _mockAssetService.Object,
             _mockWorkflowStageRepository.Object,
+            _mockUserManager.Object,
             _mockLogger.Object
         );
     }
@@ -391,5 +395,11 @@ public class TaskServiceUnifiedStatusTests
                 UpdatedAt = DateTime.UtcNow.AddDays(-1)
             }
         };
+    }
+
+    private static Mock<UserManager<ApplicationUser>> MockUserManager()
+    {
+        var store = new Mock<IUserStore<ApplicationUser>>();
+        return new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
     }
 }

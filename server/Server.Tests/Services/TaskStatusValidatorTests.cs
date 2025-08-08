@@ -26,7 +26,7 @@ public class TaskStatusValidatorTests
     [InlineData(TaskStatus.READY_FOR_COMPLETION, TaskStatus.IN_PROGRESS, true)]
     [InlineData(TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, true)]
     [InlineData(TaskStatus.NOT_STARTED, TaskStatus.IN_PROGRESS, true)]
-    [InlineData(TaskStatus.COMPLETED, TaskStatus.IN_PROGRESS, false)]
+    [InlineData(TaskStatus.COMPLETED, TaskStatus.IN_PROGRESS, true)]
     [InlineData(TaskStatus.ARCHIVED, TaskStatus.IN_PROGRESS, false)]
     public void ValidateStatusTransition_ToInProgress_ShouldValidateCorrectly(
         TaskStatus currentStatus, TaskStatus targetStatus, bool expectedValid)
@@ -35,10 +35,10 @@ public class TaskStatusValidatorTests
         var task = CreateTestTask(WorkflowStageType.ANNOTATION);
 
         // Act
-        var result = _validator.ValidateStatusTransition(task, currentStatus, targetStatus, "user123");
+        var (IsValid, _) = _validator.ValidateStatusTransition(task, currentStatus, targetStatus, "user123");
 
         // Assert
-        Assert.Equal(expectedValid, result.IsValid);
+        Assert.Equal(expectedValid, IsValid);
     }
 
     [Theory]
@@ -53,10 +53,10 @@ public class TaskStatusValidatorTests
         var task = CreateTestTask(WorkflowStageType.ANNOTATION);
 
         // Act
-        var result = _validator.ValidateStatusTransition(task, currentStatus, targetStatus, "user123");
+        var (IsValid, _) = _validator.ValidateStatusTransition(task, currentStatus, targetStatus, "user123");
 
         // Assert
-        Assert.Equal(expectedValid, result.IsValid);
+        Assert.Equal(expectedValid, IsValid);
     }
 
     [Theory]
@@ -73,15 +73,18 @@ public class TaskStatusValidatorTests
         var task = CreateTestTask(WorkflowStageType.ANNOTATION);
 
         // Act
-        var result = _validator.ValidateStatusTransition(task, currentStatus, targetStatus, "user123");
+        var (IsValid, _) = _validator.ValidateStatusTransition(task, currentStatus, targetStatus, "user123");
 
         // Assert
-        Assert.Equal(expectedValid, result.IsValid);
+        Assert.Equal(expectedValid, IsValid);
     }
 
     [Theory]
     [InlineData(TaskStatus.IN_PROGRESS, TaskStatus.DEFERRED, true)]
     [InlineData(TaskStatus.READY_FOR_ANNOTATION, TaskStatus.DEFERRED, true)]
+    [InlineData(TaskStatus.READY_FOR_REVIEW, TaskStatus.DEFERRED, true)]
+    [InlineData(TaskStatus.READY_FOR_COMPLETION, TaskStatus.DEFERRED, true)]
+    [InlineData(TaskStatus.NOT_STARTED, TaskStatus.DEFERRED, true)]
     [InlineData(TaskStatus.COMPLETED, TaskStatus.DEFERRED, false)]
     [InlineData(TaskStatus.ARCHIVED, TaskStatus.DEFERRED, false)]
     [InlineData(TaskStatus.SUSPENDED, TaskStatus.DEFERRED, false)]
@@ -92,10 +95,10 @@ public class TaskStatusValidatorTests
         var task = CreateTestTask(WorkflowStageType.ANNOTATION);
 
         // Act
-        var result = _validator.ValidateStatusTransition(task, currentStatus, targetStatus, "user123");
+        var (IsValid, _) = _validator.ValidateStatusTransition(task, currentStatus, targetStatus, "user123");
 
         // Assert
-        Assert.Equal(expectedValid, result.IsValid);
+        Assert.Equal(expectedValid, IsValid);
     }
 
     [Theory]
@@ -109,24 +112,24 @@ public class TaskStatusValidatorTests
         var task = CreateTestTask(WorkflowStageType.COMPLETION);
 
         // Act
-        var result = _validator.ValidateStatusTransition(task, currentStatus, targetStatus, "user123");
+        var (IsValid, _) = _validator.ValidateStatusTransition(task, currentStatus, targetStatus, "user123");
 
         // Assert
-        Assert.Equal(expectedValid, result.IsValid);
+        Assert.Equal(expectedValid, IsValid);
     }
 
     [Fact]
-    public void ValidateStatusTransition_CompletedToReadyForAnnotation_InCompletionStage_ShouldBeValid()
+    public void ValidateStatusTransition_CompletedToReadyForAnnotation_InCompletionStage_ShouldBeInvalid()
     {
         // Arrange
         var task = CreateTestTask(WorkflowStageType.COMPLETION);
 
         // Act
-        var result = _validator.ValidateStatusTransition(task, TaskStatus.COMPLETED, TaskStatus.READY_FOR_ANNOTATION, "manager123");
+        var (IsValid, ErrorMessage) = _validator.ValidateStatusTransition(task, TaskStatus.COMPLETED, TaskStatus.READY_FOR_ANNOTATION, "manager123");
 
-        // Assert
-        Assert.True(result.IsValid);
-        Assert.Empty(result.ErrorMessage);
+        // Assert - This should now be invalid, use return-for-rework instead
+        Assert.False(IsValid);
+        Assert.Contains("Use return-for-rework endpoint instead", ErrorMessage);
     }
 
     [Fact]
@@ -136,11 +139,11 @@ public class TaskStatusValidatorTests
         var task = CreateTestTask(WorkflowStageType.ANNOTATION);
 
         // Act
-        var result = _validator.ValidateStatusTransition(task, TaskStatus.COMPLETED, TaskStatus.READY_FOR_ANNOTATION, "manager123");
+        var (IsValid, ErrorMessage) = _validator.ValidateStatusTransition(task, TaskStatus.COMPLETED, TaskStatus.READY_FOR_ANNOTATION, "manager123");
 
         // Assert
-        Assert.False(result.IsValid);
-        Assert.Contains("Cannot change to READY_FOR_ANNOTATION", result.ErrorMessage);
+        Assert.False(IsValid);
+        Assert.Contains("Cannot change to READY_FOR_ANNOTATION", ErrorMessage);
     }
 
     [Theory]
@@ -153,11 +156,11 @@ public class TaskStatusValidatorTests
         var task = CreateTestTask(WorkflowStageType.ANNOTATION);
 
         // Act
-        var result = _validator.ValidateStatusTransition(task, TaskStatus.IN_PROGRESS, targetStatus, "user123");
+        var (IsValid, ErrorMessage) = _validator.ValidateStatusTransition(task, TaskStatus.IN_PROGRESS, targetStatus, "user123");
 
         // Assert
-        Assert.False(result.IsValid);
-        Assert.NotEmpty(result.ErrorMessage);
+        Assert.False(IsValid);
+        Assert.NotEmpty(ErrorMessage);
     }
 
     [Fact]
@@ -168,11 +171,11 @@ public class TaskStatusValidatorTests
         var unknownStatus = (TaskStatus)999;
 
         // Act
-        var result = _validator.ValidateStatusTransition(task, TaskStatus.IN_PROGRESS, unknownStatus, "user123");
+        var (IsValid, ErrorMessage) = _validator.ValidateStatusTransition(task, TaskStatus.IN_PROGRESS, unknownStatus, "user123");
 
         // Assert
-        Assert.False(result.IsValid);
-        Assert.Contains("Unknown target status", result.ErrorMessage);
+        Assert.False(IsValid);
+        Assert.Contains("Unknown target status", ErrorMessage);
     }
 
     private static LaberisTask CreateTestTask(WorkflowStageType stageType)
