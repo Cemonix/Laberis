@@ -4,6 +4,8 @@ using server.Models.Domain.Enums;
 using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
+using server.Exceptions;
+using Microsoft.AspNetCore.Identity;
 using LaberisTask = server.Models.Domain.Task;
 using TaskStatus = server.Models.Domain.Enums.TaskStatus;
 
@@ -17,6 +19,7 @@ public class TaskService : ITaskService
     private readonly ITaskStatusValidator _taskStatusValidator;
     private readonly IAssetService _assetService;
     private readonly IWorkflowStageRepository _workflowStageRepository;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<TaskService> _logger;
 
     public TaskService(
@@ -26,6 +29,7 @@ public class TaskService : ITaskService
         ITaskStatusValidator taskStatusValidator,
         IAssetService assetService,
         IWorkflowStageRepository workflowStageRepository,
+        UserManager<ApplicationUser> userManager,
         ILogger<TaskService> logger)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
@@ -34,6 +38,7 @@ public class TaskService : ITaskService
         _taskStatusValidator = taskStatusValidator ?? throw new ArgumentNullException(nameof(taskStatusValidator));
         _assetService = assetService ?? throw new ArgumentNullException(nameof(assetService));
         _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
+        _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -254,14 +259,41 @@ public class TaskService : ITaskService
 
         // Update the task properties
         existingTask.Priority = updateDto.Priority;
-        existingTask.AssignedToUserId = updateDto.AssignedToUserId ?? existingTask.AssignedToUserId;
+        
+        // Handle assignment - support both userId and email assignment
+        if (updateDto.AssignedToEmail != null)
+        {
+            // Assignment by email - look up the user ID
+            if (string.IsNullOrEmpty(updateDto.AssignedToEmail))
+            {
+                // Empty email means unassign
+                existingTask.AssignedToUserId = null;
+            }
+            else
+            {
+                // Find user by email
+                var user = await _userManager.FindByEmailAsync(updateDto.AssignedToEmail);
+                if (user == null)
+                {
+                    _logger.LogWarning("User not found for assignment email: {Email}", updateDto.AssignedToEmail);
+                    throw new NotFoundException($"User with email '{updateDto.AssignedToEmail}' not found");
+                }
+                existingTask.AssignedToUserId = user.Id;
+            }
+        }
+        else if (updateDto.AssignedToUserId != existingTask.AssignedToUserId)
+        {
+            // Assignment by userId (legacy support)
+            existingTask.AssignedToUserId = updateDto.AssignedToUserId;
+        }
+        
         existingTask.CurrentWorkflowStageId = updateDto.CurrentWorkflowStageId ?? existingTask.CurrentWorkflowStageId;
-        existingTask.DueDate = updateDto.DueDate ?? existingTask.DueDate;
+        existingTask.DueDate = ConvertToUtcIfSpecified(updateDto.DueDate) ?? existingTask.DueDate;
         existingTask.Metadata = updateDto.Metadata ?? existingTask.Metadata;
-        existingTask.CompletedAt = updateDto.CompletedAt ?? existingTask.CompletedAt;
-        existingTask.ArchivedAt = updateDto.ArchivedAt ?? existingTask.ArchivedAt;
-        existingTask.SuspendedAt = updateDto.SuspendedAt ?? existingTask.SuspendedAt;
-        existingTask.DeferredAt = updateDto.DeferredAt ?? existingTask.DeferredAt;
+        existingTask.CompletedAt = ConvertToUtcIfSpecified(updateDto.CompletedAt) ?? existingTask.CompletedAt;
+        existingTask.ArchivedAt = ConvertToUtcIfSpecified(updateDto.ArchivedAt) ?? existingTask.ArchivedAt;
+        existingTask.SuspendedAt = ConvertToUtcIfSpecified(updateDto.SuspendedAt) ?? existingTask.SuspendedAt;
+        existingTask.DeferredAt = ConvertToUtcIfSpecified(updateDto.DeferredAt) ?? existingTask.DeferredAt;
         existingTask.UpdatedAt = DateTime.UtcNow;
 
         await _taskRepository.SaveChangesAsync();
@@ -858,8 +890,8 @@ public class TaskService : ITaskService
         // Handle asset movement back to annotation stage and create new task
         try
         {
-            var assetMovementResult = await _assetService.HandleTaskWorkflowAssetMovementAsync(
-                existingTask, TaskStatus.READY_FOR_ANNOTATION, userId);
+            var assetMovementResult = await _assetService.HandleTaskVetoAssetMovementAsync(
+                existingTask, userId);
             
             if (assetMovementResult.AssetMoved && assetMovementResult.TargetWorkflowStageId.HasValue)
             {
@@ -1115,5 +1147,29 @@ public class TaskService : ITaskService
             AssignedToEmail = task.AssignedToUser?.Email,
             LastWorkedOnByEmail = task.LastWorkedOnByUser?.Email
         };
+    }
+
+    /// <summary>
+    /// Converts DateTime to UTC if it has Kind=Unspecified, otherwise returns as-is.
+    /// This handles the PostgreSQL timezone requirement.
+    /// </summary>
+    private static DateTime? ConvertToUtcIfSpecified(DateTime? dateTime)
+    {
+        if (dateTime == null) return null;
+        
+        // If Kind is Unspecified, treat it as UTC (common for date-only inputs)
+        if (dateTime.Value.Kind == DateTimeKind.Unspecified)
+        {
+            return DateTime.SpecifyKind(dateTime.Value, DateTimeKind.Utc);
+        }
+        
+        // If it's already UTC, return as-is
+        if (dateTime.Value.Kind == DateTimeKind.Utc)
+        {
+            return dateTime.Value;
+        }
+        
+        // If it's Local, convert to UTC
+        return dateTime.Value.ToUniversalTime();
     }
 }
