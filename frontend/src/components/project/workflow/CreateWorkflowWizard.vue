@@ -544,6 +544,7 @@ const isCurrentStepValid = () => {
 
 const validateFirstStep = () => {
     // Basic validation for the first step
+    errors.name = ''; // Clear previous error
     if (!form.name.trim()) {
         errors.name = 'Workflow name is required';
         return false;
@@ -553,6 +554,9 @@ const validateFirstStep = () => {
 
 const validateSecondStep = () => {
     // Data source validation for the second step
+    errors.annotationInputDataSourceId = ''; // Clear previous errors
+    errors.revisionInputDataSourceId = '';
+    
     if (!form.annotationInputDataSourceId) {
         errors.annotationInputDataSourceId = 'Annotation stage must have exactly one input data source';
         return false;
@@ -566,6 +570,9 @@ const validateSecondStep = () => {
 
 const validateThirdStep = () => {
     // Member assignment validation for the third step
+    errors.annotationMembers = ''; // Clear previous errors
+    errors.completionMembers = '';
+    
     if (form.annotationMembers.length === 0) {
         errors.annotationMembers = 'At least one member must be assigned to annotation stage';
         return false;
