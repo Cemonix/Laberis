@@ -6,6 +6,7 @@ import type { Annotation } from '@/types/workspace/annotation';
 import type { LabelScheme } from '@/types/label/labelScheme';
 import type { Asset } from '@/types/asset/asset';
 import type { Task } from '@/types/task';
+import type { WorkflowStageType } from '@/types/workflow/workflowstage';
 
 export interface WorkspaceState {
     currentProjectId: string | null;
@@ -27,6 +28,7 @@ export interface WorkspaceState {
     availableLabelSchemes: LabelScheme[];
     currentTaskId: number | null;
     currentTaskData: Task | null;
+    currentWorkflowStageType: WorkflowStageType | null;
     availableTasks: Task[];
     initialTaskId: number | null;
     isLoading: boolean;
