@@ -10,7 +10,8 @@ export type {
 export {
     TaskEventType,
     TaskStatus,
-    type ChangeTaskStatusDto
+    type ChangeTaskStatusDto,
+    type ReturnTaskForReworkDto
 } from './task';
 
 export type {
