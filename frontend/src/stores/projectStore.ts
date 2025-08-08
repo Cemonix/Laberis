@@ -10,6 +10,7 @@ import { LastProjectManager } from "@/core/storage";
 
 const logger = AppLogger.createServiceLogger("ProjectStore");
 
+// TODO: Move to type folder
 interface ProjectState {
     currentProject: Project | null;
     teamMembers: ProjectMember[];
@@ -37,7 +38,16 @@ export const useProjectStore = defineStore("project", {
             return !!state.currentProject;
         },
         activeMembers(state): ProjectMember[] {
-            return state.teamMembers.filter((member) => member.joinedAt !== undefined);
+            // All active members (joined or invited)
+            return state.teamMembers || [];
+        },
+        joinedMembers(state): ProjectMember[] {
+            // Members who have actually joined (accepted their invitation)
+            return (state.teamMembers || []).filter((member) => member.joinedAt !== undefined);
+        },
+        pendingMembers(state): ProjectMember[] {
+            // Members who are invited but haven't joined yet
+            return (state.teamMembers || []).filter((member) => member.joinedAt === undefined);
         },
         teamMemberCount(state): number {
             return state.teamMembers.length;
