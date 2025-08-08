@@ -13,12 +13,15 @@ import {
     assetService, 
     labelSchemeService,
     labelService,
-    taskService 
+    taskService,
+    workflowStageService
 } from '@/services/api/projects';
 import { taskStatusService } from '@/services/taskStatusService';
 import type { Asset } from '@/types/asset/asset';
 import type { Task } from '@/types/task';
+import { TaskStatus } from '@/types/task';
 import { AppLogger } from '@/utils/logger';
+import { WorkflowStageType } from '@/types/workflow/workflowstage';
 
 const logger = AppLogger.createServiceLogger('WorkspaceStore');
 
@@ -55,6 +58,7 @@ export const useWorkspaceStore = defineStore("workspace", {
         availableLabelSchemes: [] as LabelScheme[],
         currentTaskId: null as number | null,
         currentTaskData: null as Task | null,
+        currentWorkflowStageType: null as WorkflowStageType | null,
         availableTasks: [] as Task[],
         initialTaskId: null as number | null, // Store the initial task ID from URL query
         isLoading: false,
@@ -150,7 +154,7 @@ export const useWorkspaceStore = defineStore("workspace", {
             return currentIndex < state.availableTasks.length - 1;
         },
         canCompleteCurrentTask(state): boolean {
-            if (!state.currentTaskData) {
+            if (!state.currentTaskData || !state.currentAssetData) {
                 return false;
             }
 
@@ -159,12 +163,23 @@ export const useWorkspaceStore = defineStore("workspace", {
                 return false;
             }
 
-            // Check if there are any annotations for this task
-            const taskAnnotations = state.annotations.filter(annotation => 
-                annotation.taskId === state.currentTaskData?.id
-            );
-
-            return taskAnnotations.length > 0;
+            // For revision and completion stages, check annotations for the asset (not just the current task)
+            // For annotation stages, check annotations for the specific task
+            if (state.currentWorkflowStageType === WorkflowStageType.REVISION || 
+                state.currentWorkflowStageType === WorkflowStageType.COMPLETION) {
+                // In revision/completion stages, check if there are annotations for this asset
+                // (created in previous annotation stages)
+                const assetAnnotations = state.annotations.filter(annotation => 
+                    annotation.assetId === state.currentAssetData?.id
+                );
+                return assetAnnotations.length > 0;
+            } else {
+                // In annotation stages, check annotations for this specific task
+                const taskAnnotations = state.annotations.filter(annotation => 
+                    annotation.taskId === state.currentTaskData?.id
+                );
+                return taskAnnotations.length > 0;
+            }
         },
     },
 
@@ -201,6 +216,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                 this.currentLabelId = null;
                 this.currentTaskId = null;
                 this.currentTaskData = null;
+                this.currentWorkflowStageType = null;
                 this.availableTasks = [];
                 this.initialTaskId = taskId ? parseInt(taskId, 10) : null;
 
@@ -246,9 +262,41 @@ export const useWorkspaceStore = defineStore("workspace", {
                         this.availableTasks = stageTasks.tasks;
                         this.currentTaskData = currentTask;
                         this.currentTaskId = currentTask.id;
+
+                        // Fetch current workflow stage type for completion logic
+                        try {
+                            const stageData = await workflowStageService.getWorkflowStageById(
+                                numericProjectId, 
+                                currentTask.workflowId, 
+                                workflowStageId
+                            );
+                            this.currentWorkflowStageType = stageData.stageType || null;
+                            logger.info(`Loaded workflow stage type: ${this.currentWorkflowStageType} for stage ${workflowStageId}`);
+                        } catch (stageError) {
+                            logger.warn('Failed to fetch workflow stage type:', stageError);
+                            this.currentWorkflowStageType = null;
+                        }
                         
                         // Auto-assign task to current user if not already assigned (makes it IN_PROGRESS)
                         try {
+                            // If task is suspended, resume it first before assignment
+                            if (currentTask.status === 'SUSPENDED') {
+                                logger.info(`Task ${currentTask.id} is suspended, resuming it before assignment`);
+                                const resumedTask = await taskStatusService.resumeTask(numericProjectId, currentTask, false);
+                                
+                                // Update current task data with resumed task
+                                currentTask = resumedTask;
+                                this.currentTaskData = resumedTask;
+                                
+                                // Update the task in the available tasks list
+                                const taskIndex = this.availableTasks.findIndex(task => task.id === resumedTask.id);
+                                if (taskIndex !== -1) {
+                                    this.availableTasks[taskIndex] = resumedTask;
+                                }
+                                
+                                logger.info(`Successfully resumed suspended task ${currentTask.id}`);
+                            }
+                            
                             if (!currentTask.assignedToEmail) {
                                 const { useAuthStore } = await import('@/stores/authStore');
                                 const authStore = useAuthStore();
@@ -340,6 +388,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                 this.currentLabelId = null;
                 this.currentTaskId = null;
                 this.currentTaskData = null;
+                this.currentWorkflowStageType = null;
                 this.availableTasks = [];
                 this.initialTaskId = null;
             }
@@ -653,6 +702,27 @@ export const useWorkspaceStore = defineStore("workspace", {
         },
 
         /**
+         * Check if a task can be opened by the current user
+         */
+        async canOpenTask(task: Task): Promise<boolean> {
+            // Import permission check dynamically to avoid circular dependencies
+            const { useProjectPermissions } = await import('@/composables/useProjectPermissions');
+            const { canManageProject } = useProjectPermissions();
+            
+            // Deferred tasks can only be opened by managers
+            if (task.status === TaskStatus.DEFERRED && !canManageProject.value) {
+                return false;
+            }
+            
+            // Completed and archived tasks cannot be opened (suspended tasks can be resumed)
+            if (task.status && [TaskStatus.COMPLETED, TaskStatus.ARCHIVED].includes(task.status)) {
+                return false;
+            }
+            
+            return true;
+        },
+
+        /**
          * Navigate to the previous task in the current workflow stage
          */
         async navigateToPreviousTask(): Promise<{ projectId: string; assetId: string; taskId: string } | null> {
@@ -662,19 +732,26 @@ export const useWorkspaceStore = defineStore("workspace", {
             }
 
             const currentIndex = this.availableTasks.findIndex(task => task.id === this.currentTaskData?.id);
-            if (currentIndex <= 0) {
-                logger.info('Already at first task, cannot go to previous');
-                return null; // Already at first task
-            }
-
-            const previousTask = this.availableTasks[currentIndex - 1];
-            logger.info(`Navigating to previous task: ${previousTask.id} (asset ${previousTask.assetId})`);
             
-            return {
-                projectId: this.currentProjectId!,
-                assetId: previousTask.assetId.toString(),
-                taskId: previousTask.id.toString()
-            };
+            // Look for the previous available task that can be opened
+            for (let i = currentIndex - 1; i >= 0; i--) {
+                const previousTask = this.availableTasks[i];
+                const canOpen = await this.canOpenTask(previousTask);
+                
+                if (canOpen) {
+                    logger.info(`Navigating to previous task: ${previousTask.id} (asset ${previousTask.assetId})`);
+                    return {
+                        projectId: this.currentProjectId!,
+                        assetId: previousTask.assetId.toString(),
+                        taskId: previousTask.id.toString()
+                    };
+                } else {
+                    logger.debug(`Skipping previous task ${previousTask.id} - status: ${previousTask.status}`);
+                }
+            }
+            
+            logger.info('No accessible previous task found');
+            return null;
         },
 
         /**
@@ -687,19 +764,26 @@ export const useWorkspaceStore = defineStore("workspace", {
             }
 
             const currentIndex = this.availableTasks.findIndex(task => task.id === this.currentTaskData?.id);
-            if (currentIndex >= this.availableTasks.length - 1) {
-                logger.info('Already at last task, cannot go to next');
-                return null; // Already at last task
-            }
-
-            const nextTask = this.availableTasks[currentIndex + 1];
-            logger.info(`Navigating to next task: ${nextTask.id} (asset ${nextTask.assetId})`);
             
-            return {
-                projectId: this.currentProjectId!,
-                assetId: nextTask.assetId.toString(),
-                taskId: nextTask.id.toString()
-            };
+            // Look for the next available task that can be opened
+            for (let i = currentIndex + 1; i < this.availableTasks.length; i++) {
+                const nextTask = this.availableTasks[i];
+                const canOpen = await this.canOpenTask(nextTask);
+                
+                if (canOpen) {
+                    logger.info(`Navigating to next task: ${nextTask.id} (asset ${nextTask.assetId})`);
+                    return {
+                        projectId: this.currentProjectId!,
+                        assetId: nextTask.assetId.toString(),
+                        taskId: nextTask.id.toString()
+                    };
+                } else {
+                    logger.debug(`Skipping next task ${nextTask.id} - status: ${nextTask.status}`);
+                }
+            }
+            
+            logger.info('No accessible next task found');
+            return null;
         },
 
         /**
@@ -714,8 +798,13 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
+                // Check if user has manager permissions for completion stage tasks
+                const { useProjectPermissions } = await import('@/composables/useProjectPermissions');
+                const { canManageProject } = useProjectPermissions();
+                const isManager = canManageProject.value;
+                
                 // Use the smart task status service that understands workflow context
-                const updatedTask = await taskStatusService.completeTask(numericProjectId, this.currentTaskData, false);
+                const updatedTask = await taskStatusService.completeTask(numericProjectId, this.currentTaskData, isManager);
                 
                 // Update the current task data
                 this.currentTaskData = updatedTask;
@@ -736,39 +825,6 @@ export const useWorkspaceStore = defineStore("workspace", {
         },
 
         /**
-         * Complete the current task and move to next workflow stage
-         */
-        async completeAndMoveCurrentTask(): Promise<boolean> {
-            if (!this.currentTaskData || !this.currentProjectId) {
-                logger.error('Cannot complete and move task: no current task or project');
-                return false;
-            }
-
-            try {
-                const numericProjectId = parseInt(this.currentProjectId);
-                
-                // Use the smart task status service (same as completeCurrentTask now)
-                const updatedTask = await taskStatusService.completeTask(numericProjectId, this.currentTaskData, false);
-                
-                // Update the current task data
-                this.currentTaskData = updatedTask;
-                
-                // Update the task in the available tasks list
-                const taskIndex = this.availableTasks.findIndex(task => task.id === updatedTask.id);
-                if (taskIndex !== -1) {
-                    this.availableTasks[taskIndex] = updatedTask;
-                }
-
-                logger.info(`Successfully completed and moved task ${this.currentTaskData.id} to next stage`);
-                return true;
-            } catch (error) {
-                logger.error('Failed to complete and move task:', error);
-                this.error = error instanceof Error ? error.message : 'Failed to complete and move task';
-                return false;
-            }
-        },
-
-        /**
          * Complete current task and automatically move to next workflow stage
          */
         async completeAndMoveToNextTask(): Promise<boolean> {
@@ -780,8 +836,13 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
+                // Check if user has manager permissions for completion stage tasks
+                const { useProjectPermissions } = await import('@/composables/useProjectPermissions');
+                const { canManageProject } = useProjectPermissions();
+                const isManager = canManageProject.value;
+                
                 // Use the smart task status service (same as other complete methods now)
-                const updatedTask = await taskStatusService.completeTask(numericProjectId, this.currentTaskData, false);
+                const updatedTask = await taskStatusService.completeTask(numericProjectId, this.currentTaskData, isManager);
                 
                 // Update the current task data
                 this.currentTaskData = updatedTask;
@@ -813,8 +874,13 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
+                // Check if user has manager permissions for completion stage tasks
+                const { useProjectPermissions } = await import('@/composables/useProjectPermissions');
+                const { canManageProject } = useProjectPermissions();
+                const isManager = canManageProject.value;
+                
                 // Use the smart task status service
-                const updatedTask = await taskStatusService.uncompleteTask(numericProjectId, this.currentTaskData, false);
+                const updatedTask = await taskStatusService.uncompleteTask(numericProjectId, this.currentTaskData, isManager);
                 
                 // Update the current task data
                 this.currentTaskData = updatedTask;
@@ -846,8 +912,13 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
+                // Check if user has manager permissions for completion stage tasks
+                const { useProjectPermissions } = await import('@/composables/useProjectPermissions');
+                const { canManageProject } = useProjectPermissions();
+                const isManager = canManageProject.value;
+                
                 // Use the smart task status service
-                const suspendedTask = await taskStatusService.suspendTask(numericProjectId, this.currentTaskData, false);
+                const suspendedTask = await taskStatusService.suspendTask(numericProjectId, this.currentTaskData, isManager);
                 
                 // Update the current task data
                 this.currentTaskData = suspendedTask;
@@ -877,13 +948,63 @@ export const useWorkspaceStore = defineStore("workspace", {
             }
 
             try {
-                // For defer, we just move to the next task without updating the current one
-                // The task remains in the queue but user moves on
-                logger.info(`Deferred task ${this.currentTaskData.id}`);
+                const numericProjectId = parseInt(this.currentProjectId);
+                
+                // Check if user has manager permissions for completion stage tasks
+                const { useProjectPermissions } = await import('@/composables/useProjectPermissions');
+                const { canManageProject } = useProjectPermissions();
+                const isManager = canManageProject.value;
+                
+                // Call the backend API to set task status to deferred
+                const deferredTask = await taskStatusService.deferTask(numericProjectId, this.currentTaskData, isManager);
+                
+                // Update the current task data
+                this.currentTaskData = deferredTask;
+                
+                // Update the task in the available tasks list
+                const taskIndex = this.availableTasks.findIndex(task => task.id === deferredTask.id);
+                if (taskIndex !== -1) {
+                    this.availableTasks[taskIndex] = deferredTask;
+                }
+                
+                logger.info(`Successfully deferred task ${this.currentTaskData.id}`);
                 return true;
             } catch (error) {
                 logger.error('Failed to defer task:', error);
                 this.error = error instanceof Error ? error.message : 'Failed to defer task';
+                return false;
+            }
+        },
+
+        /**
+         * Return the current task for rework (reviewers and managers)
+         */
+        async returnCurrentTaskForRework(reason?: string): Promise<boolean> {
+            if (!this.currentTaskData || !this.currentProjectId) {
+                logger.error('Cannot return task for rework: no current task or project');
+                return false;
+            }
+
+            try {
+                const numericProjectId = parseInt(this.currentProjectId);
+                
+                // Use the specialized return for rework endpoint
+                const returnedTask = await taskStatusService.returnTaskForRework(numericProjectId, this.currentTaskData, reason);
+                
+                // Update the current task data
+                this.currentTaskData = returnedTask;
+                
+                // Update the task in the available tasks list
+                const taskIndex = this.availableTasks.findIndex(task => task.id === returnedTask.id);
+                if (taskIndex !== -1) {
+                    this.availableTasks[taskIndex] = returnedTask;
+                }
+
+                logger.info(`Successfully returned task ${this.currentTaskData.id} for rework`, { reason });
+                return true;
+            } catch (error) {
+                logger.error('Failed to return task for rework:', error);
+                this.error = error instanceof Error ? error.message : 'Failed to return task for rework';
                 return false;
             }
         },
