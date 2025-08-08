@@ -215,6 +215,7 @@ public class ProjectMemberService : IProjectMemberService
         return new ProjectMemberDto
         {
             Id = member.ProjectMemberId,
+            UserId = member.UserId,
             Role = member.Role,
             InvitedAt = member.InvitedAt,
             JoinedAt = member.JoinedAt,
