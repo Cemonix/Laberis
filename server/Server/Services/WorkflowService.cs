@@ -7,6 +7,8 @@ using server.Models.Domain.Enums;
 using server.Models.Internal;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
+using server.Data;
+using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
 namespace server.Services;
@@ -16,23 +18,29 @@ public class WorkflowService : IWorkflowService
     private readonly IWorkflowRepository _workflowRepository;
     private readonly IWorkflowStageService _workflowStageService;
     private readonly IWorkflowStageAssignmentService _workflowStageAssignmentService;
+    private readonly IWorkflowStageConnectionService _workflowStageConnectionService;
     private readonly ITaskService _taskService;
     private readonly IDataSourceService _dataSourceService;
+    private readonly LaberisDbContext _context;
     private readonly ILogger<WorkflowService> _logger;
 
     public WorkflowService(
         IWorkflowRepository workflowRepository,
         IWorkflowStageService workflowStageService,
         IWorkflowStageAssignmentService workflowStageAssignmentService,
+        IWorkflowStageConnectionService workflowStageConnectionService,
         ITaskService taskService,
         IDataSourceService dataSourceService,
+        LaberisDbContext context,
         ILogger<WorkflowService> logger)
     {
         _workflowRepository = workflowRepository ?? throw new ArgumentNullException(nameof(workflowRepository));
         _workflowStageService = workflowStageService ?? throw new ArgumentNullException(nameof(workflowStageService));
         _workflowStageAssignmentService = workflowStageAssignmentService ?? throw new ArgumentNullException(nameof(workflowStageAssignmentService));
+        _workflowStageConnectionService = workflowStageConnectionService ?? throw new ArgumentNullException(nameof(workflowStageConnectionService));
         _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
         _dataSourceService = dataSourceService ?? throw new ArgumentNullException(nameof(dataSourceService));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -87,52 +95,70 @@ public class WorkflowService : IWorkflowService
     {
         _logger.LogInformation("Creating new workflow for project: {ProjectId}", projectId);
 
-        var workflow = new Workflow
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            Name = createDto.Name,
-            Description = createDto.Description,
-            ProjectId = projectId,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        await _workflowRepository.AddAsync(workflow);
-        await _workflowRepository.SaveChangesAsync();
-
-        _logger.LogInformation("Successfully created workflow with ID: {WorkflowId}", workflow.WorkflowId);
-
-        // Create workflow stages
-        var initialStageId = await CreateWorkflowStagesAsync(workflow.WorkflowId, createDto);
-
-        // Automatically create tasks for all available assets if an initial stage was created
-        if (initialStageId.HasValue)
-        {
-            try
+            var workflow = new Workflow
             {
-                var tasksCreated = await _taskService.CreateTasksForAllAssetsAsync(projectId, workflow.WorkflowId, initialStageId.Value);
-                _logger.LogInformation("Automatically created {TasksCreated} tasks for workflow {WorkflowId}", tasksCreated, workflow.WorkflowId);
-            }
-            catch (Exception ex)
+                Name = createDto.Name,
+                Description = createDto.Description,
+                ProjectId = projectId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _workflowRepository.AddAsync(workflow);
+            await _workflowRepository.SaveChangesAsync();
+
+            _logger.LogInformation("Successfully created workflow with ID: {WorkflowId}", workflow.WorkflowId);
+
+            // Create workflow stages and connections
+            var (initialStageId, createdStages) = await CreateWorkflowStagesAsync(workflow.WorkflowId, createDto);
+            
+            // Create stage connections for proper workflow progression
+            if (createdStages.Count > 1)
             {
-                _logger.LogWarning(ex, "Failed to create tasks automatically for workflow {WorkflowId}", workflow.WorkflowId);
-                // Don't fail the workflow creation if task creation fails
+                await CreateWorkflowStageConnectionsAsync(createdStages);
             }
+
+            // Automatically create tasks for all available assets if an initial stage was created
+            if (initialStageId.HasValue)
+            {
+                try
+                {
+                    var tasksCreated = await _taskService.CreateTasksForAllAssetsAsync(projectId, workflow.WorkflowId, initialStageId.Value);
+                    _logger.LogInformation("Automatically created {TasksCreated} tasks for workflow {WorkflowId}", tasksCreated, workflow.WorkflowId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to create tasks automatically for workflow {WorkflowId}", workflow.WorkflowId);
+                    // Don't fail the workflow creation if task creation fails
+                }
+            }
+
+            await transaction.CommitAsync();
+            return MapToDto(workflow);
         }
-
-        return MapToDto(workflow);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create workflow for project {ProjectId}", projectId);
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
-    private async Task<int?> CreateWorkflowStagesAsync(int workflowId, CreateWorkflowDto createDto)
+    private async Task<(int? initialStageId, List<WorkflowStageDto> createdStages)> CreateWorkflowStagesAsync(int workflowId, CreateWorkflowDto createDto)
     {
         var stageOrder = 1;
         int? initialStageId = null;
+        var createdStages = new List<WorkflowStageDto>();
 
         // Get project ID to find/create data sources
         var workflow = await _workflowRepository.GetByIdAsync(workflowId);
         if (workflow == null)
         {
             _logger.LogError("Workflow {WorkflowId} not found when creating stages", workflowId);
-            return null;
+            return (null, createdStages);
         }
 
         var projectId = workflow.ProjectId;
@@ -148,7 +174,7 @@ public class WorkflowService : IWorkflowService
             if (dataSources.AnnotationDataSource == null)
             {
                 _logger.LogError("No annotation data source available for project {ProjectId}", projectId);
-                return null;
+                return (null, createdStages);
             }
 
             // Create Annotation Stage (connected to default/annotation data source)
@@ -165,6 +191,7 @@ public class WorkflowService : IWorkflowService
             };
             var createdAnnotationStage = await _workflowStageService.CreateWorkflowStageAsync(workflowId, annotationStage);
             initialStageId = createdAnnotationStage.Id; // This is where tasks are first created
+            createdStages.Add(createdAnnotationStage);
 
             // Create Review Stage (if requested)
             if (createDto.IncludeReviewStage && dataSources.ReviewDataSource != null)
@@ -180,7 +207,8 @@ public class WorkflowService : IWorkflowService
                     InputDataSourceId = dataSources.ReviewDataSource.Id,
                     TargetDataSourceId = dataSources.CompletionDataSource?.Id
                 };
-                await _workflowStageService.CreateWorkflowStageAsync(workflowId, revisionStage);
+                var createdRevisionStage = await _workflowStageService.CreateWorkflowStageAsync(workflowId, revisionStage);
+                createdStages.Add(createdRevisionStage);
             }
 
             // Create Completion Stage (final stage)
@@ -197,7 +225,8 @@ public class WorkflowService : IWorkflowService
                     InputDataSourceId = dataSources.CompletionDataSource.Id,
                     TargetDataSourceId = null // Final stage - no target needed
                 };
-                await _workflowStageService.CreateWorkflowStageAsync(workflowId, completionStage);
+                var createdCompletionStage = await _workflowStageService.CreateWorkflowStageAsync(workflowId, completionStage);
+                createdStages.Add(createdCompletionStage);
             }
 
             _logger.LogInformation("Successfully created default workflow stages with data source connections for workflow {WorkflowId}", workflowId);
@@ -225,6 +254,7 @@ public class WorkflowService : IWorkflowService
                 };
 
                 var createdStage = await _workflowStageService.CreateWorkflowStageAsync(workflowId, createStageDto);
+                createdStages.Add(createdStage);
 
                 // Track the initial stage
                 if (stageDto.IsInitialStage)
@@ -244,7 +274,37 @@ public class WorkflowService : IWorkflowService
             }
         }
 
-        return initialStageId;
+        return (initialStageId, createdStages);
+    }
+
+    /// <summary>
+    /// Creates workflow stage connections to enable proper stage progression.
+    /// Connects stages in order based on their StageOrder property.
+    /// </summary>
+    private async System.Threading.Tasks.Task CreateWorkflowStageConnectionsAsync(List<WorkflowStageDto> stages)
+    {
+        // Sort stages by order to ensure proper connections
+        var sortedStages = stages.OrderBy(s => s.StageOrder).ToList();
+        
+        _logger.LogInformation("Creating {ConnectionCount} workflow stage connections", sortedStages.Count - 1);
+
+        for (int i = 0; i < sortedStages.Count - 1; i++)
+        {
+            var fromStage = sortedStages[i];
+            var toStage = sortedStages[i + 1];
+
+            var connectionDto = new CreateWorkflowStageConnectionDto
+            {
+                FromStageId = fromStage.Id,
+                ToStageId = toStage.Id,
+                Condition = null // Default connection without condition
+            };
+
+            await _workflowStageConnectionService.CreateConnectionAsync(connectionDto);
+            
+            _logger.LogInformation("Created connection: {FromStageName} ({FromStageId}) → {ToStageName} ({ToStageId})",
+                fromStage.Name, fromStage.Id, toStage.Name, toStage.Id);
+        }
     }
 
     /// <summary>
