@@ -516,13 +516,7 @@ public class AssetService : IAssetService
             // Handle completion in annotation/review stages (move to next stage)
             if (targetStatus == TaskStatus.COMPLETED)
             {
-                await HandleTaskCompletionMovement(task, result, userId);
-            }
-            // Handle manager marking task incomplete in completion stage (move back to annotation)
-            else if (targetStatus == TaskStatus.READY_FOR_ANNOTATION && 
-                     task.CurrentWorkflowStage?.StageType == WorkflowStageType.COMPLETION)
-            {
-                await HandleTaskIncompleteMovement(task, result, userId);
+                await HandleTaskCompletionMovement(task, result);
             }
 
             _logger.LogInformation("Asset movement completed for task {TaskId}: {AssetMoved}, target stage: {TargetStageId}", 
@@ -537,19 +531,102 @@ public class AssetService : IAssetService
         return result;
     }
 
-    private async System.Threading.Tasks.Task HandleTaskCompletionMovement(LaberisTask task, AssetMovementResult result, string userId)
+    public async Task<AssetMovementResult> HandleTaskVetoAssetMovementAsync(LaberisTask task, string userId)
+    {
+        _logger.LogInformation("Handling veto asset movement for task {TaskId} back to annotation stage", task.TaskId);
+
+        var result = new AssetMovementResult();
+
+        try
+        {
+            // Find the initial annotation stage in the workflow
+            var annotationStage = await _taskRepository.GetInitialWorkflowStageAsync(task.WorkflowId);
+            
+            if (annotationStage != null && annotationStage.InputDataSourceId.HasValue)
+            {
+                // Get the asset for this task
+                var asset = await _assetRepository.GetByIdAsync(task.AssetId);
+                if (asset == null)
+                {
+                    result.ErrorMessage = "Asset not found for task";
+                    return result;
+                }
+
+                // Transfer asset back to annotation data source
+                var transferSuccess = await TransferAssetToDataSourceAsync(asset, annotationStage.InputDataSourceId.Value);
+                
+                if (transferSuccess)
+                {
+                    result.AssetMoved = true;
+                    result.TargetWorkflowStageId = annotationStage.WorkflowStageId;
+                    result.TargetDataSourceId = annotationStage.InputDataSourceId.Value;
+                    
+                    _logger.LogInformation("Successfully transferred asset {AssetId} back to annotation data source {DataSourceId} for veto", 
+                        asset.AssetId, annotationStage.InputDataSourceId.Value);
+                }
+                else
+                {
+                    result.ErrorMessage = "Failed to transfer asset back to annotation stage";
+                }
+            }
+            else
+            {
+                if (annotationStage == null)
+                {
+                    _logger.LogError("No annotation stage found for workflow {WorkflowId} during veto", task.WorkflowId);
+                    result.ErrorMessage = "No annotation stage found in workflow";
+                }
+                else if (!annotationStage.InputDataSourceId.HasValue)
+                {
+                    _logger.LogError("Annotation stage {AnnotationStageId} found for workflow {WorkflowId} but has no InputDataSourceId during veto", 
+                        annotationStage.WorkflowStageId, task.WorkflowId);
+                    result.ErrorMessage = "Annotation stage has no input data source configured";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling veto asset movement for task {TaskId}", task.TaskId);
+            result.ErrorMessage = $"Veto asset movement failed: {ex.Message}";
+        }
+
+        return result;
+    }
+
+    private async System.Threading.Tasks.Task HandleTaskCompletionMovement(LaberisTask task, AssetMovementResult result)
     {
         var currentStageType = task.CurrentWorkflowStage?.StageType;
+        
+        // Handle case where navigation property is not loaded (EF tracking issue)
+        // PERF: This extra query could be avoided by ensuring proper EF includes in TaskService,
+        // but the performance impact is minimal (microsecond PK lookup) vs. complexity of fixing EF tracking
+        if (task.CurrentWorkflowStage == null)
+        {
+            _logger.LogWarning("Task {TaskId} CurrentWorkflowStage navigation property not loaded, fetching manually", task.TaskId);
+            var workflowStage = await _workflowStageRepository.GetByIdAsync(task.CurrentWorkflowStageId);
+            
+            if (workflowStage != null)
+            {
+                currentStageType = workflowStage.StageType;
+                _logger.LogDebug("Task {TaskId} manually loaded stage: {StageType} ({StageName})", 
+                    task.TaskId, currentStageType, workflowStage.Name);
+            }
+            else
+            {
+                _logger.LogError("Task {TaskId} references non-existent workflow stage {StageId}", 
+                    task.TaskId, task.CurrentWorkflowStageId);
+                return;
+            }
+        }
         
         // Only move assets for annotation and review stages
         if (currentStageType != WorkflowStageType.ANNOTATION && currentStageType != WorkflowStageType.REVISION)
         {
+            _logger.LogInformation("Task {TaskId} is in {StageType} stage, skipping asset movement (only ANNOTATION and REVISION stages move assets)", 
+                task.TaskId, currentStageType);
             return;
         }
 
-        // Archive the current task (as per our design)
-        result.ShouldArchiveTask = true;
-        
         // Find and create tasks for next workflow stage
         var nextStage = await _taskRepository.GetNextWorkflowStageAsync(task.CurrentWorkflowStageId);
         
@@ -562,10 +639,14 @@ public class AssetService : IAssetService
                 if (asset == null)
                 {
                     result.ErrorMessage = "Asset not found for task";
+                    result.ShouldArchiveTask = true; // Archive task if asset not found
                     return;
                 }
 
                 // Transfer asset to the next workflow stage's data source
+                _logger.LogInformation("Attempting to transfer asset {AssetId} from data source {CurrentDataSource} to data source {TargetDataSource} for next stage {NextStageId}", 
+                    asset.AssetId, asset.DataSourceId, nextStage.InputDataSourceId.Value, nextStage.WorkflowStageId);
+                
                 var transferSuccess = await TransferAssetToDataSourceAsync(asset, nextStage.InputDataSourceId.Value);
                 
                 if (transferSuccess)
@@ -573,13 +654,17 @@ public class AssetService : IAssetService
                     result.AssetMoved = true;
                     result.TargetWorkflowStageId = nextStage.WorkflowStageId;
                     result.TargetDataSourceId = nextStage.InputDataSourceId.Value;
+                    result.ShouldArchiveTask = false; // Keep completed for veto operations
 
                     _logger.LogInformation("Successfully transferred asset {AssetId} to data source {DataSourceId} for next stage {NextStageId}. TaskService will create tasks.", 
                         asset.AssetId, nextStage.InputDataSourceId.Value, nextStage.WorkflowStageId);
                 }
                 else
                 {
+                    _logger.LogWarning("Asset transfer failed for asset {AssetId} from data source {CurrentDataSource} to data source {TargetDataSource}", 
+                        asset.AssetId, asset.DataSourceId, nextStage.InputDataSourceId.Value);
                     result.ErrorMessage = "Failed to transfer asset to next workflow stage";
+                    result.ShouldArchiveTask = true; // Archive task if transfer failed
                 }
             }
             catch (Exception ex)
@@ -587,53 +672,27 @@ public class AssetService : IAssetService
                 _logger.LogError(ex, "Failed to move asset and create tasks for next stage {NextStageId} after completing task {TaskId}", 
                     nextStage.WorkflowStageId, task.TaskId);
                 result.ErrorMessage = $"Failed to move asset to next stage: {ex.Message}";
+                result.ShouldArchiveTask = true; // Archive task if exception occurred
             }
         }
-    }
-
-    private async System.Threading.Tasks.Task HandleTaskIncompleteMovement(LaberisTask task, AssetMovementResult result, string userId)
-    {
-        // Special case: Manager marking task incomplete in completion stage
-        // This should create a NEW task in annotation stage (as per our design)
-        var annotationStage = await _taskRepository.GetInitialWorkflowStageAsync(task.WorkflowId);
-        
-        if (annotationStage != null && annotationStage.InputDataSourceId.HasValue)
+        else
         {
-            try
+            // No next stage or no input data source - archive completed task
+            result.ShouldArchiveTask = true;
+            
+            // Log why asset movement didn't happen
+            if (nextStage == null)
             {
-                // Get the asset for this task
-                var asset = await _assetRepository.GetByIdAsync(task.AssetId);
-                if (asset == null)
-                {
-                    result.ErrorMessage = "Asset not found for task";
-                    return;
-                }
-
-                // Transfer asset back to annotation data source
-                var transferSuccess = await TransferAssetToDataSourceAsync(asset, annotationStage.InputDataSourceId.Value);
-                
-                if (transferSuccess)
-                {
-                    result.AssetMoved = true;
-                    result.TargetWorkflowStageId = annotationStage.WorkflowStageId;
-                    result.TargetDataSourceId = annotationStage.InputDataSourceId.Value;
-                    
-                    _logger.LogInformation("Successfully transferred asset {AssetId} back to annotation data source {DataSourceId}. TaskService will create new tasks.", 
-                        asset.AssetId, annotationStage.InputDataSourceId.Value);
-                }
-                else
-                {
-                    result.ErrorMessage = "Failed to transfer asset back to annotation stage";
-                }
+                _logger.LogInformation("No next stage found for task {TaskId} - task completed at final stage", task.TaskId);
             }
-            catch (Exception ex)
+            else if (!nextStage.InputDataSourceId.HasValue)
             {
-                _logger.LogError(ex, "Failed to move asset back to annotation and create new task for asset {AssetId} after marking task {TaskId} incomplete", 
-                    task.AssetId, task.TaskId);
-                result.ErrorMessage = $"Failed to move asset back to annotation: {ex.Message}";
+                _logger.LogWarning("Next stage {NextStageId} found for task {TaskId} but has no InputDataSourceId", 
+                    nextStage.WorkflowStageId, task.TaskId);
             }
         }
     }
+
 
     /// <summary>
     /// Transfers an asset from its current data source to a target data source.
