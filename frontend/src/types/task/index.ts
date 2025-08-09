@@ -19,3 +19,16 @@ export type {
     TasksQueryParams,
     GetTasksResponse
 } from './taskService';
+
+export type {
+    BulkOperationResult,
+    BulkOperationError,
+    BulkOperationOptions,
+    BulkPriorityUpdateRequest,
+    BulkAssignmentRequest,
+    BulkArchiveRequest,
+    TaskSelectionManager,
+    TaskBulkOperationsService,
+    SelectionState,
+    BulkOperationEvents
+} from './selection';
