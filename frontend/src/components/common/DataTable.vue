@@ -44,12 +44,17 @@
                             @click="handleSort(column)"
                         >
                             <div class="column-header">
-                                <span>{{ column.label }}</span>
-                                <font-awesome-icon
-                                    v-if="column.sortable"
-                                    :icon="getSortIcon(column.key)"
-                                    :class="getSortIconClass(column.key)"
-                                />
+                                <slot
+                                    :name="`header-${column.key}`"
+                                    :column="column"
+                                >
+                                    <span>{{ column.label }}</span>
+                                    <font-awesome-icon
+                                        v-if="column.sortable"
+                                        :icon="getSortIcon(column.key)"
+                                        :class="getSortIconClass(column.key)"
+                                    />
+                                </slot>
                             </div>
                         </th>
                         <th v-if="hasRowActions" class="actions-column">Actions</th>
