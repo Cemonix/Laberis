@@ -26,7 +26,18 @@
             </div>
         </div>
 
-        <div class="tasks-container">
+        <div class="tasks-container">            
+            <!-- Bulk Operations Toolbar -->
+            <TaskBulkOperationsToolbar
+                :selection-count="currentSelectionCount"
+                :team-members="projectStore.teamMembers || []"
+                :is-operation-in-progress="isBulkOperationInProgress"
+                :operation-progress-text="bulkOperationProgress"
+                @clear-selection="selection.clearSelection"
+                @bulk-priority-change="handleBulkPriorityChange"
+                @bulk-assignment="handleBulkAssignment"
+            />
+
             <DataTable
                 :data="taskTableData"
                 :columns="tableColumns"
@@ -47,96 +58,36 @@
                 @sort="handleSort"
             >
                 <!-- Custom cell renderers -->
-                <template #cell-assetName="{ value, row }">
-                    <div class="asset-preview-cell" @mouseenter="showPreview($event, row)" @mouseleave="hidePreview">
-                        <div class="asset-thumbnail">
-                            <img 
-                                :src="getAssetThumbnailUrl(projectId, row.assetId)" 
-                                :alt="value"
-                                class="thumbnail-image"
-                                @error="(event) => handleImageError(event, tasks)"
-                                :class="{ 'loading': loadingAssets.has(row.assetId) }"
-                            />
-                            <div v-if="loadingAssets.has(row.assetId)" class="loading-overlay">
-                                <font-awesome-icon :icon="faRefresh" spin class="loading-icon" />
-                            </div>
-                            <div v-if="hasImageError(row.assetId)" class="error-overlay">
-                                <font-awesome-icon :icon="faExclamationTriangle" class="error-icon" />
-                                <span class="error-text">Image Error</span>
-                            </div>
-                            <!-- Annotation indicators -->
-                            <div v-if="getAnnotationCount(row.assetId) > 0" class="annotation-indicator">
-                                <font-awesome-icon :icon="faShapes" class="annotation-icon" />
-                                <span class="annotation-count">{{ getAnnotationCount(row.assetId) }}</span>
-                            </div>
-                            <!-- Annotation overlay -->
-                            <svg 
-                                v-if="getAnnotationCount(row.assetId) > 0" 
-                                class="annotation-overlay" 
-                                viewBox="0 0 128 128"
-                            >
-                                <g v-for="annotation in getVisibleAnnotations(row.assetId)" :key="annotation.annotationId">
-                                    <!-- Bounding box annotations -->
-                                    <rect 
-                                        v-if="isBoundingBoxAnnotation(annotation)"
-                                        :x="scaleCoordinate(annotation.coordinates.topLeft.x, loadedAssets.get(row.assetId)?.width, 128)"
-                                        :y="scaleCoordinate(annotation.coordinates.topLeft.y, loadedAssets.get(row.assetId)?.height, 128)"
-                                        :width="scaleCoordinate(annotation.coordinates.bottomRight.x - annotation.coordinates.topLeft.x, loadedAssets.get(row.assetId)?.width, 128)"
-                                        :height="scaleCoordinate(annotation.coordinates.bottomRight.y - annotation.coordinates.topLeft.y, loadedAssets.get(row.assetId)?.height, 128)"
-                                        fill="none"
-                                        stroke="#3b82f6"
-                                        stroke-width="1.5"
-                                        opacity="0.8"
-                                    />
-                                    <!-- Point annotations -->
-                                    <circle 
-                                        v-if="isPointAnnotation(annotation)"
-                                        :cx="scaleCoordinate(annotation.coordinates.point.x, loadedAssets.get(row.assetId)?.width, 128)"
-                                        :cy="scaleCoordinate(annotation.coordinates.point.y, loadedAssets.get(row.assetId)?.height, 128)"
-                                        r="3"
-                                        fill="#3b82f6"
-                                        opacity="0.8"
-                                    />
-                                    <!-- Polygon annotations -->
-                                    <polygon 
-                                        v-if="isPolygonAnnotation(annotation)"
-                                        :points="getScaledPolygonPoints(annotation, row.assetId, 128)"
-                                        fill="rgba(59, 130, 246, 0.3)"
-                                        stroke="#3b82f6"
-                                        stroke-width="1.5"
-                                        opacity="0.8"
-                                    />
-                                    <!-- Polyline annotations -->
-                                    <polyline 
-                                        v-if="isPolylineAnnotation(annotation)"
-                                        :points="getScaledPolygonPoints(annotation, row.assetId, 128)"
-                                        fill="none"
-                                        stroke="#3b82f6"
-                                        stroke-width="1.5"
-                                        opacity="0.8"
-                                    />
-                                    <!-- Line annotations -->
-                                    <line 
-                                        v-if="isLineAnnotation(annotation)"
-                                        :x1="scaleCoordinate(annotation.coordinates.pointFrom.x, loadedAssets.get(row.assetId)?.width, 128)"
-                                        :y1="scaleCoordinate(annotation.coordinates.pointFrom.y, loadedAssets.get(row.assetId)?.height, 128)"
-                                        :x2="scaleCoordinate(annotation.coordinates.pointTo.x, loadedAssets.get(row.assetId)?.width, 128)"
-                                        :y2="scaleCoordinate(annotation.coordinates.pointTo.y, loadedAssets.get(row.assetId)?.height, 128)"
-                                        stroke="#3b82f6"
-                                        stroke-width="1.5"
-                                        opacity="0.8"
-                                    />
-                                </g>
-                            </svg>
-                        </div>
-                    </div>
+
+                <template #header-select>
+                    <TaskSelectionColumn
+                        :show-header="true"
+                        :tasks="tasks"
+                        :is-task-selected="selection.isTaskSelected"
+                        @toggle-page="handleTogglePage"
+                    />
+                </template>
+                
+                <template #cell-select="{ row }">
+                    <TaskSelectionColumn
+                        :task="row"
+                        :is-task-selected="selection.isTaskSelected"
+                        @toggle-task="handleToggleTask"
+                    />
+                </template>
+
+                <template #cell-assetName="{ row }">
+                    <AssetThumbnailCell
+                        :task="row"
+                        :project-id="projectId"
+                        :all-tasks="tasks"
+                        @preview-show="showPreview"
+                        @preview-hide="hidePreview"
+                    />
                 </template>
 
                 <template #cell-priority="{ value }">
-                    <div class="priority-cell" :class="getPriorityClass(value)">
-                        <font-awesome-icon :icon="getPriorityIcon(value)" />
-                        {{ getPriorityLabel(value) }}
-                    </div>
+                    <TaskPriorityCell :priority="value" />
                 </template>
 
                 <template #cell-status="{ value }">
@@ -144,22 +95,11 @@
                 </template>
                 
                 <template #cell-assignedTo="{ value }">
-                    <div v-if="value" class="assigned-user">
-                        <font-awesome-icon :icon="faUser" class="user-icon" />
-                        {{ value }}
-                    </div>
-                    <div v-else class="unassigned">
-                        <font-awesome-icon :icon="faUserSlash" class="unassigned-icon" />
-                        Unassigned
-                    </div>
+                    <TaskAssigneeCell :assigned-to="value" />
                 </template>
                 
                 <template #cell-dueDate="{ value }">
-                    <div v-if="value" class="due-date" :class="getDueDateClass(value)">
-                        <font-awesome-icon :icon="faCalendar" />
-                        {{ formatDate(value) }}
-                    </div>
-                    <span v-else class="no-due-date">No due date</span>
+                    <TaskDueDateCell :due-date="value" />
                 </template>
             </DataTable>
         </div>
@@ -185,106 +125,34 @@
             @saved="handleTaskSaved"
         />
 
+        <!-- Task Assignment Modal -->
+        <TaskAssignModal
+            :show="showAssignModal"
+            :task="selectedTask"
+            :project-id="projectId"
+            @close="handleCloseAssignModal"
+            @assigned="handleTaskAssigned"
+        />
+
+        <!-- Task Priority Modal -->
+        <TaskPriorityModal
+            :show="showPriorityModal"
+            :task="selectedTask"
+            :project-id="projectId"
+            @close="handleClosePriorityModal"
+            @changed="handlePriorityChanged"
+        />
+
         <!-- Asset Preview Popup -->
-        <div 
-            v-if="showPreviewPopup" 
-            class="asset-preview-popup"
-            :style="previewPopupStyle"
-        >
-            <div class="preview-header">
-                <span class="preview-asset-name">{{ previewAsset?.assetName }}</span>
-                <div v-if="previewAsset && loadedAssets.get(previewAsset.assetId)" class="asset-metadata">
-                    <span class="asset-size">{{ formatFileSize(loadedAssets.get(previewAsset.assetId)?.sizeBytes) }}</span>
-                    <span class="asset-dimensions" v-if="loadedAssets.get(previewAsset.assetId)?.width && loadedAssets.get(previewAsset.assetId)?.height">
-                        {{ loadedAssets.get(previewAsset.assetId)?.width }}×{{ loadedAssets.get(previewAsset.assetId)?.height }}
-                    </span>
-                    <span v-if="getAnnotationCount(previewAsset.assetId) > 0" class="annotation-info">
-                        <font-awesome-icon :icon="faShapes" />
-                        {{ getAnnotationCount(previewAsset.assetId) }} annotation{{ getAnnotationCount(previewAsset.assetId) === 1 ? '' : 's' }}
-                    </span>
-                </div>
-            </div>
-            <div class="preview-image-container">
-                <div v-if="previewAsset && loadingAssets.has(previewAsset.assetId)" class="loading-state">
-                    <font-awesome-icon :icon="faRefresh" spin class="loading-icon-large" />
-                    <span>Loading preview...</span>
-                </div>
-                <div v-else-if="previewAsset && hasImageError(previewAsset.assetId)" class="error-state">
-                    <font-awesome-icon :icon="faExclamationTriangle" class="error-icon-large" />
-                    <span>Image failed to load</span>
-                </div>
-                <div v-else class="preview-image-wrapper">
-                    <img 
-                        :src="getAssetFullUrl(projectId, previewAsset?.assetId)" 
-                        :alt="previewAsset?.assetName"
-                        class="preview-image"
-                        @error="handlePreviewImageError"
-                        @load="handlePreviewImageLoad"
-                    />
-                    <!-- Annotation overlay for preview -->
-                    <svg 
-                        v-if="previewAsset && getAnnotationCount(previewAsset.assetId) > 0 && previewImageLoaded" 
-                        class="preview-annotation-overlay" 
-                        :viewBox="`0 0 ${getAssetDimensions(previewAsset.assetId).width} ${getAssetDimensions(previewAsset.assetId).height}`"
-                    >
-                        <g v-for="annotation in getVisibleAnnotations(previewAsset.assetId)" :key="annotation.annotationId">
-                            <!-- Bounding box annotations -->
-                            <rect 
-                                v-if="isBoundingBoxAnnotation(annotation)"
-                                :x="annotation.coordinates.topLeft.x"
-                                :y="annotation.coordinates.topLeft.y"
-                                :width="annotation.coordinates.bottomRight.x - annotation.coordinates.topLeft.x"
-                                :height="annotation.coordinates.bottomRight.y - annotation.coordinates.topLeft.y"
-                                fill="none"
-                                stroke="#3b82f6"
-                                stroke-width="2"
-                                opacity="0.8"
-                            />
-                            <!-- Point annotations -->
-                            <circle 
-                                v-if="isPointAnnotation(annotation)"
-                                :cx="annotation.coordinates.point.x"
-                                :cy="annotation.coordinates.point.y"
-                                r="8"
-                                fill="#3b82f6"
-                                opacity="0.8"
-                                stroke="white"
-                                stroke-width="1"
-                            />
-                            <!-- Polygon annotations -->
-                            <polygon 
-                                v-if="isPolygonAnnotation(annotation)"
-                                :points="getPolygonPoints(annotation)"
-                                fill="rgba(59, 130, 246, 0.3)"
-                                stroke="#3b82f6"
-                                stroke-width="2"
-                                opacity="0.8"
-                            />
-                            <!-- Polyline annotations -->
-                            <polyline 
-                                v-if="isPolylineAnnotation(annotation)"
-                                :points="getPolygonPoints(annotation)"
-                                fill="none"
-                                stroke="#3b82f6"
-                                stroke-width="2"
-                                opacity="0.8"
-                            />
-                            <!-- Line annotations -->
-                            <line 
-                                v-if="isLineAnnotation(annotation)"
-                                :x1="annotation.coordinates.pointFrom.x"
-                                :y1="annotation.coordinates.pointFrom.y"
-                                :x2="annotation.coordinates.pointTo.x"
-                                :y2="annotation.coordinates.pointTo.y"
-                                stroke="#3b82f6"
-                                stroke-width="2"
-                                opacity="0.8"
-                            />
-                        </g>
-                    </svg>
-                </div>
-            </div>
-        </div>
+        <AssetPreviewPopup
+            :visible="showPreviewPopup"
+            :preview-asset="previewAsset"
+            :popup-style="previewPopupStyle"
+            :preview-image-loaded="previewImageLoaded"
+            :project-id="projectId"
+            @preview-image-load="handlePreviewImageLoad"
+            @preview-image-error="handlePreviewImageError"
+        />
     </div>
 </template>
 
@@ -293,25 +161,27 @@ import {computed, onMounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {
-    faArrowUp,
     faBolt,
-    faCalendar,
     faEdit,
-    faExclamationTriangle,
-    faMinus,
-    faPlay,
     faPlus,
     faRefresh,
-    faUser,
     faUserCog,
-    faUserSlash,
-    faShapes
+    faSort
 } from '@fortawesome/free-solid-svg-icons';
 import Button from '@/components/common/Button.vue';
 import DataTable from '@/components/common/DataTable.vue';
 import TaskStatusBadge from '@/components/project/task/TaskStatusBadge.vue';
 import TaskStatusModal from '@/components/project/task/TaskStatusModal.vue';
 import EditTaskModal from '@/components/project/task/EditTaskModal.vue';
+import AssetThumbnailCell from '@/components/project/task/AssetThumbnailCell.vue';
+import TaskPriorityCell from '@/components/project/task/TaskPriorityCell.vue';
+import TaskAssigneeCell from '@/components/project/task/TaskAssigneeCell.vue';
+import TaskDueDateCell from '@/components/project/task/TaskDueDateCell.vue';
+import AssetPreviewPopup from '@/components/project/task/AssetPreviewPopup.vue';
+import TaskAssignModal from '@/components/project/task/TaskAssignModal.vue';
+import TaskPriorityModal from '@/components/project/task/TaskPriorityModal.vue';
+import TaskSelectionColumn from '@/components/project/task/TaskSelectionColumn.vue';
+import TaskBulkOperationsToolbar from '@/components/project/task/TaskBulkOperationsToolbar.vue';
 import type {Task, TaskTableRow} from '@/types/task';
 import {TaskStatus} from '@/types/task';
 import type {TableAction, TableColumn, TableRowAction} from '@/types/common';
@@ -321,6 +191,8 @@ import {useAssetPreview} from '@/composables/useAssetPreview';
 import {useProjectStore} from '@/stores/projectStore';
 import {taskService, workflowStageService} from '@/services/api/projects';
 import {taskStatusService} from '@/services/taskStatusService';
+import {useTaskSelection} from '@/composables/useTaskSelection';
+import {taskBulkOperations} from '@/services/taskBulkOperations';
 import {AppLogger} from '@/utils/logger';
 
 const route = useRoute();
@@ -330,16 +202,14 @@ const projectStore = useProjectStore();
 const { canManageProject } = useProjectPermissions();
 const logger = AppLogger.createComponentLogger('TasksView');
 
-// Asset preview functionality from composable
+// Selection management
+const selection = useTaskSelection();
+
+// Asset preview functionality from composable  
 const {
-    loadedAssets, loadingAssets,
     showPreviewPopup, previewAsset, previewPopupStyle, previewImageLoaded,
-    getAssetThumbnailUrl, getAssetFullUrl, getAnnotationCount, getVisibleAnnotations,
-    isBoundingBoxAnnotation, isPointAnnotation, isPolygonAnnotation, 
-    isPolylineAnnotation, isLineAnnotation, getPolygonPoints, scaleCoordinate,
-    getScaledPolygonPoints, getAssetDimensions, hasImageError, showPreview, 
-    hidePreview, handleImageError, handlePreviewImageLoad, handlePreviewImageError,
-    preloadVisibleAssets, formatFileSize
+    showPreview, hidePreview, handlePreviewImageLoad, handlePreviewImageError,
+    preloadVisibleAssets
 } = useAssetPreview();
 
 const projectId = ref<number>(parseInt(route.params.projectId as string));
@@ -361,7 +231,16 @@ const hasAvailableAssets = ref<boolean>(true);
 const availableAssetsCount = ref<number>(0);
 const showStatusModal = ref<boolean>(false);
 const showEditModal = ref<boolean>(false);
+const showAssignModal = ref<boolean>(false);
+const showPriorityModal = ref<boolean>(false);
 const selectedTask = ref<TaskTableRow | null>(null);
+
+// Bulk operations state
+const isBulkOperationInProgress = ref<boolean>(false);
+const bulkOperationProgress = ref<string>('Processing...');
+
+// Computed properties for reactive props
+const currentSelectionCount = computed(() => selection.selectionCount.value);
 
 const canManageTasks = computed(() => {
     return canManageProject.value;
@@ -411,7 +290,8 @@ const createTaskFromRow = (taskRow: TaskTableRow): Task => {
 
 // Table configuration
 const tableColumns: TableColumn[] = [
-    { key: 'assetName', label: 'Asset', sortable: true, width: '30%' },
+    { key: 'select', label: '☐', sortable: false, width: '4%', align: 'center' },
+    { key: 'assetName', label: 'Asset', sortable: true, width: '26%' },
     { key: 'priority', label: 'Priority', sortable: true, width: '8%', align: 'center' },
     { key: 'status', label: 'Status', sortable: true, width: '12%', align: 'center' },
     { key: 'assignedTo', label: 'Assigned To', sortable: true, width: '16%' },
@@ -421,9 +301,7 @@ const tableColumns: TableColumn[] = [
 ];
 
 const getTableActions = (): TableAction[] => {
-    const actions: TableAction[] = [
-        { key: 'bulk-assign', label: 'Bulk Assign', icon: faUserCog, variant: 'secondary' },
-    ];
+    const actions: TableAction[] = [];
     
     // Add "Import Assets" action if no assets are available
     if (!hasAvailableAssets.value) {
@@ -441,17 +319,6 @@ const getTableActions = (): TableAction[] => {
 const rowActions = computed((): TableRowAction<TaskTableRow>[] => {
     const actions: TableRowAction<TaskTableRow>[] = [
         { 
-            key: 'open', 
-            label: 'Open', 
-            icon: faPlay, 
-            variant: 'primary',
-            disabled: (row: TaskTableRow) => 
-                row.status === TaskStatus.COMPLETED || 
-                row.status === TaskStatus.ARCHIVED ||
-                row.status === TaskStatus.SUSPENDED ||
-                (row.status === TaskStatus.DEFERRED && !canManageTasks.value)
-        },
-        { 
             key: 'edit', 
             label: 'Edit', 
             icon: faEdit, 
@@ -466,6 +333,14 @@ const rowActions = computed((): TableRowAction<TaskTableRow>[] => {
                 row.status === TaskStatus.SUSPENDED ||
                 row.status === TaskStatus.DEFERRED ||
                 row.status === TaskStatus.COMPLETED ||
+                row.status === TaskStatus.ARCHIVED
+        },
+        { 
+            key: 'priority', 
+            label: 'Change Priority', 
+            icon: faSort, 
+            variant: 'secondary',
+            disabled: (row: TaskTableRow) => 
                 row.status === TaskStatus.ARCHIVED
         }
     ];
@@ -540,6 +415,10 @@ const loadTasks = async () => {
         stageName.value = response.stageName;
         stageDescription.value = response.stageDescription || 'Manage tasks for this workflow stage';
         
+        // Clean up selections for tasks that no longer exist
+        const currentTaskIds = tasks.value.map(task => task.id);
+        selection.cleanupStaleSelections(currentTaskIds);
+        
         // Preload assets for visible tasks
         preloadVisibleAssets(projectId.value, tasks.value);
         
@@ -548,112 +427,19 @@ const loadTasks = async () => {
         errorMessage.value = 'Failed to load tasks';
         handleError(error, 'Loading tasks');
         
-        // Fallback to mock data if backend fails
-        logger.warn('Falling back to mock data...');
-        await loadMockTasks();
+        // Reset tasks to empty state on error
+        tasks.value = [];
+        totalItems.value = 0;
     } finally {
         isLoading.value = false;
     }
 };
 
-const loadMockTasks = async () => {
-    // Mock delay to simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Generate mock data based on stage ID for variety
-    const mockTasks: TaskTableRow[] = generateMockTasks(stageId.value);
-    
-    tasks.value = mockTasks;
-    totalItems.value = mockTasks.length;
-    
-    // Set stage name and description based on common stage types
-    const stageNames = {
-        1: 'Initial Upload',
-        2: 'Annotation',
-        3: 'Review',
-        4: 'Quality Control',
-        5: 'Final Export'
-    };
-    
-    const stageDescriptions = {
-        1: 'Assets are uploaded and prepared for annotation',
-        2: 'Primary annotation tasks for uploaded assets',
-        3: 'Annotation review and validation tasks',
-        4: 'Quality control and final validation',
-        5: 'Final processing and export preparation'
-    };
-    
-    stageName.value = stageNames[stageId.value as keyof typeof stageNames] || `Stage ${stageId.value}`;
-    stageDescription.value = stageDescriptions[stageId.value as keyof typeof stageDescriptions] || 'Manage tasks for this workflow stage';
-};
-
-const generateMockTasks = (stageId: number): TaskTableRow[] => {
-    const baseAssets = [
-        'image_001.jpg', 'image_002.jpg', 'image_003.jpg', 'image_004.jpg', 'image_005.jpg',
-        'document_001.pdf', 'scan_001.png', 'photo_001.jpg', 'diagram_001.svg', 'chart_001.png'
-    ];
-    
-    const users = [
-        'john.doe@example.com', 
-        'jane.smith@example.com', 
-        'bob.wilson@example.com', 
-        'alice.johnson@example.com',
-        null, null // Some unassigned tasks
-    ];
-    
-    const statuses: TaskStatus[] = [
-        TaskStatus.NOT_STARTED, 
-        TaskStatus.IN_PROGRESS, 
-        TaskStatus.COMPLETED,
-        TaskStatus.READY_FOR_ANNOTATION,
-        TaskStatus.READY_FOR_REVIEW,
-        TaskStatus.SUSPENDED,
-        TaskStatus.DEFERRED
-    ];
-    
-    return baseAssets.slice(0, Math.min(6, baseAssets.length)).map((asset, index) => {
-        const taskId = stageId * 100 + index + 1;
-        const status = statuses[index % statuses.length];
-        const assignedTo = users[index % users.length];
-        
-        const createdDate = new Date('2025-07-06');
-        createdDate.setHours(createdDate.getHours() - (index * 2));
-        
-        const task: TaskTableRow = {
-            id: taskId,
-            assetId: taskId + 1000, // Mock assetId
-            assetName: asset,
-            priority: Math.floor(Math.random() * 3) + 1, // Random priority 1-3
-            status,
-            assignedTo: assignedTo || undefined,
-            createdAt: createdDate.toISOString(),
-            stage: stageName.value
-        };
-        
-        // Add due dates for some tasks
-        if (index % 2 === 0) {
-            const dueDate = new Date('2025-07-06');
-            dueDate.setDate(dueDate.getDate() + (index + 1));
-            task.dueDate = dueDate.toISOString().split('T')[0];
-        }
-        
-        // Add completion dates for completed tasks
-        if (status === 'COMPLETED') {
-            const completedDate = new Date('2025-07-06');
-            completedDate.setHours(completedDate.getHours() - index);
-            task.completedAt = completedDate.toISOString();
-        }
-        
-        return task;
-    });
-};
+// Mock functions removed - using real API data only
 
 const handleTableAction = (actionKey: string) => {
     logger.debug('Table action triggered', { actionKey });
     switch (actionKey) {
-        case 'bulk-assign':
-            // TODO: Show bulk assignment dialog
-            break;
         case 'import-assets':
             // Navigate to data sources page for asset import
             router.push({
@@ -669,23 +455,34 @@ const handleTableAction = (actionKey: string) => {
 const handleRowAction = async (actionKey: string, row: TaskTableRow, index: number) => {
     logger.debug('Row action triggered', { actionKey, taskId: row.id, index });
     switch (actionKey) {
-        case 'open':
-            handleTaskClick(row, index);
-            break;
         case 'edit':
             selectedTask.value = row;
             showEditModal.value = true;
             logger.info('Edit task requested', { taskId: row.id });
             break;
         case 'assign':
-            // TODO: Show assignment dialog
+            selectedTask.value = row;
+            showAssignModal.value = true;
             logger.info('Assign task requested', { taskId: row.id });
+            break;
+        case 'priority':
+            selectedTask.value = row;
+            showPriorityModal.value = true;
+            logger.info('Change priority requested', { taskId: row.id });
             break;
         case 'change-status':
             selectedTask.value = row;
             showStatusModal.value = true;
             break;
     }
+};
+
+const handleTogglePage = (tasks: TaskTableRow[]) => {
+    selection.togglePageSelection(tasks);
+};
+
+const handleToggleTask = (taskId: number) => {
+    selection.toggleTask(taskId);
 };
 
 const handleTaskClick = (task: TaskTableRow, _index: number) => {
@@ -876,6 +673,16 @@ const handleCloseEditModal = () => {
     selectedTask.value = null;
 };
 
+const handleCloseAssignModal = () => {
+    showAssignModal.value = false;
+    selectedTask.value = null;
+};
+
+const handleClosePriorityModal = () => {
+    showPriorityModal.value = false;
+    selectedTask.value = null;
+};
+
 const handleTaskSaved = async (updatedTask: TaskTableRow) => {
     // Update the task in the local tasks array
     const taskIndex = tasks.value.findIndex(task => task.id === updatedTask.id);
@@ -888,6 +695,116 @@ const handleTaskSaved = async (updatedTask: TaskTableRow) => {
     // Close the modal
     handleCloseEditModal();
 };
+
+const handleTaskAssigned = async (updatedTask: TaskTableRow) => {
+    // Update the task in the local tasks array
+    const taskIndex = tasks.value.findIndex(task => task.id === updatedTask.id);
+    if (taskIndex !== -1) {
+        tasks.value[taskIndex] = updatedTask;
+    }
+    
+    logger.info('Task assignment updated in local state', { taskId: updatedTask.id, assignedTo: updatedTask.assignedTo });
+    
+    // Close the modal
+    handleCloseAssignModal();
+};
+
+const handlePriorityChanged = async (updatedTask: TaskTableRow) => {
+    // Update the task in the local tasks array
+    const taskIndex = tasks.value.findIndex(task => task.id === updatedTask.id);
+    if (taskIndex !== -1) {
+        tasks.value[taskIndex] = updatedTask;
+    }
+    
+    logger.info('Task priority updated in local state', { taskId: updatedTask.id, priority: updatedTask.priority });
+    
+    // Close the modal
+    handleClosePriorityModal();
+};
+
+// Bulk operation handlers
+const handleBulkPriorityChange = async (priority: number) => {
+    const selectedIds = selection.getSelectedTaskIds();
+    if (selectedIds.length === 0) return;
+
+    isBulkOperationInProgress.value = true;
+    bulkOperationProgress.value = `Updating priority for ${selectedIds.length} tasks...`;
+
+    try {
+        const result = await taskBulkOperations.bulkUpdatePriority(
+            projectId.value,
+            { taskIds: selectedIds, priority },
+            {
+                onProgress: (completed, total) => {
+                    bulkOperationProgress.value = `Updated ${completed}/${total} tasks...`;
+                }
+            }
+        );
+
+        logger.info('Bulk priority change completed', result);
+
+        // Show results and refresh data
+        if (result.succeeded.length > 0) {
+            // Clear selection and refresh tasks
+            selection.clearSelection();
+            await loadTasks();
+        }
+
+        if (result.failed.length > 0) {
+            handleError(
+                new Error(`Failed to update ${result.failed.length} tasks`),
+                'Some tasks could not be updated'
+            );
+        }
+    } catch (error) {
+        logger.error('Bulk priority change failed', error);
+        handleError(error, 'Failed to update task priorities');
+    } finally {
+        isBulkOperationInProgress.value = false;
+    }
+};
+
+const handleBulkAssignment = async (assigneeEmail: string | null) => {
+    const selectedIds = selection.getSelectedTaskIds();
+    if (selectedIds.length === 0) return;
+
+    isBulkOperationInProgress.value = true;
+    const action = assigneeEmail ? `Assigning ${selectedIds.length} tasks to ${assigneeEmail}...` : `Unassigning ${selectedIds.length} tasks...`;
+    bulkOperationProgress.value = action;
+
+    try {
+        const result = await taskBulkOperations.bulkAssignTasks(
+            projectId.value,
+            { taskIds: selectedIds, assigneeEmail },
+            {
+                onProgress: (completed, total) => {
+                    const verb = assigneeEmail ? 'Assigned' : 'Unassigned';
+                    bulkOperationProgress.value = `${verb} ${completed}/${total} tasks...`;
+                }
+            }
+        );
+
+        logger.info('Bulk assignment completed', result);
+
+        if (result.succeeded.length > 0) {
+            selection.clearSelection();
+            await loadTasks();
+        }
+
+        if (result.failed.length > 0) {
+            handleError(
+                new Error(`Failed to assign ${result.failed.length} tasks`),
+                'Some tasks could not be assigned'
+            );
+        }
+    } catch (error) {
+        logger.error('Bulk assignment failed', error);
+        handleError(error, 'Failed to assign tasks');
+    } finally {
+        isBulkOperationInProgress.value = false;
+    }
+};
+
 
 const handleStatusAction = async (actionKey: string, task: TaskTableRow) => {
     logger.debug('Status action triggered', { actionKey, taskId: task.id });
@@ -955,38 +872,7 @@ const goBack = () => {
     });
 };
 
-const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString();
-};
-
-const getDueDateClass = (dueDate: string): string => {
-    const due = new Date(dueDate);
-    const now = new Date();
-    const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) return 'overdue';
-    if (diffDays <= 1) return 'urgent';
-    if (diffDays <= 3) return 'soon';
-    return 'normal';
-};
-
-const getPriorityClass = (priority: number): string => {
-    if (priority >= 3) return 'priority-high';
-    if (priority === 2) return 'priority-medium';
-    return 'priority-low';
-};
-
-const getPriorityIcon = (priority: number) => {
-    if (priority >= 3) return faExclamationTriangle;
-    if (priority === 2) return faArrowUp;
-    return faMinus;
-};
-
-const getPriorityLabel = (priority: number): string => {
-    if (priority >= 3) return 'High';
-    if (priority === 2) return 'Medium';
-    return 'Low';
-};
+// Helper functions moved to respective cell components
 
 const getEmptyMessage = (): string => {
     if (!hasAvailableAssets.value) {
@@ -1100,332 +986,6 @@ onMounted(async () => {
     flex-grow: 1;
     padding: 1.5rem;
     overflow: hidden;
-}
-
-// Custom cell styling
-.assigned-user {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    
-    .user-icon {
-        color: var(--color-success);
-    }
-}
-
-.unassigned {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    color: var(--color-gray-600);
-    font-style: italic;
-    
-    .unassigned-icon {
-        color: var(--color-warning);
-    }
-}
-
-.due-date {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    
-    &.normal {
-        color: var(--color-gray-800);
-    }
-    
-    &.soon {
-        color: var(--color-warning);
-        font-weight: 500;
-    }
-    
-    &.urgent {
-        color: var(--color-warning);
-        font-weight: 600;
-    }
-    
-    &.overdue {
-        color: var(--color-error);
-        font-weight: 600;
-    }
-}
-
-// Asset preview styles
-.asset-preview-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    padding: 0.5rem;
-    
-    .asset-thumbnail {
-        position: relative;
-        width: 128px;
-        height: 128px;
-        border-radius: 8px;
-        overflow: hidden;
-        border: 2px solid var(--color-gray-300);
-        flex-shrink: 0;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        
-        .thumbnail-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.2s;
-            background: var(--color-gray-100);
-            
-            &.loading {
-                opacity: 0.6;
-            }
-            
-            &.image-error {
-                opacity: 1;
-                background: var(--color-gray-200);
-            }
-            
-            // Handle empty src images
-            &:not([src]),
-            &[src=""] {
-                background: var(--color-gray-100);
-                opacity: 0.8;
-            }
-        }
-        
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--color-gray-100);
-            border-radius: 6px;
-            
-            .loading-icon {
-                color: var(--color-primary);
-                font-size: 1.5rem;
-            }
-        }
-        
-        .error-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: var(--color-gray-200);
-            border-radius: 6px;
-            gap: 0.25rem;
-            
-            .error-icon {
-                color: var(--color-error);
-                font-size: 1.25rem;
-            }
-            
-            .error-text {
-                color: var(--color-gray-600);
-                font-size: 0.75rem;
-                font-weight: 500;
-                text-align: center;
-            }
-        }
-        
-        .annotation-indicator {
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            background: rgba(59, 130, 246, 0.9);
-            color: white;
-            border-radius: 12px;
-            padding: 2px 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 2px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            
-            .annotation-icon {
-                font-size: 0.7rem;
-            }
-            
-            .annotation-count {
-                line-height: 1;
-            }
-        }
-        
-        .annotation-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-    }
-    
-    &:hover {
-        .asset-thumbnail {
-            border-color: var(--color-primary);
-            
-            .thumbnail-image:not(.loading) {
-                transform: scale(1.02);
-            }
-        }
-    }
-}
-
-.asset-preview-popup {
-    position: fixed;
-    background: var(--color-white);
-    border: 1px solid var(--color-gray-300);
-    border-radius: 8px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-    padding: 0;
-    z-index: 1000;
-    max-width: 400px;
-    overflow: hidden;
-    
-    .preview-header {
-        padding: 0.75rem 1rem;
-        background: var(--color-gray-100);
-        border-bottom: 1px solid var(--color-gray-300);
-        
-        .preview-asset-name {
-            font-weight: 500;
-            color: var(--color-gray-800);
-            font-size: 0.875rem;
-            display: block;
-            margin-bottom: 0.25rem;
-        }
-        
-        .asset-metadata {
-            display: flex;
-            gap: 0.75rem;
-            font-size: 0.75rem;
-            color: var(--color-gray-600);
-            
-            .asset-size,
-            .asset-dimensions,
-            .annotation-info {
-                display: flex;
-                align-items: center;
-                gap: 0.25rem;
-            }
-            
-            .annotation-info {
-                color: var(--color-primary);
-                font-weight: 500;
-            }
-        }
-    }
-    
-    .preview-image-container {
-        padding: 1rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background: var(--color-gray-50);
-        min-height: 200px;
-        
-        .loading-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.75rem;
-            color: var(--color-gray-600);
-            
-            .loading-icon-large {
-                font-size: 1.5rem;
-                color: var(--color-primary);
-            }
-        }
-        
-        .error-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.75rem;
-            color: var(--color-gray-600);
-            padding: 2rem;
-            
-            .error-icon-large {
-                font-size: 2rem;
-                color: var(--color-error);
-            }
-        }
-        
-        .preview-image-wrapper {
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .preview-image {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            background: var(--color-gray-100);
-            min-width: 200px;
-            min-height: 150px;
-            
-            &.image-error {
-                opacity: 1;
-                background: var(--color-gray-200);
-            }
-            
-            // Handle empty src images
-            &:not([src]),
-            &[src=""] {
-                background: var(--color-gray-100);
-                opacity: 0.9;
-            }
-        }
-        
-        .preview-annotation-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-    }
-}
-
-.no-due-date {
-    color: var(--color-gray-600);
-    font-style: italic;
-}
-
-.priority-cell {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-weight: 500;
-    
-    &.priority-high {
-        color: var(--color-error);
-    }
-    
-    &.priority-medium {
-        color: var(--color-warning);
-    }
-    
-    &.priority-low {
-        color: var(--color-gray-600);
-    }
 }
 
 @media (max-width: 768px) {
