@@ -4,7 +4,7 @@ namespace server.Models.DTOs.Task;
 
 public record class UpdateTaskDto
 {
-    public int Priority { get; init; }
+    public int? Priority { get; init; }
 
     public DateTime? DueDate { get; init; }
 

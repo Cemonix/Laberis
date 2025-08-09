@@ -258,7 +258,10 @@ public class TaskService : ITaskService
         }
 
         // Update the task properties
-        existingTask.Priority = updateDto.Priority;
+        if (updateDto.Priority.HasValue)
+        {
+            existingTask.Priority = updateDto.Priority.Value;
+        }
         
         // Handle assignment - support both userId and email assignment
         if (updateDto.AssignedToEmail != null)
@@ -281,9 +284,9 @@ public class TaskService : ITaskService
                 existingTask.AssignedToUserId = user.Id;
             }
         }
-        else if (updateDto.AssignedToUserId != existingTask.AssignedToUserId)
+        else if (updateDto.AssignedToUserId != null && updateDto.AssignedToUserId != existingTask.AssignedToUserId)
         {
-            // Assignment by userId (legacy support)
+            // Assignment by userId (legacy support) - only update if explicitly provided
             existingTask.AssignedToUserId = updateDto.AssignedToUserId;
         }
         
