@@ -11,26 +11,36 @@ import {
 
 const logger = AppLogger.createComponentLogger('useAssetPreview');
 
+// Shared global state for asset preview functionality
+const globalAssetState = {
+    loadedAssets: ref<Map<number, Asset>>(new Map()),
+    loadingAssets: ref<Set<number>>(new Set()),
+    errorAssets: ref<Set<number>>(new Set()),
+    assetAnnotations: ref<Map<number, Annotation[]>>(new Map()),
+    loadingAnnotations: ref<Set<number>>(new Set()),
+    
+    // Preview popup state
+    showPreviewPopup: ref<boolean>(false),
+    previewAsset: ref<TaskTableRow | null>(null),
+    previewPopupStyle: ref<Record<string, string>>({}),
+    previewImageLoaded: ref<boolean>(false)
+};
+
 /**
  * Composable for managing asset preview functionality including:
  * - Asset loading and caching
  * - Annotation loading and display
  * - Loading and error state management
  * - Image preview popups
+ * 
+ * Uses shared global state so all components see the same data
  */
 export function useAssetPreview() {
-    // State
-    const loadedAssets = ref<Map<number, Asset>>(new Map());
-    const loadingAssets = ref<Set<number>>(new Set());
-    const errorAssets = ref<Set<number>>(new Set());
-    const assetAnnotations = ref<Map<number, Annotation[]>>(new Map());
-    const loadingAnnotations = ref<Set<number>>(new Set());
-    
-    // Preview popup state
-    const showPreviewPopup = ref<boolean>(false);
-    const previewAsset = ref<TaskTableRow | null>(null);
-    const previewPopupStyle = ref<Record<string, string>>({});
-    const previewImageLoaded = ref<boolean>(false);
+    // Use shared global state
+    const { 
+        loadedAssets, loadingAssets, errorAssets, assetAnnotations, loadingAnnotations,
+        showPreviewPopup, previewAsset, previewPopupStyle, previewImageLoaded 
+    } = globalAssetState;
 
     // Asset loading functions
     const loadAsset = async (projectId: number, assetId: number) => {
