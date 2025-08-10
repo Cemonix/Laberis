@@ -103,6 +103,7 @@ public class WorkflowService : IWorkflowService
                 Name = createDto.Name,
                 Description = createDto.Description,
                 ProjectId = projectId,
+                LabelSchemeId = createDto.LabelSchemeId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -453,6 +454,8 @@ public class WorkflowService : IWorkflowService
             CreatedAt = workflow.CreatedAt,
             UpdatedAt = workflow.UpdatedAt,
             ProjectId = workflow.ProjectId,
+            LabelSchemeId = workflow.LabelSchemeId,
+            LabelSchemeName = workflow.LabelScheme?.Name,
             StageCount = workflow.WorkflowStages?.Count ?? 0
         };
     }

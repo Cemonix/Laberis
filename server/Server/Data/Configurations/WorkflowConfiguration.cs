@@ -37,6 +37,7 @@ public class WorkflowConfiguration : IEntityTypeConfiguration<Workflow>
             .ValueGeneratedOnAddOrUpdate();
 
         entity.Property(w => w.ProjectId).HasColumnName("project_id");
+        entity.Property(w => w.LabelSchemeId).HasColumnName("label_scheme_id");
 
         // Unique constraint for Name within a Project
         entity.HasIndex(w => new { w.ProjectId, w.Name }).IsUnique();
@@ -46,6 +47,12 @@ public class WorkflowConfiguration : IEntityTypeConfiguration<Workflow>
             .WithMany(p => p.Workflows)
             .HasForeignKey(w => w.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Relationship: Workflow to LabelScheme (Many-to-One)
+        entity.HasOne(w => w.LabelScheme)
+            .WithMany()
+            .HasForeignKey(w => w.LabelSchemeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Relationship: Workflow to WorkflowStages (One-to-Many)
         entity.HasMany(w => w.WorkflowStages)

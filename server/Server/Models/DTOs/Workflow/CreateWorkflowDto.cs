@@ -11,6 +11,13 @@ public record class CreateWorkflowDto
     public string? Description { get; init; }
 
     /// <summary>
+    /// The ID of the label scheme to assign to this workflow.
+    /// All annotations in this workflow will use this label scheme.
+    /// </summary>
+    [Required]
+    public int LabelSchemeId { get; init; }
+
+    /// <summary>
     /// Workflow stages to create along with the workflow.
     /// If empty, no stages will be created automatically.
     /// </summary>
