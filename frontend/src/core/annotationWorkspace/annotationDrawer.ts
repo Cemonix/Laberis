@@ -54,7 +54,7 @@ export function drawLine(
     ctx.beginPath();
     ctx.moveTo(pointFrom.x, pointFrom.y);
     ctx.lineTo(pointTo.x, pointTo.y);
-    ctx.lineWidth = Math.max(lineWidth, 2); // Ensure minimum visibility
+    ctx.lineWidth = lineWidth;
 
     ctx.strokeStyle = color;
     ctx.stroke();
@@ -86,7 +86,7 @@ export function drawPolyline(
         ctx.lineTo(points[i].x, points[i].y);
     }
 
-    ctx.lineWidth = Math.max(lineWidth, 2); // Ensure minimum visibility
+    ctx.lineWidth = lineWidth;
     ctx.strokeStyle = color;
     ctx.stroke();
 
@@ -117,7 +117,7 @@ export function drawPolygon(
     }
     ctx.closePath();
 
-    ctx.lineWidth = Math.max(lineWidth, 2); // Ensure minimum visibility
+    ctx.lineWidth = lineWidth;
     ctx.strokeStyle = color;
     ctx.stroke();
 
@@ -147,7 +147,7 @@ export function drawBoundingBox(
     ctx.beginPath();
     ctx.rect(x, y, width, height);
     
-    ctx.lineWidth = Math.max(lineWidth, 2); // Ensure minimum visibility
+    ctx.lineWidth = lineWidth;
     ctx.strokeStyle = color;
     ctx.stroke();
 
