@@ -16,9 +16,31 @@
                 :error="errorMessage"
                 @edit-pipeline="handleEditPipeline"
                 @stage-click="handleStageClick"
+                @edit-stage="handleEditStage"
+                @manage-assignments="handleManageAssignments"
                 @refresh="loadPipelineData"
             />
         </div>
+        
+        <!-- Stage Assignment Management Modal -->
+        <StageAssignmentModal
+            v-if="showAssignmentModal && selectedStage"
+            :stage="selectedStage"
+            :project-id="projectId"
+            :workflow-id="workflowId"
+            @close="closeAssignmentModal"
+            @updated="handleAssignmentUpdated"
+        />
+        
+        <!-- Stage Edit Modal -->
+        <StageEditModal
+            v-if="showEditModal && selectedStage"
+            :stage="selectedStage"
+            :project-id="projectId"
+            :workflow-id="workflowId"
+            @close="closeEditModal"
+            @updated="handleStageUpdated"
+        />
     </div>
 </template>
 
@@ -26,6 +48,8 @@
 import {onMounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import WorkflowPipelineViewer from '@/components/project/workflow/WorkflowPipelineViewer.vue';
+import StageAssignmentModal from '@/components/project/workflow/StageAssignmentModal.vue';
+import StageEditModal from '@/components/project/workflow/StageEditModal.vue';
 import type {WorkflowStagePipeline, WorkflowStage, WorkflowStageConnection} from '@/types/workflow';
 import {workflowStageService} from '@/services/api/projects';
 import {useErrorHandler} from '@/composables/useErrorHandler';
@@ -42,6 +66,11 @@ const workflowName = ref<string>('');
 const pipelineStages = ref<WorkflowStagePipeline[]>([]);
 const isLoading = ref<boolean>(true);
 const errorMessage = ref<string | null>(null);
+
+// Modal state
+const showAssignmentModal = ref<boolean>(false);
+const showEditModal = ref<boolean>(false);
+const selectedStage = ref<WorkflowStagePipeline | null>(null);
 
 const loadPipelineData = async () => {
     if (!workflowId.value || isNaN(workflowId.value)) {
@@ -109,6 +138,40 @@ const handleStageClick = (stage: WorkflowStagePipeline) => {
             stageId: stage.id
         }
     });
+};
+
+const handleEditStage = (stage: WorkflowStagePipeline) => {
+    logger.debug('Edit stage requested', { stageId: stage.id, stageName: stage.name });
+    selectedStage.value = stage;
+    showEditModal.value = true;
+};
+
+const handleManageAssignments = (stage: WorkflowStagePipeline) => {
+    logger.debug('Manage assignments requested', { stageId: stage.id, stageName: stage.name });
+    selectedStage.value = stage;
+    showAssignmentModal.value = true;
+};
+
+const closeAssignmentModal = () => {
+    showAssignmentModal.value = false;
+    selectedStage.value = null;
+};
+
+const closeEditModal = () => {
+    showEditModal.value = false;
+    selectedStage.value = null;
+};
+
+const handleAssignmentUpdated = () => {
+    logger.info('Stage assignments updated, refreshing pipeline data');
+    loadPipelineData();
+    closeAssignmentModal();
+};
+
+const handleStageUpdated = () => {
+    logger.info('Stage updated, refreshing pipeline data');
+    loadPipelineData();
+    closeEditModal();
 };
 
 onMounted(() => {
