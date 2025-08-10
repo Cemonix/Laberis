@@ -10,93 +10,93 @@
             
             <div class="modal-body">
                 <div class="assignment-modal">
-                <div v-if="isLoading" class="loading-state">
-                    <p>Loading assignments...</p>
-                </div>
-                
-                <div v-else-if="error" class="error-state">
-                    <p class="error-message">{{ error }}</p>
-                    <Button variant="secondary" @click="loadAssignments">Retry</Button>
-                </div>
-                
-                <div v-else class="assignments-content">
-                    <div v-if="props.stage.stageType" class="role-info">
-                        <div class="info-message">
-                            <font-awesome-icon :icon="faInfoCircle" />
-                            <span>Only {{ stageRoleDescription.toLowerCase() }} can be assigned to {{ props.stage.stageType.toLowerCase() }} stages.</span>
-                        </div>
+                    <div v-if="isLoading" class="loading-state">
+                        <p>Loading assignments...</p>
                     </div>
                     
-                    <div class="section">
-                        <h4>Assigned {{ stageRoleDescription }}</h4>
-                        <div v-if="assignedMembers.length === 0" class="empty-state">
-                            <p>No {{ stageRoleDescription.toLowerCase() }} assigned to this stage.</p>
+                    <div v-else-if="error" class="error-state">
+                        <p class="error-message">{{ error }}</p>
+                        <Button variant="secondary" @click="loadAssignments">Retry</Button>
+                    </div>
+                    
+                    <div v-else class="assignments-content">
+                        <div v-if="props.stage.stageType" class="role-info">
+                            <div class="info-message">
+                                <font-awesome-icon :icon="faInfoCircle" />
+                                <span>Only {{ stageRoleDescription.toLowerCase() }} can be assigned to {{ props.stage.stageType.toLowerCase() }} stages.</span>
+                            </div>
                         </div>
-                        <div v-else class="member-list">
-                            <div
-                                v-for="member in assignedMembers"
-                                :key="member.id"
-                                class="member-item"
-                            >
-                                <div class="member-info">
-                                    <div class="member-name">{{ member.userName || member.email.split('@')[0] }}</div>
-                                    <div class="member-role">{{ formatRole(member.role) }}</div>
-                                    <div class="member-email">{{ member.email }}</div>
-                                </div>
-                                <Button
-                                    variant="danger"
-                                    size="small"
-                                    @click="handleRemoveMember(member.id)"
-                                    :disabled="isUpdating"
+                        
+                        <div class="section">
+                            <h4>Assigned {{ stageRoleDescription }}</h4>
+                            <div v-if="assignedMembers.length === 0" class="empty-state">
+                                <p>No {{ stageRoleDescription.toLowerCase() }} assigned to this stage.</p>
+                            </div>
+                            <div v-else class="member-list">
+                                <div
+                                    v-for="member in assignedMembers"
+                                    :key="member.id"
+                                    class="member-item"
                                 >
-                                    <font-awesome-icon :icon="faTrash" />
-                                    Remove
-                                </Button>
+                                    <div class="member-info">
+                                        <div class="member-name">{{ member.userName || member.email.split('@')[0] }}</div>
+                                        <div class="member-role">{{ formatRole(member.role) }}</div>
+                                        <div class="member-email">{{ member.email }}</div>
+                                    </div>
+                                    <Button
+                                        variant="danger"
+                                        size="small"
+                                        @click="handleRemoveMember(member.id)"
+                                        :disabled="isUpdating"
+                                    >
+                                        <font-awesome-icon :icon="faTrash" />
+                                        Remove
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="section">
+                            <h4>Available {{ stageRoleDescription }}</h4>
+                            <div v-if="availableMembers.length === 0" class="empty-state">
+                                <p v-if="roleCompatibleMembers.length === 0">
+                                    No {{ stageRoleDescription.toLowerCase() }} available in this project. 
+                                    Only {{ stageRoleDescription.toLowerCase() }} can be assigned to {{ props.stage.stageType?.toLowerCase() || 'this' }} stages.
+                                </p>
+                                <p v-else>
+                                    All {{ stageRoleDescription.toLowerCase() }} are already assigned to this stage.
+                                </p>
+                            </div>
+                            <div v-else class="member-list">
+                                <div
+                                    v-for="member in availableMembers"
+                                    :key="member.id"
+                                    class="member-item"
+                                >
+                                    <div class="member-info">
+                                        <div class="member-name">{{ member.userName || member.email.split('@')[0] }}</div>
+                                        <div class="member-role">{{ formatRole(member.role) }}</div>
+                                        <div class="member-email">{{ member.email }}</div>
+                                    </div>
+                                    <Button
+                                        variant="primary"
+                                        size="small"
+                                        @click="handleAddMember(member.id)"
+                                        :disabled="isUpdating"
+                                    >
+                                        <font-awesome-icon :icon="faPlus" />
+                                        Assign
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="section">
-                        <h4>Available {{ stageRoleDescription }}</h4>
-                        <div v-if="availableMembers.length === 0" class="empty-state">
-                            <p v-if="roleCompatibleMembers.length === 0">
-                                No {{ stageRoleDescription.toLowerCase() }} available in this project. 
-                                Only {{ stageRoleDescription.toLowerCase() }} can be assigned to {{ props.stage.stageType?.toLowerCase() || 'this' }} stages.
-                            </p>
-                            <p v-else>
-                                All {{ stageRoleDescription.toLowerCase() }} are already assigned to this stage.
-                            </p>
-                        </div>
-                        <div v-else class="member-list">
-                            <div
-                                v-for="member in availableMembers"
-                                :key="member.id"
-                                class="member-item"
-                            >
-                                <div class="member-info">
-                                    <div class="member-name">{{ member.userName || member.email.split('@')[0] }}</div>
-                                    <div class="member-role">{{ formatRole(member.role) }}</div>
-                                    <div class="member-email">{{ member.email }}</div>
-                                </div>
-                                <Button
-                                    variant="primary"
-                                    size="small"
-                                    @click="handleAddMember(member.id)"
-                                    :disabled="isUpdating"
-                                >
-                                    <font-awesome-icon :icon="faPlus" />
-                                    Assign
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
-            </div>
             
-            <div class="modal-actions">
-                <Button variant="secondary" @click="handleClose">
-                    Close
-                </Button>
+                <div class="modal-actions">
+                    <Button variant="secondary" @click="handleClose">
+                        Close
+                    </Button>
                 </div>
             </div>
         </div>
