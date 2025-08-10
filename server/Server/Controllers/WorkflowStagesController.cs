@@ -14,15 +14,18 @@ public class WorkflowStagesController : ControllerBase
 {
     private readonly IWorkflowStageService _workflowStageService;
     private readonly IWorkflowService _workflowService;
+    private readonly IWorkflowStageAssignmentService _assignmentService;
     private readonly ILogger<WorkflowStagesController> _logger;
 
     public WorkflowStagesController(
         IWorkflowStageService workflowStageService,
         IWorkflowService workflowService,
+        IWorkflowStageAssignmentService assignmentService,
         ILogger<WorkflowStagesController> logger)
     {
         _workflowStageService = workflowStageService ?? throw new ArgumentNullException(nameof(workflowStageService));
         _workflowService = workflowService ?? throw new ArgumentNullException(nameof(workflowService));
+        _assignmentService = assignmentService ?? throw new ArgumentNullException(nameof(assignmentService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -371,6 +374,161 @@ public class WorkflowStagesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "An error occurred while fetching pipeline stages for workflow {WorkflowId}.", workflowId);
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                "An unexpected error occurred. Please try again later."
+            );
+        }
+    }
+
+    /// <summary>
+    /// Gets all assignments for a specific workflow stage.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="workflowId">The ID of the workflow.</param>
+    /// <param name="stageId">The ID of the workflow stage.</param>
+    /// <returns>A list of workflow stage assignments.</returns>
+    [HttpGet("{stageId:int}/assignments")]
+    [ProducesResponseType(typeof(IEnumerable<WorkflowStageAssignmentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetStageAssignments(int projectId, int workflowId, int stageId)
+    {
+        try
+        {
+            // Validate that the workflow belongs to the project
+            var isValidWorkflow = await _workflowService.ValidateWorkflowBelongsToProjectAsync(workflowId, projectId);
+            if (!isValidWorkflow)
+            {
+                return BadRequest($"Workflow {workflowId} does not belong to project {projectId}.");
+            }
+
+            // Validate that the stage belongs to the workflow
+            var isValidStage = await _workflowStageService.ValidateStageBelongsToWorkflowAsync(stageId, workflowId);
+            if (!isValidStage)
+            {
+                return BadRequest($"Stage {stageId} does not belong to workflow {workflowId}.");
+            }
+
+            var assignments = await _assignmentService.GetAssignmentsForStageAsync(stageId);
+            return Ok(assignments);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while fetching assignments for stage {StageId}.", stageId);
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                "An unexpected error occurred. Please try again later."
+            );
+        }
+    }
+
+    /// <summary>
+    /// Assigns a project member to a workflow stage.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="workflowId">The ID of the workflow.</param>
+    /// <param name="stageId">The ID of the workflow stage.</param>
+    /// <param name="createDto">The assignment creation data.</param>
+    /// <returns>The created assignment.</returns>
+    [HttpPost("{stageId:int}/assignments")]
+    [ProducesResponseType(typeof(WorkflowStageAssignmentDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CreateStageAssignment(
+        int projectId, 
+        int workflowId, 
+        int stageId,
+        [FromBody] CreateWorkflowStageAssignmentDto createDto)
+    {
+        try
+        {
+            // Validate that the workflow belongs to the project
+            var isValidWorkflow = await _workflowService.ValidateWorkflowBelongsToProjectAsync(workflowId, projectId);
+            if (!isValidWorkflow)
+            {
+                return BadRequest($"Workflow {workflowId} does not belong to project {projectId}.");
+            }
+
+            // Validate that the stage belongs to the workflow
+            var isValidStage = await _workflowStageService.ValidateStageBelongsToWorkflowAsync(stageId, workflowId);
+            if (!isValidStage)
+            {
+                return BadRequest($"Stage {stageId} does not belong to workflow {workflowId}.");
+            }
+
+            // Ensure the DTO has the correct stage ID
+            if (createDto.WorkflowStageId != stageId)
+            {
+                return BadRequest($"Stage ID in URL ({stageId}) does not match stage ID in request body ({createDto.WorkflowStageId}).");
+            }
+
+            var assignment = await _assignmentService.CreateAssignmentAsync(createDto);
+            return CreatedAtAction(
+                nameof(GetStageAssignments),
+                new { projectId, workflowId, stageId },
+                assignment);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid assignment request for stage {StageId}.", stageId);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while creating assignment for stage {StageId}.", stageId);
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                "An unexpected error occurred. Please try again later."
+            );
+        }
+    }
+
+    /// <summary>
+    /// Removes an assignment from a workflow stage.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="workflowId">The ID of the workflow.</param>
+    /// <param name="stageId">The ID of the workflow stage.</param>
+    /// <param name="assignmentId">The ID of the assignment to remove.</param>
+    /// <returns>No content if successful.</returns>
+    [HttpDelete("{stageId:int}/assignments/{assignmentId:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeleteStageAssignment(
+        int projectId, 
+        int workflowId, 
+        int stageId, 
+        int assignmentId)
+    {
+        try
+        {
+            // Validate that the workflow belongs to the project
+            var isValidWorkflow = await _workflowService.ValidateWorkflowBelongsToProjectAsync(workflowId, projectId);
+            if (!isValidWorkflow)
+            {
+                return BadRequest($"Workflow {workflowId} does not belong to project {projectId}.");
+            }
+
+            // Validate that the stage belongs to the workflow
+            var isValidStage = await _workflowStageService.ValidateStageBelongsToWorkflowAsync(stageId, workflowId);
+            if (!isValidStage)
+            {
+                return BadRequest($"Stage {stageId} does not belong to workflow {workflowId}.");
+            }
+
+            var deleted = await _assignmentService.DeleteAssignmentAsync(assignmentId);
+            if (!deleted)
+            {
+                return NotFound($"Assignment {assignmentId} not found.");
+            }
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while deleting assignment {AssignmentId} from stage {StageId}.", assignmentId, stageId);
             return StatusCode(
                 StatusCodes.Status500InternalServerError,
                 "An unexpected error occurred. Please try again later."

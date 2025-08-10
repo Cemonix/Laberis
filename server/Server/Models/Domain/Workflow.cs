@@ -12,8 +12,12 @@ public class Workflow
     // Foreign Key to Project
     public int ProjectId { get; set; }
 
+    // Foreign Key to LabelScheme
+    public int LabelSchemeId { get; set; }
+
     // Navigation Properties
     public virtual Project Project { get; set; } = null!;
+    public virtual LabelScheme LabelScheme { get; set; } = null!;
 
     // A workflow consists of multiple stages
     public virtual ICollection<WorkflowStage> WorkflowStages { get; set; } = [];
