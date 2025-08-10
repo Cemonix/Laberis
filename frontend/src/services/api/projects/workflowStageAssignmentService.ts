@@ -87,10 +87,8 @@ class WorkflowStageAssignmentService extends BaseProjectService {
     ): Promise<WorkflowStageAssignment[]> {
         this.logger.info(`Fetching all assignments for project member ${projectMemberId} in project ${projectId}`);
         
-        // Note: This would require a separate endpoint on the backend if needed
-        // For now, we could fetch all workflows and their stages, but that might be inefficient
-        // This is a placeholder for potential future functionality
-        
+        // TODO: Implement this method when backend endpoint is available.
+
         this.logger.warn('getAssignmentsForProjectMember is not implemented - backend endpoint needed');
         return [];
     }
