@@ -2,25 +2,6 @@
     <div class="labels-panel">
         <h3 class="panel-title">Labels</h3>
         
-        <!-- Label Scheme Selector -->
-        <div v-if="availableLabelSchemes.length > 1" class="scheme-selector">
-            <label for="scheme-dropdown" class="selector-label">Label Scheme:</label>
-            <select 
-                id="scheme-dropdown"
-                v-model="selectedSchemeId" 
-                @change="onSchemeChange"
-                class="scheme-dropdown"
-            >
-                <option 
-                    v-for="scheme in availableLabelSchemes" 
-                    :key="scheme.labelSchemeId"
-                    :value="scheme.labelSchemeId"
-                >
-                    {{ scheme.name }}
-                </option>
-            </select>
-        </div>
-        
         <!-- Loading state -->
         <div v-if="isLoading" class="panel-loading">
             <span>Loading labels...</span>
@@ -49,17 +30,11 @@
                 <small v-if="label.description" class="label-description">{{ label.description }}</small>
             </div>
         </div>
-        
-        <!-- Current label scheme info -->
-        <div v-if="currentLabelScheme" class="scheme-info">
-            <small class="scheme-name">Scheme: {{ currentLabelScheme.name }}</small>
-            <small v-if="currentLabelScheme.description" class="scheme-description">{{ currentLabelScheme.description }}</small>
-        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import {computed, ref, watch} from 'vue';
+import {computed} from 'vue';
 import {useWorkspaceStore} from '@/stores/workspaceStore';
 
 const workspaceStore = useWorkspaceStore();
@@ -67,18 +42,6 @@ const workspaceStore = useWorkspaceStore();
 const isLoading = computed(() => workspaceStore.getLoadingState);
 const availableLabels = computed(() => workspaceStore.getAvailableLabels);
 const selectedLabelId = computed(() => workspaceStore.getSelectedLabelId);
-const currentLabelScheme = computed(() => workspaceStore.getCurrentLabelScheme);
-const availableLabelSchemes = computed(() => workspaceStore.getAvailableLabelSchemes);
-
-// Track selected scheme ID
-const selectedSchemeId = ref<number | null>(null);
-
-// Initialize selectedSchemeId when currentLabelScheme changes
-watch(currentLabelScheme, (newScheme) => {
-    if (newScheme) {
-        selectedSchemeId.value = newScheme.labelSchemeId;
-    }
-}, { immediate: true });
 
 const selectLabel = (labelId: number) => {
     if (selectedLabelId.value === labelId) {
@@ -86,12 +49,6 @@ const selectLabel = (labelId: number) => {
         workspaceStore.setCurrentLabelId(null);
     } else {
         workspaceStore.setCurrentLabelId(labelId);
-    }
-};
-
-const onSchemeChange = async () => {
-    if (selectedSchemeId.value) {
-        await workspaceStore.switchLabelScheme(selectedSchemeId.value);
     }
 };
 </script>
