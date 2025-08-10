@@ -7,6 +7,8 @@ export interface Workflow {
     createdAt: string;
     updatedAt: string;
     projectId: number;
+    labelSchemeId: number;
+    labelSchemeName?: string;
     stageCount?: number; // Added for UI convenience
 }
 
@@ -27,6 +29,7 @@ export interface WorkflowWithStages extends Workflow {
 export interface CreateWorkflowWithStagesRequest {
     name: string;
     description?: string;
+    labelSchemeId: number;
     stages: CreateWorkflowStageWithAssignmentsRequest[];
     createDefaultStages?: boolean;
     includeReviewStage?: boolean;

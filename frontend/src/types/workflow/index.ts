@@ -15,6 +15,7 @@ export type {
     WorkflowStageConnection,
     CreateWorkflowStageConnectionRequest,
     UpdateWorkflowStageConnectionRequest,
+    WorkflowStageAssignment,
     CreateWorkflowStageAssignmentRequest,
     WorkflowStageWithUsers,
     WorkflowStagePipeline,
