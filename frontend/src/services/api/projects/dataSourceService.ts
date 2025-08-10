@@ -7,6 +7,7 @@ import type {
     DataSourceListParams,
     DataSourceStatsResponse
 } from '@/types/dataSource/requests';
+import type { WorkflowStage } from '@/types/workflow';
 
 /**
  * Service class for managing data sources within projects.
@@ -109,6 +110,31 @@ class DataSourceService extends BaseProjectService {
         const response = await this.get<DataSourceStatsResponse>(url);
         
         this.logger.info(`Fetched stats for project ${projectId}: ${response.totalDataSources} total data sources.`, response);
+        return response;
+    }
+
+    /**
+     * Checks if a data source is already being used by other workflow stages.
+     * This prevents data source conflicts when creating new workflows.
+     */
+    async getDataSourceUsageConflicts(
+        projectId: number, 
+        dataSourceId: number, 
+        excludeWorkflowId?: number
+    ): Promise<WorkflowStage[]> {
+        this.logger.info(`Checking data source usage conflicts for data source ${dataSourceId} in project ${projectId}`, {
+            excludeWorkflowId
+        });
+        
+        const url = this.buildProjectUrl(projectId, `datasources/${dataSourceId}/conflicts`);
+        const queryParams: Record<string, any> = {};
+        if (excludeWorkflowId) {
+            queryParams.excludeWorkflowId = excludeWorkflowId;
+        }
+        
+        const response = await this.get<WorkflowStage[]>(url, queryParams);
+        
+        this.logger.info(`Found ${response.length} conflicting workflow stages for data source ${dataSourceId}`, response);
         return response;
     }
 }
