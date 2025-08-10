@@ -42,8 +42,9 @@ export interface ToolHandler {
      * Draws any temporary, in-progress visuals for the tool.
      * For example, a bounding box being dragged.
      * @param ctx The 2D rendering context of the canvas.
+     * @param zoomLevel The current zoom level for proper scaling.
      */
-    draw(ctx: CanvasRenderingContext2D): void;
+    draw(ctx: CanvasRenderingContext2D, zoomLevel?: number): void;
 
     /**
      * Returns whether the tool is currently in drawing mode.

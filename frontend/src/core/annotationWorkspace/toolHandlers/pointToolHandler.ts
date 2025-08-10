@@ -4,10 +4,24 @@ import { AnnotationType } from '@/types/workspace/annotation';
 import type { ToolHandler } from './toolHandler';
 import type { useWorkspaceStore } from '@/stores/workspaceStore';
 import { StoreError, ToolError } from '@/types/common/errors';
+import { clampPointToImageBounds } from '@/core/annotationWorkspace/geometry';
+import type { Point } from '@/types/common/point';
 
 type WorkspaceStore = ReturnType<typeof useWorkspaceStore>;
 
 export class PointToolHandler implements ToolHandler {
+    private getImageDimensions(store: WorkspaceStore): { width: number; height: number } | null {
+        const asset = store.getCurrentAsset;
+        if (!asset || !asset.width || !asset.height) return null;
+        return { width: asset.width, height: asset.height };
+    }
+
+    private validatePoint(point: Point, store: WorkspaceStore): Point {
+        const imageDims = this.getImageDimensions(store);
+        if (!imageDims) return point;
+        return clampPointToImageBounds(point, imageDims.width, imageDims.height);
+    }
+
     onMouseDown(event: MouseEvent, store: WorkspaceStore): void {
         if (store.getSelectedLabelId === null) {
             throw new ToolError("Cannot create point: No label is selected.");
@@ -26,12 +40,10 @@ export class PointToolHandler implements ToolHandler {
         const imageX = (canvasX - store.viewOffset.x) / store.zoomLevel;
         const imageY = (canvasY - store.viewOffset.y) / store.zoomLevel;
 
+        const validatedPoint = this.validatePoint({ x: imageX, y: imageY }, store);
         const pointCoordinates: PointAnnotationData = {
             type: AnnotationType.POINT,
-            point: {
-                x: imageX,
-                y: imageY,
-            },
+            point: validatedPoint,
         };
 
         const newAnnotation: Annotation = {
@@ -50,7 +62,7 @@ export class PointToolHandler implements ToolHandler {
 
     onMouseUp(_event: MouseEvent, _store: WorkspaceStore): void {}
 
-    draw(_ctx: CanvasRenderingContext2D): void {}
+    draw(_ctx: CanvasRenderingContext2D, _zoomLevel?: number): void {}
 
     isDrawing(): boolean {
         return false; // Point tool doesn't have a drawing state
