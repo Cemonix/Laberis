@@ -52,7 +52,7 @@
                 class="action-btn"
             >
                 <font-awesome-icon :icon="faUserCog" />
-                Users
+                Manage Team
             </Button>
         </div>
     </div>
