@@ -49,8 +49,8 @@ export class AnnotationManager {
         this.getActiveHandler()?.onKeyDown?.(event, this.store);
     }
 
-    public draw(ctx: CanvasRenderingContext2D): void {
-        this.getActiveHandler()?.draw(ctx);
+    public draw(ctx: CanvasRenderingContext2D, zoomLevel?: number): void {
+        this.getActiveHandler()?.draw(ctx, zoomLevel);
     }
 
     public isDrawing(): boolean {
