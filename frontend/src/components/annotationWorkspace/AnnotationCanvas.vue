@@ -27,13 +27,17 @@ import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from "vue";
 import {useWorkspaceStore} from '@/stores/workspaceStore';
 import type {Point} from "@/types/common/point";
 import {ToolName} from "@/types/workspace/tools";
-import {AnnotationType} from "@/types/workspace/annotation";
-import {drawBoundingBox, drawPoint, drawLine, drawPolyline, drawPolygon, drawEditHandle} from '@/core/annotationWorkspace/annotationDrawer';
 import {AnnotationManager} from "@/core/annotationWorkspace/annotationManager";
 import {StoreError, ToolError} from "@/types/common/errors";
 import AlertModal from "../common/modal/AlertModal.vue";
 import {useAlert} from "@/composables/useAlert";
 import {AppLogger} from "@/utils/logger";
+import {findAnnotationAtPoint} from '@/core/annotationWorkspace/hitDetection';
+import {updateAnnotationPointLocally} from '@/core/annotationWorkspace/coordinateTransforms';
+import {calculateCanvasDimensions, calculateCenterAndFitView, mouseToImageCoordinates, calculateZoomFromWheel, calculateZoomViewOffset} from '@/core/annotationWorkspace/viewport';
+import {calculateCanvasCursorStyle} from '@/core/annotationWorkspace/cursors';
+import {renderAnnotation, type AnnotationRenderContext} from '@/core/annotationWorkspace/annotationRenderer';
+import {getAnnotationDisplayColor, separateAnnotationsBySelection} from '@/core/annotationWorkspace/annotationDisplayUtils';
 
 const logger = AppLogger.createComponentLogger('AnnotationCanvas');
 
@@ -74,22 +78,13 @@ const annotationsToRender = computed(() => workspaceStore.getAnnotations);
 const isAnnotationEditingDisabled = computed(() => workspaceStore.isAnnotationEditingDisabled);
 
 const canvasCursorStyle = computed(() => {
-    switch (activeTool.value) {
-        case ToolName.CURSOR:
-            if (isDraggingHandle.value) return 'grabbing';
-            if (isPanning.value) return 'grabbing';
-            if (hoveredHandleIndex.value >= 0) return 'grab';
-            if (hoveredAnnotationId.value !== null) return 'pointer';
-            return 'default';
-        case ToolName.POINT:
-        case ToolName.LINE:
-        case ToolName.POLYLINE:
-        case ToolName.BOUNDING_BOX:
-        case ToolName.POLYGON:
-            return 'crosshair';
-        default:
-            return 'default';
-    }
+    return calculateCanvasCursorStyle(
+        activeTool.value,
+        isDraggingHandle.value,
+        isPanning.value,
+        hoveredHandleIndex.value,
+        hoveredAnnotationId.value
+    );
 });
 
 const setCanvasDimensions = () => {
@@ -101,41 +96,20 @@ const setCanvasDimensions = () => {
     const availableWidth = wrapperRef.value.offsetWidth;
     const availableHeight = wrapperRef.value.offsetHeight;
 
-    if (availableWidth === 0 || availableHeight === 0) {
-        canvas.width = 0;
-        canvas.height = 0;
-        workspaceStore.setCanvasDisplayDimensions({ width: 0, height: 0 });
-        return;
-    }
+    const imageNaturalDimensions = imageInstance.value ? 
+        { width: imageInstance.value.naturalWidth, height: imageInstance.value.naturalHeight } : 
+        undefined;
 
-    let targetCanvasWidth = availableWidth;
-    let targetCanvasHeight = availableHeight;
+    const dimensions = calculateCanvasDimensions(
+        availableWidth,
+        availableHeight,
+        imageNaturalDimensions
+    );
 
-    if (
-        imageInstance.value &&
-        imageInstance.value.naturalWidth > 0 &&
-        imageInstance.value.naturalHeight > 0
-    ) {
-        const img = imageInstance.value;
-        const imgWidth = img.naturalWidth;
-        const imgHeight = img.naturalHeight;
+    canvas.width = dimensions.width;
+    canvas.height = dimensions.height;
 
-        // Calculate scale to fit image within available space
-        const scaleX = availableWidth / imgWidth;
-        const scaleY = availableHeight / imgHeight;
-        let scale = Math.min(scaleX, scaleY);
-
-        targetCanvasWidth = Math.round(imgWidth * scale);
-        targetCanvasHeight = Math.round(imgHeight * scale);
-    } else {
-        targetCanvasWidth = availableWidth;
-        targetCanvasHeight = availableHeight;
-    }
-
-    canvas.width = targetCanvasWidth;
-    canvas.height = targetCanvasHeight;
-
-    workspaceStore.setCanvasDisplayDimensions({ width: canvas.width, height: canvas.height });
+    workspaceStore.setCanvasDisplayDimensions(dimensions);
 };
 
 const loadImage = async (url: string | null) => {
@@ -253,7 +227,7 @@ const draw = () => {
     }
     
     drawSavedAnnotations(ctx);
-    annotationManager.draw(ctx);
+    annotationManager.draw(ctx, zoomLevel.value);
 
     ctx.restore();
 };
@@ -261,419 +235,43 @@ const draw = () => {
 const drawSavedAnnotations = (context: CanvasRenderingContext2D) => {
     if (!annotationsToRender.value) return;
 
-    // Separate selected annotation from others to render it on top
-    const selectedAnnotation = annotationsToRender.value.find(a => a.annotationId === selectedAnnotationId.value);
-    const otherAnnotations = annotationsToRender.value.filter(a => a.annotationId !== selectedAnnotationId.value);
+    // Separate annotations for layered rendering (selected on top)
+    const { selectedAnnotation, otherAnnotations } = separateAnnotationsBySelection(
+        annotationsToRender.value, 
+        selectedAnnotationId.value
+    );
     
-    // Draw non-selected annotations first
-    const annotationsToDrawFirst = otherAnnotations;
-    
-    annotationsToDrawFirst.forEach(annotation => {
+    // Helper function to create render context for an annotation
+    const createRenderContext = (annotation: any, isSelected: boolean): AnnotationRenderContext => {
         const label = workspaceStore.getLabelById(annotation.labelId);
         const baseColor = label?.color || 'magenta';
-        const isSelected = selectedAnnotationId.value === annotation.annotationId;
         const isHovered = hoveredAnnotationId.value === annotation.annotationId;
-        
-        // Brighten color if hovered
-        const color = isHovered && !isSelected ? '#FFFFFF' : baseColor;
+        const color = getAnnotationDisplayColor(baseColor, isSelected, isHovered);
 
-        if (annotation.annotationType === AnnotationType.POINT && annotation.coordinates?.type === AnnotationType.POINT) {
-            const imageCoordX = annotation.coordinates.point.x;
-            const imageCoordY = annotation.coordinates.point.y;
-            const pointRadius = 4 / zoomLevel.value;
-            const lineWidth = 1 / zoomLevel.value;
-
-            drawPoint(context, imageCoordX, imageCoordY, color, pointRadius, lineWidth);
-            
-            // Draw edit handle for selected point
-            if (isSelected) {
-                const handleSize = Math.max(8 / zoomLevel.value, 6);
-                drawEditHandle(context, imageCoordX, imageCoordY, handleSize, baseColor, hoveredHandleIndex.value === 0);
-            }
-        }
-        else if (annotation.annotationType === AnnotationType.BOUNDING_BOX && annotation.coordinates?.type === AnnotationType.BOUNDING_BOX) {
-            const { topLeft, bottomRight } = annotation.coordinates;
-            const width = bottomRight.x - topLeft.x;
-            const height = bottomRight.y - topLeft.y;
-            drawBoundingBox(context, topLeft.x, topLeft.y, width, height, color);
-            
-            // Draw edit handles for selected bounding box corners
-            if (isSelected) {
-                const handleSize = Math.max(8 / zoomLevel.value, 6);
-                drawEditHandle(context, topLeft.x, topLeft.y, handleSize, baseColor, hoveredHandleIndex.value === 0);
-                drawEditHandle(context, bottomRight.x, topLeft.y, handleSize, baseColor, hoveredHandleIndex.value === 1);
-                drawEditHandle(context, bottomRight.x, bottomRight.y, handleSize, baseColor, hoveredHandleIndex.value === 2);
-                drawEditHandle(context, topLeft.x, bottomRight.y, handleSize, baseColor, hoveredHandleIndex.value === 3);
-            }
-        }
-        else if (annotation.annotationType === AnnotationType.LINE && annotation.coordinates?.type === AnnotationType.LINE) {
-            const { pointFrom, pointTo } = annotation.coordinates;
-            const lineWidth = Math.max(2 / zoomLevel.value, 2);
-            drawLine(context, pointFrom, pointTo, color, lineWidth);
-            
-            // Draw edit handles for selected line endpoints
-            if (isSelected) {
-                const handleSize = Math.max(8 / zoomLevel.value, 6);
-                drawEditHandle(context, pointFrom.x, pointFrom.y, handleSize, baseColor, hoveredHandleIndex.value === 0);
-                drawEditHandle(context, pointTo.x, pointTo.y, handleSize, baseColor, hoveredHandleIndex.value === 1);
-            }
-        }
-        else if (annotation.annotationType === AnnotationType.POLYLINE && annotation.coordinates?.type === AnnotationType.POLYLINE) {
-            const { points } = annotation.coordinates;
-            const lineWidth = Math.max(2 / zoomLevel.value, 2);
-            drawPolyline(context, points, color, lineWidth);
-            
-            // Draw edit handles for selected polyline points
-            if (isSelected) {
-                const handleSize = Math.max(8 / zoomLevel.value, 6);
-                points.forEach((point, index) => {
-                    drawEditHandle(context, point.x, point.y, handleSize, baseColor, hoveredHandleIndex.value === index);
-                });
-            }
-        }
-        else if (annotation.annotationType === AnnotationType.POLYGON && annotation.coordinates?.type === AnnotationType.POLYGON) {
-            const { points } = annotation.coordinates;
-            const lineWidth = Math.max(2 / zoomLevel.value, 2);
-            drawPolygon(context, points, color, lineWidth);
-            
-            // Draw edit handles for selected polygon points
-            if (isSelected) {
-                const handleSize = Math.max(8 / zoomLevel.value, 6);
-                points.forEach((point, index) => {
-                    drawEditHandle(context, point.x, point.y, handleSize, baseColor, hoveredHandleIndex.value === index);
-                });
-            }
-        }
+        return {
+            context,
+            annotation,
+            color,
+            baseColor,
+            isSelected,
+            zoomLevel: zoomLevel.value,
+            hoveredHandleIndex: hoveredHandleIndex.value
+        };
+    };
+    
+    // Draw non-selected annotations first
+    otherAnnotations.forEach(annotation => {
+        const renderContext = createRenderContext(annotation, false);
+        renderAnnotation(renderContext);
     });
     
     // Draw selected annotation on top for better accessibility
     if (selectedAnnotation) {
-        const label = workspaceStore.getLabelById(selectedAnnotation.labelId);
-        const baseColor = label?.color || 'magenta';
-        const isSelected = true;
-        const isHovered = hoveredAnnotationId.value === selectedAnnotation.annotationId;
-        
-        // Brighten color if hovered
-        const color = isHovered && !isSelected ? '#FFFFFF' : baseColor;
-        
-        if (selectedAnnotation.annotationType === AnnotationType.POINT && selectedAnnotation.coordinates?.type === AnnotationType.POINT) {
-            const imageCoordX = selectedAnnotation.coordinates.point.x;
-            const imageCoordY = selectedAnnotation.coordinates.point.y;
-            const pointRadius = 4 / zoomLevel.value;
-            const lineWidth = 1 / zoomLevel.value;
-            drawPoint(context, imageCoordX, imageCoordY, color, pointRadius, lineWidth);
-            
-            // Draw edit handle for selected point
-            if (isSelected) {
-                const handleSize = Math.max(8 / zoomLevel.value, 6);
-                drawEditHandle(context, imageCoordX, imageCoordY, handleSize, baseColor, hoveredHandleIndex.value === 0);
-            }
-        }
-        else if (selectedAnnotation.annotationType === AnnotationType.BOUNDING_BOX && selectedAnnotation.coordinates?.type === AnnotationType.BOUNDING_BOX) {
-            const { topLeft, bottomRight } = selectedAnnotation.coordinates;
-            const width = bottomRight.x - topLeft.x;
-            const height = bottomRight.y - topLeft.y;
-            drawBoundingBox(context, topLeft.x, topLeft.y, width, height, color);
-            
-            // Draw edit handles for selected bounding box corners
-            if (isSelected) {
-                const handleSize = Math.max(8 / zoomLevel.value, 6);
-                drawEditHandle(context, topLeft.x, topLeft.y, handleSize, baseColor, hoveredHandleIndex.value === 0);
-                drawEditHandle(context, bottomRight.x, topLeft.y, handleSize, baseColor, hoveredHandleIndex.value === 1);
-                drawEditHandle(context, bottomRight.x, bottomRight.y, handleSize, baseColor, hoveredHandleIndex.value === 2);
-                drawEditHandle(context, topLeft.x, bottomRight.y, handleSize, baseColor, hoveredHandleIndex.value === 3);
-            }
-        }
-        else if (selectedAnnotation.annotationType === AnnotationType.LINE && selectedAnnotation.coordinates?.type === AnnotationType.LINE) {
-            const { pointFrom, pointTo } = selectedAnnotation.coordinates;
-            const lineWidth = Math.max(2 / zoomLevel.value, 2);
-            drawLine(context, pointFrom, pointTo, color, lineWidth);
-            
-            // Draw edit handles for selected line endpoints
-            if (isSelected) {
-                const handleSize = Math.max(8 / zoomLevel.value, 6);
-                drawEditHandle(context, pointFrom.x, pointFrom.y, handleSize, baseColor, hoveredHandleIndex.value === 0);
-                drawEditHandle(context, pointTo.x, pointTo.y, handleSize, baseColor, hoveredHandleIndex.value === 1);
-            }
-        }
-        else if (selectedAnnotation.annotationType === AnnotationType.POLYLINE && selectedAnnotation.coordinates?.type === AnnotationType.POLYLINE) {
-            const { points } = selectedAnnotation.coordinates;
-            const lineWidth = Math.max(2 / zoomLevel.value, 2);
-            drawPolyline(context, points, color, lineWidth);
-            
-            // Draw edit handles for selected polyline points
-            if (isSelected) {
-                const handleSize = Math.max(8 / zoomLevel.value, 6);
-                points.forEach((point, index) => {
-                    drawEditHandle(context, point.x, point.y, handleSize, baseColor, hoveredHandleIndex.value === index);
-                });
-            }
-        }
-        else if (selectedAnnotation.annotationType === AnnotationType.POLYGON && selectedAnnotation.coordinates?.type === AnnotationType.POLYGON) {
-            const { points } = selectedAnnotation.coordinates;
-            const lineWidth = Math.max(2 / zoomLevel.value, 2);
-            drawPolygon(context, points, color, lineWidth);
-            
-            // Draw edit handles for selected polygon points
-            if (isSelected) {
-                const handleSize = Math.max(8 / zoomLevel.value, 6);
-                points.forEach((point, index) => {
-                    drawEditHandle(context, point.x, point.y, handleSize, baseColor, hoveredHandleIndex.value === index);
-                });
-            }
-        }
+        const renderContext = createRenderContext(selectedAnnotation, true);
+        renderAnnotation(renderContext);
     }
 };
 
-// Helper function to check if a point is near another point (for handle detection)
-const isPointNearHandle = (clickPoint: Point, handlePoint: Point, threshold: number = 10): boolean => {
-    const distance = Math.sqrt(
-        Math.pow(clickPoint.x - handlePoint.x, 2) + 
-        Math.pow(clickPoint.y - handlePoint.y, 2)
-    );
-    return distance <= threshold / zoomLevel.value;
-};
-
-// Helper function to check if a point is near a line
-const isPointNearLine = (point: Point, lineStart: Point, lineEnd: Point, threshold: number = 10): boolean => {
-    const adjustedThreshold = threshold / zoomLevel.value;
-    
-    // Calculate distance from point to line segment
-    const A = point.x - lineStart.x;
-    const B = point.y - lineStart.y;
-    const C = lineEnd.x - lineStart.x;
-    const D = lineEnd.y - lineStart.y;
-
-    const dot = A * C + B * D;
-    const lenSq = C * C + D * D;
-    
-    if (lenSq === 0) {
-        // Line start and end are the same point
-        return isPointNearHandle(point, lineStart, threshold);
-    }
-    
-    let param = dot / lenSq;
-    param = Math.max(0, Math.min(1, param)); // Clamp to line segment
-    
-    const xx = lineStart.x + param * C;
-    const yy = lineStart.y + param * D;
-    
-    const dx = point.x - xx;
-    const dy = point.y - yy;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    return distance <= adjustedThreshold;
-};
-
-// Helper function to check if a point is inside a bounding box
-const isPointInBoundingBox = (point: Point, topLeft: Point, bottomRight: Point): boolean => {
-    return point.x >= topLeft.x && point.x <= bottomRight.x &&
-           point.y >= topLeft.y && point.y <= bottomRight.y;
-};
-
-// Helper function to check if a point is near a polyline
-const isPointNearPolyline = (point: Point, points: Point[], threshold: number = 10): boolean => {
-    if (points.length < 2) return false;
-    
-    for (let i = 0; i < points.length - 1; i++) {
-        if (isPointNearLine(point, points[i], points[i + 1], threshold)) {
-            return true;
-        }
-    }
-    return false;
-};
-
-// Helper function to check if a point is inside a polygon (ray casting algorithm)
-const isPointInPolygon = (point: Point, points: Point[]): boolean => {
-    if (points.length < 3) return false;
-    
-    let inside = false;
-    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-        if (((points[i].y > point.y) !== (points[j].y > point.y)) &&
-            (point.x < (points[j].x - points[i].x) * (point.y - points[i].y) / (points[j].y - points[i].y) + points[i].x)) {
-            inside = !inside;
-        }
-    }
-    return inside;
-};
-
-// Helper function to check if a point hits an annotation
-const checkAnnotationHit = (annotation: any, imagePoint: Point, isSelected: boolean = false): { annotation: any, handleIndex: number } | null => {
-    // Check if clicking on a handle (only for selected annotation)
-    if (isSelected) {
-        if (annotation.annotationType === AnnotationType.POINT && annotation.coordinates?.type === AnnotationType.POINT) {
-            if (isPointNearHandle(imagePoint, annotation.coordinates.point)) {
-                return { annotation, handleIndex: 0 };
-            }
-        }
-        else if (annotation.annotationType === AnnotationType.LINE && annotation.coordinates?.type === AnnotationType.LINE) {
-            if (isPointNearHandle(imagePoint, annotation.coordinates.pointFrom)) {
-                return { annotation, handleIndex: 0 };
-            }
-            if (isPointNearHandle(imagePoint, annotation.coordinates.pointTo)) {
-                return { annotation, handleIndex: 1 };
-            }
-        }
-        else if (annotation.annotationType === AnnotationType.BOUNDING_BOX && annotation.coordinates?.type === AnnotationType.BOUNDING_BOX) {
-            const { topLeft, bottomRight } = annotation.coordinates;
-            const corners = [
-                topLeft,
-                { x: bottomRight.x, y: topLeft.y },
-                bottomRight,
-                { x: topLeft.x, y: bottomRight.y }
-            ];
-            
-            for (let j = 0; j < corners.length; j++) {
-                if (isPointNearHandle(imagePoint, corners[j])) {
-                    return { annotation, handleIndex: j };
-                }
-            }
-        }
-        else if ((annotation.annotationType === AnnotationType.POLYLINE || annotation.annotationType === AnnotationType.POLYGON) 
-                 && annotation.coordinates?.type === annotation.annotationType) {
-            const points = annotation.coordinates.points;
-            for (let j = 0; j < points.length; j++) {
-                if (isPointNearHandle(imagePoint, points[j])) {
-                    return { annotation, handleIndex: j };
-                }
-            }
-        }
-    }
-    
-    // Check if clicking on the annotation itself (for selection)
-    if (annotation.annotationType === AnnotationType.POINT && annotation.coordinates?.type === AnnotationType.POINT) {
-        if (isPointNearHandle(imagePoint, annotation.coordinates.point, 15)) {
-            return { annotation, handleIndex: -1 };
-        }
-    }
-    else if (annotation.annotationType === AnnotationType.LINE && annotation.coordinates?.type === AnnotationType.LINE) {
-        const { pointFrom, pointTo } = annotation.coordinates;
-        if (isPointNearLine(imagePoint, pointFrom, pointTo, 10)) {
-            return { annotation, handleIndex: -1 };
-        }
-    }
-    else if (annotation.annotationType === AnnotationType.BOUNDING_BOX && annotation.coordinates?.type === AnnotationType.BOUNDING_BOX) {
-        const { topLeft, bottomRight } = annotation.coordinates;
-        if (isPointInBoundingBox(imagePoint, topLeft, bottomRight)) {
-            return { annotation, handleIndex: -1 };
-        }
-    }
-    else if (annotation.annotationType === AnnotationType.POLYLINE && annotation.coordinates?.type === AnnotationType.POLYLINE) {
-        const { points } = annotation.coordinates;
-        if (isPointNearPolyline(imagePoint, points, 10)) {
-            return { annotation, handleIndex: -1 };
-        }
-    }
-    else if (annotation.annotationType === AnnotationType.POLYGON && annotation.coordinates?.type === AnnotationType.POLYGON) {
-        const { points } = annotation.coordinates;
-        if (isPointInPolygon(imagePoint, points) || isPointNearPolyline(imagePoint, points, 10)) {
-            return { annotation, handleIndex: -1 };
-        }
-    }
-    
-    return null;
-};
-
-// Helper function to find annotation at mouse position
-const findAnnotationAtPoint = (imagePoint: Point): { annotation: any, handleIndex: number } | null => {
-    if (!annotationsToRender.value) return null;
-
-    // First check if we're clicking on the selected annotation (highest priority)
-    const selectedAnnotation = annotationsToRender.value.find(a => a.annotationId === selectedAnnotationId.value);
-    if (selectedAnnotation) {
-        const result = checkAnnotationHit(selectedAnnotation, imagePoint, true);
-        if (result) return result;
-    }
-
-    // Then check other annotations in reverse order to prioritize top annotations
-    for (let i = annotationsToRender.value.length - 1; i >= 0; i--) {
-        const annotation = annotationsToRender.value[i];
-        
-        // Skip selected annotation as we already checked it
-        if (annotation.annotationId === selectedAnnotationId.value) continue;
-        
-        // Check this annotation for hits
-        const result = checkAnnotationHit(annotation, imagePoint, false);
-        if (result) return result;
-    }
-    
-    return null;
-};
-
-// Function to update annotation point during dragging (local only, no backend save)
-const updateAnnotationPointLocally = (annotationId: number, handleIndex: number, newPoint: Point) => {
-    const annotation = annotationsToRender.value?.find(a => a.annotationId === annotationId);
-    if (!annotation) return;
-
-    let updatedCoordinates = null;
-
-    if (annotation.annotationType === AnnotationType.POINT && annotation.coordinates?.type === AnnotationType.POINT) {
-        updatedCoordinates = {
-            ...annotation.coordinates,
-            point: newPoint
-        };
-    }
-    else if (annotation.annotationType === AnnotationType.LINE && annotation.coordinates?.type === AnnotationType.LINE) {
-        updatedCoordinates = {
-            ...annotation.coordinates,
-            ...(handleIndex === 0 ? { pointFrom: newPoint } : { pointTo: newPoint })
-        };
-    }
-    else if (annotation.annotationType === AnnotationType.BOUNDING_BOX && annotation.coordinates?.type === AnnotationType.BOUNDING_BOX) {
-        const { topLeft, bottomRight } = annotation.coordinates;
-        const corners = [
-            { key: 'topLeft', point: topLeft },
-            { key: 'topRight', point: { x: bottomRight.x, y: topLeft.y } },
-            { key: 'bottomRight', point: bottomRight },
-            { key: 'bottomLeft', point: { x: topLeft.x, y: bottomRight.y } }
-        ];
-
-        if (handleIndex >= 0 && handleIndex < corners.length) {
-            // Update the appropriate corner
-            let newTopLeft = topLeft;
-            let newBottomRight = bottomRight;
-
-            switch (handleIndex) {
-                case 0: // topLeft
-                    newTopLeft = newPoint;
-                    break;
-                case 1: // topRight
-                    newTopLeft = { x: topLeft.x, y: newPoint.y };
-                    newBottomRight = { x: newPoint.x, y: bottomRight.y };
-                    break;
-                case 2: // bottomRight
-                    newBottomRight = newPoint;
-                    break;
-                case 3: // bottomLeft
-                    newTopLeft = { x: newPoint.x, y: topLeft.y };
-                    newBottomRight = { x: bottomRight.x, y: newPoint.y };
-                    break;
-            }
-
-            updatedCoordinates = {
-                ...annotation.coordinates,
-                topLeft: newTopLeft,
-                bottomRight: newBottomRight
-            };
-        }
-    }
-    else if ((annotation.annotationType === AnnotationType.POLYLINE || annotation.annotationType === AnnotationType.POLYGON) 
-             && annotation.coordinates?.type === annotation.annotationType) {
-        const points = [...annotation.coordinates.points];
-        if (handleIndex >= 0 && handleIndex < points.length) {
-            points[handleIndex] = newPoint;
-            updatedCoordinates = {
-                ...annotation.coordinates,
-                points
-            };
-        }
-    }
-
-    if (updatedCoordinates) {
-        // Update the annotation locally only (no backend call)
-        annotation.coordinates = updatedCoordinates;
-    }
-};
 
 // Function to save annotation changes to backend
 const saveAnnotationChanges = async (annotationId: number) => {
@@ -704,34 +302,20 @@ const centerAndFitImage = () => {
     }
 
     const canvas = canvasRef.value;
-    const { width: imgWidth, height: imgHeight } = workspaceStore.imageNaturalDimensions;
+    const viewState = calculateCenterAndFitView(
+        canvas.width,
+        canvas.height,
+        workspaceStore.imageNaturalDimensions
+    );
 
-    if (imgWidth === 0 || imgHeight === 0 || canvas.width === 0 || canvas.height === 0) {
-        workspaceStore.setViewOffset({ x: 0, y: 0 });
-        workspaceStore.setZoomLevel(1.0);
-        nextTick(draw);
-        return;
-    }
-    
-    // Calculate scale to fit image within canvas
-    const scaleX = canvas.width / imgWidth;
-    const scaleY = canvas.height / imgHeight;
-    const newZoom = Math.min(scaleX, scaleY);
-
-    // Calculate offset to center the image
-    const newOffsetX = (canvas.width - imgWidth * newZoom) / 2;
-    const newOffsetY = (canvas.height - imgHeight * newZoom) / 2;
-
-    workspaceStore.setZoomLevel(newZoom);
-    workspaceStore.setViewOffset({ x: newOffsetX, y: newOffsetY });
+    workspaceStore.setZoomLevel(viewState.zoomLevel);
+    workspaceStore.setViewOffset(viewState.offset);
 };
 
 const handleMouseDown = (event: MouseEvent) => {
     const canvasX = event.offsetX;
     const canvasY = event.offsetY;
-    const imageX = (canvasX - viewOffset.value.x) / zoomLevel.value;
-    const imageY = (canvasY - viewOffset.value.y) / zoomLevel.value;
-    const imagePoint = { x: imageX, y: imageY };
+    const imagePoint = mouseToImageCoordinates(canvasX, canvasY, viewOffset.value, zoomLevel.value);
 
     // --- Only allow panning if CURSOR tool is active ---
     if (activeTool.value === ToolName.CURSOR) {
@@ -739,7 +323,7 @@ const handleMouseDown = (event: MouseEvent) => {
         if (event.button !== 0) return;
         
         // Check for annotation interaction first
-        const hit = findAnnotationAtPoint(imagePoint);
+        const hit = findAnnotationAtPoint(imagePoint, annotationsToRender.value || [], selectedAnnotationId.value, zoomLevel.value);
         if (hit) {
             if (hit.handleIndex >= 0 && !isAnnotationEditingDisabled.value) {
                 // Start dragging a handle (only if editing is enabled)
@@ -784,15 +368,19 @@ const handleMouseDown = (event: MouseEvent) => {
 const handleMouseMove = (event: MouseEvent) => {
     const canvasX = event.offsetX;
     const canvasY = event.offsetY;
-    const imageX = (canvasX - viewOffset.value.x) / zoomLevel.value;
-    const imageY = (canvasY - viewOffset.value.y) / zoomLevel.value;
-    const imagePoint = { x: imageX, y: imageY };
+    const imagePoint = mouseToImageCoordinates(canvasX, canvasY, viewOffset.value, zoomLevel.value);
 
     if (activeTool.value === ToolName.CURSOR) {
         if (isDraggingHandle.value && selectedAnnotationId.value !== null) {
             // Handle dragging - update annotation coordinates locally only
-            updateAnnotationPointLocally(selectedAnnotationId.value, draggedPointIndex.value, imagePoint);
-            nextTick(draw);
+            const annotation = annotationsToRender.value?.find(a => a.annotationId === selectedAnnotationId.value);
+            if (annotation) {
+                const imageDims = workspaceStore.getCurrentAsset && workspaceStore.getCurrentAsset.width && workspaceStore.getCurrentAsset.height
+                    ? { width: workspaceStore.getCurrentAsset.width, height: workspaceStore.getCurrentAsset.height }
+                    : undefined;
+                updateAnnotationPointLocally(annotation, draggedPointIndex.value, imagePoint, imageDims);
+                nextTick(draw);
+            }
         } else if (isPanning.value) {
             // Panning
             if (!lastPanMousePosition.value) return;
@@ -806,7 +394,7 @@ const handleMouseMove = (event: MouseEvent) => {
             lastPanMousePosition.value = { x: event.offsetX, y: event.offsetY };
         } else {
             // Update hover state for handles and annotations
-            const hit = findAnnotationAtPoint(imagePoint);
+            const hit = findAnnotationAtPoint(imagePoint, annotationsToRender.value || [], selectedAnnotationId.value, zoomLevel.value);
             hoveredHandleIndex.value = hit?.handleIndex ?? -1;
             hoveredAnnotationId.value = hit?.annotation?.annotationId ?? null;
             nextTick(draw);
@@ -854,28 +442,23 @@ const handleWheel = (event: WheelEvent) => {
     if (!canvasRef.value) return;
 
     const { zoomSensitivity } = workspaceStore.getZoomConfig;
-    const delta = event.deltaY * -1; // Invert for natural zoom
-    const zoomFactor = Math.exp(delta * zoomSensitivity);
-    
-    const newZoomLevel = zoomLevel.value * zoomFactor;
+    const newZoomLevel = calculateZoomFromWheel(zoomLevel.value, event.deltaY, zoomSensitivity);
 
     // Calculate mouse position relative to the canvas
     const mouseX = event.offsetX;
     const mouseY = event.offsetY;
 
     // Calculate image point under mouse before zoom
-    const imagePointX = (mouseX - viewOffset.value.x) / zoomLevel.value;
-    const imagePointY = (mouseY - viewOffset.value.y) / zoomLevel.value;
+    const imagePoint = mouseToImageCoordinates(mouseX, mouseY, viewOffset.value, zoomLevel.value);
 
     // Update zoom level first (this will be clamped in the store action)
     workspaceStore.setZoomLevel(newZoomLevel);
     const actualNewZoomLevel = workspaceStore.zoomLevel; // Get potentially clamped value
 
     // Calculate new viewOffset to keep imagePoint under the mouse
-    const newViewOffsetX = mouseX - imagePointX * actualNewZoomLevel;
-    const newViewOffsetY = mouseY - imagePointY * actualNewZoomLevel;
+    const newViewOffset = calculateZoomViewOffset(mouseX, mouseY, imagePoint.x, imagePoint.y, actualNewZoomLevel);
     
-    workspaceStore.setViewOffset({ x: newViewOffsetX, y: newViewOffsetY });
+    workspaceStore.setViewOffset(newViewOffset);
 };
 
 const handleKeyDown = (event: KeyboardEvent) => {
