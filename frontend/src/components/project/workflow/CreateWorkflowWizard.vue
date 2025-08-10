@@ -28,8 +28,17 @@
                                 maxlength="255"
                                 :disabled="isLoading"
                                 class="form-input"
+                                :class="{ 
+                                    'success': form.name.trim().length >= 3 && !errors.name && !existingWorkflows.includes(form.name.trim().toLowerCase()),
+                                    'error': errors.name
+                                }"
                             />
-                            <div v-if="errors.name" class="field-error">{{ errors.name }}</div>
+                            <div v-if="errors.name" class="field-error">
+                                {{ errors.name }}
+                                <span v-if="errors.name.includes('already exists')" class="suggestion-text">
+                                    Try: "{{ getSuggestedName(form.name) }}"
+                                </span>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -44,6 +53,43 @@
                                 class="form-textarea"
                             ></textarea>
                             <div class="field-help">Help your team understand what this workflow is for</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="label-scheme-select">Label Scheme <span class="required">*</span></label>
+                            <div v-if="loadingLabelSchemes" class="loading-message">
+                                <font-awesome-icon :icon="faSpinner" spin />
+                                Loading label schemes...
+                            </div>
+                            <div v-else-if="labelSchemeError" class="error-message">
+                                <font-awesome-icon :icon="faExclamationTriangle" />
+                                {{ labelSchemeError }}
+                            </div>
+                            <select 
+                                v-else-if="availableLabelSchemes.length > 0"
+                                id="label-scheme-select"
+                                v-model="form.labelSchemeId"
+                                :disabled="isLoading"
+                                class="form-select"
+                                :class="{ 'error': errors.labelSchemeId }"
+                                required
+                            >
+                                <option value="">Select a label scheme...</option>
+                                <option 
+                                    v-for="scheme in availableLabelSchemes" 
+                                    :key="scheme.labelSchemeId" 
+                                    :value="scheme.labelSchemeId"
+                                >
+                                    {{ scheme.name }}{{ scheme.isDefault ? ' (Default)' : '' }}
+                                </option>
+                            </select>
+                            <div v-else class="no-label-schemes-message">
+                                <font-awesome-icon :icon="faExclamationTriangle" />
+                                <p>No label schemes available in this project.</p>
+                                <small>You need to create at least one label scheme before creating workflows.</small>
+                            </div>
+                            <div v-if="errors.labelSchemeId" class="field-error">{{ errors.labelSchemeId }}</div>
+                            <div v-if="availableLabelSchemes.length > 0" class="field-help">All annotations in this workflow will use this label scheme</div>
                         </div>
 
                         <div class="form-group">
@@ -162,7 +208,7 @@
                                         :disabled="isLoading"
                                         class="form-select"
                                     >
-                                        <option value="">Use previous stage outputs</option>
+                                        <option value="">Select a data source for completion stage...</option>
                                         <option 
                                             v-for="dataSource in availableDataSourcesForCompletion" 
                                             :key="dataSource.id"
@@ -171,7 +217,7 @@
                                             {{ dataSource.name }} ({{ dataSource.assetCount || 0 }} assets)
                                         </option>
                                     </select>
-                                    <div class="field-help">Typically uses outputs from the previous stage</div>
+                                    <div class="field-help">Assets will automatically move to this data source when they reach the completion stage</div>
                                 </div>
                             </div>
                         </div>
@@ -249,23 +295,35 @@
                                 </div>
                                 <div class="member-selector">
                                     <label>Assigned Members <span class="required">*</span></label>
-                                    <div class="member-grid">
+                                    <div class="field-help role-help">Only {{ getRoleDescriptionForStageType(WorkflowStageType.ANNOTATION) }} can be assigned to annotation stages</div>
+                                    <div v-if="annotationMembers.length === 0" class="no-members-message">
+                                        <font-awesome-icon :icon="faExclamationTriangle" />
+                                        <span>No team members with {{ getRoleDescriptionForStageType(WorkflowStageType.ANNOTATION) }} roles are available for this stage.</span>
+                                    </div>
+                                    <div v-else class="member-grid">
                                         <div 
-                                            v-for="member in projectMembers" 
+                                            v-for="member in annotationMembers" 
                                             :key="member.id"
                                             class="member-card"
-                                            :class="{ selected: form.annotationMembers.includes(member.id) }"
+                                            :class="{ 
+                                                selected: form.annotationMembers.includes(member.id),
+                                                disabled: isMemberAssignedToOtherStages(member.id, 'annotationMembers') && !form.annotationMembers.includes(member.id)
+                                            }"
                                             @click="toggleMemberAssignment('annotationMembers', member.id)"
                                         >
                                             <input 
                                                 type="checkbox" 
                                                 :checked="form.annotationMembers.includes(member.id)"
+                                                :disabled="isMemberAssignedToOtherStages(member.id, 'annotationMembers') && !form.annotationMembers.includes(member.id)"
                                                 @click.stop
                                                 @change="toggleMemberAssignment('annotationMembers', member.id)"
                                             />
                                             <div class="member-info">
                                                 <div class="member-name">{{ member.userName || member.email }}</div>
                                                 <div class="member-role">{{ member.role }}</div>
+                                                <div v-if="isMemberAssignedToOtherStages(member.id, 'annotationMembers') && !form.annotationMembers.includes(member.id)" class="member-warning">
+                                                    Already assigned
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -282,23 +340,35 @@
                                 </div>
                                 <div class="member-selector">
                                     <label>Assigned Members</label>
-                                    <div class="member-grid">
+                                    <div class="field-help role-help">Only {{ getRoleDescriptionForStageType(WorkflowStageType.REVISION) }} can be assigned to revision stages</div>
+                                    <div v-if="revisionMembers.length === 0" class="no-members-message">
+                                        <font-awesome-icon :icon="faExclamationTriangle" />
+                                        <span>No team members with {{ getRoleDescriptionForStageType(WorkflowStageType.REVISION) }} roles are available for this stage.</span>
+                                    </div>
+                                    <div v-else class="member-grid">
                                         <div 
-                                            v-for="member in projectMembers" 
+                                            v-for="member in revisionMembers" 
                                             :key="member.id"
                                             class="member-card"
-                                            :class="{ selected: form.revisionMembers.includes(member.id) }"
+                                            :class="{ 
+                                                selected: form.revisionMembers.includes(member.id),
+                                                disabled: isMemberAssignedToOtherStages(member.id, 'revisionMembers') && !form.revisionMembers.includes(member.id)
+                                            }"
                                             @click="toggleMemberAssignment('revisionMembers', member.id)"
                                         >
                                             <input 
                                                 type="checkbox" 
                                                 :checked="form.revisionMembers.includes(member.id)"
+                                                :disabled="isMemberAssignedToOtherStages(member.id, 'revisionMembers') && !form.revisionMembers.includes(member.id)"
                                                 @click.stop
                                                 @change="toggleMemberAssignment('revisionMembers', member.id)"
                                             />
                                             <div class="member-info">
                                                 <div class="member-name">{{ member.userName || member.email }}</div>
                                                 <div class="member-role">{{ member.role }}</div>
+                                                <div v-if="isMemberAssignedToOtherStages(member.id, 'revisionMembers') && !form.revisionMembers.includes(member.id)" class="member-warning">
+                                                    Already assigned
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -314,23 +384,35 @@
                                 </div>
                                 <div class="member-selector">
                                     <label>Assigned Members <span class="required">*</span></label>
-                                    <div class="member-grid">
+                                    <div class="field-help role-help">Only {{ getRoleDescriptionForStageType(WorkflowStageType.COMPLETION) }} can be assigned to completion stages</div>
+                                    <div v-if="completionMembers.length === 0" class="no-members-message">
+                                        <font-awesome-icon :icon="faExclamationTriangle" />
+                                        <span>No team members with {{ getRoleDescriptionForStageType(WorkflowStageType.COMPLETION) }} roles are available for this stage.</span>
+                                    </div>
+                                    <div v-else class="member-grid">
                                         <div 
-                                            v-for="member in projectMembers" 
+                                            v-for="member in completionMembers" 
                                             :key="member.id"
                                             class="member-card"
-                                            :class="{ selected: form.completionMembers.includes(member.id) }"
+                                            :class="{ 
+                                                selected: form.completionMembers.includes(member.id),
+                                                disabled: isMemberAssignedToOtherStages(member.id, 'completionMembers') && !form.completionMembers.includes(member.id)
+                                            }"
                                             @click="toggleMemberAssignment('completionMembers', member.id)"
                                         >
                                             <input 
                                                 type="checkbox" 
                                                 :checked="form.completionMembers.includes(member.id)"
+                                                :disabled="isMemberAssignedToOtherStages(member.id, 'completionMembers') && !form.completionMembers.includes(member.id)"
                                                 @click.stop
                                                 @change="toggleMemberAssignment('completionMembers', member.id)"
                                             />
                                             <div class="member-info">
                                                 <div class="member-name">{{ member.userName || member.email }}</div>
                                                 <div class="member-role">{{ member.role }}</div>
+                                                <div v-if="isMemberAssignedToOtherStages(member.id, 'completionMembers') && !form.completionMembers.includes(member.id)" class="member-warning">
+                                                    Already assigned
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -363,9 +445,11 @@ import type {CreateWorkflowWithStagesRequest} from '@/types/workflow';
 import {WorkflowStageType} from '@/types/workflow';
 import type {ProjectMember} from '@/types/projectMember';
 import type {DataSource} from '@/types/dataSource';
-import {projectMemberService, dataSourceService} from '@/services/api/projects';
+import type {LabelScheme} from '@/types/label/labelScheme';
+import {projectMemberService, dataSourceService, labelSchemeService, workflowService} from '@/services/api/projects';
 import {AppLogger} from '@/utils/logger';
 import {useToast} from '@/composables/useToast';
+import {filterMembersByStageType, getRoleDescriptionForStageType} from '@/core/validation/workflowRoleValidation';
 
 const logger = AppLogger.createComponentLogger('CreateWorkflowWizard');
 const { showApiError } = useToast();
@@ -389,7 +473,7 @@ const stepperSteps: StepperStep[] = [
         id: 'basic',
         title: 'Basic Setup',
         description: 'Name and configuration',
-        validation: () => form.name.trim().length > 0
+        validation: () => form.name.trim().length > 0 && form.labelSchemeId !== ''
     },
     {
         id: 'datasources',
@@ -414,12 +498,17 @@ const dataSourceError = ref<string>('');
 
 const projectMembers = ref<ProjectMember[]>([]);
 const availableDataSources = ref<DataSource[]>([]);
+const availableLabelSchemes = ref<LabelScheme[]>([]);
+const loadingLabelSchemes = ref(false);
+const labelSchemeError = ref<string>('');
+const existingWorkflows = ref<string[]>([]);
 
 // Form data
 interface WorkflowWizardForm {
     name: string;
     description?: string;
     includeRevision: boolean;
+    labelSchemeId: number | '';
     annotationInputDataSourceId: number | '';
     revisionInputDataSourceId: number | '';
     completionInputDataSourceId: number | '';
@@ -432,6 +521,7 @@ const form = reactive<WorkflowWizardForm>({
     name: '',
     description: '',
     includeRevision: false,
+    labelSchemeId: '',
     annotationInputDataSourceId: '',
     revisionInputDataSourceId: '',
     completionInputDataSourceId: '',
@@ -443,6 +533,7 @@ const form = reactive<WorkflowWizardForm>({
 // Validation errors
 const errors = reactive({
     name: '',
+    labelSchemeId: '',
     annotationInputDataSourceId: '',
     revisionInputDataSourceId: '',
     annotationMembers: '',
@@ -502,6 +593,32 @@ const fetchDataSources = async () => {
     }
 };
 
+const fetchLabelSchemes = async () => {
+    loadingLabelSchemes.value = true;
+    labelSchemeError.value = '';
+    try {
+        const response = await labelSchemeService.getLabelSchemesForProject(props.projectId);
+        availableLabelSchemes.value = response.data;
+        logger.info(`Loaded ${availableLabelSchemes.value.length} label schemes`);
+    } catch (error) {
+        labelSchemeError.value = 'Failed to load label schemes';
+        showApiError(error, 'Failed to load label schemes');
+    } finally {
+        loadingLabelSchemes.value = false;
+    }
+};
+
+const fetchExistingWorkflows = async () => {
+    try {
+        const response = await workflowService.getWorkflows(props.projectId, { pageSize: 100 });
+        existingWorkflows.value = response.data.map(workflow => workflow.name.toLowerCase());
+        logger.info(`Loaded ${existingWorkflows.value.length} existing workflow names`);
+    } catch (error) {
+        logger.error('Failed to fetch existing workflows:', error);
+        // Don't show error to user as this is not critical for workflow creation
+    }
+};
+
 // Navigation logic
 const canProceedToNextStep = computed(() => {
     if (isLoading.value) return false;
@@ -512,6 +629,19 @@ const canProceedToNextStep = computed(() => {
     }
     return true;
 });
+
+// Filtered members by stage type
+const annotationMembers = computed(() => 
+    filterMembersByStageType(projectMembers.value, WorkflowStageType.ANNOTATION)
+);
+
+const revisionMembers = computed(() => 
+    filterMembersByStageType(projectMembers.value, WorkflowStageType.REVISION)
+);
+
+const completionMembers = computed(() => 
+    filterMembersByStageType(projectMembers.value, WorkflowStageType.COMPLETION)
+);
 
 // Stepper event handlers
 const handleStepChange = (currentStep: number, previousStep: number) => {
@@ -544,12 +674,32 @@ const isCurrentStepValid = () => {
 
 const validateFirstStep = () => {
     // Basic validation for the first step
-    errors.name = ''; // Clear previous error
+    errors.name = ''; // Clear previous errors
+    errors.labelSchemeId = '';
+    
+    let isValid = true;
+    
     if (!form.name.trim()) {
         errors.name = 'Workflow name is required';
-        return false;
+        isValid = false;
+    } else if (form.name.trim().length < 3) {
+        errors.name = 'Workflow name must be at least 3 characters long';
+        isValid = false;
+    } else if (existingWorkflows.value.includes(form.name.trim().toLowerCase())) {
+        errors.name = 'A workflow with this name already exists in this project';
+        isValid = false;
     }
-    return true;
+    
+    if (!form.labelSchemeId) {
+        if (availableLabelSchemes.value.length === 0) {
+            errors.labelSchemeId = 'No label schemes available. Create a label scheme first.';
+        } else {
+            errors.labelSchemeId = 'Please select a label scheme for this workflow';
+        }
+        isValid = false;
+    }
+    
+    return isValid;
 };
 
 const validateSecondStep = () => {
@@ -573,6 +723,17 @@ const validateThirdStep = () => {
     errors.annotationMembers = ''; // Clear previous errors
     errors.completionMembers = '';
     
+    // Check if members are available for each stage
+    if (annotationMembers.value.length === 0) {
+        errors.annotationMembers = `No team members with ${getRoleDescriptionForStageType(WorkflowStageType.ANNOTATION)} roles are available. Add members with appropriate roles to continue.`;
+        return false;
+    }
+    if (completionMembers.value.length === 0) {
+        errors.completionMembers = `No team members with ${getRoleDescriptionForStageType(WorkflowStageType.COMPLETION)} roles are available. Add members with appropriate roles to continue.`;
+        return false;
+    }
+    
+    // Check if at least one member is assigned to required stages
     if (form.annotationMembers.length === 0) {
         errors.annotationMembers = 'At least one member must be assigned to annotation stage';
         return false;
@@ -584,23 +745,7 @@ const validateThirdStep = () => {
     return true;
 };
 
-// Member assignment helpers
-const toggleMemberAssignment = (stageKey: 'annotationMembers' | 'revisionMembers' | 'completionMembers', memberId: number) => {
-    const members = form[stageKey];
-    const index = members.indexOf(memberId);
-    if (index > -1) {
-        members.splice(index, 1);
-    } else {
-        members.push(memberId);
-    }
-};
-
-const getSelectedMemberNames = (memberIds: number[]) => {
-    return memberIds
-        .map(id => projectMembers.value.find(m => m.id === id))
-        .filter(Boolean)
-        .map(member => member!.userName || member!.email);
-};
+// Member assignment functions are defined after the watchers
 
 // Form submission
 const handleSubmit = async () => {
@@ -653,6 +798,7 @@ const handleSubmit = async () => {
         const workflowData: CreateWorkflowWithStagesRequest = {
             name: form.name,
             description: form.description || undefined,
+            labelSchemeId: form.labelSchemeId as number,
             stages,
             createDefaultStages: false,
             includeReviewStage: form.includeRevision
@@ -670,6 +816,8 @@ const handleSubmit = async () => {
 onMounted(() => {
     fetchProjectMembers();
     fetchDataSources();
+    fetchLabelSchemes();
+    fetchExistingWorkflows();
 });
 
 // Watch for data source conflicts and auto-clear conflicting selections
@@ -711,6 +859,75 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
         }
     }
 });
+
+// Real-time validation for workflow name
+watch(() => form.name, (newName) => {
+    if (newName.trim()) {
+        // Clear any existing name error first
+        errors.name = '';
+        
+        if (newName.trim().length < 3) {
+            errors.name = 'Workflow name must be at least 3 characters long';
+        } else if (existingWorkflows.value.includes(newName.trim().toLowerCase())) {
+            errors.name = 'A workflow with this name already exists in this project';
+        }
+    } else {
+        errors.name = '';
+    }
+});
+
+// Member assignment functions
+const toggleMemberAssignment = (stageKey: keyof Pick<WorkflowWizardForm, 'annotationMembers' | 'revisionMembers' | 'completionMembers'>, memberId: number) => {
+    const members = form[stageKey] as number[];
+    const memberIndex = members.indexOf(memberId);
+    
+    if (memberIndex > -1) {
+        // Member is already assigned, remove them
+        members.splice(memberIndex, 1);
+    } else {
+        // Member is not assigned, check if they're assigned to other stages
+        const memberAlreadyAssigned = isMemberAssignedToOtherStages(memberId, stageKey);
+        
+        if (memberAlreadyAssigned) {
+            // Show a warning or prevent assignment
+            logger.warn(`Member ${memberId} is already assigned to another stage`);
+            return; // Prevent assignment to multiple stages
+        }
+        
+        // Add member to this stage
+        members.push(memberId);
+    }
+};
+
+const isMemberAssignedToOtherStages = (memberId: number, currentStage: keyof Pick<WorkflowWizardForm, 'annotationMembers' | 'revisionMembers' | 'completionMembers'>): boolean => {
+    const stages = ['annotationMembers', 'revisionMembers', 'completionMembers'] as const;
+    
+    return stages.some(stage => {
+        if (stage === currentStage) return false;
+        return form[stage].includes(memberId);
+    });
+};
+
+const getSelectedMemberNames = (memberIds: number[]): string[] => {
+    return memberIds
+        .map(id => projectMembers.value.find(member => member.id === id))
+        .filter(Boolean)
+        .map(member => member!.userName || member!.email);
+};
+
+const getSuggestedName = (baseName: string): string => {
+    if (!baseName.trim()) return '';
+    
+    let counter = 1;
+    let suggestedName = `${baseName.trim()} ${counter}`;
+    
+    while (existingWorkflows.value.includes(suggestedName.toLowerCase())) {
+        counter++;
+        suggestedName = `${baseName.trim()} ${counter}`;
+    }
+    
+    return suggestedName;
+};
 </script>
 
 <style lang="scss" scoped>
@@ -772,6 +989,16 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
                 color: var(--color-text-muted);
                 cursor: not-allowed;
                 opacity: 0.6;
+            }
+            
+            &.success {
+                border-color: #10b981;
+                box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+            }
+            
+            &.error {
+                border-color: var(--color-error);
+                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
             }
         }
 
@@ -976,6 +1203,16 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
                     font-size: 0.875rem;
                     color: var(--color-text-secondary);
                     margin-top: 0.25rem;
+                    
+                    &.role-help {
+                        color: var(--color-primary);
+                        font-weight: 500;
+                        background: var(--color-primary-light);
+                        padding: 0.5rem;
+                        border-radius: 4px;
+                        margin-bottom: 1rem;
+                        border-left: 3px solid var(--color-primary);
+                    }
                 }
                 
                 .field-error {
@@ -1158,6 +1395,19 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
                         box-shadow: 0 1px 3px rgba(var(--color-black), 0.05);
                     }
                     
+                    &.disabled {
+                        opacity: 0.6;
+                        cursor: not-allowed;
+                        background: var(--color-gray-50);
+                        border-color: var(--color-gray-200);
+                        
+                        &:hover {
+                            border-color: var(--color-gray-200);
+                            background: var(--color-gray-50);
+                            box-shadow: none;
+                        }
+                    }
+                    
                     input[type="checkbox"] {
                         pointer-events: none;
                     }
@@ -1175,6 +1425,13 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
                             color: var(--color-text-secondary);
                             text-transform: capitalize;
                         }
+                        
+                        .member-warning {
+                            font-size: 0.75rem;
+                            color: var(--color-warning);
+                            font-weight: 500;
+                            margin-top: 0.25rem;
+                        }
                     }
                 }
             }
@@ -1183,6 +1440,34 @@ watch(() => form.completionInputDataSourceId, (newValue) => {
                 font-size: 0.875rem;
                 color: var(--color-error);
                 margin-top: 0.5rem;
+                
+                .suggestion-text {
+                    display: block;
+                    color: var(--color-text-secondary);
+                    font-style: italic;
+                    font-weight: normal;
+                    margin-top: 0.25rem;
+                    
+                    &::before {
+                        content: "💡 ";
+                    }
+                }
+            }
+            
+            .no-members-message {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 1rem;
+                background: var(--color-warning-light);
+                border: 1px solid var(--color-warning);
+                border-radius: 8px;
+                color: var(--color-warning-dark);
+                font-size: 0.875rem;
+                
+                svg {
+                    color: var(--color-warning);
+                }
             }
         }
     }
