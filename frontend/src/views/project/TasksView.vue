@@ -41,7 +41,6 @@
             <DataTable
                 :data="taskTableData"
                 :columns="tableColumns"
-                :actions="getTableActions()"
                 :row-actions="rowActions"
                 :is-loading="isLoading"
                 :error="errorMessage"
@@ -163,7 +162,6 @@ import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {
     faBolt,
     faEdit,
-    faPlus,
     faRefresh,
     faUserCog,
     faSort
@@ -184,7 +182,7 @@ import TaskSelectionColumn from '@/components/project/task/TaskSelectionColumn.v
 import TaskBulkOperationsToolbar from '@/components/project/task/TaskBulkOperationsToolbar.vue';
 import type {Task, TaskTableRow} from '@/types/task';
 import {TaskStatus} from '@/types/task';
-import type {TableAction, TableColumn, TableRowAction} from '@/types/common';
+import type {TableColumn, TableRowAction} from '@/types/common';
 import {useErrorHandler} from '@/composables/useErrorHandler';
 import {useProjectPermissions} from '@/composables/useProjectPermissions';
 import {useAssetPreview} from '@/composables/useAssetPreview';
@@ -299,22 +297,6 @@ const tableColumns: TableColumn[] = [
     { key: 'createdAt', label: 'Created', sortable: true, width: '11%', format: 'datetime' },
     { key: 'completedAt', label: 'Completed', sortable: true, width: '11%', format: 'datetime' },
 ];
-
-const getTableActions = (): TableAction[] => {
-    const actions: TableAction[] = [];
-    
-    // Add "Import Assets" action if no assets are available
-    if (!hasAvailableAssets.value) {
-        actions.unshift({
-            key: 'import-assets',
-            label: 'Import Assets',
-            icon: faPlus,
-            variant: 'primary'
-        });
-    }
-    
-    return actions;
-};
 
 const rowActions = computed((): TableRowAction<TaskTableRow>[] => {
     const actions: TableRowAction<TaskTableRow>[] = [
