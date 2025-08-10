@@ -5,6 +5,8 @@ import type { ToolHandler } from './toolHandler';
 import type { useWorkspaceStore } from '@/stores/workspaceStore';
 import { StoreError, ToolError } from '@/types/common/errors';
 import { drawPolyline, drawPoint } from '@/core/annotationWorkspace/annotationDrawer';
+import { calculateRenderSizes } from '@/core/annotationWorkspace/annotationRenderer';
+import { clampPointToImageBounds } from '@/core/annotationWorkspace/geometry';
 import type { Point } from '@/types/common/point';
 
 type WorkspaceStore = ReturnType<typeof useWorkspaceStore>;
@@ -17,6 +19,18 @@ export class PolylineToolHandler implements ToolHandler {
     private speedModeInterval: number | null = null;
     private speedModeDistance = 0;
     private imageDimensions: { width: number; height: number } | null = null;
+
+    private getImageDimensions(store: WorkspaceStore): { width: number; height: number } | null {
+        const asset = store.getCurrentAsset;
+        if (!asset || !asset.width || !asset.height) return null;
+        return { width: asset.width, height: asset.height };
+    }
+
+    private validatePoint(point: Point, store: WorkspaceStore): Point {
+        const imageDims = this.getImageDimensions(store);
+        if (!imageDims) return point;
+        return clampPointToImageBounds(point, imageDims.width, imageDims.height);
+    }
 
     onMouseDown(event: MouseEvent, store: WorkspaceStore): void {
         if (store.getSelectedLabelId === null) {
@@ -35,7 +49,7 @@ export class PolylineToolHandler implements ToolHandler {
         const imageX = (canvasX - store.viewOffset.x) / store.zoomLevel;
         const imageY = (canvasY - store.viewOffset.y) / store.zoomLevel;
 
-        const clickPoint = { x: imageX, y: imageY };
+        const clickPoint = this.validatePoint({ x: imageX, y: imageY }, store);
 
         // Set image dimensions for speed mode calculations
         if (store.getCurrentAsset && store.getCurrentAsset.width && store.getCurrentAsset.height) {
@@ -62,7 +76,7 @@ export class PolylineToolHandler implements ToolHandler {
         const imageX = (canvasX - _store.viewOffset.x) / _store.zoomLevel;
         const imageY = (canvasY - _store.viewOffset.y) / _store.zoomLevel;
 
-        this.currentPoint = { x: imageX, y: imageY };
+        this.currentPoint = this.validatePoint({ x: imageX, y: imageY }, _store);
 
         // Check for shift key to activate/deactivate speed mode
         if (event.shiftKey && !this.speedMode && this.points.length >= 1) {
@@ -100,20 +114,22 @@ export class PolylineToolHandler implements ToolHandler {
         }
     }
 
-    draw(ctx: CanvasRenderingContext2D): void {
+    draw(ctx: CanvasRenderingContext2D, zoomLevel: number = 1): void {
         if (!this.drawing || this.points.length === 0) return;
+
+        const { lineWidth, pointRadius, thinLineWidth } = calculateRenderSizes(zoomLevel);
 
         // Draw the existing points of the polyline
         if (this.points.length >= 1) {
-            drawPolyline(ctx, this.points, '#00FFFF', 2);
+            drawPolyline(ctx, this.points, '#00FFFF', lineWidth);
         }
 
         // Draw points for visual feedback
         this.points.forEach((point, index) => {
             // Make the first point slightly larger to indicate start
-            const radius = index === 0 ? 6 : 4;
+            const radius = index === 0 ? pointRadius * 1.5 : pointRadius;
             const color = index === 0 ? '#FF0000' : '#00FFFF';
-            drawPoint(ctx, point.x, point.y, color, radius, 2, '#FFFFFF');
+            drawPoint(ctx, point.x, point.y, color, radius, thinLineWidth, '#FFFFFF');
         });
 
         // Draw the current line segment being created
@@ -123,7 +139,7 @@ export class PolylineToolHandler implements ToolHandler {
             ctx.beginPath();
             ctx.moveTo(lastPoint.x, lastPoint.y);
             ctx.lineTo(this.currentPoint.x, this.currentPoint.y);
-            ctx.lineWidth = 2;
+            ctx.lineWidth = lineWidth;
             ctx.strokeStyle = '#00FFFF';
             ctx.stroke();
             ctx.restore();

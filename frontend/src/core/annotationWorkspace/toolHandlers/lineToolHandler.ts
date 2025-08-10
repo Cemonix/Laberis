@@ -5,6 +5,8 @@ import type { ToolHandler } from './toolHandler';
 import type { useWorkspaceStore } from '@/stores/workspaceStore';
 import { StoreError, ToolError } from '@/types/common/errors';
 import { drawLine } from '@/core/annotationWorkspace/annotationDrawer';
+import { calculateRenderSizes } from '@/core/annotationWorkspace/annotationRenderer';
+import { clampPointToImageBounds } from '@/core/annotationWorkspace/geometry';
 import type { Point } from '@/types/common/point';
 
 type WorkspaceStore = ReturnType<typeof useWorkspaceStore>;
@@ -13,6 +15,18 @@ export class LineToolHandler implements ToolHandler {
     private drawing = false;
     private startPoint: Point | null = null;
     private currentPoint: Point | null = null;
+
+    private getImageDimensions(store: WorkspaceStore): { width: number; height: number } | null {
+        const asset = store.getCurrentAsset;
+        if (!asset || !asset.width || !asset.height) return null;
+        return { width: asset.width, height: asset.height };
+    }
+
+    private validatePoint(point: Point, store: WorkspaceStore): Point {
+        const imageDims = this.getImageDimensions(store);
+        if (!imageDims) return point;
+        return clampPointToImageBounds(point, imageDims.width, imageDims.height);
+    }
 
     onMouseDown(event: MouseEvent, store: WorkspaceStore): void {
         if (store.getSelectedLabelId === null) {
@@ -31,8 +45,9 @@ export class LineToolHandler implements ToolHandler {
         const imageX = (canvasX - store.viewOffset.x) / store.zoomLevel;
         const imageY = (canvasY - store.viewOffset.y) / store.zoomLevel;
 
-        this.startPoint = { x: imageX, y: imageY };
-        this.currentPoint = { x: imageX, y: imageY };
+        const validatedPoint = this.validatePoint({ x: imageX, y: imageY }, store);
+        this.startPoint = validatedPoint;
+        this.currentPoint = validatedPoint;
         this.drawing = true;
     }
 
@@ -44,7 +59,7 @@ export class LineToolHandler implements ToolHandler {
         const imageX = (canvasX - store.viewOffset.x) / store.zoomLevel;
         const imageY = (canvasY - store.viewOffset.y) / store.zoomLevel;
 
-        this.currentPoint = { x: imageX, y: imageY };
+        this.currentPoint = this.validatePoint({ x: imageX, y: imageY }, store);
     }
 
     onMouseUp(event: MouseEvent, store: WorkspaceStore): void {
@@ -55,7 +70,7 @@ export class LineToolHandler implements ToolHandler {
         const imageX = (canvasX - store.viewOffset.x) / store.zoomLevel;
         const imageY = (canvasY - store.viewOffset.y) / store.zoomLevel;
 
-        const endPoint = { x: imageX, y: imageY };
+        const endPoint = this.validatePoint({ x: imageX, y: imageY }, store);
 
         // Only create annotation if there's meaningful distance
         const distance = Math.sqrt(
@@ -91,10 +106,11 @@ export class LineToolHandler implements ToolHandler {
         this.reset();
     }
 
-    draw(ctx: CanvasRenderingContext2D): void {
+    draw(ctx: CanvasRenderingContext2D, zoomLevel: number = 1): void {
         if (!this.drawing || !this.startPoint || !this.currentPoint) return;
 
-        drawLine(ctx, this.startPoint, this.currentPoint, '#00FFFF', 2);
+        const { lineWidth } = calculateRenderSizes(zoomLevel);
+        drawLine(ctx, this.startPoint, this.currentPoint, '#00FFFF', lineWidth);
     }
 
     private reset(): void {
