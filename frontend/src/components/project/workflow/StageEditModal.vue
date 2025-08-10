@@ -10,78 +10,78 @@
             
             <div class="modal-body">
                 <div class="stage-edit-modal">
-                <div v-if="isLoading" class="loading-state">
-                    <p>Loading stage details...</p>
-                </div>
+                    <div v-if="isLoading" class="loading-state">
+                        <p>Loading stage details...</p>
+                    </div>
+                    
+                    <div v-else-if="error" class="error-state">
+                        <p class="error-message">{{ error }}</p>
+                        <Button variant="secondary" @click="loadStageDetails">Retry</Button>
+                    </div>
+                    
+                    <div v-else class="edit-content">
+                        <form @submit.prevent="handleSave" class="edit-form">
+                            <div class="form-group">
+                                <label for="stageName" class="form-label">Stage Name</label>
+                                <input
+                                    id="stageName"
+                                    v-model="formData.name"
+                                    type="text"
+                                    class="form-input"
+                                    placeholder="Enter stage name"
+                                    required
+                                />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="stageDescription" class="form-label">Description</label>
+                                <textarea
+                                    id="stageDescription"
+                                    v-model="formData.description"
+                                    class="form-textarea"
+                                    placeholder="Enter stage description (optional)"
+                                    rows="4"
+                                ></textarea>
+                            </div>
+                            
+                            <div class="stage-info">
+                                <div class="info-item">
+                                    <span class="info-label">Stage Type:</span>
+                                    <span class="info-value">{{ stage.stageType ? formatStageType(stage.stageType) : 'Unknown' }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Stage Order:</span>
+                                    <span class="info-value">#{{ stage.stageOrder }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Stage Position:</span>
+                                    <span class="info-value">
+                                        <span v-if="stage.isInitialStage" class="badge start-badge">Start</span>
+                                        <span v-else-if="stage.isFinalStage" class="badge end-badge">End</span>
+                                        <span v-else class="badge middle-badge">Middle</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 
-                <div v-else-if="error" class="error-state">
-                    <p class="error-message">{{ error }}</p>
-                    <Button variant="secondary" @click="loadStageDetails">Retry</Button>
-                </div>
-                
-                <div v-else class="edit-content">
-                    <form @submit.prevent="handleSave" class="edit-form">
-                        <div class="form-group">
-                            <label for="stageName" class="form-label">Stage Name</label>
-                            <input
-                                id="stageName"
-                                v-model="formData.name"
-                                type="text"
-                                class="form-input"
-                                placeholder="Enter stage name"
-                                required
-                            />
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="stageDescription" class="form-label">Description</label>
-                            <textarea
-                                id="stageDescription"
-                                v-model="formData.description"
-                                class="form-textarea"
-                                placeholder="Enter stage description (optional)"
-                                rows="4"
-                            ></textarea>
-                        </div>
-                        
-                        <div class="stage-info">
-                            <div class="info-item">
-                                <span class="info-label">Stage Type:</span>
-                                <span class="info-value">{{ stage.stageType ? formatStageType(stage.stageType) : 'Unknown' }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Stage Order:</span>
-                                <span class="info-value">#{{ stage.stageOrder }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Stage Position:</span>
-                                <span class="info-value">
-                                    <span v-if="stage.isInitialStage" class="badge start-badge">Start</span>
-                                    <span v-else-if="stage.isFinalStage" class="badge end-badge">End</span>
-                                    <span v-else class="badge middle-badge">Middle</span>
-                                </span>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
-            <div class="modal-actions">
-                <Button variant="secondary" @click="handleClose" :disabled="isSaving">
-                    Cancel
-                </Button>
-                <Button
-                    variant="primary"
-                    @click="handleSave"
-                    :disabled="isSaving || !isFormValid"
-                >
-                    <template v-if="isSaving">
-                        Saving...
-                    </template>
-                    <template v-else>
-                        Save Changes
-                    </template>
-                </Button>
+                    <div class="modal-actions">
+                        <Button variant="secondary" @click="handleClose" :disabled="isSaving">
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="primary"
+                            @click="handleSave"
+                            :disabled="isSaving || !isFormValid"
+                        >
+                            <template v-if="isSaving">
+                                Saving...
+                            </template>
+                            <template v-else>
+                                Save Changes
+                            </template>
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
