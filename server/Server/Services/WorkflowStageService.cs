@@ -309,7 +309,7 @@ public class WorkflowStageService : IWorkflowStageService
             
             throw new InvalidOperationException(
                 $"Data source {dataSourceId} cannot be used as {dataSourceType} data source because it is already in use by other workflow stages: {conflictList}. " +
-                $"Data sources can only be shared by completion stages. Consider creating a dedicated data source for this workflow stage.");
+                $"Each data source must be used by only one workflow stage to maintain data integrity. Consider creating a dedicated data source for this workflow stage.");
         }
     }
 
@@ -328,5 +328,19 @@ public class WorkflowStageService : IWorkflowStageService
         _logger.LogInformation("Stage {StageId} belongs to workflow {WorkflowId}: {IsValid}", stageId, workflowId, isValid);
         
         return isValid;
+    }
+
+    public async Task<IEnumerable<WorkflowStageDto>> GetDataSourceUsageConflictsAsync(int dataSourceId, int? excludeWorkflowId = null)
+    {
+        _logger.LogInformation("Getting data source usage conflicts for data source {DataSourceId}, excluding workflow {ExcludeWorkflowId}", 
+            dataSourceId, excludeWorkflowId);
+
+        var conflictingStages = await _workflowStageRepository.GetConflictingDataSourceUsageAsync(dataSourceId, excludeWorkflowId);
+        var conflictDtos = conflictingStages.Select(MapToDto).ToList();
+
+        _logger.LogInformation("Found {ConflictCount} conflicting stages for data source {DataSourceId}", 
+            conflictDtos.Count, dataSourceId);
+
+        return conflictDtos;
     }
 }
