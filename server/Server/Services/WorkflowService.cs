@@ -122,19 +122,30 @@ public class WorkflowService : IWorkflowService
                 await CreateWorkflowStageConnectionsAsync(createdStages);
             }
 
-            // Automatically create tasks for all available assets if an initial stage was created
-            if (initialStageId.HasValue)
+            // Automatically create tasks for all workflow stages that have assets in their input data sources
+            if (createdStages.Count > 0)
             {
-                try
+                var totalTasksCreated = 0;
+                
+                foreach (var stage in createdStages)
                 {
-                    var tasksCreated = await _taskService.CreateTasksForAllAssetsAsync(projectId, workflow.WorkflowId, initialStageId.Value);
-                    _logger.LogInformation("Automatically created {TasksCreated} tasks for workflow {WorkflowId}", tasksCreated, workflow.WorkflowId);
+                    try
+                    {
+                        var tasksCreated = await _taskService.CreateTasksForWorkflowStageAsync(projectId, workflow.WorkflowId, stage.Id);
+                        totalTasksCreated += tasksCreated;
+                        _logger.LogInformation("Automatically created {TasksCreated} tasks for workflow stage {StageId} ({StageName}) in workflow {WorkflowId}", 
+                            tasksCreated, stage.Id, stage.Name, workflow.WorkflowId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to create tasks automatically for workflow stage {StageId} ({StageName}) in workflow {WorkflowId}", 
+                            stage.Id, stage.Name, workflow.WorkflowId);
+                        // Don't fail the workflow creation if task creation fails for individual stages
+                    }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to create tasks automatically for workflow {WorkflowId}", workflow.WorkflowId);
-                    // Don't fail the workflow creation if task creation fails
-                }
+                
+                _logger.LogInformation("Automatically created {TotalTasksCreated} total tasks across all stages for workflow {WorkflowId}", 
+                    totalTasksCreated, workflow.WorkflowId);
             }
 
             await transaction.CommitAsync();

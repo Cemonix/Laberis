@@ -74,4 +74,14 @@ public interface IWorkflowStageService
     /// <param name="workflowId">The ID of the workflow.</param>
     /// <returns>A task that represents the asynchronous operation, returning true if the stage belongs to the workflow, otherwise false.</returns>
     Task<bool> ValidateStageBelongsToWorkflowAsync(int stageId, int workflowId);
+    
+    /// <summary>
+    /// Gets workflow stages that are using a specific data source.
+    /// Used to prevent data source conflicts when creating new workflows.
+    /// Enforces 1:1 mapping between data sources and workflow stages for data integrity.
+    /// </summary>
+    /// <param name="dataSourceId">The ID of the data source to check.</param>
+    /// <param name="excludeWorkflowId">Optional workflow ID to exclude from the check (for updates).</param>
+    /// <returns>A task that represents the asynchronous operation, containing workflow stages using the data source.</returns>
+    Task<IEnumerable<WorkflowStageDto>> GetDataSourceUsageConflictsAsync(int dataSourceId, int? excludeWorkflowId = null);
 }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using server.Models.DTOs.DataSource;
+using server.Models.DTOs.WorkflowStage;
 using server.Services.Interfaces;
 
 namespace server.Controllers;
@@ -13,10 +14,12 @@ namespace server.Controllers;
 public class DataSourcesController : ControllerBase
 {
     private readonly IDataSourceService _dataSourceService;
+    private readonly IWorkflowStageService _workflowStageService;
 
-    public DataSourcesController(IDataSourceService dataSourceService)
+    public DataSourcesController(IDataSourceService dataSourceService, IWorkflowStageService workflowStageService)
     {
         _dataSourceService = dataSourceService;
+        _workflowStageService = workflowStageService;
     }
 
     /// <summary>
@@ -122,6 +125,39 @@ public class DataSourcesController : ControllerBase
             return NotFound();
         }
         return NoContent();
+    }
+
+    /// <summary>
+    /// Checks if a data source is already being used by other workflow stages.
+    /// This prevents data source conflicts when creating new workflows.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="dataSourceId">The ID of the data source to check.</param>
+    /// <param name="excludeWorkflowId">Optional workflow ID to exclude from the check (for updates).</param>
+    /// <returns>A list of conflicting workflow stages using the data source.</returns>
+    [HttpGet("{dataSourceId:int}/conflicts")]
+    public async Task<IActionResult> GetDataSourceUsageConflicts(
+        int projectId, 
+        int dataSourceId, 
+        [FromQuery] int? excludeWorkflowId = null)
+    {
+        try
+        {
+            // Validate that the data source belongs to the project
+            var dataSource = await _dataSourceService.GetDataSourceByIdAsync(dataSourceId);
+            if (dataSource == null || dataSource.ProjectId != projectId)
+            {
+                return NotFound($"Data source {dataSourceId} not found in project {projectId}.");
+            }
+
+            var conflicts = await _workflowStageService.GetDataSourceUsageConflictsAsync(dataSourceId, excludeWorkflowId);
+            return Ok(conflicts);
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, 
+                "An unexpected error occurred while checking data source conflicts.");
+        }
     }
 
     /// <summary>
