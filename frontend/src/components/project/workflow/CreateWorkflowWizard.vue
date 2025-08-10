@@ -149,11 +149,17 @@
                                             v-for="dataSource in availableDataSourcesForAnnotation" 
                                             :key="dataSource.id"
                                             :value="dataSource.id"
+                                            :disabled="isDataSourceConflicted(dataSource.id)"
                                         >
                                             {{ dataSource.name }} ({{ dataSource.assetCount || 0 }} assets)
+                                            <span v-if="isDataSourceConflicted(dataSource.id)"> - Already in use</span>
                                         </option>
                                     </select>
                                     <div v-if="errors.annotationInputDataSourceId" class="field-error">{{ errors.annotationInputDataSourceId }}</div>
+                                    <div v-if="form.annotationInputDataSourceId && isDataSourceConflicted(form.annotationInputDataSourceId)" class="field-warning">
+                                        <font-awesome-icon :icon="faExclamationTriangle" />
+                                        This data source is already used by: {{ getDataSourceConflictInfo(form.annotationInputDataSourceId).join(', ') }}
+                                    </div>
                                     <div class="field-help">Choose where annotation tasks will get their input data from</div>
                                 </div>
                             </div>
@@ -182,11 +188,17 @@
                                             v-for="dataSource in availableDataSourcesForRevision" 
                                             :key="dataSource.id"
                                             :value="dataSource.id"
+                                            :disabled="isDataSourceConflicted(dataSource.id)"
                                         >
                                             {{ dataSource.name }} ({{ dataSource.assetCount || 0 }} assets)
+                                            <span v-if="isDataSourceConflicted(dataSource.id)"> - Already in use</span>
                                         </option>
                                     </select>
                                     <div v-if="errors.revisionInputDataSourceId" class="field-error">{{ errors.revisionInputDataSourceId }}</div>
+                                    <div v-if="form.revisionInputDataSourceId && isDataSourceConflicted(form.revisionInputDataSourceId)" class="field-warning">
+                                        <font-awesome-icon :icon="faExclamationTriangle" />
+                                        This data source is already used by: {{ getDataSourceConflictInfo(form.revisionInputDataSourceId).join(', ') }}
+                                    </div>
                                     <div class="field-help">Revision stage requires its own data source for proper workflow tracking</div>
                                 </div>
                             </div>
@@ -213,10 +225,16 @@
                                             v-for="dataSource in availableDataSourcesForCompletion" 
                                             :key="dataSource.id"
                                             :value="dataSource.id"
+                                            :disabled="isDataSourceConflicted(dataSource.id)"
                                         >
                                             {{ dataSource.name }} ({{ dataSource.assetCount || 0 }} assets)
+                                            <span v-if="isDataSourceConflicted(dataSource.id)"> - Already in use</span>
                                         </option>
                                     </select>
+                                    <div v-if="form.completionInputDataSourceId && isDataSourceConflicted(form.completionInputDataSourceId)" class="field-warning">
+                                        <font-awesome-icon :icon="faExclamationTriangle" />
+                                        This data source is already used by: {{ getDataSourceConflictInfo(form.completionInputDataSourceId).join(', ') }}
+                                    </div>
                                     <div class="field-help">Assets will automatically move to this data source when they reach the completion stage</div>
                                 </div>
                             </div>
@@ -441,7 +459,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import type {StepperStep} from '@/components/common/Stepper.vue';
 import Stepper from '@/components/common/Stepper.vue';
-import type {CreateWorkflowWithStagesRequest} from '@/types/workflow';
+import type {CreateWorkflowWithStagesRequest, Workflow} from '@/types/workflow';
 import {WorkflowStageType} from '@/types/workflow';
 import type {ProjectMember} from '@/types/projectMember';
 import type {DataSource} from '@/types/dataSource';
@@ -495,6 +513,7 @@ const loadingMembers = ref(false);
 const loadingDataSources = ref(false);
 const memberError = ref<string>('');
 const dataSourceError = ref<string>('');
+const dataSourceConflicts = ref<Map<number, string[]>>(new Map());
 
 const projectMembers = ref<ProjectMember[]>([]);
 const availableDataSources = ref<DataSource[]>([]);
@@ -502,6 +521,7 @@ const availableLabelSchemes = ref<LabelScheme[]>([]);
 const loadingLabelSchemes = ref(false);
 const labelSchemeError = ref<string>('');
 const existingWorkflows = ref<string[]>([]);
+const workflowLookup = ref<Map<number, string>>(new Map());
 
 // Form data
 interface WorkflowWizardForm {
@@ -539,6 +559,15 @@ const errors = reactive({
     annotationMembers: '',
     completionMembers: ''
 });
+
+// Helper functions for data source availability
+const isDataSourceConflicted = (dataSourceId: number): boolean => {
+    return dataSourceConflicts.value.has(dataSourceId);
+};
+
+const getDataSourceConflictInfo = (dataSourceId: number): string[] => {
+    return dataSourceConflicts.value.get(dataSourceId) || [];
+};
 
 // Data source availability for each stage
 const availableDataSourcesForAnnotation = computed(() => {
@@ -579,18 +608,70 @@ const fetchDataSources = async () => {
     loadingDataSources.value = true;
     dataSourceError.value = '';
     try {
-        const response = await dataSourceService.getDataSources({ 
-            projectId: props.projectId,
-            pageSize: 100 // Get all data sources
-        });
-        availableDataSources.value = response.data;
-        logger.info(`Loaded ${availableDataSources.value.length} data sources`);
+        // Fetch all data sources by getting the first page and checking total count
+        let allDataSources: DataSource[] = [];
+        let currentPage = 1;
+        const pageSize = 50;
+        let hasMore = true;
+        
+        while (hasMore) {
+            const response = await dataSourceService.getDataSources({ 
+                projectId: props.projectId,
+                pageNumber: currentPage,
+                pageSize: pageSize
+            });
+            
+            allDataSources = [...allDataSources, ...response.data];
+            
+            // Check if we need to fetch more pages
+            hasMore = response.currentPage < response.totalPages;
+            currentPage++;
+            
+            // Safety check to prevent infinite loop
+            if (currentPage > 10) {
+                logger.warn('Too many pages of data sources, stopping at page 10');
+                break;
+            }
+        }
+        
+        availableDataSources.value = allDataSources;
+        logger.info(`Loaded ${availableDataSources.value.length} data sources from ${currentPage - 1} page(s)`);
+        
+        // Check for conflicts for each data source
+        await checkDataSourceConflicts();
     } catch (error) {
         dataSourceError.value = 'Failed to load data sources';
         showApiError(error, 'Failed to load data sources');
     } finally {
         loadingDataSources.value = false;
     }
+};
+
+const checkDataSourceConflicts = async () => {
+    const conflicts = new Map<number, string[]>();
+    
+    for (const dataSource of availableDataSources.value) {
+        try {
+            const conflictingStages = await dataSourceService.getDataSourceUsageConflicts(
+                props.projectId, 
+                dataSource.id
+            );
+            
+            if (conflictingStages.length > 0) {
+                const conflictDescriptions = conflictingStages.map(stage => {
+                    const workflowName = workflowLookup.value.get(stage.workflowId) || `ID: ${stage.workflowId}`;
+                    return `${stage.name} (Workflow: ${workflowName})`;
+                });
+                conflicts.set(dataSource.id, conflictDescriptions);
+            }
+        } catch (error) {
+            logger.warn(`Failed to check conflicts for data source ${dataSource.id}:`, error);
+            // Continue checking other data sources even if one fails
+        }
+    }
+    
+    dataSourceConflicts.value = conflicts;
+    logger.info(`Found conflicts for ${conflicts.size} data sources`);
 };
 
 const fetchLabelSchemes = async () => {
@@ -610,9 +691,42 @@ const fetchLabelSchemes = async () => {
 
 const fetchExistingWorkflows = async () => {
     try {
-        const response = await workflowService.getWorkflows(props.projectId, { pageSize: 100 });
-        existingWorkflows.value = response.data.map(workflow => workflow.name.toLowerCase());
-        logger.info(`Loaded ${existingWorkflows.value.length} existing workflow names`);
+        // Fetch all workflows by getting the first page and checking total count
+        let allWorkflows: Workflow[] = [];
+        let currentPage = 1;
+        const pageSize = 50;
+        let hasMore = true;
+        
+        while (hasMore) {
+            const response = await workflowService.getWorkflows(props.projectId, { 
+                pageNumber: currentPage,
+                pageSize: pageSize 
+            });
+            
+            allWorkflows = [...allWorkflows, ...response.data];
+            
+            // Check if we need to fetch more pages
+            hasMore = response.currentPage < response.totalPages;
+            currentPage++;
+            
+            // Safety check to prevent infinite loop
+            if (currentPage > 10) {
+                logger.warn('Too many pages of workflows, stopping at page 10');
+                break;
+            }
+        }
+        
+        // Populate existing workflow names for duplicate checking
+        existingWorkflows.value = allWorkflows.map(workflow => workflow.name.toLowerCase());
+        
+        // Populate workflow lookup for conflict display
+        const lookup = new Map<number, string>();
+        allWorkflows.forEach(workflow => {
+            lookup.set(workflow.id, workflow.name);
+        });
+        workflowLookup.value = lookup;
+        
+        logger.info(`Loaded ${existingWorkflows.value.length} existing workflows from ${currentPage - 1} page(s)`);
     } catch (error) {
         logger.error('Failed to fetch existing workflows:', error);
         // Don't show error to user as this is not critical for workflow creation
@@ -711,10 +825,24 @@ const validateSecondStep = () => {
         errors.annotationInputDataSourceId = 'Annotation stage must have exactly one input data source';
         return false;
     }
+    
+    // Check if selected annotation data source is conflicted
+    if (form.annotationInputDataSourceId && isDataSourceConflicted(form.annotationInputDataSourceId)) {
+        errors.annotationInputDataSourceId = 'This data source is already in use by another workflow. Please select a different data source.';
+        return false;
+    }
+    
     if (form.includeRevision && !form.revisionInputDataSourceId) {
         errors.revisionInputDataSourceId = 'Revision stage must have exactly one input data source';
         return false;
     }
+    
+    // Check if selected revision data source is conflicted
+    if (form.revisionInputDataSourceId && isDataSourceConflicted(form.revisionInputDataSourceId)) {
+        errors.revisionInputDataSourceId = 'This data source is already in use by another workflow. Please select a different data source.';
+        return false;
+    }
+    
     return true;
 };
 
@@ -876,6 +1004,27 @@ watch(() => form.name, (newName) => {
     }
 });
 
+// Clear conflicted data sources when conflicts change
+watch(() => dataSourceConflicts.value, () => {
+    // Clear annotation data source if it's now conflicted
+    if (form.annotationInputDataSourceId && isDataSourceConflicted(form.annotationInputDataSourceId)) {
+        form.annotationInputDataSourceId = '';
+        logger.info('Cleared conflicted annotation data source');
+    }
+    
+    // Clear revision data source if it's now conflicted
+    if (form.revisionInputDataSourceId && isDataSourceConflicted(form.revisionInputDataSourceId)) {
+        form.revisionInputDataSourceId = '';
+        logger.info('Cleared conflicted revision data source');
+    }
+    
+    // Clear completion data source if it's now conflicted
+    if (form.completionInputDataSourceId && isDataSourceConflicted(form.completionInputDataSourceId)) {
+        form.completionInputDataSourceId = '';
+        logger.info('Cleared conflicted completion data source');
+    }
+}, { deep: true });
+
 // Member assignment functions
 const toggleMemberAssignment = (stageKey: keyof Pick<WorkflowWizardForm, 'annotationMembers' | 'revisionMembers' | 'completionMembers'>, memberId: number) => {
     const members = form[stageKey] as number[];
@@ -1023,6 +1172,12 @@ const getSuggestedName = (baseName: string): string => {
                 
                 &:hover {
                     background: var(--color-primary-light);
+                }
+                
+                &:disabled {
+                    color: var(--color-text-muted);
+                    background: var(--color-gray-100);
+                    cursor: not-allowed;
                 }
             }
         }
@@ -1196,6 +1351,12 @@ const getSuggestedName = (baseName: string): string => {
                         &:hover {
                             background: var(--color-primary-light);
                         }
+                        
+                        &:disabled {
+                            color: var(--color-text-muted);
+                            background: var(--color-gray-100);
+                            cursor: not-allowed;
+                        }
                     }
                 }
                 
@@ -1219,6 +1380,19 @@ const getSuggestedName = (baseName: string): string => {
                     font-size: 0.875rem;
                     color: var(--color-error);
                     margin-top: 0.25rem;
+                }
+                
+                .field-warning {
+                    font-size: 0.875rem;
+                    color: var(--color-warning);
+                    margin-top: 0.25rem;
+                    padding: 0.5rem;
+                    background: var(--color-warning-light);
+                    border: 1px solid var(--color-warning);
+                    border-radius: 4px;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
                 }
             }
         }
