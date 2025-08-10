@@ -14,6 +14,7 @@ import {
     labelSchemeService,
     labelService,
     taskService,
+    workflowService,
     workflowStageService
 } from '@/services/api/projects';
 import { taskStatusService } from '@/services/taskStatusService';
@@ -336,33 +337,42 @@ export const useWorkspaceStore = defineStore("workspace", {
                     // Don't fail the entire load process if tasks fail
                 }
 
-                // Fetch label schemes for this project
+                // Fetch label scheme from the workflow
                 try {
-                    const labelSchemes = await labelSchemeService.getLabelSchemesForProject(numericProjectId);
-                    if (labelSchemes.data.length > 0) {
-                        // Store all available label schemes
-                        this.availableLabelSchemes = labelSchemes.data;
+                    if (this.currentTaskData && this.currentTaskData.workflowId) {
+                        // Get workflow to access its assigned label scheme
+                        const workflow = await workflowService.getWorkflowById(numericProjectId, this.currentTaskData.workflowId);
                         
-                        // Use the first available label scheme, or look for a default one
-                        const selectedScheme = labelSchemes.data.find(scheme => scheme.isDefault) || labelSchemes.data[0];
-                        
-                        // Fetch labels for the selected scheme
-                        try {
-                            const labelsResponse = await labelService.getLabelsForScheme(numericProjectId, selectedScheme.labelSchemeId);
-                            selectedScheme.labels = labelsResponse.data;
-                            this.setCurrentLabelScheme(selectedScheme);
-                            logger.info(`Loaded label scheme: ${selectedScheme.name} with ${labelsResponse.data.length} labels`);
-                        } catch (labelsError) {
-                            logger.error("Failed to fetch labels for scheme:", labelsError);
-                            this.setCurrentLabelScheme(selectedScheme); // Set scheme even without labels
+                        if (workflow.labelSchemeId) {
+                            // Get the specific label scheme assigned to this workflow
+                            const labelScheme = await labelSchemeService.getLabelSchemeById(numericProjectId, workflow.labelSchemeId);
+                            
+                            // Fetch labels for the scheme
+                            try {
+                                const labelsResponse = await labelService.getLabelsForScheme(numericProjectId, labelScheme.labelSchemeId);
+                                labelScheme.labels = labelsResponse.data;
+                                
+                                // Set this as the only available scheme (no switching allowed)
+                                this.availableLabelSchemes = [labelScheme];
+                                this.setCurrentLabelScheme(labelScheme);
+                                logger.info(`Loaded workflow label scheme: ${labelScheme.name} with ${labelsResponse.data.length} labels`);
+                            } catch (labelsError) {
+                                logger.error("Failed to fetch labels for workflow scheme:", labelsError);
+                                this.availableLabelSchemes = [labelScheme];
+                                this.setCurrentLabelScheme(labelScheme); // Set scheme even without labels
+                            }
+                        } else {
+                            logger.warn(`Workflow ${this.currentTaskData.workflowId} has no assigned label scheme`);
+                            this.availableLabelSchemes = [];
+                            this.setCurrentLabelScheme(null);
                         }
                     } else {
-                        logger.warn(`No label schemes found for project ${projectId}`);
+                        logger.warn('No current task with workflow information available for label scheme loading');
                         this.availableLabelSchemes = [];
                         this.setCurrentLabelScheme(null);
                     }
                 } catch (labelSchemeError) {
-                    logger.error("Failed to fetch label schemes:", labelSchemeError);
+                    logger.error("Failed to fetch workflow label scheme:", labelSchemeError);
                     this.availableLabelSchemes = [];
                     this.setCurrentLabelScheme(null);
                 }
