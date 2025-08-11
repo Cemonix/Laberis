@@ -12,6 +12,24 @@
                 <div v-if="errorMessage" class="error-banner">
                     {{ errorMessage }}
                 </div>
+
+                <!-- Email verification error banner -->
+                <div v-if="showEmailVerificationError" class="verification-error-banner">
+                    <div class="error-icon">⚠</div>
+                    <div class="error-content">
+                        <h3>Email Verification Required</h3>
+                        <p>Please verify your email address before logging in. Check your email for a verification link.</p>
+                        <div class="verification-actions">
+                            <Button 
+                                @click="resendVerificationEmail" 
+                                class="btn btn-outline btn-sm" 
+                                :disabled="isResendingVerification"
+                            >
+                                {{ isResendingVerification ? 'Sending...' : 'Resend Verification Email' }}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label for="email">Email</label>
                     <input 
@@ -51,6 +69,7 @@
 import {onMounted, ref} from "vue";
 import {useRoute, useRouter} from "vue-router";
 import {useAuthStore} from "@/stores/authStore";
+import {useToast} from "@/composables/useToast";
 import Button from "@/components/common/Button.vue";
 import Form from "@/components/common/Form.vue";
 import {AppLogger} from "@/utils/logger";
@@ -60,12 +79,17 @@ const logger = AppLogger.createComponentLogger('LoginView');
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const { showError, showSuccess } = useToast();
 
 const email = ref("");
 const password = ref("");
 const isLoading = ref(false);
 const errorMessage = ref("");
 const inviteToken = ref<string | null>(null);
+
+// Email verification states
+const showEmailVerificationError = ref(false);
+const isResendingVerification = ref(false);
 
 // Check for invitation token in URL
 onMounted(() => {
@@ -109,9 +133,45 @@ const handleLogin = async () => {
         }
     } catch (error) {
         logger.error("Login failed:", error);
-        errorMessage.value = error instanceof Error ? error.message : "Login failed. Please try again.";
+        const errorMsg = error instanceof Error ? error.message : "Login failed. Please try again.";
+        
+        // Check if the error is about email verification
+        if (errorMsg.toLowerCase().includes('verify your email') || 
+            errorMsg.toLowerCase().includes('email verification') ||
+            errorMsg.toLowerCase().includes('email not confirmed')) {
+            showEmailVerificationError.value = true;
+            errorMessage.value = ""; // Clear the regular error message
+        } else {
+            showEmailVerificationError.value = false;
+            errorMessage.value = errorMsg;
+        }
     } finally {
         isLoading.value = false;
+    }
+};
+
+// Resend verification email function
+const resendVerificationEmail = async () => {
+    if (!email.value) {
+        showError("Email Required", "Please enter your email address first.");
+        return;
+    }
+    
+    isResendingVerification.value = true;
+    
+    try {
+        // Call the unauthenticated resend endpoint
+        await authStore.resendEmailVerification(email.value);
+        
+        // Show success message and hide error banner
+        showEmailVerificationError.value = false;
+        showSuccess("Email Sent", "Verification email has been resent. Please check your email and spam folder.");
+    } catch (error) {
+        logger.error("Failed to resend verification email:", error);
+        const errorMsg = error instanceof Error ? error.message : "Failed to resend verification email";
+        showError("Resend Failed", errorMsg);
+    } finally {
+        isResendingVerification.value = false;
     }
 };
 </script>
@@ -131,6 +191,46 @@ const handleLogin = async () => {
     
     strong {
         font-weight: 600;
+    }
+}
+
+.verification-error-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--color-warning-light);
+    border: 1px solid var(--color-warning);
+    border-radius: 8px;
+    color: var(--color-warning-dark);
+    
+    .error-icon {
+        font-size: 1.5rem;
+        color: var(--color-warning);
+        flex-shrink: 0;
+        margin-top: 0.125rem;
+    }
+    
+    .error-content {
+        flex: 1;
+        
+        h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--color-warning-dark);
+        }
+        
+        p {
+            margin: 0 0 1rem 0;
+            line-height: 1.4;
+            font-size: 0.875rem;
+        }
+        
+        .verification-actions {
+            margin-top: 0.75rem;
+        }
     }
 }
 </style>
