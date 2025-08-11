@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using server.Authentication;
 using server.Models.DTOs.Workflow;
 using server.Services.Interfaces;
 using System.Security.Claims;
@@ -10,6 +11,7 @@ namespace server.Controllers;
 [Route("api/projects/{projectId:int}/[controller]")]
 [ApiController]
 [Authorize]
+[ProjectAccess]
 [EnableRateLimiting("project")]
 public class WorkflowsController : ControllerBase
 {
@@ -105,6 +107,7 @@ public class WorkflowsController : ControllerBase
     /// <response code="400">If the workflow data is invalid.</response>
     /// <response code="500">If an unexpected error occurs.</response>
     [HttpPost]
+    [Authorize(Policy = "CanManageWorkflows")]  // Manager only
     [ProducesResponseType(typeof(WorkflowDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -146,6 +149,7 @@ public class WorkflowsController : ControllerBase
     /// <response code="404">If the workflow is not found.</response>
     /// <response code="500">If an unexpected error occurs.</response>
     [HttpPut("{workflowId:int}")]
+    [Authorize(Policy = "CanManageWorkflows")]  // Manager only
     [ProducesResponseType(typeof(WorkflowDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -187,6 +191,7 @@ public class WorkflowsController : ControllerBase
     /// <response code="404">If the workflow is not found.</response>
     /// <response code="500">If an unexpected error occurs.</response>
     [HttpDelete("{workflowId:int}")]
+    [Authorize(Policy = "CanManageWorkflows")]  // Manager only
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]

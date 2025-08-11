@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using server.Authentication;
 using server.Exceptions;
 using server.Models.DTOs.ProjectInvitation;
 using server.Models.DTOs.ProjectMember;
@@ -12,6 +13,7 @@ namespace server.Controllers;
 [Route("api/projects/{projectId:int}/[controller]")]
 [ApiController]
 [Authorize]
+[ProjectAccess]  // Ensure user is a project member
 [EnableRateLimiting("project")]
 public class ProjectMembersController : ControllerBase
 {

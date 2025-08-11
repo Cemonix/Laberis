@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using server.Authentication;
 using server.Models.DTOs.Task;
 using server.Services.Interfaces;
 using System.Security.Claims;
@@ -10,6 +11,7 @@ namespace server.Controllers;
 [Route("api/projects/{projectId:int}/[controller]")]
 [ApiController]
 [Authorize]
+[ProjectAccess]
 [EnableRateLimiting("project")]
 public class TasksController : ControllerBase
 {
@@ -175,6 +177,7 @@ public class TasksController : ControllerBase
     /// <response code="401">If the user is not authenticated.</response>
     /// <response code="500">If an internal server error occurs.</response>
     [HttpPost]
+    [Authorize(Policy = "RequireManagerRole")]  // Only managers can manually create tasks
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
