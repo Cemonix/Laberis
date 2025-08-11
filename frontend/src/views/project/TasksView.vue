@@ -191,6 +191,7 @@ import {taskService, workflowStageService} from '@/services/api/projects';
 import {taskStatusService} from '@/services/taskStatusService';
 import {useTaskSelection} from '@/composables/useTaskSelection';
 import {taskBulkOperations} from '@/services/taskBulkOperations';
+import {LastStageManager} from '@/core/storage';
 import {AppLogger} from '@/utils/logger';
 
 const route = useRoute();
@@ -880,6 +881,30 @@ const loadStageInfo = async () => {
         stageName.value = stage.name;
         stageDescription.value = stage.description || '';
         stageType.value = stage.stageType || '';
+        
+        // Update the project store with current stage type for reactive navbar
+        projectStore.setCurrentStageType(stage.stageType || '');
+        
+        // Save this stage as the user's last accessed stage
+        try {
+            const projectName = projectStore.currentProject?.name || `Project ${projectId.value}`;
+            LastStageManager.saveLastStage(
+                projectId.value,
+                workflowId.value,
+                stageId.value,
+                stage.name || `Stage ${stageId.value}`,
+                projectName
+            );
+            
+            logger.info('Saved last accessed stage', {
+                projectId: projectId.value,
+                workflowId: workflowId.value,
+                stageId: stageId.value,
+                stageName: stage.name
+            });
+        } catch (saveError) {
+            logger.warn('Failed to save last stage:', saveError);
+        }
         
         logger.info('Loaded stage information', { 
             stageId: stageId.value,
