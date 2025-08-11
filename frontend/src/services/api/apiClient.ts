@@ -32,15 +32,28 @@ const processQueue = (error: Error | null, token: string | null = null) => {
 };
 
 /**
+ * Check if a URL is an authentication endpoint that doesn't require token refresh
+ */
+function isAuthEndpoint(url?: string): boolean {
+    if (!url) return false;
+    return url.includes('/auth/login') || 
+           url.includes('/auth/register') || 
+           url.includes('/auth/refresh-token') ||
+           url.includes('/auth/verify-email') ||
+           url.includes('/auth/resend-email-verification');
+}
+
+/**
  * Sets up the Axios interceptors for handling authentication and token refresh.
  * This should be called once when the application initializes.
  * @param authStore An instance of the authentication store.
  */
 export function setupInterceptors(authStore: ReturnType<typeof useAuthStore>): void {
-    // Request Interceptor: Add the JWT token to every outgoing request.
+    // Request Interceptor: Add JWT token whenever available
     apiClient.interceptors.request.use(
         (config) => {
-            const token = authStore.getAccessToken; // Directly and synchronously access the getter
+            // Add token if we have a valid one, regardless of initialization state
+            const token = authStore.getAccessToken;
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }
@@ -59,7 +72,8 @@ export function setupInterceptors(authStore: ReturnType<typeof useAuthStore>): v
 
             // Check if the error is a 401 and we haven't retried this request yet.
             if (error.response?.status === 401 && !originalRequest._retry) {
-                if (originalRequest.url?.includes('/auth/')) {
+                // Skip refresh for auth endpoints
+                if (isAuthEndpoint(originalRequest.url)) {
                     return Promise.reject(error);
                 }
 
@@ -85,7 +99,16 @@ export function setupInterceptors(authStore: ReturnType<typeof useAuthStore>): v
                     if (!refreshSuccess) {
                         // If refresh failed, reject the request and clear the queue
                         processQueue(new Error('Token refresh failed'), null);
-                        throw new Error('Token refresh failed');
+                        
+                        // Handle connection errors vs auth errors differently
+                        if (authStore.connectionError) {
+                            // Don't redirect to login on connection errors
+                            throw new Error('Connection error during token refresh');
+                        } else {
+                            // Clear auth state and let the app handle redirect to login
+                            authStore.clearAuthState();
+                            throw new Error('Authentication failed - please log in again');
+                        }
                     }
 
                     const newToken = authStore.getAccessToken;
