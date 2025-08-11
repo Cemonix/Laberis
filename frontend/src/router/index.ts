@@ -44,6 +44,14 @@ const routes: Array<RouteRecordRaw> = [
             layout: DefaultLayout,
         }
     },
+    {
+        path: '/verify-email',
+        name: 'EmailVerification',
+        component: () => import('@/views/auth/EmailVerificationView.vue'),
+        meta: {
+            layout: DefaultLayout,
+        }
+    },
     // Account management routes
     {
         path: '/account',
@@ -170,7 +178,7 @@ router.beforeEach(async (to, _from, next) => {
         await authStore.initializeAuth();
     }
     
-    const publicRoutes = ['Login', 'Register', 'Home', 'InviteAccept'];    
+    const publicRoutes = ['Login', 'Register', 'Home', 'InviteAccept', 'EmailVerification'];    
     const authRoutes = ['Login', 'Register'];
     
     if (authRoutes.includes(to.name as string) && authStore.isAuthenticated) {
