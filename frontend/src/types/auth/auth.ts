@@ -31,7 +31,6 @@ export interface UserDto {
 
 export interface AuthTokens {
     accessToken: string;
-    refreshToken: string;
     expiresAt: number;
 }
 
@@ -48,9 +47,9 @@ export interface AuthState {
 
 export interface AuthResponseDto {
     token: string;
-    refreshToken: string;
     expiresAt: string;
     user: UserDto;
+    // Note: refreshToken no longer sent in response body - now httpOnly cookie
 }
 
 export interface ChangePasswordDto {
