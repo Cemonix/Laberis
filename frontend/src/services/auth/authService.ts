@@ -22,13 +22,9 @@ class AuthService extends BaseService {
         super('AuthService');
     }
 
-    /**
-     * Convert backend AuthResponseDto to frontend format
-     */
     private mapAuthResponse(backendResponse: AuthResponseDto): LoginResponse {
         const tokens: AuthTokens = {
             accessToken: backendResponse.token,
-            refreshToken: backendResponse.refreshToken,
             expiresAt: new Date(backendResponse.expiresAt).getTime()
         };
 
@@ -92,23 +88,18 @@ class AuthService extends BaseService {
         }
     }
 
-    async refreshToken(refreshToken: string): Promise<AuthTokens> {
+    async refreshToken(): Promise<AuthTokens> {
         this.logger.info('Attempting to refresh access token');
         
-        const refreshTokenRequest = {
-            token: refreshToken
-        };
-
-        const response = await this.post<typeof refreshTokenRequest, AuthResponseDto>(
+        const response = await this.post<null, AuthResponseDto>(
             this.getBaseUrl('refresh-token'),
-            refreshTokenRequest
+            null
         );
 
         this.logger.info('Token refresh successful');
         
         const tokens: AuthTokens = {
             accessToken: response.token,
-            refreshToken: response.refreshToken,
             expiresAt: new Date(response.expiresAt).getTime()
         };
         
@@ -124,6 +115,42 @@ class AuthService extends BaseService {
         );
 
         this.logger.info('Password change successful');
+        return response;
+    }
+
+    async sendEmailVerification(): Promise<{ message: string }> {
+        this.logger.info('Sending email verification');
+        
+        const response = await this.post<void, { message: string }>(
+            this.getBaseUrl('send-email-verification'),
+            undefined
+        );
+
+        this.logger.info('Email verification sent successfully');
+        return response;
+    }
+
+    async verifyEmail(token: string): Promise<{ message: string }> {
+        this.logger.info('Verifying email with token');
+        
+        const response = await this.post<void, { message: string }>(
+            `${this.getBaseUrl('verify-email')}?token=${encodeURIComponent(token)}`,
+            undefined
+        );
+
+        this.logger.info('Email verification successful');
+        return response;
+    }
+
+    async resendEmailVerification(email: string): Promise<{ message: string }> {
+        this.logger.info('Resending email verification');
+        
+        const response = await this.post<{ email: string }, { message: string }>(
+            this.getBaseUrl('resend-email-verification'),
+            { email }
+        );
+
+        this.logger.info('Email verification resent successfully');
         return response;
     }
 }
