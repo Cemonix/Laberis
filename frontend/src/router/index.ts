@@ -5,6 +5,8 @@ import DefaultLayout from '@/layouts/DefaultLayout.vue';
 import WorkspaceLayout from '@/layouts/WorkspaceLayout.vue';
 import DataExplorerLayout from '@/layouts/DataExplorerLayout.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { projectMemberService } from '@/services/api/projects/projectMemberService';
+import { AppLogger } from '@/utils/logger';
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -169,25 +171,49 @@ const router = createRouter({
     routes,
 });
 
+const logger = AppLogger.createServiceLogger('Router');
+
 // Navigation guards
 router.beforeEach(async (to, _from, next) => {
     const authStore = useAuthStore();
     
-    // Ensure auth store is initialized on page refresh
-    if (!authStore.isInitialized) {
+    const publicRoutes = ['Login', 'Register', 'Home', 'InviteAccept', 'EmailVerification'];    
+    const authRoutes = ['Login', 'Register'];
+    const isPublicRoute = publicRoutes.includes(to.name as string);
+    
+    // Only initialize auth for protected routes or if we already have some auth state
+    if (!authStore.isInitialized && (!isPublicRoute || authStore.tokens)) {
         await authStore.initializeAuth();
     }
     
-    const publicRoutes = ['Login', 'Register', 'Home', 'InviteAccept', 'EmailVerification'];    
-    const authRoutes = ['Login', 'Register'];
-    
+    // Check authentication first
     if (authRoutes.includes(to.name as string) && authStore.isAuthenticated) {
         // If user is already authenticated and trying to access auth pages, redirect to appropriate page
         const redirectUrl = authStore.getPostLoginRedirectUrl();
         next(redirectUrl);
-    } else if (!publicRoutes.includes(to.name as string) && !authStore.isAuthenticated) {
+    } else if (!isPublicRoute && !authStore.isAuthenticated) {
         // If user is not authenticated and trying to access protected routes, redirect to login
         next({ name: 'Login' });
+    } else if (authStore.isAuthenticated && to.params.projectId) {
+        // Project-specific route - validate project membership
+        try {
+            const projectId = Number(to.params.projectId);
+            if (projectId && !isNaN(projectId)) {
+                // Check if user is a member of the project
+                const membership = await projectMemberService.getCurrentUserMembership(projectId);
+                if (!membership) {
+                    logger.warn(`User is not a member of project ${projectId}`);
+                    next({ name: 'Error', params: { type: 'unauthorized' } });
+                    return;
+                }
+                logger.info(`User has ${membership.role} role in project ${projectId}`);
+            }
+            next();
+        } catch (error) {
+            logger.error('Error validating project membership', error);
+            // If validation fails, redirect to error page
+            next({ name: 'Error', params: { type: 'unauthorized' } });
+        }
     } else {
         next();
     }
