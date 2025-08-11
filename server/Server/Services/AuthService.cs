@@ -142,6 +142,7 @@ public class AuthService : IAuthService
         {
             Token = accesstoken,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.Expiration),
+            RefreshToken = refreshToken, // Include refresh token for cookie setting
             User = new UserDto
             {
                 UserName = user.UserName!,
@@ -192,6 +193,7 @@ public class AuthService : IAuthService
         {
             Token = accessToken,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.Expiration),
+            RefreshToken = refreshToken, // Include refresh token for cookie setting
             User = new UserDto
             {
                 UserName = user.UserName!,
@@ -224,6 +226,7 @@ public class AuthService : IAuthService
         {
             Token = newAccessToken,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.Expiration),
+            RefreshToken = newRefreshToken, // Include refresh token for cookie setting
             User = new UserDto
             {
                 Email = user.Email!,
