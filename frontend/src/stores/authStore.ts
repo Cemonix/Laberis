@@ -21,6 +21,9 @@ export const useAuthStore = defineStore("auth", {
         isInitialized: false,
         refreshAttempts: 0,
         maxRefreshAttempts: 3,
+        connectionError: false,
+        retryingAuth: false,
+        refreshPromise: null as Promise<boolean> | null,
     }),
     getters: {
         isAuthenticated(state): boolean {
@@ -37,10 +40,11 @@ export const useAuthStore = defineStore("auth", {
             return Date.now() < state.tokens.expiresAt;
         },
         getAccessToken(state): string | null {
-            if (!this.isAuthenticated) {
-                return null;
+            // Return token if we have valid tokens, regardless of user data
+            if (this.isTokenValid && state.tokens?.accessToken) {
+                return state.tokens.accessToken;
             }
-            return state.tokens?.accessToken || null;
+            return null;
         },
         // Helper to determine if we have valid tokens in memory
         hasValidTokensInMemory(state): boolean {
@@ -53,35 +57,33 @@ export const useAuthStore = defineStore("auth", {
                 return;
             }
             
-            // In development mode, try auto-login first
-            if (env.IS_DEVELOPMENT && env.AUTO_LOGIN_DEV) {
-                try {
-                    await this.autoLoginDev();
-                    this.isInitialized = true;
-                    return;
-                } catch (error) {
-                    console.warn("Auto-login failed in development mode:", error);
-                    // Continue with normal initialization if auto-login fails
-                }
-            }
-            else if (!env.IS_DEVELOPMENT && env.AUTO_LOGIN_DEV) {
-                logger.warn("Auto-login is only available in development mode. Skipping auto-login.");
-            }
+            this.isLoading = true;
             
-            // Try to refresh token from httpOnly cookie
             try {
-                const refreshSuccess = await this.refreshTokens();
-                if (refreshSuccess) {
+                // In development mode, try auto-login first
+                if (env.IS_DEVELOPMENT && env.AUTO_LOGIN_DEV) {
+                    const autoLoginSuccess = await this.attemptAutoLogin();
+                    if (autoLoginSuccess) {
+                        this.isInitialized = true;
+                        return;
+                    }
+                }
+                
+                // Standard initialization for both dev and prod
+                // Only try to refresh tokens - don't fetch user data unless we get valid tokens
+                const hasValidToken = await this.ensureValidToken();
+                if (hasValidToken && this.tokens) {
+                    // Only fetch user data if we successfully got tokens
                     await this.getCurrentUser();
                 }
             } catch (error) {
-                logger.error("Failed to restore session during initialization", error);
-                // Clear any invalid state
-                this.user = null;
-                this.tokens = null;
+                logger.info("Auth initialization completed without valid session", error);
+                // Don't log as error - it's normal for users who aren't logged in
+                this.clearAuthState();
+            } finally {
+                this.isLoading = false;
+                this.isInitialized = true;
             }
-            
-            this.isInitialized = true;
         },
         async login(loginDto: LoginDto): Promise<void> {
             this.isLoading = true;
@@ -129,6 +131,11 @@ export const useAuthStore = defineStore("auth", {
             }
         },
         clearAuthState(): void {
+            // Clear user's last project data on logout
+            if (this.user?.email) {
+                LastProjectManager.clearLastProject(this.user.email);
+            }
+            
             this.user = null;
             this.tokens = null;
             this.refreshAttempts = 0;
@@ -140,7 +147,12 @@ export const useAuthStore = defineStore("auth", {
          * Otherwise, redirect to home page
          */
         getPostLoginRedirectUrl(): string {
-            const lastProject = LastProjectManager.getLastProject();
+            if (!this.user?.email) {
+                logger.info("No user email available, redirecting to home");
+                return "/home";
+            }
+
+            const lastProject = LastProjectManager.getLastProject(this.user.email);
             if (lastProject) {
                 logger.info(`Redirecting to last project dashboard: ${lastProject.projectName} (ID: ${lastProject.projectId})`);
                 return `/projects/${lastProject.projectId}`;
@@ -149,27 +161,17 @@ export const useAuthStore = defineStore("auth", {
             return '/home';
         },
         async refreshTokens(): Promise<boolean> {
-            if (this.refreshAttempts >= this.maxRefreshAttempts) {
-                logger.error("Max refresh attempts reached, logging out");
-                this.clearAuthState();
-                return false;
+            // Prevent multiple simultaneous refresh attempts
+            if (this.refreshPromise) {
+                return this.refreshPromise;
             }
-
+            
+            this.refreshPromise = this.performTokenRefresh();
+            
             try {
-                this.refreshAttempts++;
-                const tokens = await authService.refreshToken();
-                this.tokens = tokens;
-                this.refreshAttempts = 0; // Reset attempts on success
-                return true;
-            } catch (error) {
-                logger.error("Token refresh failed", error);
-
-                if (this.refreshAttempts >= this.maxRefreshAttempts) {
-                    logger.error("Max refresh attempts reached, logging out");
-                    this.clearAuthState();
-                }
-
-                return false;
+                return await this.refreshPromise;
+            } finally {
+                this.refreshPromise = null;
             }
         },
         async getCurrentUser(): Promise<void> {
@@ -190,7 +192,13 @@ export const useAuthStore = defineStore("auth", {
             }
 
             try {
-                const userData = await authService.getCurrentUser();
+                // Add timeout to prevent infinite hanging
+                const userData = await Promise.race([
+                    authService.getCurrentUser(),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('getCurrentUser timeout')), 10000)
+                    )
+                ]) as UserDto;
                 this.user = userData;
             } catch (error) {
                 logger.error("Failed to get current user", error);
@@ -199,37 +207,110 @@ export const useAuthStore = defineStore("auth", {
         },
         
         /**
-         * Auto-login for development mode using fake authentication
+         * Ensure we have a valid access token before making authenticated requests
          */
-        async autoLoginDev(): Promise<void> {
-            if (!env.IS_DEVELOPMENT) {
-                throw new Error("Auto-login is only available in development mode");
+        async ensureValidToken(): Promise<boolean> {
+            // If we have a valid token in memory, use it
+            if (this.hasValidTokensInMemory) {
+                return true;
             }
             
-            this.isLoading = true;
-            try {
-                // Create fake tokens for frontend compatibility first
-                const fakeTokens: AuthTokens = {
-                    accessToken: "dev-fake-token",
-                    expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
-                };
-                
-                this.tokens = fakeTokens;
-                
-                // Now get the current user (which will work with fake auth in dev mode)
-                await this.getCurrentUser();
-                
-                // Don't save fake tokens to storage as they're not real
-                logger.info("Auto-login successful in development mode as:", this.user?.email);
-            } catch (error) {
-                logger.error("Auto-login failed:", error);
-                // Clean up on failure
-                this.user = null;
-                this.tokens = null;
-                throw error;
-            } finally {
-                this.isLoading = false;
+            // Otherwise, try to refresh from httpOnly cookie
+            return await this.refreshTokens();
+        },
+
+        /**
+         * Perform the actual token refresh with retry logic and proper error handling
+         */
+        async performTokenRefresh(): Promise<boolean> {
+            const maxRetries = 3;
+            let lastError: any;
+            
+            this.retryingAuth = true;
+            this.connectionError = false;
+            
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    // Add timeout to prevent hanging
+                    const tokens = await Promise.race([
+                        authService.refreshToken(),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Token refresh timeout')), 10000)
+                        )
+                    ]) as AuthTokens;
+                    this.tokens = tokens;
+                    this.refreshAttempts = 0;
+                    this.connectionError = false;
+                    return true;
+                } catch (error: any) {
+                    lastError = error;
+                    
+                    // Don't retry on authentication errors (invalid refresh token or no refresh token)
+                    if (error.response?.status === 401) {
+                        logger.info("No valid refresh token available");
+                        break;
+                    }
+                    
+                    // Check for network errors
+                    if (!error.response) {
+                        logger.warn(`Network error on token refresh attempt ${attempt}/${maxRetries}`);
+                        if (attempt < maxRetries) {
+                            // Wait before retrying (exponential backoff)
+                            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                            continue;
+                        } else {
+                            // On final network failure, set connection error flag
+                            this.connectionError = true;
+                            this.retryingAuth = false;
+                            return false;
+                        }
+                    }
+                    
+                    // For other errors, don't retry
+                    break;
+                }
             }
+            
+            logger.info("Token refresh completed without success - user not logged in");
+            this.retryingAuth = false;
+            // Don't clear auth state here for 401 errors - just return false
+            return false;
+        },
+
+        /**
+         * Attempt auto-login for development mode
+         */
+        async attemptAutoLogin(): Promise<boolean> {
+            if (!env.IS_DEVELOPMENT) {
+                return false;
+            }
+            
+            try {
+                // Try to get current user without tokens (development bypass)
+                const userData = await authService.getCurrentUser();
+                this.user = userData;
+                // Set minimal fake tokens for frontend compatibility
+                this.tokens = {
+                    accessToken: "dev-fake-token",
+                    expiresAt: Date.now() + (24 * 60 * 60 * 1000)
+                };
+                logger.info("Auto-login successful in development mode as:", this.user?.email);
+                return true;
+            } catch (error) {
+                logger.warn("Auto-login failed, falling back to normal auth", error);
+                return false;
+            }
+        },
+
+        /**
+         * Retry authentication after a connection error
+         */
+        async retryAuthentication(): Promise<boolean> {
+            if (this.connectionError) {
+                this.connectionError = false;
+                return await this.refreshTokens();
+            }
+            return false;
         },
 
         async sendEmailVerification(): Promise<{ message: string }> {
