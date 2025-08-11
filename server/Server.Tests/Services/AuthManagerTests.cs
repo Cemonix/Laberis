@@ -7,6 +7,8 @@ using server.Configs;
 using server.Models.DTOs.Auth;
 using server.Exceptions;
 using server.Services.Interfaces;
+using server.Data;
+using Server.Tests.Factories;
 
 namespace Server.Tests.Services
 {
@@ -14,13 +16,17 @@ namespace Server.Tests.Services
     /// Unit tests for AuthManager service.
     /// Tests the authentication business logic with mocked dependencies.
     /// </summary>
-    public class AuthManagerTests
+    public class AuthManagerTests : IDisposable
     {
         private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
         private readonly Mock<IOptions<JwtSettings>> _mockJwtOptions;
+        private readonly Mock<IOptions<WebAppSettings>> _mockWebAppOptions;
         private readonly Mock<ILogger<AuthService>> _mockLogger;
         private readonly Mock<IProjectInvitationService> _mockProjectInvitationService;
+        private readonly Mock<IEmailService> _mockEmailService;
+        private readonly DbContextFactory _dbContextFactory;
         private readonly JwtSettings _jwtSettings;
+        private readonly WebAppSettings _webAppSettings;
         private readonly AuthService _authManager;
 
         public AuthManagerTests()
@@ -62,15 +68,27 @@ namespace Server.Tests.Services
             _mockJwtOptions = new Mock<IOptions<JwtSettings>>();
             _mockJwtOptions.Setup(x => x.Value).Returns(_jwtSettings);
 
-            _mockLogger = new Mock<ILogger<AuthService>>();
+            // Setup WebApp settings
+            _webAppSettings = new WebAppSettings
+            {
+                ClientUrl = "https://test-client.com"
+            };
+            _mockWebAppOptions = new Mock<IOptions<WebAppSettings>>();
+            _mockWebAppOptions.Setup(x => x.Value).Returns(_webAppSettings);
 
+            _mockLogger = new Mock<ILogger<AuthService>>();
             _mockProjectInvitationService = new Mock<IProjectInvitationService>();
+            _mockEmailService = new Mock<IEmailService>();
+            _dbContextFactory = new DbContextFactory();
 
             _authManager = new AuthService(
                 _mockUserManager.Object,
                 _mockJwtOptions.Object,
+                _mockWebAppOptions.Object,
                 _mockLogger.Object,
-                _mockProjectInvitationService.Object
+                _mockProjectInvitationService.Object,
+                _mockEmailService.Object,
+                _dbContextFactory.Context
             );
         }
 
@@ -80,24 +98,27 @@ namespace Server.Tests.Services
         public void Constructor_Should_ThrowArgumentNullException_WhenUserManagerIsNull()
         {
             // Arrange & Act & Assert
+            using var tempDbFactory = new DbContextFactory();
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthService(null!, _mockJwtOptions.Object, _mockLogger.Object, _mockProjectInvitationService.Object));
+                new AuthService(null!, _mockJwtOptions.Object, _mockWebAppOptions.Object, _mockLogger.Object, _mockProjectInvitationService.Object, _mockEmailService.Object, tempDbFactory.Context));
         }
 
         [Fact]
         public void Constructor_Should_ThrowArgumentNullException_WhenJwtOptionsIsNull()
         {
             // Arrange & Act & Assert
+            using var tempDbFactory = new DbContextFactory();
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthService(_mockUserManager.Object, null!, _mockLogger.Object, _mockProjectInvitationService.Object));
+                new AuthService(_mockUserManager.Object, null!, _mockWebAppOptions.Object, _mockLogger.Object, _mockProjectInvitationService.Object, _mockEmailService.Object, tempDbFactory.Context));
         }
 
         [Fact]
         public void Constructor_Should_ThrowArgumentNullException_WhenLoggerIsNull()
         {
             // Arrange & Act & Assert
+            using var tempDbFactory = new DbContextFactory();
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthService(_mockUserManager.Object, _mockJwtOptions.Object, null!, _mockProjectInvitationService.Object));
+                new AuthService(_mockUserManager.Object, _mockJwtOptions.Object, _mockWebAppOptions.Object, null!, _mockProjectInvitationService.Object, _mockEmailService.Object, tempDbFactory.Context));
         }
 
         #endregion
@@ -121,7 +142,7 @@ namespace Server.Tests.Services
                 Id = "user-id-123",
                 UserName = "testuser",
                 Email = "test@example.com",
-                EmailConfirmed = true
+                EmailConfirmed = false  // Email verification required by default
             };
 
             _mockUserManager.Setup(m => m.FindByEmailAsync(registerDto.Email))
@@ -316,7 +337,8 @@ namespace Server.Tests.Services
             {
                 Id = "user-id-123",
                 UserName = "testuser",
-                Email = "test@example.com"
+                Email = "test@example.com",
+                EmailConfirmed = true  // Email must be confirmed to login
             };
 
             _mockUserManager.Setup(m => m.FindByEmailAsync(loginDto.Email))
@@ -379,7 +401,8 @@ namespace Server.Tests.Services
             {
                 Id = "user-id-123",
                 UserName = "testuser",
-                Email = "test@example.com"
+                Email = "test@example.com",
+                EmailConfirmed = true  // Email confirmed so password check happens
             };
 
             _mockUserManager.Setup(m => m.FindByEmailAsync(loginDto.Email))
@@ -392,6 +415,39 @@ namespace Server.Tests.Services
                 _authManager.LoginAsync(loginDto));
             
             Assert.Contains("Invalid email or password", exception.Message);
+            _mockUserManager.Verify(m => m.FindByEmailAsync(loginDto.Email), Times.Once);
+            _mockUserManager.Verify(m => m.CheckPasswordAsync(user, loginDto.Password), Times.Once);
+            _mockUserManager.Verify(m => m.GetRolesAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoginAsync_Should_ThrowValidationException_WhenEmailNotConfirmed()
+        {
+            // Arrange
+            var loginDto = new LoginDto
+            {
+                Email = "test@example.com",
+                Password = "Test123!"
+            };
+
+            var user = new ApplicationUser
+            {
+                Id = "user-id-123",
+                UserName = "testuser",
+                Email = "test@example.com",
+                EmailConfirmed = false  // Email not confirmed
+            };
+
+            _mockUserManager.Setup(m => m.FindByEmailAsync(loginDto.Email))
+                .ReturnsAsync(user);
+            _mockUserManager.Setup(m => m.CheckPasswordAsync(user, loginDto.Password))
+                .ReturnsAsync(true);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<ValidationException>(() => 
+                _authManager.LoginAsync(loginDto));
+            
+            Assert.Contains("Please verify your email address", exception.Message);
             _mockUserManager.Verify(m => m.FindByEmailAsync(loginDto.Email), Times.Once);
             _mockUserManager.Verify(m => m.CheckPasswordAsync(user, loginDto.Password), Times.Once);
             _mockUserManager.Verify(m => m.GetRolesAsync(It.IsAny<ApplicationUser>()), Times.Never);
@@ -460,5 +516,10 @@ namespace Server.Tests.Services
         }
 
         #endregion
+
+        public void Dispose()
+        {
+            _dbContextFactory?.Dispose();
+        }
     }
 }
