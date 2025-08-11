@@ -16,11 +16,13 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authManager;
     private readonly ILogger<AuthController> _logger;
+    private readonly IWebHostEnvironment _environment;
 
-    public AuthController(IAuthService authManager, ILogger<AuthController> logger)
+    public AuthController(IAuthService authManager, ILogger<AuthController> logger, IWebHostEnvironment environment)
     {
         _authManager = authManager ?? throw new ArgumentNullException(nameof(authManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _environment = environment ?? throw new ArgumentNullException(nameof(environment));
     }
 
     /// <summary>
@@ -38,8 +40,14 @@ public class AuthController : ControllerBase
             
             var response = await _authManager.RegisterAsync(registerDto);
             
-            // Set refresh token as httpOnly cookie
-            SetRefreshTokenCookie(AuthService.GenerateRefreshToken());
+            // Set refresh token as httpOnly cookie using the token from the response
+            if (!string.IsNullOrEmpty(response.RefreshToken))
+            {
+                SetRefreshTokenCookie(response.RefreshToken);
+            }
+
+            // Remove refresh token from response
+            response.RefreshToken = null;
 
             _logger.LogInformation("User {Email} registered successfully", registerDto.Email);
             return Ok(response);
@@ -66,8 +74,14 @@ public class AuthController : ControllerBase
             
             var response = await _authManager.LoginAsync(loginDto);
             
-            // Set refresh token as httpOnly cookie
-            SetRefreshTokenCookie(AuthService.GenerateRefreshToken());
+            // Set refresh token as httpOnly cookie using the token from the response
+            if (!string.IsNullOrEmpty(response.RefreshToken))
+            {
+                SetRefreshTokenCookie(response.RefreshToken);
+            }
+
+            // Remove refresh token from response
+            response.RefreshToken = null;
 
             _logger.LogInformation("User {Email} logged in successfully", loginDto.Email);
             return Ok(response);
@@ -101,8 +115,15 @@ public class AuthController : ControllerBase
 
             var response = await _authManager.RefreshTokenAsync(refreshToken);
             
-            SetRefreshTokenCookie(AuthService.GenerateRefreshToken()); // Set new refresh token cookie
-            
+            // Use the refresh token from the response (which is stored in the database)
+            if (!string.IsNullOrEmpty(response.RefreshToken))
+            {
+                SetRefreshTokenCookie(response.RefreshToken);
+            }
+
+            // Remove refresh token from response
+            response.RefreshToken = null;
+
             return Ok(response);
         }
         catch (SecurityTokenException ex)
@@ -297,7 +318,7 @@ public class AuthController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true, // Only send over HTTPS
+            Secure = !_environment.IsDevelopment(), // Only require HTTPS in production
             SameSite = SameSiteMode.Strict,
             Expires = DateTimeOffset.UtcNow.AddDays(7), // Match refresh token expiration
             Path = "/",
@@ -315,7 +336,7 @@ public class AuthController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = !_environment.IsDevelopment(), // Only require HTTPS in production
             SameSite = SameSiteMode.Strict,
             Expires = DateTimeOffset.UtcNow.AddDays(-1), // Expire immediately
             Path = "/",

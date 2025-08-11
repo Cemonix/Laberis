@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using server.Authentication;
 using server.Models.DTOs.DataSource;
 using server.Models.DTOs.WorkflowStage;
 using server.Services.Interfaces;
@@ -10,6 +11,7 @@ namespace server.Controllers;
 [Route("api/projects/{projectId:int}/datasources")]
 [ApiController]
 [Authorize(Policy = "RequireAuthenticatedUser")]
+[ProjectAccess]
 [EnableRateLimiting("project")]
 public class DataSourcesController : ControllerBase
 {
@@ -75,6 +77,7 @@ public class DataSourcesController : ControllerBase
     /// <param name="createDto">The data for the new data source.</param>
     /// <returns>The created data source.</returns>
     [HttpPost]
+    [Authorize(Policy = "CanManageDataSources")]  // Manager only
     public async Task<IActionResult> CreateDataSource(int projectId, [FromBody] CreateDataSourceDto createDto)
     {
         var newDataSource = await _dataSourceService.CreateDataSourceAsync(projectId, createDto);
@@ -93,6 +96,7 @@ public class DataSourcesController : ControllerBase
     /// <param name="updateDto">The data for updating the data source.</param>
     /// /// <returns>The updated data source.</returns>
     [HttpPut("{dataSourceId:int}")]
+    [Authorize(Policy = "CanManageDataSources")]  // Manager only
     public async Task<IActionResult> UpdateDataSource(int projectId, int dataSourceId, [FromBody] UpdateDataSourceDto updateDto)
     {
         var updatedDataSource = await _dataSourceService.UpdateDataSourceAsync(dataSourceId, updateDto);
