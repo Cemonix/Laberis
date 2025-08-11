@@ -16,7 +16,6 @@ export function useAuthErrorHandler() {
             // Clear authentication state
             authStore.user = null;
             authStore.tokens = null;
-            authStore.removeTokensFromStorage();
             
             // Redirect to login if not already there
             if (router.currentRoute.value.name !== 'Login') {
