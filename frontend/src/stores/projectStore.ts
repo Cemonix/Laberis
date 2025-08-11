@@ -8,6 +8,7 @@ import { useErrorHandler } from "@/composables/useErrorHandler";
 import { AppLogger } from "@/utils/logger";
 import { LastProjectManager, LastStageManager } from "@/core/storage";
 import type { LastStageData } from "@/types/storage";
+import { useAuthStore } from "@/stores/authStore";
 
 const logger = AppLogger.createServiceLogger("ProjectStore");
 
@@ -76,7 +77,10 @@ export const useProjectStore = defineStore("project", {
                 logger.info(`Loaded project: ${project.name} (ID: ${projectId})`);
 
                 // Save this project as the user's last accessed project
-                LastProjectManager.saveLastProject(projectId, project.name);
+                const authStore = useAuthStore();
+                if (authStore.user?.email) {
+                    LastProjectManager.saveLastProject(projectId, project.name, authStore.user.email);
+                }
 
                 // Load related data in parallel
                 await Promise.all([
@@ -181,11 +185,15 @@ export const useProjectStore = defineStore("project", {
         },
 
         clearLastProject(): void {
-            LastProjectManager.clearLastProject();
+            const authStore = useAuthStore();
+            if (authStore.user?.email) {
+                LastProjectManager.clearLastProject(authStore.user.email);
+            }
         },
 
         getLastProject() {
-            return LastProjectManager.getLastProject();
+            const authStore = useAuthStore();
+            return authStore.user?.email ? LastProjectManager.getLastProject(authStore.user.email) : null;
         },
 
         clearLastStage(): void {
@@ -193,7 +201,8 @@ export const useProjectStore = defineStore("project", {
         },
 
         hasLastProject(): boolean {
-            return LastProjectManager.hasLastProject();
+            const authStore = useAuthStore();
+            return authStore.user?.email ? LastProjectManager.hasLastProject(authStore.user.email) : false;
         },
 
         hasLastStage(): boolean {
