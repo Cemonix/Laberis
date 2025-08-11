@@ -6,6 +6,7 @@ import type { useAuthStore } from '@/stores/authStore';
 const apiClient: AxiosInstance = axios.create({
     baseURL: env.API_BASE_URL,
     timeout: 10000,
+    withCredentials: true, // Enable sending cookies with requests
     headers: {
         'Content-Type': 'application/json',
     },
