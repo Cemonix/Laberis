@@ -1,7 +1,7 @@
 import { AppLogger } from '@/utils/logger';
 import type { LastProjectData } from '@/types/storage/lastProject';
 
-const LAST_PROJECT_STORAGE_KEY = 'laberis_last_project';
+const LAST_PROJECT_STORAGE_KEY_PREFIX = 'laberis_last_project_';
 const logger = AppLogger.createServiceLogger('LastProjectUtil');
 
 /**
@@ -9,9 +9,16 @@ const logger = AppLogger.createServiceLogger('LastProjectUtil');
  */
 export class LastProjectManager {
     /**
+     * Generate user-specific storage key
+     */
+    private static getUserStorageKey(userEmail: string): string {
+        return `${LAST_PROJECT_STORAGE_KEY_PREFIX}${userEmail}`;
+    }
+
+    /**
      * Save the current project as the user's last accessed project
      */
-    static saveLastProject(projectId: number, projectName: string): void {
+    static saveLastProject(projectId: number, projectName: string, userEmail: string): void {
         try {
             const lastProjectData: LastProjectData = {
                 projectId,
@@ -19,8 +26,9 @@ export class LastProjectManager {
                 lastAccessedAt: Date.now()
             };
             
-            localStorage.setItem(LAST_PROJECT_STORAGE_KEY, JSON.stringify(lastProjectData));
-            logger.info(`Saved last project: ${projectName} (ID: ${projectId})`);
+            const storageKey = this.getUserStorageKey(userEmail);
+            localStorage.setItem(storageKey, JSON.stringify(lastProjectData));
+            logger.info(`Saved last project for user ${userEmail}: ${projectName} (ID: ${projectId})`);
         } catch (error) {
             logger.error('Failed to save last project to localStorage', error);
         }
@@ -29,9 +37,10 @@ export class LastProjectManager {
     /**
      * Get the user's last accessed project
      */
-    static getLastProject(): LastProjectData | null {
+    static getLastProject(userEmail: string): LastProjectData | null {
         try {
-            const stored = localStorage.getItem(LAST_PROJECT_STORAGE_KEY);
+            const storageKey = this.getUserStorageKey(userEmail);
+            const stored = localStorage.getItem(storageKey);
             if (!stored) {
                 return null;
             }
@@ -40,44 +49,45 @@ export class LastProjectManager {
             
             // Validate the data structure
             if (!parsed.projectId || !parsed.projectName || !parsed.lastAccessedAt) {
-                logger.warn('Invalid last project data found, clearing storage');
-                this.clearLastProject();
+                logger.warn(`Invalid last project data found for user ${userEmail}, clearing storage`);
+                this.clearLastProject(userEmail);
                 return null;
             }
 
             // Check if the data is too old (older than 30 days)
             const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
             if (parsed.lastAccessedAt < thirtyDaysAgo) {
-                logger.info('Last project data is too old, clearing storage');
-                this.clearLastProject();
+                logger.info(`Last project data for user ${userEmail} is too old, clearing storage`);
+                this.clearLastProject(userEmail);
                 return null;
             }
 
-            logger.info(`Retrieved last project: ${parsed.projectName} (ID: ${parsed.projectId})`);
+            logger.info(`Retrieved last project for user ${userEmail}: ${parsed.projectName} (ID: ${parsed.projectId})`);
             return parsed;
         } catch (error) {
-            logger.error('Failed to retrieve last project from localStorage', error);
-            this.clearLastProject();
+            logger.error(`Failed to retrieve last project for user ${userEmail} from localStorage`, error);
+            this.clearLastProject(userEmail);
             return null;
         }
     }
 
     /**
-     * Clear the stored last project data
+     * Clear the stored last project data for a specific user
      */
-    static clearLastProject(): void {
+    static clearLastProject(userEmail: string): void {
         try {
-            localStorage.removeItem(LAST_PROJECT_STORAGE_KEY);
-            logger.info('Cleared last project data');
+            const storageKey = this.getUserStorageKey(userEmail);
+            localStorage.removeItem(storageKey);
+            logger.info(`Cleared last project data for user ${userEmail}`);
         } catch (error) {
-            logger.error('Failed to clear last project from localStorage', error);
+            logger.error(`Failed to clear last project for user ${userEmail} from localStorage`, error);
         }
     }
 
     /**
-     * Check if there's a valid last project stored
+     * Check if there's a valid last project stored for a user
      */
-    static hasLastProject(): boolean {
-        return this.getLastProject() !== null;
+    static hasLastProject(userEmail: string): boolean {
+        return this.getLastProject(userEmail) !== null;
     }
 }
