@@ -37,15 +37,18 @@ async function initializeApp() {
     const authStore = useAuthStore();
     setupInterceptors(authStore);
 
+    // Initialize auth silently - don't fail app startup if auth fails
     try {
         await Promise.race([
             authStore.initializeAuth(),
             new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Auth initialization timeout')), 5000)
+                setTimeout(() => reject(new Error('Auth initialization timeout')), 10000)
             )
         ]);
     } catch (error) {
-        handleError(error, 'Application Initialization');
+        // Log but don't crash app - user can still access public pages
+        console.warn('Auth initialization failed during app startup:', error);
+        authStore.isInitialized = true; // Mark as initialized to prevent router from retrying
     }
 
     app.use(router);
