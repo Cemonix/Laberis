@@ -133,4 +133,43 @@ public class EmailService : IEmailService
             throw;
         }
     }
+
+    public async Task SendEmailVerificationAsync(string email, string userName, string verificationToken, string verificationUrl)
+    {
+        var message = new MimeMessage();
+        message.From.Add(new MailboxAddress(_smtpSettings.FromName, _smtpSettings.FromAddress));
+        message.To.Add(new MailboxAddress("", email));
+        message.Subject = "Please verify your email address - Laberis";
+
+        var bodyBuilder = new BodyBuilder
+        {
+            HtmlBody = $@"
+            <h2>Welcome to Laberis, {userName}!</h2>
+            <p>Thank you for registering with Laberis. To complete your registration and start using your account, please verify your email address by clicking the link below:</p>
+            <a href='{verificationUrl}' style='display: inline-block; padding: 12px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0;'>Verify Email Address</a>
+            <p>This verification link will expire in 24 hours. If you didn't create a Laberis account, you can safely ignore this email.</p>
+            <p>If you're having trouble clicking the button above, copy and paste the following URL into your web browser:</p>
+            <p><a href='{verificationUrl}'>{verificationUrl}</a></p>
+            <br>
+            <p>Thanks,</p>
+            <p>The Laberis Team</p>"
+        };
+
+        message.Body = bodyBuilder.ToMessageBody();
+
+        try
+        {
+            using var client = new SmtpClient();
+            await client.ConnectAsync(_smtpSettings.Host, _smtpSettings.Port, MailKit.Security.SecureSocketOptions.StartTls);
+            await client.AuthenticateAsync(_smtpSettings.Username, _smtpSettings.Password);
+            await client.SendAsync(message);
+            await client.DisconnectAsync(true);
+            _logger.LogInformation("Email verification sent to {EmailAddress} for user {UserName}", email, userName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send email verification to {EmailAddress}", email);
+            throw;
+        }
+    }
 }

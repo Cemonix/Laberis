@@ -35,4 +35,14 @@ public interface IEmailService
     /// <param name="loginUrl">The frontend login/acceptance URL with the token</param>
     /// <returns>A task representing the asynchronous operation</returns>
     Task SendProjectInvitationToExistingUserEmailAsync(string email, string projectName, string role, string inviterName, string invitationToken, string loginUrl);
+
+    /// <summary>
+    /// Sends an email verification email to a newly registered user
+    /// </summary>
+    /// <param name="email">The recipient's email address</param>
+    /// <param name="userName">The user's username</param>
+    /// <param name="verificationToken">The unique verification token</param>
+    /// <param name="verificationUrl">The frontend verification URL with the token</param>
+    /// <returns>A task representing the asynchronous operation</returns>
+    Task SendEmailVerificationAsync(string email, string userName, string verificationToken, string verificationUrl);
 }
