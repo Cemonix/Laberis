@@ -80,7 +80,37 @@
                     </Button>
                 </div>
             </Form>
-            <div class="auth-footer">
+
+            <!-- Success Message for Email Verification -->
+            <div v-if="showVerificationMessage" class="verification-success">
+                <div class="success-icon">✓</div>
+                <h2>Account Created Successfully!</h2>
+                <p>We've sent a verification email to <strong>{{ registeredEmail }}</strong></p>
+                <p>Please check your email and click the verification link to complete your account setup.</p>
+                
+                <div class="verification-actions">
+                    <Button 
+                        @click="goToLogin" 
+                        class="btn btn-primary"
+                    >
+                        Go to Login
+                    </Button>
+                    <Button 
+                        @click="resendVerificationEmail" 
+                        class="btn btn-outline" 
+                        :disabled="isResending"
+                        v-if="canResendVerification"
+                    >
+                        {{ isResending ? 'Sending...' : 'Resend Email' }}
+                    </Button>
+                </div>
+                
+                <div class="verification-help">
+                    <p><small>Didn't receive the email? Check your spam folder or try resending.</small></p>
+                </div>
+            </div>
+
+            <div v-else class="auth-footer">
                 <p>Already have an account? <router-link to="/login" class="auth-link">Sign in</router-link></p>
             </div>
         </div>
@@ -102,7 +132,7 @@ const logger = AppLogger.createComponentLogger('RegisterView');
 
 const router = useRouter();
 const authStore = useAuthStore();
-const { showError } = useToast();
+const { showError, showSuccess } = useToast();
 
 const userName = ref("");
 const email = ref("");
@@ -110,6 +140,12 @@ const password = ref("");
 const confirmPassword = ref("");
 const isLoading = ref(false);
 const errorMessage = ref("");
+
+// Email verification states
+const showVerificationMessage = ref(false);
+const registeredEmail = ref("");
+const isResending = ref(false);
+const canResendVerification = ref(true);
 
 // Invitation token handling
 const inviteToken = ref<string | null>(null);
@@ -197,14 +233,47 @@ const handleRegister = async () => {
             inviteToken: inviteToken.value || undefined
         });
         
-        // Use smart redirect based on last project after successful registration
-        const smartRedirectUrl = authStore.getPostLoginRedirectUrl();
-        router.push(smartRedirectUrl);
+        // Show verification message instead of redirecting
+        registeredEmail.value = email.value.trim();
+        showVerificationMessage.value = true;
+        logger.info("Registration successful - showing email verification message");
     } catch (error) {
         logger.error("Registration failed:", error);
         errorMessage.value = error instanceof Error ? error.message : "Registration failed. Please try again.";
     } finally {
         isLoading.value = false;
+    }
+};
+
+// Navigate to login page
+const goToLogin = () => {
+    router.push('/login');
+};
+
+// Resend verification email function
+const resendVerificationEmail = async () => {
+    if (!canResendVerification.value) return;
+    
+    isResending.value = true;
+    
+    try {
+        // Call the unauthenticated resend endpoint with email
+        await authStore.resendEmailVerification(registeredEmail.value);
+        
+        // Show success message
+        showSuccess("Email Sent", "Verification email has been resent. Please check your email.");
+        
+        // Disable resend button temporarily to prevent spam
+        canResendVerification.value = false;
+        setTimeout(() => {
+            canResendVerification.value = true;
+        }, 30000); // 30 seconds
+        
+    } catch (error) {
+        logger.error("Failed to resend verification email:", error);
+        showError("Resend Failed", "Failed to resend verification email. Please try again or contact support.");
+    } finally {
+        isResending.value = false;
     }
 };
 
@@ -282,5 +351,43 @@ onMounted(() => {
     font-size: 0.75rem;
     color: var(--color-gray-800);
     font-style: italic;
+}
+
+.verification-success {
+    text-align: center;
+    padding: 2rem 1rem;
+    
+    .success-icon {
+        font-size: 3rem;
+        color: var(--color-success);
+        margin-bottom: 1rem;
+    }
+    
+    h2 {
+        color: var(--color-success);
+        margin-bottom: 1rem;
+    }
+    
+    p {
+        margin-bottom: 1rem;
+        line-height: 1.5;
+    }
+    
+    .verification-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin: 2rem 0;
+        flex-wrap: wrap;
+    }
+    
+    .verification-help {
+        margin-top: 2rem;
+        
+        p {
+            color: var(--color-gray-700);
+            margin: 0;
+        }
+    }
 }
 </style>
