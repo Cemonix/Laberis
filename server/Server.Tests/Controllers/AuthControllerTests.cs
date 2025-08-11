@@ -8,6 +8,7 @@ using server.Services.Interfaces;
 using server.Exceptions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Hosting;
 
 namespace Server.Tests.Controllers
 {
@@ -20,13 +21,15 @@ namespace Server.Tests.Controllers
     {
         private readonly Mock<IAuthService> _mockAuthService;
         private readonly Mock<ILogger<AuthController>> _mockLogger;
+        private readonly Mock<IWebHostEnvironment> _mockEnvironment;
         private readonly AuthController _controller;
 
         public AuthControllerTests()
         {
             _mockAuthService = new Mock<IAuthService>();
             _mockLogger = new Mock<ILogger<AuthController>>();
-            _controller = new AuthController(_mockAuthService.Object, _mockLogger.Object);
+            _mockEnvironment = new Mock<IWebHostEnvironment>();
+            _controller = new AuthController(_mockAuthService.Object, _mockLogger.Object, _mockEnvironment.Object);
             
             // Setup HttpContext with mocked Response and Cookies
             var mockHttpContext = new Mock<HttpContext>();
@@ -49,7 +52,7 @@ namespace Server.Tests.Controllers
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthController(null!, _mockLogger.Object));
+                new AuthController(null!, _mockLogger.Object, _mockEnvironment.Object));
         }
 
         [Fact]
@@ -57,7 +60,15 @@ namespace Server.Tests.Controllers
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthController(_mockAuthService.Object, null!));
+                new AuthController(_mockAuthService.Object, null!, _mockEnvironment.Object));
+        }
+
+        [Fact]
+        public void Constructor_Should_ThrowArgumentNullException_WhenEnvironmentIsNull()
+        {
+            // Arrange & Act & Assert
+            Assert.Throws<ArgumentNullException>(() => 
+                new AuthController(_mockAuthService.Object, _mockLogger.Object, null!));
         }
 
         #endregion
