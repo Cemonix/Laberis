@@ -167,6 +167,8 @@ public class Program
         builder.Services.AddScoped<IWorkflowStageService, WorkflowStageService>();
         builder.Services.AddScoped<IWorkflowStageConnectionService, WorkflowStageConnectionService>();
         builder.Services.AddScoped<IWorkflowStageAssignmentService, WorkflowStageAssignmentService>();
+        builder.Services.AddScoped<IProjectMembershipService, ProjectMembershipService>();
+        builder.Services.AddSingleton<IPermissionConfigurationService, PermissionConfigurationService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<IEmailService, EmailService>();
 
@@ -222,15 +224,62 @@ public class Program
                 policy.RequireAuthenticatedUser();
                 policy.RequireRole(Role.ADMIN.ToString());
             })
+            .AddPolicy("ProjectAccess", policy =>
+            {
+                policy.AddRequirements(new ProjectAccessRequirement());
+            })
+            // Manager-only policies
+            .AddPolicy("RequireManagerRole", policy =>
+            {
+                policy.AddRequirements(new ProjectRoleRequirement(ProjectRole.MANAGER));
+            })
             .AddPolicy("CanManageProjectMembers", policy =>
             {
+                policy.AddRequirements(new ProjectRoleRequirement(ProjectRole.MANAGER));
+            })
+            .AddPolicy("CanManageProjectSettings", policy =>
+            {
+                policy.AddRequirements(new ProjectRoleRequirement(ProjectRole.MANAGER));
+            })
+            .AddPolicy("CanManageWorkflows", policy =>
+            {
+                policy.AddRequirements(new ProjectRoleRequirement(ProjectRole.MANAGER));
+            })
+            .AddPolicy("CanManageDataSources", policy =>
+            {
+                policy.AddRequirements(new ProjectRoleRequirement(ProjectRole.MANAGER));
+            })
+            .AddPolicy("CanManageLabelSchemes", policy =>
+            {
+                policy.AddRequirements(new ProjectRoleRequirement(ProjectRole.MANAGER));
+            })
+            // Reviewer or Manager policies
+            .AddPolicy("CanReviewAnnotations", policy =>
+            {
                 policy.AddRequirements(new ProjectRoleRequirement(
-                    ProjectRole.MANAGER
-                ));
+                    ProjectRole.REVIEWER, ProjectRole.MANAGER));
+            })
+            // Annotator, Reviewer, or Manager policies  
+            .AddPolicy("CanAccessAnnotationWorkspace", policy =>
+            {
+                policy.AddRequirements(new ProjectRoleRequirement(
+                    ProjectRole.ANNOTATOR, ProjectRole.REVIEWER, ProjectRole.MANAGER));
+            })
+            .AddPolicy("CanManageAnnotations", policy =>
+            {
+                policy.AddRequirements(new ProjectRoleRequirement(
+                    ProjectRole.ANNOTATOR, ProjectRole.REVIEWER, ProjectRole.MANAGER));
+            })
+            // Any project member policies (all roles)
+            .AddPolicy("RequireProjectMembership", policy =>
+            {
+                policy.AddRequirements(new ProjectRoleRequirement(
+                    ProjectRole.VIEWER, ProjectRole.ANNOTATOR, ProjectRole.REVIEWER, ProjectRole.MANAGER));
             });
 
         // Register authorization handlers
         builder.Services.AddScoped<IAuthorizationHandler, ProjectRoleHandler>();
+        builder.Services.AddScoped<IAuthorizationHandler, ProjectAccessHandler>();
         builder.Services.AddHttpContextAccessor();
 
         builder.Services.AddControllers()
