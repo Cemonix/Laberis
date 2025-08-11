@@ -1,180 +1,264 @@
-import { computed } from 'vue';
-import { useAuthStore } from '@/stores/authStore';
-import { useProjectStore } from '@/stores/projectStore';
-import { ProjectRole } from '@/types/project/project';
-import { AppLogger } from '@/utils/logger';
-import { env } from '@/config/env';
+import { computed, ref, type ComputedRef, type Ref } from "vue";
+import { useAuthStore } from "@/stores/authStore";
+import { useProjectStore } from "@/stores/projectStore";
+import {
+    configurationService,
+    type PermissionConfiguration,
+} from "@/services/api/configuration";
+import type { ProjectRole } from "@/types/project/project";
+import { AppLogger } from "@/utils/logger";
 
 /**
- * Composable for checking project-level permissions
- * Provides helpers to check if the current user has specific roles in the currently loaded project
+ * Global permission configuration cache
+ */
+const permissionConfig: Ref<PermissionConfiguration | null> = ref(null);
+const configLoading: Ref<boolean> = ref(false);
+const configError: Ref<string | null> = ref(null);
+
+const logger = AppLogger.createServiceLogger('ProjectPermissions');
+
+/**
+ * Composable for handling project-level permission checks in Vue components.
+ * Loads permission rules from the backend API and provides reactive permission checking.
  */
 export function useProjectPermissions() {
     const authStore = useAuthStore();
     const projectStore = useProjectStore();
-    const logger = AppLogger.createServiceLogger('ProjectPermissions');
 
     /**
-     * Get the current user's role in the currently loaded project
-     * Only considers members who have actually joined (accepted their invitation)
+     * Loads permission configuration from the backend API
      */
-    const currentUserProjectRole = computed((): ProjectRole | null => {
-        const currentUser = authStore.currentUser;
-        const joinedMembers = projectStore.joinedMembers;
-        
-        if (env.IS_DEVELOPMENT) {
-            logger.debug('Debug info:', {
-                currentUserEmail: currentUser?.email,
-                joinedMembersCount: joinedMembers?.length || 0,
-                activeMembersCount: projectStore.activeMembers?.length || 0,
-                joinedMembers: joinedMembers?.map(m => ({ email: m.email, role: m.role, joinedAt: m.joinedAt })) || []
-            });
+    const loadPermissionConfiguration = async (): Promise<void> => {
+        if (permissionConfig.value || configLoading.value) {
+            return; // Already loaded or currently loading
         }
 
-        if (!currentUser?.email || !joinedMembers?.length) {
-            logger.debug('Missing data or user not joined:', {
-                hasCurrentUser: !!currentUser?.email,
-                hasJoinedMembersLoaded: (joinedMembers?.length || 0) > 0,
-                totalMembersCount: projectStore.activeMembers?.length || 0
-            });
+        configLoading.value = true;
+        configError.value = null;
+
+        try {
+            permissionConfig.value =
+                await configurationService.getPermissionConfiguration();
+            logger.info("Permission configuration loaded successfully");
+        } catch (error) {
+            configError.value = "Failed to load permission configuration";
+            logger.error("Failed to load permission configuration", error);
+            throw error;
+        } finally {
+            configLoading.value = false;
+        }
+    };
+
+    /**
+     * Gets the current user's role in the active project
+     */
+    const currentUserRole: ComputedRef<ProjectRole | null> = computed(() => {
+        if (
+            !authStore.isAuthenticated ||
+            !authStore.user ||
+            !projectStore.currentProject
+        ) {
             return null;
         }
 
-        const memberRecord = joinedMembers.find(member => 
-            member.email.toLowerCase() === currentUser.email.toLowerCase()
+        // Find the current user's membership in the active project by email
+        const currentUserMembership = projectStore.teamMembers.find(
+            (member) => member.email === authStore.user?.email
         );
-        
-        if (env.IS_DEVELOPMENT) {
-            logger.debug('Member lookup result:', {
-                searchEmail: currentUser.email,
-                foundJoinedMember: memberRecord ? { email: memberRecord.email, role: memberRecord.role, joinedAt: memberRecord.joinedAt } : null,
-                userStatus: memberRecord ? 'joined' : 'not-joined-or-not-invited'
-            });
-        }
-        
-        return memberRecord?.role || null;
+
+        return currentUserMembership?.role || null;
     });
 
     /**
-     * Check if the current user has a specific role in the current project
+     * Gets all permissions for the current user's role
      */
-    const hasProjectRole = (role: ProjectRole): boolean => {
-        return currentUserProjectRole.value === role;
+    const currentUserPermissions: ComputedRef<Set<string>> = computed(() => {
+        const role = currentUserRole.value;
+        if (!role) {
+            return new Set();
+        }
+
+        // Auto-load configuration if not loaded
+        if (!permissionConfig.value && !configLoading.value) {
+            loadPermissionConfiguration().catch((error) => 
+                logger.error("Failed to auto-load permission configuration", error)
+            );
+            return new Set();
+        }
+
+        if (!permissionConfig.value) {
+            return new Set();
+        }
+
+        const permissions = permissionConfig.value.rolePermissions[role] || [];
+        return new Set(permissions);
+    });
+
+    /**
+     * Checks if the current user has a specific permission in the active project
+     */
+    const hasPermission = (permission: string): boolean => {
+        return currentUserPermissions.value.has(permission);
     };
 
     /**
-     * Check if the current user has any of the specified roles in the current project
+     * Checks if the current user has any of the specified permissions
      */
-    const hasAnyProjectRole = (roles: ProjectRole[]): boolean => {
-        const userRole = currentUserProjectRole.value;
-        return userRole ? roles.includes(userRole) : false;
+    const hasAnyPermission = (permissions: string[]): boolean => {
+        const userPermissions = currentUserPermissions.value;
+        return permissions.some((permission) =>
+            userPermissions.has(permission)
+        );
     };
 
     /**
-     * Check if the current user can manage the current project
-     * Only project managers can perform management actions
+     * Checks if the current user has all of the specified permissions
      */
-    const canManageProject = computed(() => hasProjectRole(ProjectRole.MANAGER));
+    const hasAllPermissions = (permissions: string[]): boolean => {
+        const userPermissions = currentUserPermissions.value;
+        return permissions.every((permission) =>
+            userPermissions.has(permission)
+        );
+    };
 
     /**
-     * Check if the current user can annotate in the current project
-     * Managers, annotators, and reviewers can create/edit annotations
+     * Reactive computed property for checking permissions
+     * Usage: const canManageMembers = canDo('members:manage')
      */
-    const canAnnotate = computed(() => 
-        hasAnyProjectRole([ProjectRole.MANAGER, ProjectRole.ANNOTATOR, ProjectRole.REVIEWER])
+    const canDo = (permission: string): ComputedRef<boolean> => {
+        return computed(() => hasPermission(permission));
+    };
+
+    /**
+     * Reactive computed property for checking multiple permissions (any)
+     */
+    const canDoAny = (permissions: string[]): ComputedRef<boolean> => {
+        return computed(() => hasAnyPermission(permissions));
+    };
+
+    /**
+     * Reactive computed property for checking multiple permissions (all)
+     */
+    const canDoAll = (permissions: string[]): ComputedRef<boolean> => {
+        return computed(() => hasAllPermissions(permissions));
+    };
+
+    /**
+     * Role-based computed properties for common use cases
+     */
+    const isViewer: ComputedRef<boolean> = computed(
+        () => currentUserRole.value === "VIEWER"
+    );
+    const isAnnotator: ComputedRef<boolean> = computed(
+        () => currentUserRole.value === "ANNOTATOR"
+    );
+    const isReviewer: ComputedRef<boolean> = computed(
+        () => currentUserRole.value === "REVIEWER"
+    );
+    const isManager: ComputedRef<boolean> = computed(
+        () => currentUserRole.value === "MANAGER"
     );
 
     /**
-     * Check if the current user can review annotations in the current project
-     * Managers and reviewers can review annotations
+     * Hierarchical role checks (or higher)
      */
-    const canReview = computed(() => 
-        hasAnyProjectRole([ProjectRole.MANAGER, ProjectRole.REVIEWER])
-    );
-
-    /**
-     * Check if the current user can view the current project
-     * All project members can view (this should always be true if user is in project)
-     */
-    const canView = computed(() => 
-        hasAnyProjectRole([ProjectRole.MANAGER, ProjectRole.ANNOTATOR, ProjectRole.REVIEWER, ProjectRole.VIEWER])
-    );
-
-    /**
-     * Get a human-readable label for the current user's project role
-     */
-    const currentRoleLabel = computed((): string => {
-        const role = currentUserProjectRole.value;
-        if (!role) return 'No role';
-        
-        switch (role) {
-            case ProjectRole.MANAGER:
-                return 'Manager';
-            case ProjectRole.ANNOTATOR:
-                return 'Annotator';
-            case ProjectRole.REVIEWER:
-                return 'Reviewer';
-            case ProjectRole.VIEWER:
-                return 'Viewer';
-            default:
-                return 'Unknown';
-        }
-    });
-
-    /**
-     * Check if the user is a member of the current project (has joined)
-     */
-    const isProjectMember = computed(() => currentUserProjectRole.value !== null);
-
-    /**
-     * Check if the user has a pending invitation to the current project
-     */
-    const hasPendingInvitation = computed((): boolean => {
-        const currentUser = authStore.currentUser;
-        const pendingMembers = projectStore.pendingMembers;
-        
-        if (!currentUser?.email || !pendingMembers?.length) {
-            return false;
-        }
-
-        return pendingMembers.some(member => 
-            member.email.toLowerCase() === currentUser.email.toLowerCase()
+    const isAnnotatorOrHigher: ComputedRef<boolean> = computed(() => {
+        const role = currentUserRole.value;
+        return (
+            role === "ANNOTATOR" || role === "REVIEWER" || role === "MANAGER"
         );
     });
 
-    /**
-     * Check if the user is associated with the project in any way (invited or joined)
-     */
-    const isAssociatedWithProject = computed(() => isProjectMember.value || hasPendingInvitation.value);
+    const isReviewerOrHigher: ComputedRef<boolean> = computed(() => {
+        const role = currentUserRole.value;
+        return role === "REVIEWER" || role === "MANAGER";
+    });
+
+    const isManagerOrHigher: ComputedRef<boolean> = computed(() => {
+        const role = currentUserRole.value;
+        return role === "MANAGER";
+    });
 
     /**
-     * Get the user's invitation status in the project
+     * Check if user is a project member (any role)
      */
-    const invitationStatus = computed((): 'not-invited' | 'pending' | 'joined' => {
-        if (isProjectMember.value) return 'joined';
-        if (hasPendingInvitation.value) return 'pending';
-        return 'not-invited';
+    const isProjectMember: ComputedRef<boolean> = computed(() => {
+        return currentUserRole.value !== null;
     });
+
+    /**
+     * Configuration loading state
+     */
+    const isConfigLoading: ComputedRef<boolean> = computed(
+        () => configLoading.value
+    );
+    const hasConfigError: ComputedRef<boolean> = computed(
+        () => configError.value !== null
+    );
+    const configErrorMessage: ComputedRef<string | null> = computed(
+        () => configError.value
+    );
+
+    /**
+     * Gets the flat permission map for easy access
+     * Returns all permissions as a flat object: { 'members:manage': 'members:manage', ... }
+     */
+    const getPermissionMap = (): Record<string, string> => {
+        // Auto-load configuration if not loaded
+        if (!permissionConfig.value && !configLoading.value) {
+            loadPermissionConfiguration().catch((error) => 
+                logger.error("Failed to auto-load permission configuration for map", error)
+            );
+            return {};
+        }
+
+        if (!permissionConfig.value) return {};
+
+        const flatMap: Record<string, string> = {};
+        Object.values(permissionConfig.value.permissions).forEach(
+            (categoryPermissions) => {
+                Object.entries(categoryPermissions).forEach(
+                    ([, permissionValue]) => {
+                        flatMap[permissionValue] = permissionValue;
+                    }
+                );
+            }
+        );
+        return flatMap;
+    };
 
     return {
-        // Role checking
-        currentUserProjectRole,
-        hasProjectRole,
-        hasAnyProjectRole,
-        
-        // Permission helpers
-        canManageProject,
-        canAnnotate,
-        canReview,
-        canView,
-        
-        // Membership status
+        // Configuration management
+        loadPermissionConfiguration,
+        isConfigLoading,
+        hasConfigError,
+        configErrorMessage,
+        getPermissionMap,
+
+        // Current user role
+        currentUserRole,
+        currentUserPermissions,
+
+        // Permission checking functions
+        hasPermission,
+        hasAnyPermission,
+        hasAllPermissions,
+
+        // Reactive permission checkers
+        canDo,
+        canDoAny,
+        canDoAll,
+
+        // Role-based checks
+        isViewer,
+        isAnnotator,
+        isReviewer,
+        isManager,
+
+        // Hierarchical role checks
+        isAnnotatorOrHigher,
+        isReviewerOrHigher,
+        isManagerOrHigher,
         isProjectMember,
-        hasPendingInvitation,
-        isAssociatedWithProject,
-        invitationStatus,
-        
-        // Utility
-        currentRoleLabel
     };
 }
