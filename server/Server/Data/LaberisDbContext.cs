@@ -28,6 +28,7 @@ public class LaberisDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<TaskEvent> TaskEvents { get; set; }
     public DbSet<Annotation> Annotations { get; set; }
     public DbSet<Issue> Issues { get; set; }
+    public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; }
 
     public LaberisDbContext(DbContextOptions<LaberisDbContext> options) : base(options)
     {
@@ -65,6 +66,7 @@ public class LaberisDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.ApplyConfiguration(new Configurations.TaskEventConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.AnnotationConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.IssueConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.EmailVerificationTokenConfiguration());
 
         // Identity schema configuration
         modelBuilder.Entity<ApplicationUser>(entity =>
