@@ -7,6 +7,11 @@
             <div v-if="authStore.isAuthenticated" class="navbar-links nav-link underline-animation">
                 <router-link to="/projects">Projects</router-link>
             </div>
+            <div v-if="authStore.isAuthenticated && shouldShowQuickAccess" class="navbar-links nav-link underline-animation">
+                <router-link :to="quickAccessRoute" class="quick-access-link">
+                    {{ lastStageDisplayName }}
+                </router-link>
+            </div>
         </div>
         <div class="navbar-auth">
             <template v-if="authStore.isAuthenticated">
@@ -23,14 +28,64 @@
 </template>
 
 <script setup lang="ts">
-import {useRouter} from "vue-router";
-import {useAuthStore} from "@/stores/authStore";
-import {AppLogger} from "@/utils/logger";
+import { computed } from 'vue';
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/authStore";
+import { useProjectStore } from "@/stores/projectStore";
+import { AppLogger } from "@/utils/logger";
 
 const logger = AppLogger.createComponentLogger('Navbar');
 
 const router = useRouter();
 const authStore = useAuthStore();
+const projectStore = useProjectStore();
+
+const shouldShowQuickAccess = computed(() => {
+    return projectStore.isProjectLoaded && projectStore.hasLastStageForCurrentProject;
+});
+
+const lastStageDisplayName = computed(() => {
+    const lastStage = projectStore.getLastStage();
+    if (!lastStage) return '';
+    
+    // Use current stage type from store if available (reactive), otherwise fall back to stageName
+    const currentStageType = projectStore.currentStageType;
+    if (currentStageType) {
+        // Create display text based on stage type
+        switch (currentStageType.toLowerCase()) {
+            case 'annotation':
+                return 'Resume Annotation';
+            case 'review':
+            case 'revision':
+                return 'Resume Review';
+            case 'completion':
+                return 'Resume Completion';
+            default:
+                return `Resume ${currentStageType}`;
+        }
+    }
+    
+    // Fallback to stage name analysis if no current stage type
+    const stageName = lastStage.stageName.toLowerCase();
+    if (stageName.includes('annotation')) {
+        return 'Resume Annotation';
+    } else if (stageName.includes('review') || stageName.includes('revision')) {
+        return 'Resume Review';
+    } else if (stageName.includes('completion')) {
+        return 'Resume Completion';
+    } else {
+        return `Resume ${lastStage.stageName}`;
+    }
+});
+
+const quickAccessRoute = computed(() => {
+    const lastStage = projectStore.getLastStage();
+    if (!lastStage) {
+        return '/projects';
+    }
+    
+    return `/projects/${lastStage.projectId}/workflows/${lastStage.workflowId}/stages/${lastStage.stageId}/tasks`;
+});
 
 const handleLogout = async () => {
     try {
@@ -72,6 +127,21 @@ const handleLogout = async () => {
                 text-decoration: none;
                 font-weight: 500;
                 font-size: 1rem;
+            }
+
+            .quick-access-link {
+                display: flex;
+                align-items: center;
+                gap: 0.4rem;
+                padding: 0.25rem 0;
+                color: var(--color-white);
+                text-decoration: none;
+                font-weight: 500;
+                font-size: 1rem;
+
+                &:hover .quick-access-icon {
+                    opacity: 1;
+                }
             }
         }
     }
