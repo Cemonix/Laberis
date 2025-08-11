@@ -337,34 +337,8 @@ public class AuthService : IAuthService
             throw new ValidationException("Email is already verified");
         }
 
-        // Invalidate any existing tokens for this user
-        var existingTokens = await _context.EmailVerificationTokens
-            .IgnoreQueryFilters() // Ignore the query filter to get all tokens
-            .Where(t => t.UserId == userId && !t.IsUsed)
-            .ToListAsync();
-
-        foreach (var token in existingTokens)
-        {
-            token.IsUsed = true;
-            token.UsedAt = DateTime.UtcNow;
-        }
-
-        // Generate new verification token
-        var verificationToken = GenerateEmailVerificationToken();
-        var emailVerificationToken = new EmailVerificationToken
-        {
-            Token = verificationToken,
-            UserId = userId,
-            Email = user.Email!,
-            ExpiresAt = DateTime.UtcNow.AddHours(24) // 24 hours expiry
-        };
-
-        _context.EmailVerificationTokens.Add(emailVerificationToken);
-        await _context.SaveChangesAsync();
-
-        // Send verification email
-        var verificationUrl = $"{_webAppSettings.ClientUrl}/verify-email?token={verificationToken}";
-        await _emailService.SendEmailVerificationAsync(user.Email!, user.UserName!, verificationToken, verificationUrl);
+        // Create and send email verification token
+        await CreateAndSendEmailVerificationTokenAsync(user);
 
         _logger.LogInformation("Email verification sent successfully for user: {UserId}", userId);
     }
@@ -443,8 +417,22 @@ public class AuthService : IAuthService
             throw new ValidationException("Email is already verified");
         }
 
-        // Generate new verification token (invalidate old ones)
+        // Create and send email verification token
+        await CreateAndSendEmailVerificationTokenAsync(user);
+
+        _logger.LogInformation("Email verification resent successfully for user: {UserId}", user.Id);
+    }
+
+    /// <summary>
+    /// Creates and sends an email verification token for the specified user.
+    /// Invalidates any existing unused tokens before creating a new one.
+    /// </summary>
+    /// <param name="user">The user to create the verification token for</param>
+    private async System.Threading.Tasks.Task CreateAndSendEmailVerificationTokenAsync(ApplicationUser user)
+    {
+        // Invalidate any existing tokens for this user
         var existingTokens = await _context.EmailVerificationTokens
+            .IgnoreQueryFilters() // Ignore the query filter to get all tokens
             .Where(t => t.UserId == user.Id && !t.IsUsed)
             .ToListAsync();
 
@@ -454,23 +442,22 @@ public class AuthService : IAuthService
             token.UsedAt = DateTime.UtcNow;
         }
 
-        // Create new verification token
-        var newToken = new EmailVerificationToken
+        // Generate new verification token
+        var verificationToken = GenerateEmailVerificationToken();
+        var emailVerificationToken = new EmailVerificationToken
         {
+            Token = verificationToken,
             UserId = user.Id,
-            Token = GenerateEmailVerificationToken(),
-            ExpiresAt = DateTime.UtcNow.AddHours(24),
-            IsUsed = false
+            Email = user.Email!,
+            ExpiresAt = DateTime.UtcNow.AddHours(24) // 24 hours expiry
         };
 
-        _context.EmailVerificationTokens.Add(newToken);
+        _context.EmailVerificationTokens.Add(emailVerificationToken);
         await _context.SaveChangesAsync();
 
         // Send verification email
-        var verificationLink = $"{_webAppSettings.ClientUrl}/verify-email?token={newToken.Token}";
-        await _emailService.SendEmailVerificationAsync(user.Email!, user.UserName!, newToken.Token, verificationLink);
-
-        _logger.LogInformation("Email verification resent successfully for user: {UserId}", user.Id);
+        var verificationUrl = $"{_webAppSettings.ClientUrl}/verify-email?token={verificationToken}";
+        await _emailService.SendEmailVerificationAsync(user.Email!, user.UserName!, verificationToken, verificationUrl);
     }
 
     private static string GenerateEmailVerificationToken()
