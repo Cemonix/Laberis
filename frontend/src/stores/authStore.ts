@@ -11,7 +11,6 @@ import { RoleEnum } from "@/types/auth/role";
 import { AppLogger } from "@/utils/logger";
 import { LastProjectManager } from "@/core/storage";
 
-const AUTH_STORAGE_KEY = 'auth_tokens';
 const logger = AppLogger.createStoreLogger('AuthStore');
 
 export const useAuthStore = defineStore("auth", {
@@ -43,8 +42,8 @@ export const useAuthStore = defineStore("auth", {
             }
             return state.tokens?.accessToken || null;
         },
-        // Helper to determine if we have valid tokens in storage
-        hasValidStoredTokens(state): boolean {
+        // Helper to determine if we have valid tokens in memory
+        hasValidTokensInMemory(state): boolean {
             return !!(state.tokens && this.isTokenValid);
         }
     },
@@ -54,72 +53,35 @@ export const useAuthStore = defineStore("auth", {
                 return;
             }
             
-            // In development mode, try auto-login first if no stored tokens exist
+            // In development mode, try auto-login first
             if (env.IS_DEVELOPMENT && env.AUTO_LOGIN_DEV) {
-                const storedTokens = this.loadTokensFromStorage();
-                if (!storedTokens) {
-                    try {
-                        await this.autoLoginDev();
-                        this.isInitialized = true;
-                        return;
-                    } catch (error) {
-                        console.warn("Auto-login failed in development mode:", error);
-                        // Continue with normal initialization if auto-login fails
-                    }
+                try {
+                    await this.autoLoginDev();
+                    this.isInitialized = true;
+                    return;
+                } catch (error) {
+                    console.warn("Auto-login failed in development mode:", error);
+                    // Continue with normal initialization if auto-login fails
                 }
             }
             else if (!env.IS_DEVELOPMENT && env.AUTO_LOGIN_DEV) {
                 logger.warn("Auto-login is only available in development mode. Skipping auto-login.");
             }
             
-            const storedTokens = this.loadTokensFromStorage();
-            if (storedTokens) {
-                this.tokens = storedTokens;
-                try {
+            // Try to refresh token from httpOnly cookie
+            try {
+                const refreshSuccess = await this.refreshTokens();
+                if (refreshSuccess) {
                     await this.getCurrentUser();
-                } catch (error) {
-                    logger.error("Failed to get current user during initialization", error);
-                    // Clear invalid tokens but don't call logout to avoid infinite loops
-                    this.user = null;
-                    this.tokens = null;
-                    this.removeTokensFromStorage();
                 }
+            } catch (error) {
+                logger.error("Failed to restore session during initialization", error);
+                // Clear any invalid state
+                this.user = null;
+                this.tokens = null;
             }
             
             this.isInitialized = true;
-        },
-        saveTokensToStorage(authTokens: AuthTokens): void {
-            try {
-                localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authTokens));
-            } catch (error) {
-                logger.error("Failed to save tokens to localStorage", error);
-            }
-        },
-        loadTokensFromStorage(): AuthTokens | null {
-            try {
-                const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-                if (!stored) return null;
-
-                const parsed = JSON.parse(stored) as AuthTokens;
-
-                if (Date.now() >= parsed.expiresAt) {
-                    this.removeTokensFromStorage();
-                    return null;
-                }
-
-                return parsed;
-            } catch (error) {
-                logger.error("Failed to load tokens from localStorage", error);
-                this.removeTokensFromStorage();
-                return null;
-            }
-        },
-        removeTokensFromStorage(): void {
-            try {
-                localStorage.removeItem(AUTH_STORAGE_KEY);
-            } catch (error) {
-                logger.error("Failed to remove tokens from localStorage", error);
-            }
         },
         async login(loginDto: LoginDto): Promise<void> {
             this.isLoading = true;
@@ -129,7 +91,6 @@ export const useAuthStore = defineStore("auth", {
                 this.user = response.user;
                 this.tokens = response.tokens;
 
-                this.saveTokensToStorage(response.tokens);
             } catch (error) {
                 logger.error("Login failed", error);
                 throw error;
@@ -140,12 +101,13 @@ export const useAuthStore = defineStore("auth", {
         async register(registerDto: RegisterDto): Promise<void> {
             this.isLoading = true;
             try {
-                const response = await authService.register(registerDto);
+                await authService.register(registerDto);
 
-                this.user = response.user;
-                this.tokens = response.tokens;
+                // Note: Users are not automatically logged in after registration
+                // They need to verify their email first before they can log in
+                // So we don't set user/tokens here
+                logger.info("Registration successful - email verification required");
 
-                this.saveTokensToStorage(response.tokens);
             } catch (error) {
                 logger.error("Registration failed", error);
                 throw error;
@@ -163,7 +125,6 @@ export const useAuthStore = defineStore("auth", {
                 this.user = null;
                 this.tokens = null;
                 this.isInitialized = false;
-                this.removeTokensFromStorage();
                 this.isLoading = false;
             }
         },
@@ -171,7 +132,6 @@ export const useAuthStore = defineStore("auth", {
             this.user = null;
             this.tokens = null;
             this.refreshAttempts = 0;
-            this.removeTokensFromStorage();
         },
 
         /**
@@ -189,10 +149,6 @@ export const useAuthStore = defineStore("auth", {
             return '/home';
         },
         async refreshTokens(): Promise<boolean> {
-            if (!this.tokens?.refreshToken) {
-                return false;
-            }
-
             if (this.refreshAttempts >= this.maxRefreshAttempts) {
                 logger.error("Max refresh attempts reached, logging out");
                 this.clearAuthState();
@@ -201,9 +157,8 @@ export const useAuthStore = defineStore("auth", {
 
             try {
                 this.refreshAttempts++;
-                const tokens = await authService.refreshToken(this.tokens.refreshToken);
+                const tokens = await authService.refreshToken();
                 this.tokens = tokens;
-                this.saveTokensToStorage(tokens);
                 this.refreshAttempts = 0; // Reset attempts on success
                 return true;
             } catch (error) {
@@ -256,7 +211,6 @@ export const useAuthStore = defineStore("auth", {
                 // Create fake tokens for frontend compatibility first
                 const fakeTokens: AuthTokens = {
                     accessToken: "dev-fake-token",
-                    refreshToken: "dev-fake-refresh-token",
                     expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
                 };
                 
@@ -272,6 +226,48 @@ export const useAuthStore = defineStore("auth", {
                 // Clean up on failure
                 this.user = null;
                 this.tokens = null;
+                throw error;
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        async sendEmailVerification(): Promise<{ message: string }> {
+            this.isLoading = true;
+            try {
+                const response = await authService.sendEmailVerification();
+                logger.info("Email verification sent successfully");
+                return response;
+            } catch (error) {
+                logger.error("Failed to send email verification", error);
+                throw error;
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        async verifyEmail(token: string): Promise<{ message: string }> {
+            this.isLoading = true;
+            try {
+                const response = await authService.verifyEmail(token);
+                logger.info("Email verified successfully");
+                return response;
+            } catch (error) {
+                logger.error("Email verification failed", error);
+                throw error;
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        async resendEmailVerification(email: string): Promise<{ message: string }> {
+            this.isLoading = true;
+            try {
+                const response = await authService.resendEmailVerification(email);
+                logger.info("Email verification resent successfully");
+                return response;
+            } catch (error) {
+                logger.error("Failed to resend email verification", error);
                 throw error;
             } finally {
                 this.isLoading = false;
