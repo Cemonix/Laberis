@@ -27,6 +27,19 @@ namespace Server.Tests.Controllers
             _mockAuthService = new Mock<IAuthService>();
             _mockLogger = new Mock<ILogger<AuthController>>();
             _controller = new AuthController(_mockAuthService.Object, _mockLogger.Object);
+            
+            // Setup HttpContext with mocked Response and Cookies
+            var mockHttpContext = new Mock<HttpContext>();
+            var mockResponse = new Mock<HttpResponse>();
+            var mockCookies = new Mock<IResponseCookies>();
+            
+            mockResponse.Setup(r => r.Cookies).Returns(mockCookies.Object);
+            mockHttpContext.Setup(c => c.Response).Returns(mockResponse.Object);
+            
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = mockHttpContext.Object
+            };
         }
 
         #region Constructor Tests
