@@ -6,7 +6,8 @@ import type { Label } from "@/types/label/label";
 import type { ProjectRole } from "@/types/project/project";
 import { useErrorHandler } from "@/composables/useErrorHandler";
 import { AppLogger } from "@/utils/logger";
-import { LastProjectManager } from "@/core/storage";
+import { LastProjectManager, LastStageManager } from "@/core/storage";
+import type { LastStageData } from "@/types/storage";
 
 const logger = AppLogger.createServiceLogger("ProjectStore");
 
@@ -18,6 +19,7 @@ interface ProjectState {
     loading: boolean;
     membersLoading: boolean;
     labelsLoading: boolean;
+    currentStageType: string;
 }
 
 export const useProjectStore = defineStore("project", {
@@ -28,6 +30,7 @@ export const useProjectStore = defineStore("project", {
         loading: false,
         membersLoading: false,
         labelsLoading: false,
+        currentStageType: '',
     }),
 
     getters: {
@@ -173,6 +176,7 @@ export const useProjectStore = defineStore("project", {
             this.currentProject = null;
             this.teamMembers = [];
             this.projectLabels = [];
+            this.currentStageType = '';
             logger.info("Cleared project data");
         },
 
@@ -184,8 +188,24 @@ export const useProjectStore = defineStore("project", {
             return LastProjectManager.getLastProject();
         },
 
+        clearLastStage(): void {
+            LastStageManager.clearLastStage();
+        },
+
         hasLastProject(): boolean {
             return LastProjectManager.hasLastProject();
+        },
+
+        hasLastStage(): boolean {
+            return LastStageManager.hasLastStage();
+        },
+
+        hasLastStageForCurrentProject(): boolean {
+            return this.currentProjectId ? LastStageManager.isLastStageFromProject(this.currentProjectId) : false;
+        },
+
+        getLastStage(): LastStageData | null {
+            return LastStageManager.getLastStage();
         },
 
         async refreshTeamMembers(): Promise<void> {
@@ -198,6 +218,16 @@ export const useProjectStore = defineStore("project", {
             if (this.currentProjectId) {
                 await this.loadProjectLabels(this.currentProjectId);
             }
+        },
+
+        setCurrentStageType(stageType: string): void {
+            this.currentStageType = stageType;
+            logger.info(`Updated current stage type: ${stageType}`);
+        },
+
+        clearCurrentStageType(): void {
+            this.currentStageType = '';
+            logger.info("Cleared current stage type");
         }
     }
 });
