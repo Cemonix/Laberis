@@ -8,8 +8,11 @@ import router from './router'
 
 import {setupInterceptors} from '@/services/api/apiClient'
 import {useAuthStore} from '@/stores/authStore'
-import {logger, piniaLogger} from '@/utils/logger'
-import {useErrorHandler} from '@/composables/useErrorHandler';
+import {logger, piniaLogger, AppLogger} from '@/utils/logger'
+import {useErrorHandler} from '@/composables/useErrorHandler'
+import {registerPermissionDirective} from '@/directives/vPermission';
+
+const main_logger = AppLogger.createServiceLogger('Main');
 
 async function initializeApp() {
     const { handleError } = useErrorHandler();
@@ -33,22 +36,21 @@ async function initializeApp() {
     pinia.use(piniaLogger);
     app.use(pinia);
     app.use(logger);
+    
+    // Register permission directive
+    registerPermissionDirective(app);
 
     const authStore = useAuthStore();
     setupInterceptors(authStore);
-
-    // Initialize auth silently - don't fail app startup if auth fails
+    
+    // Initialize authentication state before mounting the app
     try {
-        await Promise.race([
-            authStore.initializeAuth(),
-            new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Auth initialization timeout')), 10000)
-            )
-        ]);
+        await authStore.initializeAuth();
+        main_logger.info('Authentication initialized successfully');
     } catch (error) {
-        // Log but don't crash app - user can still access public pages
-        console.warn('Auth initialization failed during app startup:', error);
-        authStore.isInitialized = true; // Mark as initialized to prevent router from retrying
+        main_logger.warn('Authentication initialization failed - user will start as guest:', error);
+        // Clear any partial auth state
+        authStore.clearAuthState();
     }
 
     app.use(router);
