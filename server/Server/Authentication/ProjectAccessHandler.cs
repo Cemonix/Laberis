@@ -32,7 +32,7 @@ namespace server.Authentication
             HttpContext? httpContext = _httpContextAccessor.HttpContext;
             if (httpContext == null)
             {
-                _logger.LogWarning("ProjectAccessHandler: HttpContext is null");
+                _logger.LogWarning("HttpContext is null");
                 context.Fail();
                 return;
             }
@@ -41,7 +41,7 @@ namespace server.Authentication
             string? userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
             {
-                _logger.LogWarning("ProjectAccessHandler: User ID not found in claims");
+                _logger.LogWarning("User ID not found in claims");
                 context.Fail();
                 return;
             }
@@ -50,7 +50,7 @@ namespace server.Authentication
             var projectIdValue = httpContext.GetRouteValue("projectId")?.ToString();
             if (string.IsNullOrEmpty(projectIdValue) || !int.TryParse(projectIdValue, out int projectId))
             {
-                _logger.LogWarning("ProjectAccessHandler: Project ID not found or invalid in route for user {UserId}", userId);
+                _logger.LogWarning("Project ID not found or invalid in route for user {UserId}", userId);
                 context.Fail();
                 return;
             }
@@ -65,20 +65,20 @@ namespace server.Authentication
                 var projectMember = projectMembers.FirstOrDefault();
                 if (projectMember != null)
                 {
-                    _logger.LogDebug("ProjectAccessHandler: User {UserId} has access to project {ProjectId} with role {Role}", 
+                    _logger.LogDebug("User {UserId} has access to project {ProjectId} with role {Role}", 
                         userId, projectId, projectMember.Role);
                     context.Succeed(requirement);
                 }
                 else
                 {
-                    _logger.LogWarning("ProjectAccessHandler: User {UserId} attempted to access project {ProjectId} without membership", 
+                    _logger.LogWarning("User {UserId} attempted to access project {ProjectId} without membership", 
                         userId, projectId);
                     context.Fail();
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "ProjectAccessHandler: Error checking project membership for user {UserId} and project {ProjectId}", 
+                _logger.LogError(ex, "Error checking project membership for user {UserId} and project {ProjectId}", 
                     userId, projectId);
                 context.Fail();
             }
