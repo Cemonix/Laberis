@@ -10,12 +10,6 @@ namespace server.Services.Interfaces
     public interface IPermissionConfigurationService
     {
         /// <summary>
-        /// Gets the complete permission configuration for the frontend.
-        /// </summary>
-        /// <returns>Permission configuration DTO</returns>
-        PermissionConfigurationDto GetPermissionConfiguration();
-
-        /// <summary>
         /// Checks if a role has a specific permission based on the loaded configuration.
         /// </summary>
         /// <param name="role">The project role to check</param>
@@ -29,6 +23,29 @@ namespace server.Services.Interfaces
         /// <param name="role">The project role</param>
         /// <returns>Set of permissions for the role</returns>
         HashSet<string> GetPermissionsForRole(ProjectRole role);
+
+        /// <summary>
+        /// Gets global permissions that apply to all authenticated users.
+        /// </summary>
+        /// <returns>HashSet of global permission strings</returns>
+        HashSet<string> GetGlobalPermissions();
+
+        /// <summary>
+        /// Builds a comprehensive permission context for a user based on their project memberships.
+        /// </summary>
+        /// <param name="userId">The user ID to build context for</param>
+        /// <returns>UserPermissionContext containing all applicable permissions</returns>
+        Task<UserPermissionContext> BuildUserPermissionContextAsync(string userId);
+
+        /// <summary>
+        /// Gets permissions for a specific page/route for a user.
+        /// Used for hybrid mode where frontend requests permissions on-demand.
+        /// </summary>
+        /// <param name="userId">The user ID</param>
+        /// <param name="page">The page/route identifier</param>
+        /// <param name="projectId">Optional project ID for project-specific permissions</param>
+        /// <returns>HashSet of permissions for the requested page</returns>
+        Task<HashSet<string>> GetPagePermissionsAsync(string userId, string page, int? projectId = null);
 
         /// <summary>
         /// Reloads the permission configuration from the configuration file.
