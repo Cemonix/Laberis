@@ -10,6 +10,7 @@ import { env } from "@/config/env";
 import { RoleEnum } from "@/types/auth/role";
 import { AppLogger } from "@/utils/logger";
 import { LastProjectManager } from "@/core/storage";
+import { usePermissionStore } from "./permissionStore";
 
 const logger = AppLogger.createStoreLogger('AuthStore');
 
@@ -75,6 +76,16 @@ export const useAuthStore = defineStore("auth", {
                 if (hasValidToken && this.tokens) {
                     // Only fetch user data if we successfully got tokens
                     await this.getCurrentUser();
+                    
+                    // Load permissions after getting user data
+                    try {
+                        const permissionStore = usePermissionStore();
+                        await permissionStore.loadUserPermissions();
+                        logger.info("User permissions loaded during auth initialization");
+                    } catch (permissionError) {
+                        logger.warn("Failed to load permissions during initialization", permissionError);
+                        // Don't fail initialization if permissions fail to load
+                    }
                 }
             } catch (error) {
                 logger.info("Auth initialization completed without valid session", error);
@@ -92,6 +103,16 @@ export const useAuthStore = defineStore("auth", {
 
                 this.user = response.user;
                 this.tokens = response.tokens;
+
+                // Load user permissions after successful login
+                try {
+                    const permissionStore = usePermissionStore();
+                    await permissionStore.loadUserPermissions();
+                    logger.info("User permissions loaded after login");
+                } catch (permissionError) {
+                    logger.warn("Failed to load permissions after login", permissionError);
+                    // Don't fail login if permissions fail to load
+                }
 
             } catch (error) {
                 logger.error("Login failed", error);
@@ -124,6 +145,10 @@ export const useAuthStore = defineStore("auth", {
             } catch (error) {
                 logger.error("Logout request failed", error);
             } finally {
+                // Clear permission data on logout
+                const permissionStore = usePermissionStore();
+                permissionStore.clearPermissions();
+                
                 this.user = null;
                 this.tokens = null;
                 this.isInitialized = false;
@@ -135,6 +160,10 @@ export const useAuthStore = defineStore("auth", {
             if (this.user?.email) {
                 LastProjectManager.clearLastProject(this.user.email);
             }
+            
+            // Clear permission data
+            const permissionStore = usePermissionStore();
+            permissionStore.clearPermissions();
             
             this.user = null;
             this.tokens = null;
@@ -223,8 +252,7 @@ export const useAuthStore = defineStore("auth", {
          * Perform the actual token refresh with retry logic and proper error handling
          */
         async performTokenRefresh(): Promise<boolean> {
-            const maxRetries = 3;
-            let lastError: any;
+            const maxRetries = 3; // TODO: Move to config
             
             this.retryingAuth = true;
             this.connectionError = false;
@@ -243,8 +271,6 @@ export const useAuthStore = defineStore("auth", {
                     this.connectionError = false;
                     return true;
                 } catch (error: any) {
-                    lastError = error;
-                    
                     // Don't retry on authentication errors (invalid refresh token or no refresh token)
                     if (error.response?.status === 401) {
                         logger.info("No valid refresh token available");
