@@ -1,112 +1,94 @@
 {
-  "permissions": {
-    "project": {
-      "manage_settings": "project:manage_settings",
-      "archive": "project:archive",
-      "view_analytics": "project:view_analytics"
-    },
-    "members": {
-      "manage": "members:manage",
-      "view": "members:view",
-      "assign_roles": "members:assign_roles"
-    },
-    "datasources": {
-      "manage": "datasources:manage",
-      "view": "datasources:view"
-    },
-    "assets": {
-      "upload": "assets:upload"
-    },
-    "labels": {
-      "manage": "labels:manage",
-      "view": "labels:view"
-    },
-    "workflows": {
-      "manage": "workflows:manage",
-      "view": "workflows:view",
-      "assign_stages": "workflows:assign_stages"
-    },
-    "tasks": {
-      "view_all": "tasks:view_all",
-      "view_assigned": "tasks:view_assigned",
-      "manage_assignments": "tasks:manage_assignments",
-      "change_status": "tasks:change_status"
-    },
-    "annotations": {
-      "workspace_access": "annotations:workspace_access",
-      "create": "annotations:create",
-      "edit": "annotations:edit",
-      "delete": "annotations:delete"
-    },
-    "review": {
-      "annotations": "review:annotations",
-      "approve": "review:approve",
-      "reject": "review:reject",
-      "return_rework": "review:return_rework"
-    }
-  },
-  "rolePermissions": {
-    "VIEWER": [
-      "members:view",
-      "datasources:view",
-      "labels:view",
-      "workflows:view"
-    ],
-    "ANNOTATOR": [
-      "members:view",
-      "datasources:view",
-      "labels:view",
-      "workflows:view",
-      "tasks:view_assigned",
-      "annotations:workspace_access",
-      "annotations:create",
-      "annotations:edit",
-      "annotations:delete",
-      "tasks:change_status"
-    ],
-    "REVIEWER": [
-      "members:view",
-      "datasources:view",
-      "labels:view",
-      "workflows:view",
-      "tasks:view_assigned",
-      "annotations:workspace_access",
-      "annotations:create",
-      "annotations:edit",
-      "annotations:delete",
-      "tasks:change_status",
-      "review:annotations",
-      "review:approve",
-      "review:reject",
-      "review:return_rework"
-    ],
-    "MANAGER": [
-      "members:view",
-      "datasources:view",
-      "labels:view",
-      "workflows:view",
-      "tasks:view_assigned",
-      "annotations:workspace_access",
-      "annotations:create",
-      "annotations:edit",
-      "annotations:delete",
-      "tasks:change_status",
-      "review:annotations",
-      "review:approve",
-      "review:reject",
-      "review:return_rework",
-      "project:manage_settings",
-      "project:archive",
-      "project:view_analytics",
-      "members:manage",
-      "members:assign_roles",
-      "datasources:manage",
-      "assets:upload",
-      "labels:manage",
-      "workflows:manage",
-      "workflows:assign_stages",
-      "tasks:view_all",
-      "tasks:manage_assignments"
-    ]
-  }
+	"roles": {
+		"VIEWER": {
+			"name": "Viewer",
+			"permissions": [
+				"project:read",
+				"project:list",
+				"labelScheme:read",
+				"dataSource:read",
+				"dataExplorer:read",
+				"workflow:read",
+				"task:read",
+				"annotation:read"
+			]
+		},
+		"ANNOTATOR": {
+			"name": "Annotator",
+			"permissions": [
+				"project:read",
+				"project:list",
+				"labelScheme:read",
+				"dataSource:read",
+				"dataExplorer:read",
+				"workflow:read",
+				"task:read",
+				"task:update:status",
+				"annotation:read",
+				"annotation:create",
+				"annotation:update",
+				"annotation:delete"
+			]
+		},
+		"REVIEWER": {
+			"name": "Reviewer",
+			"permissions": [
+				"project:read",
+				"project:list",
+				"labelScheme:read",
+				"dataSource:read",
+				"dataExplorer:read",
+				"workflow:read",
+				"task:read",
+				"task:assign",
+				"task:update:status",
+				"annotation:read",
+				"annotation:create",
+				"annotation:update",
+				"annotation:delete",
+				"annotation:review"
+			]
+		},
+		"MANAGER": {
+			"name": "Manager",
+			"permissions": [
+				"project:read",
+				"project:update",
+				"project:delete",
+				"project:list",
+				"projectMember:invite",
+				"projectMember:read",
+				"projectMember:update",
+				"projectMember:remove",
+				"projectSettings:read",
+				"projectSettings:update",
+				"labelScheme:create",
+				"labelScheme:read",
+				"labelScheme:update",
+				"labelScheme:delete",
+				"dataSource:create",
+				"dataSource:read",
+				"dataSource:update",
+				"dataSource:delete",
+				"dataExplorer:read",
+				"workflow:create",
+				"workflow:read",
+				"workflow:update",
+				"workflow:delete",
+				"task:read",
+				"task:assign",
+				"task:update:status",
+				"annotation:read",
+				"annotation:create",
+				"annotation:update",
+				"annotation:delete",
+				"annotation:review"
+			]
+		}
+	},
+	"globalPermissions": [
+		"account:read",
+		"account:update",
+		"account:change:password"
+	]
 }
