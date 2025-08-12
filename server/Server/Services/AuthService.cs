@@ -13,6 +13,7 @@ using server.Models.DTOs.Auth;
 using server.Services.Interfaces;
 using server.Data;
 using Microsoft.EntityFrameworkCore;
+using server.Models.DTOs.Configuration;
 
 namespace server.Services;
 
@@ -25,6 +26,7 @@ public class AuthService : IAuthService
     private readonly IProjectInvitationService _projectInvitationService;
     private readonly IEmailService _emailService;
     private readonly LaberisDbContext _context;
+    private readonly IPermissionConfigurationService _permissionConfigurationService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -33,7 +35,8 @@ public class AuthService : IAuthService
         ILogger<AuthService> logger,
         IProjectInvitationService projectInvitationService,
         IEmailService emailService,
-        LaberisDbContext context)
+        LaberisDbContext context,
+        IPermissionConfigurationService permissionConfigurationService)
     {
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         _jwtSettings = (jwtSettings ?? throw new ArgumentNullException(nameof(jwtSettings))).Value;
@@ -42,6 +45,7 @@ public class AuthService : IAuthService
         _projectInvitationService = projectInvitationService ?? throw new ArgumentNullException(nameof(projectInvitationService));
         _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
         _context = context ?? throw new ArgumentNullException(nameof(context));
+        _permissionConfigurationService = permissionConfigurationService ?? throw new ArgumentNullException(nameof(permissionConfigurationService));
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto)
@@ -143,12 +147,7 @@ public class AuthService : IAuthService
             Token = accesstoken,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.Expiration),
             RefreshToken = refreshToken, // Include refresh token for cookie setting
-            User = new UserDto
-            {
-                UserName = user.UserName!,
-                Email = user.Email!,
-                Roles = await _userManager.GetRolesAsync(user)
-            }
+            User = await BuildUserDtoAsync(user)
         };
     }
 
@@ -194,12 +193,7 @@ public class AuthService : IAuthService
             Token = accessToken,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.Expiration),
             RefreshToken = refreshToken, // Include refresh token for cookie setting
-            User = new UserDto
-            {
-                UserName = user.UserName!,
-                Email = user.Email!,
-                Roles = await _userManager.GetRolesAsync(user)
-            }
+            User = await BuildUserDtoAsync(user)
         };
     }
 
@@ -227,12 +221,7 @@ public class AuthService : IAuthService
             Token = newAccessToken,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.Expiration),
             RefreshToken = newRefreshToken, // Include refresh token for cookie setting
-            User = new UserDto
-            {
-                Email = user.Email!,
-                UserName = user.UserName!,
-                Roles = await _userManager.GetRolesAsync(user)
-            }
+            User = await BuildUserDtoAsync(user)
         };
     }
 
@@ -264,6 +253,38 @@ public class AuthService : IAuthService
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    /// <summary>
+    /// Builds a UserDto with permission context for the specified user.
+    /// Includes project memberships and role-based permissions.
+    /// </summary>
+    /// <param name="user">The user to build DTO for</param>
+    /// <returns>UserDto with complete permission context</returns>
+    private async Task<UserDto> BuildUserDtoAsync(ApplicationUser user)
+    {
+        var roles = await _userManager.GetRolesAsync(user);
+        
+        UserPermissionContext? permissionContext = null;
+        try
+        {
+            permissionContext = await _permissionConfigurationService.BuildUserPermissionContextAsync(user.Id);
+            _logger.LogDebug("Built permission context for user {UserId} with {PermissionCount} total permissions", 
+                user.Id, permissionContext.Permissions.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to build permission context for user {UserId}. User will have limited permissions.", user.Id);
+            // Continue without permission context rather than failing the entire login
+        }
+
+        return new UserDto
+        {
+            UserName = user.UserName!,
+            Email = user.Email!,
+            Roles = roles,
+            PermissionContext = permissionContext
+        };
     }
 
     public async System.Threading.Tasks.Task RevokeRefreshTokenAsync(string userId)
