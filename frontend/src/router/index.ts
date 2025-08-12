@@ -5,7 +5,7 @@ import DefaultLayout from '@/layouts/DefaultLayout.vue';
 import WorkspaceLayout from '@/layouts/WorkspaceLayout.vue';
 import DataExplorerLayout from '@/layouts/DataExplorerLayout.vue';
 import { useAuthStore } from '@/stores/authStore';
-import { projectMemberService } from '@/services/api/projects/projectMemberService';
+import { usePermissionStore } from '@/stores/permissionStore';
 import { AppLogger } from '@/utils/logger';
 
 const routes: Array<RouteRecordRaw> = [
@@ -171,47 +171,91 @@ const router = createRouter({
     routes,
 });
 
+const publicRoutes = ['Login', 'Register', 'Home', 'InviteAccept', 'EmailVerification'];
+const authRoutes = ['Login', 'Register'];
+
 const logger = AppLogger.createServiceLogger('Router');
 
 // Navigation guards
 router.beforeEach(async (to, _from, next) => {
     const authStore = useAuthStore();
+    const permissionStore = usePermissionStore();
     
-    const publicRoutes = ['Login', 'Register', 'Home', 'InviteAccept', 'EmailVerification'];    
-    const authRoutes = ['Login', 'Register'];
     const isPublicRoute = publicRoutes.includes(to.name as string);
-    
-    // Only initialize auth for protected routes or if we already have some auth state
-    if (!authStore.isInitialized && (!isPublicRoute || authStore.tokens)) {
-        await authStore.initializeAuth();
-    }
-    
-    // Check authentication first
-    if (authRoutes.includes(to.name as string) && authStore.isAuthenticated) {
-        // If user is already authenticated and trying to access auth pages, redirect to appropriate page
+    const isAuthRoute = authRoutes.includes(to.name as string);
+
+    // Check authentication and handle redirects
+    if (isAuthRoute && authStore.isAuthenticated) {
+        // Only redirect from auth pages (Login, Register) when user is already authenticated
         const redirectUrl = authStore.getPostLoginRedirectUrl();
         next(redirectUrl);
     } else if (!isPublicRoute && !authStore.isAuthenticated) {
         // If user is not authenticated and trying to access protected routes, redirect to login
         next({ name: 'Login' });
     } else if (authStore.isAuthenticated && to.params.projectId) {
-        // Project-specific route - validate project membership
+        // Project-specific route - validate project membership using permission store
         try {
             const projectId = Number(to.params.projectId);
             if (projectId && !isNaN(projectId)) {
+                // Ensure permissions are loaded
+                if (!permissionStore.isInitialized) {
+                    await permissionStore.loadUserPermissions();
+                }
+                
                 // Check if user is a member of the project
-                const membership = await projectMemberService.getCurrentUserMembership(projectId);
-                if (!membership) {
+                if (!permissionStore.isProjectMember(projectId)) {
                     logger.warn(`User is not a member of project ${projectId}`);
                     next({ name: 'Error', params: { type: 'unauthorized' } });
                     return;
                 }
-                logger.info(`User has ${membership.role} role in project ${projectId}`);
+                
+                // Check if route requires specific permissions
+                const requiredPermissions = to.meta?.permissions as string[] | undefined;
+                if (requiredPermissions && requiredPermissions.length > 0) {
+                    const hasRequiredPermissions = permissionStore.hasAllProjectPermissions(
+                        requiredPermissions, 
+                        projectId
+                    );
+                    
+                    if (!hasRequiredPermissions) {
+                        logger.warn(
+                            `User lacks required permissions for route ${String(to.name)}: ${requiredPermissions.join(', ')}`
+                        );
+                        next({ name: 'Error', params: { type: 'forbidden' } });
+                        return;
+                    }
+                }
+                
+                logger.info(`User has access to project ${projectId}`);
             }
             next();
         } catch (error) {
-            logger.error('Error validating project membership', error);
+            logger.error('Error validating project access', error);
             // If validation fails, redirect to error page
+            next({ name: 'Error', params: { type: 'unauthorized' } });
+        }
+    } else if (authStore.isAuthenticated && to.meta?.permissions) {
+        // Global route with permission requirements
+        try {
+            // Ensure permissions are loaded
+            if (!permissionStore.isInitialized) {
+                await permissionStore.loadUserPermissions();
+            }
+            
+            const requiredPermissions = to.meta.permissions as string[];
+            const hasRequiredPermissions = permissionStore.hasAllGlobalPermissions(requiredPermissions);
+            
+            if (!hasRequiredPermissions) {
+                logger.warn(
+                    `User lacks required global permissions for route ${String(to.name)}: ${requiredPermissions.join(', ')}`
+                );
+                next({ name: 'Error', params: { type: 'forbidden' } });
+                return;
+            }
+            
+            next();
+        } catch (error) {
+            logger.error('Error validating global permissions', error);
             next({ name: 'Error', params: { type: 'unauthorized' } });
         }
     } else {
