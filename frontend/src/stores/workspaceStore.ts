@@ -716,11 +716,11 @@ export const useWorkspaceStore = defineStore("workspace", {
          */
         async canOpenTask(task: Task): Promise<boolean> {
             // Import permission check dynamically to avoid circular dependencies
-            const { useProjectPermissions } = await import('@/composables/useProjectPermissions');
-            const { canManageProject } = useProjectPermissions();
+            const { usePermissions } = await import('@/composables/usePermissions');
+            const { canUpdateProject } = usePermissions();
             
             // Deferred tasks can only be opened by managers
-            if (task.status === TaskStatus.DEFERRED && !canManageProject.value) {
+            if (task.status === TaskStatus.DEFERRED && !canUpdateProject.value) {
                 return false;
             }
             
@@ -809,9 +809,9 @@ export const useWorkspaceStore = defineStore("workspace", {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
                 // Check if user has manager permissions for completion stage tasks
-                const { useProjectPermissions } = await import('@/composables/useProjectPermissions');
-                const { canManageProject } = useProjectPermissions();
-                const isManager = canManageProject.value;
+                const { usePermissions } = await import('@/composables/usePermissions');
+                const { canUpdateProject } = usePermissions();
+                const isManager = canUpdateProject.value;
                 
                 // Use the smart task status service that understands workflow context
                 const updatedTask = await taskStatusService.completeTask(numericProjectId, this.currentTaskData, isManager);
@@ -847,9 +847,9 @@ export const useWorkspaceStore = defineStore("workspace", {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
                 // Check if user has manager permissions for completion stage tasks
-                const { useProjectPermissions } = await import('@/composables/useProjectPermissions');
-                const { canManageProject } = useProjectPermissions();
-                const isManager = canManageProject.value;
+                const { usePermissions } = await import('@/composables/usePermissions');
+                const { canUpdateProject } = usePermissions();
+                const isManager = canUpdateProject.value;
                 
                 // Use the smart task status service (same as other complete methods now)
                 const updatedTask = await taskStatusService.completeTask(numericProjectId, this.currentTaskData, isManager);
@@ -885,9 +885,9 @@ export const useWorkspaceStore = defineStore("workspace", {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
                 // Check if user has manager permissions for completion stage tasks
-                const { useProjectPermissions } = await import('@/composables/useProjectPermissions');
-                const { canManageProject } = useProjectPermissions();
-                const isManager = canManageProject.value;
+                const { usePermissions } = await import('@/composables/usePermissions');
+                const { canUpdateProject } = usePermissions();
+                const isManager = canUpdateProject.value;
                 
                 // Use the smart task status service
                 const updatedTask = await taskStatusService.uncompleteTask(numericProjectId, this.currentTaskData, isManager);
@@ -923,9 +923,9 @@ export const useWorkspaceStore = defineStore("workspace", {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
                 // Check if user has manager permissions for completion stage tasks
-                const { useProjectPermissions } = await import('@/composables/useProjectPermissions');
-                const { canManageProject } = useProjectPermissions();
-                const isManager = canManageProject.value;
+                const { usePermissions } = await import('@/composables/usePermissions');
+                const { canUpdateProject } = usePermissions();
+                const isManager = canUpdateProject.value;
                 
                 // Use the smart task status service
                 const suspendedTask = await taskStatusService.suspendTask(numericProjectId, this.currentTaskData, isManager);
@@ -961,9 +961,9 @@ export const useWorkspaceStore = defineStore("workspace", {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
                 // Check if user has manager permissions for completion stage tasks
-                const { useProjectPermissions } = await import('@/composables/useProjectPermissions');
-                const { canManageProject } = useProjectPermissions();
-                const isManager = canManageProject.value;
+                const { usePermissions } = await import('@/composables/usePermissions');
+                const { canUpdateProject } = usePermissions();
+                const isManager = canUpdateProject.value;
                 
                 // Call the backend API to set task status to deferred
                 const deferredTask = await taskStatusService.deferTask(numericProjectId, this.currentTaskData, isManager);
