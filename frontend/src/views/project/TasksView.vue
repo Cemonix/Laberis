@@ -184,7 +184,7 @@ import type {Task, TaskTableRow} from '@/types/task';
 import {TaskStatus} from '@/types/task';
 import type {TableColumn, TableRowAction} from '@/types/common';
 import {useErrorHandler} from '@/composables/useErrorHandler';
-import {useProjectPermissions} from '@/composables/useProjectPermissions';
+import {usePermissions} from '@/composables/usePermissions';
 import {useAssetPreview} from '@/composables/useAssetPreview';
 import {useProjectStore} from '@/stores/projectStore';
 import {taskService, workflowStageService} from '@/services/api/projects';
@@ -198,7 +198,7 @@ const route = useRoute();
 const router = useRouter();
 const { handleError } = useErrorHandler();
 const projectStore = useProjectStore();
-const { canManageProject } = useProjectPermissions();
+const { canUpdateProject } = usePermissions();
 const logger = AppLogger.createComponentLogger('TasksView');
 
 // Selection management
@@ -242,13 +242,13 @@ const bulkOperationProgress = ref<string>('Processing...');
 const currentSelectionCount = computed(() => selection.selectionCount.value);
 
 const canManageTasks = computed(() => {
-    return canManageProject.value;
+    return canUpdateProject.value;
 });
 
 const canReviewTasks = computed(() => {
     // For now, assume that managers can also review
     // TODO: reviewer or manager can review task
-    return canManageProject.value;
+    return canUpdateProject.value;
 });
 
 const isTaskClickable = (task: TaskTableRow): boolean => {
