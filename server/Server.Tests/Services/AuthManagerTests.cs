@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using server.Services;
 using server.Configs;
 using server.Models.DTOs.Auth;
+using server.Models.DTOs.Configuration;
 using server.Exceptions;
 using server.Services.Interfaces;
 using server.Data;
@@ -24,6 +25,7 @@ namespace Server.Tests.Services
         private readonly Mock<ILogger<AuthService>> _mockLogger;
         private readonly Mock<IProjectInvitationService> _mockProjectInvitationService;
         private readonly Mock<IEmailService> _mockEmailService;
+        private readonly Mock<IPermissionConfigurationService> _mockPermissionConfigurationService;
         private readonly DbContextFactory _dbContextFactory;
         private readonly JwtSettings _jwtSettings;
         private readonly WebAppSettings _webAppSettings;
@@ -79,6 +81,17 @@ namespace Server.Tests.Services
             _mockLogger = new Mock<ILogger<AuthService>>();
             _mockProjectInvitationService = new Mock<IProjectInvitationService>();
             _mockEmailService = new Mock<IEmailService>();
+            _mockPermissionConfigurationService = new Mock<IPermissionConfigurationService>();
+            
+            // Setup permission configuration service to return a default empty context
+            _mockPermissionConfigurationService.Setup(m => m.BuildUserPermissionContextAsync(It.IsAny<string>()))
+                .ReturnsAsync(new UserPermissionContext
+                {
+                    Permissions = new HashSet<string>(),
+                    ProjectPermissions = new Dictionary<int, HashSet<string>>(),
+                    GlobalPermissions = new HashSet<string>()
+                });
+            
             _dbContextFactory = new DbContextFactory();
 
             _authManager = new AuthService(
@@ -88,7 +101,8 @@ namespace Server.Tests.Services
                 _mockLogger.Object,
                 _mockProjectInvitationService.Object,
                 _mockEmailService.Object,
-                _dbContextFactory.Context
+                _dbContextFactory.Context,
+                _mockPermissionConfigurationService.Object
             );
         }
 
@@ -100,7 +114,7 @@ namespace Server.Tests.Services
             // Arrange & Act & Assert
             using var tempDbFactory = new DbContextFactory();
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthService(null!, _mockJwtOptions.Object, _mockWebAppOptions.Object, _mockLogger.Object, _mockProjectInvitationService.Object, _mockEmailService.Object, tempDbFactory.Context));
+                new AuthService(null!, _mockJwtOptions.Object, _mockWebAppOptions.Object, _mockLogger.Object, _mockProjectInvitationService.Object, _mockEmailService.Object, tempDbFactory.Context, _mockPermissionConfigurationService.Object));
         }
 
         [Fact]
@@ -109,7 +123,7 @@ namespace Server.Tests.Services
             // Arrange & Act & Assert
             using var tempDbFactory = new DbContextFactory();
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthService(_mockUserManager.Object, null!, _mockWebAppOptions.Object, _mockLogger.Object, _mockProjectInvitationService.Object, _mockEmailService.Object, tempDbFactory.Context));
+                new AuthService(_mockUserManager.Object, null!, _mockWebAppOptions.Object, _mockLogger.Object, _mockProjectInvitationService.Object, _mockEmailService.Object, tempDbFactory.Context, _mockPermissionConfigurationService.Object));
         }
 
         [Fact]
@@ -118,7 +132,16 @@ namespace Server.Tests.Services
             // Arrange & Act & Assert
             using var tempDbFactory = new DbContextFactory();
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthService(_mockUserManager.Object, _mockJwtOptions.Object, _mockWebAppOptions.Object, null!, _mockProjectInvitationService.Object, _mockEmailService.Object, tempDbFactory.Context));
+                new AuthService(_mockUserManager.Object, _mockJwtOptions.Object, _mockWebAppOptions.Object, null!, _mockProjectInvitationService.Object, _mockEmailService.Object, tempDbFactory.Context, _mockPermissionConfigurationService.Object));
+        }
+
+        [Fact]
+        public void Constructor_Should_ThrowArgumentNullException_WhenPermissionConfigurationServiceIsNull()
+        {
+            // Arrange & Act & Assert
+            using var tempDbFactory = new DbContextFactory();
+            Assert.Throws<ArgumentNullException>(() => 
+                new AuthService(_mockUserManager.Object, _mockJwtOptions.Object, _mockWebAppOptions.Object, _mockLogger.Object, _mockProjectInvitationService.Object, _mockEmailService.Object, tempDbFactory.Context, null!));
         }
 
         #endregion
