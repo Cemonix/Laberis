@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using server.Authentication;
 using server.Extensions;
 using server.Models.DTOs.Asset;
 using server.Services.Interfaces;
@@ -9,7 +10,9 @@ namespace server.Controllers;
 
 [Route("api/projects/{projectId:int}/[controller]")]
 [ApiController]
-[Authorize]
+[Authorize(Policy = "RequireAuthenticatedUser")]
+[ProjectAccess]
+[EnableRateLimiting("public")]
 public class AssetsController : ControllerBase
 {
     private readonly IAssetService _assetService;
@@ -36,6 +39,7 @@ public class AssetsController : ControllerBase
     /// <response code="200">Returns the list of asset DTOs.</response>
     /// <response code="500">If an unexpected error occurs.</response>
     [HttpGet]
+    [Authorize(Policy = "CanAccessDataExplorer")]  // Viewer and Manager only
     [ProducesResponseType(typeof(IEnumerable<AssetDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAssetsForProject(

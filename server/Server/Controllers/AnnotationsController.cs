@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using server.Authentication;
 using server.Models.DTOs.Annotation;
 using server.Services.Interfaces;
 using System.Security.Claims;
@@ -9,7 +10,8 @@ namespace server.Controllers;
 
 [Route("api/projects/{projectId:int}/[controller]")]
 [ApiController]
-[Authorize]
+[Authorize(Policy = "RequireAuthenticatedUser")]
+[ProjectAccess]
 [EnableRateLimiting("project")]
 public class AnnotationsController : ControllerBase
 {
@@ -36,6 +38,7 @@ public class AnnotationsController : ControllerBase
     /// <response code="200">Returns the list of annotation DTOs.</response>
     /// <response code="500">If an unexpected error occurs.</response>
     [HttpGet("task/{taskId:int}")]
+    [Authorize(Policy = "CanAccessAnnotationWorkspace")]  // Annotator, Reviewer, Manager
     [ProducesResponseType(typeof(IEnumerable<AnnotationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAnnotationsForTask(
@@ -78,6 +81,7 @@ public class AnnotationsController : ControllerBase
     /// <response code="200">Returns the list of annotation DTOs.</response>
     /// <response code="500">If an unexpected error occurs.</response>
     [HttpGet("asset/{assetId:int}")]
+    [Authorize(Policy = "CanAccessAnnotationWorkspace")]  // Annotator, Reviewer, Manager
     [ProducesResponseType(typeof(IEnumerable<AnnotationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAnnotationsForAsset(
@@ -112,6 +116,7 @@ public class AnnotationsController : ControllerBase
     /// <param name="annotationId">The ID of the annotation.</param>
     /// <returns>The requested annotation.</returns>
     [HttpGet("{annotationId:long}")]
+    [Authorize(Policy = "CanAccessAnnotationWorkspace")]  // Annotator, Reviewer, Manager
     [ProducesResponseType(typeof(AnnotationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAnnotationById(long annotationId)
@@ -148,6 +153,7 @@ public class AnnotationsController : ControllerBase
     /// <response code="401">If the user is not authenticated.</response>
     /// <response code="500">If an internal server error occurs.</response>
     [HttpPost]
+    [Authorize(Policy = "CanManageAnnotations")]  // Annotator, Reviewer, Manager
     [ProducesResponseType(typeof(AnnotationDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -184,6 +190,7 @@ public class AnnotationsController : ControllerBase
     /// <response code="404">If the annotation is not found.</response>
     /// <response code="500">If an internal server error occurs.</response>
     [HttpPut("{annotationId:long}")]
+    [Authorize(Policy = "CanManageAnnotations")]  // Annotator, Reviewer, Manager
     [ProducesResponseType(typeof(AnnotationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -217,6 +224,7 @@ public class AnnotationsController : ControllerBase
     /// <response code="404">If the annotation is not found.</response>
     /// <response code="500">If an internal server error occurs.</response>
     [HttpDelete("{annotationId:long}")]
+    [Authorize(Policy = "CanManageAnnotations")]  // Annotator, Reviewer, Manager
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]

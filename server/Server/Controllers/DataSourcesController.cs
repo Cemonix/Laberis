@@ -36,6 +36,7 @@ public class DataSourcesController : ControllerBase
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A list of data sources.</returns>
     [HttpGet]
+    [Authorize(Policy = "CanManageDataSources")]  // Manager only
     public async Task<IActionResult> GetAllDataSourcesForProject(
         int projectId,
         [FromQuery] string? filterOn = null, [FromQuery] string? filterQuery = null, [FromQuery] string? sortBy = null,
@@ -60,6 +61,7 @@ public class DataSourcesController : ControllerBase
     /// <param name="dataSourceId">The ID of the data source.</param>
     /// <returns>The requested data source.</returns>
     [HttpGet("{dataSourceId:int}")]
+    [Authorize(Policy = "CanManageDataSources")]  // Manager only
     public async Task<IActionResult> GetDataSourceById(int projectId, int dataSourceId)
     {
         var dataSource = await _dataSourceService.GetDataSourceByIdAsync(dataSourceId);
