@@ -11,6 +11,7 @@ import { RoleEnum } from "@/types/auth/role";
 import { AppLogger } from "@/utils/logger";
 import { LastProjectManager } from "@/core/storage";
 import { usePermissionStore } from "./permissionStore";
+import { isUnauthorizedError } from "@/types/common/errors";
 
 const logger = AppLogger.createStoreLogger('AuthStore');
 
@@ -25,6 +26,7 @@ export const useAuthStore = defineStore("auth", {
         connectionError: false,
         retryingAuth: false,
         refreshPromise: null as Promise<boolean> | null,
+        isRefreshingTokens: false,
     }),
     getters: {
         isAuthenticated(state): boolean {
@@ -69,14 +71,16 @@ export const useAuthStore = defineStore("auth", {
                         return;
                     }
                 }
-                
-                // Standard initialization for both dev and prod
-                // Only try to refresh tokens - don't fetch user data unless we get valid tokens
-                const hasValidToken = await this.ensureValidToken();
-                if (hasValidToken && this.tokens) {
+
+                // Always attempt token refresh - the browser will include httpOnly cookie automatically
+                const refreshSuccess = await this.tryRefreshOnce();
+
+                if (refreshSuccess && this.tokens) {
+                    logger.info("Token refresh successful, fetching user data");
                     // Only fetch user data if we successfully got tokens
                     await this.getCurrentUser();
                     
+                    logger.info("User data fetched successfully, loading permissions");
                     // Load permissions after getting user data
                     try {
                         const permissionStore = usePermissionStore();
@@ -86,6 +90,8 @@ export const useAuthStore = defineStore("auth", {
                         logger.warn("Failed to load permissions during initialization", permissionError);
                         // Don't fail initialization if permissions fail to load
                     }
+                } else {
+                    logger.info("Token refresh failed during initialization - user will start as guest");
                 }
             } catch (error) {
                 logger.info("Auth initialization completed without valid session", error);
@@ -189,20 +195,13 @@ export const useAuthStore = defineStore("auth", {
             logger.info("No last project found, redirecting to home");
             return '/home';
         },
+        /**
+         * Token refresh with retry logic for protected pages
+         */
         async refreshTokens(): Promise<boolean> {
-            // Prevent multiple simultaneous refresh attempts
-            if (this.refreshPromise) {
-                return this.refreshPromise;
-            }
-            
-            this.refreshPromise = this.performTokenRefresh();
-            
-            try {
-                return await this.refreshPromise;
-            } finally {
-                this.refreshPromise = null;
-            }
+            return this.tryRefreshWithRetry();
         },
+        
         async getCurrentUser(): Promise<void> {
             // In development mode with auto-login enabled, we can use fake tokens
             if (env.IS_DEVELOPMENT && env.AUTO_LOGIN_DEV && (!this.tokens?.accessToken || this.tokens.accessToken === "dev-fake-token")) {
@@ -235,44 +234,74 @@ export const useAuthStore = defineStore("auth", {
             }
         },
         
+
         /**
-         * Ensure we have a valid access token before making authenticated requests
+         * Single attempt token refresh - no retries
          */
-        async ensureValidToken(): Promise<boolean> {
-            // If we have a valid token in memory, use it
-            if (this.hasValidTokensInMemory) {
-                return true;
-            }
+        async tryRefreshOnce(): Promise<boolean> {
+            logger.info("Attempting single token refresh");
             
-            // Otherwise, try to refresh from httpOnly cookie
-            return await this.refreshTokens();
+            try {
+                const tokens = await authService.refreshToken();
+                this.tokens = tokens;
+                this.refreshAttempts = 0;
+                this.connectionError = false;
+                logger.info("Token refresh successful (single attempt)");
+                return true;
+            } catch (error: any) {
+                // Check for 401 errors using our custom UnauthorizedError class
+                if (isUnauthorizedError(error)) {
+                    logger.info("No valid refresh token available (401 error)");
+                } else {
+                    logger.warn("Token refresh failed with error:", error);
+                }
+                return false;
+            }
         },
 
         /**
-         * Perform the actual token refresh with retry logic and proper error handling
+         * Token refresh with retry logic for protected pages
          */
-        async performTokenRefresh(): Promise<boolean> {
-            const maxRetries = 3; // TODO: Move to config
+        async tryRefreshWithRetry(): Promise<boolean> {
+            // Prevent multiple simultaneous refresh attempts
+            if (this.refreshPromise) {
+                return this.refreshPromise;
+            }
             
-            this.retryingAuth = true;
+            this.refreshPromise = this.performRetryRefresh();
+            
+            try {
+                return await this.refreshPromise;
+            } finally {
+                this.refreshPromise = null;
+            }
+        },
+
+        /**
+         * Internal method to perform the retry refresh logic
+         */
+        async performRetryRefresh(): Promise<boolean> {
+            const maxRetries = 3;
+            
+            this.isLoading = true;
             this.connectionError = false;
+            
+            logger.info(`Starting token refresh with retry logic (max ${maxRetries} attempts)`);
             
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
-                    // Add timeout to prevent hanging
-                    const tokens = await Promise.race([
-                        authService.refreshToken(),
-                        new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Token refresh timeout')), 10000)
-                        )
-                    ]) as AuthTokens;
+                    logger.info(`Token refresh attempt ${attempt}/${maxRetries}`);
+                    const tokens = await authService.refreshToken();
+                    
                     this.tokens = tokens;
                     this.refreshAttempts = 0;
                     this.connectionError = false;
+                    this.isLoading = false;
+                    logger.info(`Token refresh successful on attempt ${attempt}/${maxRetries}`);
                     return true;
                 } catch (error: any) {
-                    // Don't retry on authentication errors (invalid refresh token or no refresh token)
-                    if (error.response?.status === 401) {
+                    // Don't retry on authentication errors (invalid refresh token)
+                    if (isUnauthorizedError(error)) {
                         logger.info("No valid refresh token available");
                         break;
                     }
@@ -282,13 +311,12 @@ export const useAuthStore = defineStore("auth", {
                         logger.warn(`Network error on token refresh attempt ${attempt}/${maxRetries}`);
                         if (attempt < maxRetries) {
                             // Wait before retrying (exponential backoff)
-                            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                            await this.delay(Math.pow(2, attempt) * 1000);
                             continue;
                         } else {
                             // On final network failure, set connection error flag
                             this.connectionError = true;
-                            this.retryingAuth = false;
-                            return false;
+                            break;
                         }
                     }
                     
@@ -297,11 +325,60 @@ export const useAuthStore = defineStore("auth", {
                 }
             }
             
-            logger.info("Token refresh completed without success - user not logged in");
-            this.retryingAuth = false;
-            // Don't clear auth state here for 401 errors - just return false
+            this.isLoading = false;
             return false;
         },
+
+        /**
+         * Ensure we have a valid access token before making authenticated requests
+         * @param context - The context: 'auth-page', 'public-page', or 'protected-page'
+         * @returns boolean - Whether the page/request should be allowed to proceed
+         * 
+         * Note: For 'public-page' context, this always returns true (page access allowed)
+         * even if token refresh fails, because public pages should work without auth.
+         * For initialization purposes, use tryRefreshOnce() directly to get actual refresh status.
+         */
+        async ensureValidToken(context: 'auth-page' | 'public-page' | 'protected-page' = 'protected-page'): Promise<boolean> {
+            logger.info(`ensureValidToken called with context: ${context}`);
+
+            // If we have a valid token in memory, use it
+            if (this.hasValidTokensInMemory) {
+                logger.info("Using valid tokens already in memory");
+                return true;
+            }
+            
+            // Handle based on context - always attempt refresh, browser will include httpOnly cookie
+            switch (context) {
+                case 'auth-page':
+                    logger.info("Auth page context - skipping token refresh");
+                    return false; // Never attempt refresh on auth pages
+                    
+                case 'public-page':
+                    logger.info("Public page context - attempting single token refresh");
+                    await this.tryRefreshOnce(); // Single attempt - don't block on failure
+                    return true; // Always allow public pages
+                    
+                case 'protected-page':
+                    logger.info("Protected page context - attempting token refresh with retry logic");
+                    const success = await this.tryRefreshWithRetry(); // Retry on network errors only
+                    if (!success) {
+                        // Clear auth state on protected page failure
+                        this.clearAuthState();
+                    }
+                    return success;
+                    
+                default:
+                    return false;
+            }
+        },
+
+        /**
+         * Helper method for delays - can be mocked in tests
+         */
+        async delay(ms: number): Promise<void> {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        },
+
 
         /**
          * Attempt auto-login for development mode
@@ -334,7 +411,7 @@ export const useAuthStore = defineStore("auth", {
         async retryAuthentication(): Promise<boolean> {
             if (this.connectionError) {
                 this.connectionError = false;
-                return await this.refreshTokens();
+                return await this.tryRefreshWithRetry();
             }
             return false;
         },
