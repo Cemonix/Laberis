@@ -195,12 +195,6 @@ export const useAuthStore = defineStore("auth", {
             logger.info("No last project found, redirecting to home");
             return '/home';
         },
-        /**
-         * Token refresh with retry logic for protected pages
-         */
-        async refreshTokens(): Promise<boolean> {
-            return this.tryRefreshWithRetry();
-        },
         
         async getCurrentUser(): Promise<void> {
             // In development mode with auto-login enabled, we can use fake tokens
@@ -240,6 +234,7 @@ export const useAuthStore = defineStore("auth", {
          */
         async tryRefreshOnce(): Promise<boolean> {
             logger.info("Attempting single token refresh");
+            this.isRefreshingTokens = true;
             
             try {
                 const tokens = await authService.refreshToken();
@@ -256,6 +251,8 @@ export const useAuthStore = defineStore("auth", {
                     logger.warn("Token refresh failed with error:", error);
                 }
                 return false;
+            } finally {
+                this.isRefreshingTokens = false;
             }
         },
 
@@ -284,49 +281,53 @@ export const useAuthStore = defineStore("auth", {
             const maxRetries = 3;
             
             this.isLoading = true;
+            this.isRefreshingTokens = true;
             this.connectionError = false;
             
             logger.info(`Starting token refresh with retry logic (max ${maxRetries} attempts)`);
             
-            for (let attempt = 1; attempt <= maxRetries; attempt++) {
-                try {
-                    logger.info(`Token refresh attempt ${attempt}/${maxRetries}`);
-                    const tokens = await authService.refreshToken();
-                    
-                    this.tokens = tokens;
-                    this.refreshAttempts = 0;
-                    this.connectionError = false;
-                    this.isLoading = false;
-                    logger.info(`Token refresh successful on attempt ${attempt}/${maxRetries}`);
-                    return true;
-                } catch (error: any) {
-                    // Don't retry on authentication errors (invalid refresh token)
-                    if (isUnauthorizedError(error)) {
-                        logger.info("No valid refresh token available");
-                        break;
-                    }
-                    
-                    // Check for network errors
-                    if (!error.response) {
-                        logger.warn(`Network error on token refresh attempt ${attempt}/${maxRetries}`);
-                        if (attempt < maxRetries) {
-                            // Wait before retrying (exponential backoff)
-                            await this.delay(Math.pow(2, attempt) * 1000);
-                            continue;
-                        } else {
-                            // On final network failure, set connection error flag
-                            this.connectionError = true;
+            try {
+                for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                    try {
+                        logger.info(`Token refresh attempt ${attempt}/${maxRetries}`);
+                        const tokens = await authService.refreshToken();
+                        
+                        this.tokens = tokens;
+                        this.refreshAttempts = 0;
+                        this.connectionError = false;
+                        logger.info(`Token refresh successful on attempt ${attempt}/${maxRetries}`);
+                        return true;
+                    } catch (error: any) {
+                        // Don't retry on authentication errors (invalid refresh token)
+                        if (isUnauthorizedError(error)) {
+                            logger.info("No valid refresh token available");
                             break;
                         }
+                        
+                        // Check for network errors
+                        if (!error.response) {
+                            logger.warn(`Network error on token refresh attempt ${attempt}/${maxRetries}`);
+                            if (attempt < maxRetries) {
+                                // Wait before retrying (exponential backoff)
+                                await this.delay(Math.pow(2, attempt) * 1000);
+                                continue;
+                            } else {
+                                // On final network failure, set connection error flag
+                                this.connectionError = true;
+                                break;
+                            }
+                        }
+                        
+                        // For other errors, don't retry
+                        break;
                     }
-                    
-                    // For other errors, don't retry
-                    break;
                 }
+                
+                return false;
+            } finally {
+                this.isLoading = false;
+                this.isRefreshingTokens = false;
             }
-            
-            this.isLoading = false;
-            return false;
         },
 
         /**
