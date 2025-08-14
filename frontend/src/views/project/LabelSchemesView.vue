@@ -25,7 +25,7 @@
         </div>
 
         <FloatingActionButton 
-            v-permission="{ permission: PERMISSIONS.LABEL_SCHEME.CREATE }"
+            :permission="PERMISSIONS.LABEL_SCHEME.CREATE"
             :onClick="openModal" 
             :disabled="isLoading"
             aria-label="Create New Label Scheme"

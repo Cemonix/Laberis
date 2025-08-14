@@ -25,10 +25,10 @@
         </div>
 
         <FloatingActionButton 
+            :permission="PERMISSIONS.WORKFLOW.CREATE"
             :onClick="openModal" 
             aria-label="Create New Workflow"
             title="Create New Workflow"
-            :user-project-role="userRole || undefined"
         />
 
         <ModalWindow :is-open="isModalOpen" title="Create New Workflow" @close="closeModal" :hide-footer="true">
@@ -57,6 +57,7 @@ import {useAlert} from '@/composables/useAlert';
 import {AppLogger} from '@/utils/logger';
 import {useToast} from '@/composables/useToast';
 import {useErrorHandler} from '@/composables/useErrorHandler';
+import { PERMISSIONS } from '@/types/permissions';
 
 const logger = AppLogger.createComponentLogger('WorkflowsView');
 const route = useRoute();
