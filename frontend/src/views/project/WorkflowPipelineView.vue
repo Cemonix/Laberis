@@ -11,7 +11,7 @@
                 :workflow-id="workflowId"
                 :workflow-name="workflowName"
                 :stages="pipelineStages"
-                :can-edit="true"
+                :can-edit="canManageWorkflows"
                 :is-loading="isLoading"
                 :error="errorMessage"
                 @edit-pipeline="handleEditPipeline"
@@ -24,7 +24,7 @@
         
         <!-- Stage Assignment Management Modal -->
         <StageAssignmentModal
-            v-if="showAssignmentModal && selectedStage"
+            v-if="showAssignmentModal && selectedStage && canManageWorkflows"
             :stage="selectedStage"
             :project-id="projectId"
             :workflow-id="workflowId"
@@ -34,7 +34,7 @@
         
         <!-- Stage Edit Modal -->
         <StageEditModal
-            v-if="showEditModal && selectedStage"
+            v-if="showEditModal && selectedStage && canManageWorkflows"
             :stage="selectedStage"
             :project-id="projectId"
             :workflow-id="workflowId"
@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import {onMounted, ref} from 'vue';
+import {computed, onMounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import WorkflowPipelineViewer from '@/components/project/workflow/WorkflowPipelineViewer.vue';
 import StageAssignmentModal from '@/components/project/workflow/StageAssignmentModal.vue';
@@ -53,12 +53,20 @@ import StageEditModal from '@/components/project/workflow/StageEditModal.vue';
 import type {WorkflowStagePipeline, WorkflowStage, WorkflowStageConnection} from '@/types/workflow';
 import {workflowStageService} from '@/services/api/projects';
 import {useErrorHandler} from '@/composables/useErrorHandler';
+import {usePermissions} from '@/composables/usePermissions';
+import {PERMISSIONS} from '@/types/permissions';
 import {AppLogger} from '@/utils/logger';
 
 const logger = AppLogger.createComponentLogger('WorkflowPipelineView');
 const route = useRoute();
 const router = useRouter();
 const { handleError } = useErrorHandler();
+const { hasProjectPermission } = usePermissions();
+
+// Permission checks
+const canManageWorkflows = computed(() => 
+    hasProjectPermission(PERMISSIONS.WORKFLOW.UPDATE)
+);
 
 const workflowId = ref<number>(parseInt(route.params.workflowId as string));
 const projectId = ref<number>(parseInt(route.params.projectId as string));
