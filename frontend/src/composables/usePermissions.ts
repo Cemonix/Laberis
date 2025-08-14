@@ -2,7 +2,6 @@ import { computed, type ComputedRef } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
 import { usePermissionStore } from '@/stores/permissionStore';
 import { useProjectStore } from '@/stores/projectStore';
-import { RoleEnum } from '@/types/auth/role';
 
 /**
  * Main composable for permission checking throughout the application.
@@ -12,19 +11,6 @@ export function usePermissions() {
     const authStore = useAuthStore();
     const permissionStore = usePermissionStore();
     const projectStore = useProjectStore();
-
-    // Legacy role-based checks (for backward compatibility)
-    const hasRole = (role: RoleEnum): boolean => {
-        return authStore.hasRole(role);
-    };
-
-    const hasAnyRole = (roles: RoleEnum[]): boolean => {
-        return roles.some(role => authStore.hasRole(role));
-    };
-
-    const hasAllRoles = (roles: RoleEnum[]): boolean => {
-        return roles.every(role => authStore.hasRole(role));
-    };
 
     // Permission-based checks
     
@@ -147,20 +133,7 @@ export function usePermissions() {
     const canReviewAnnotations = computed(() => hasProjectPermission('annotation:review'));
     const canAssignTasks = computed(() => hasProjectPermission('task:assign'));
 
-    // Legacy computed properties (for backward compatibility)
-    const isAdmin = computed(() => hasRole(RoleEnum.ADMIN));
-    const isManager = computed(() => hasRole(RoleEnum.MANAGER));
-    const isUser = computed(() => hasRole(RoleEnum.USER));
-
     return {
-        // Legacy role-based checks
-        hasRole,
-        hasAnyRole,
-        hasAllRoles,
-        isAdmin,
-        isManager,
-        isUser,
-
         // Global permission checks
         hasGlobalPermission,
         hasAnyGlobalPermission,
