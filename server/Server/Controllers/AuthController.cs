@@ -319,7 +319,7 @@ public class AuthController : ControllerBase
         {
             HttpOnly = true,
             Secure = !_environment.IsDevelopment(), // Only require HTTPS in production
-            SameSite = SameSiteMode.Strict,
+            SameSite = _environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.Strict, // More permissive in development
             Expires = DateTimeOffset.UtcNow.AddDays(7), // Match refresh token expiration
             Path = "/",
             IsEssential = true
@@ -337,7 +337,7 @@ public class AuthController : ControllerBase
         {
             HttpOnly = true,
             Secure = !_environment.IsDevelopment(), // Only require HTTPS in production
-            SameSite = SameSiteMode.Strict,
+            SameSite = _environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.Strict, // More permissive in development
             Expires = DateTimeOffset.UtcNow.AddDays(-1), // Expire immediately
             Path = "/",
             IsEssential = true
