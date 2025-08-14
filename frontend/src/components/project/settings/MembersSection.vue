@@ -4,8 +4,8 @@
             <h2>Manage Members & Invitations</h2>
         </template>
 
-        <!-- Invitation Form -->
-        <div class="invite-form-section">
+        <!-- Invitation Form - Only available to users who can invite members -->
+        <div v-permission="{ permission: PERMISSIONS.PROJECT_MEMBER.INVITE }" class="invite-form-section">
             <h3>Invite New Member</h3>
             <Form @submit="handleSendInvite" class="invite-form">
                 <div class="form-group">
@@ -85,6 +85,7 @@
                     </div>
                     <div class="member-actions">
                         <select
+                            v-permission="{ permission: PERMISSIONS.PROJECT_MEMBER.UPDATE }"
                             v-model="member.role"
                             @change="handleUpdateRole(member)"
                             class="role-select"
@@ -99,6 +100,7 @@
                             </option>
                         </select>
                         <Button
+                            v-permission="{ permission: PERMISSIONS.PROJECT_MEMBER.REMOVE }"
                             variant="secondary"
                             size="small"
                             @click="handleRemoveMember(member)"
@@ -142,6 +144,7 @@
                     </div>
                     <div class="invitation-actions">
                         <Button
+                            v-permission="{ permission: PERMISSIONS.PROJECT_MEMBER.REMOVE }"
                             variant="secondary"
                             size="small"
                             @click="handleRevokeInvitation(invitation)"
@@ -172,6 +175,7 @@ import {useAuthStore} from '@/stores/authStore';
 import {AppLogger} from '@/utils/logger';
 import type {InviteMemberRequest, ProjectMember} from '@/types/projectMember';
 import {ProjectRole} from '@/types/project';
+import {PERMISSIONS} from '@/types/permissions';
 
 const logger = AppLogger.createComponentLogger('MembersSection');
 

@@ -3,9 +3,29 @@
         <template #header>
             <h3 class="scheme-name">{{ scheme.name }}</h3>
             <div class="card-actions">
-                <Button variant="primary" @click="openAddLabelModal" :disabled="!scheme.isActive">Add Label</Button>
-                <Button variant="secondary" @click="handleEditScheme" :disabled="!scheme.isActive">Edit Scheme</Button>
-                <Button variant="danger" @click="handleDeleteScheme">{{ scheme.isActive ? 'Delete' : 'Reactivate' }}</Button>
+                <Button 
+                    v-permission="{ permission: PERMISSIONS.LABEL_SCHEME.CREATE }"
+                    variant="primary" 
+                    @click="openAddLabelModal" 
+                    :disabled="!scheme.isActive"
+                >
+                    Add Label
+                </Button>
+                <Button 
+                    v-permission="{ permission: PERMISSIONS.LABEL_SCHEME.UPDATE }"
+                    variant="secondary" 
+                    @click="handleEditScheme" 
+                    :disabled="!scheme.isActive"
+                >
+                    Edit Scheme
+                </Button>
+                <Button 
+                    v-permission="{ permission: PERMISSIONS.LABEL_SCHEME.DELETE }"
+                    variant="danger" 
+                    @click="handleDeleteScheme"
+                >
+                    {{ scheme.isActive ? 'Delete' : 'Reactivate' }}
+                </Button>
             </div>
         </template>
 
@@ -59,6 +79,7 @@ import Button from '@/components/common/Button.vue';
 import Card from '@/components/common/Card.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import {AppLogger} from '@/utils/logger';
+import {PERMISSIONS} from '@/types/permissions';
 
 const logger = AppLogger.createComponentLogger('LabelSchemeCard');
 
