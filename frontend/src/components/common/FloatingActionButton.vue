@@ -21,8 +21,6 @@ import { computed, ref, onMounted } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { usePermissions } from '@/composables/usePermissions';
-import { ProjectRole } from '@/types/project/project';
-import { RoleEnum } from '@/types/auth/role';
 
 interface Props {
     onClick?: () => void;
@@ -33,9 +31,14 @@ interface Props {
     ariaLabel?: string;
     /** Tooltip text */
     title?: string;
-    requiredSystemRoles?: RoleEnum[];
-    requiredProjectRoles?: ProjectRole[];
-    userProjectRole?: ProjectRole;
+    /** Required permission */
+    permission?: string;
+    /** Multiple required permissions */
+    permissions?: string[];
+    /** Permission check mode: 'all' or 'any' */
+    permissionMode?: 'all' | 'any';
+    /** Check global permissions instead of project permissions */
+    globalPermissions?: boolean;
     animationDelay?: number;
     /** Force show button regardless of permissions (for testing) */
     forceShow?: boolean;
@@ -45,8 +48,9 @@ const props = withDefaults(defineProps<Props>(), {
     text: '+',
     disabled: false,
     ariaLabel: 'Add new item',
-    requiredSystemRoles: () => [RoleEnum.ADMIN, RoleEnum.MANAGER],
-    requiredProjectRoles: () => [ProjectRole.MANAGER],
+    permissions: () => [],
+    permissionMode: 'all',
+    globalPermissions: false,
     animationDelay: 50,
     forceShow: false
 });
@@ -55,23 +59,44 @@ const emit = defineEmits<{
     click: [];
 }>();
 
-const { hasAnyRole } = usePermissions();
+const {
+    hasAnyGlobalPermission,
+    hasAllGlobalPermissions,
+    hasAnyProjectPermission,
+    hasAllProjectPermissions
+} = usePermissions();
+
 const isVisible = ref(false);
 
 // Check if user has required permissions
 const hasPermission = computed(() => {
     if (props.forceShow) return true;
     
-    // Check system-level permissions
-    const hasSystemPermission = props.requiredSystemRoles.length === 0 || 
-        hasAnyRole(props.requiredSystemRoles);
+    // Build the list of permissions to check
+    const permissionsToCheck: string[] = [];
+    if (props.permission) {
+        permissionsToCheck.push(props.permission);
+    }
+    if (props.permissions && props.permissions.length > 0) {
+        permissionsToCheck.push(...props.permissions);
+    }
     
-    // Check project-level permissions if userProjectRole is provided
-    const hasProjectPermission = !props.userProjectRole || 
-        props.requiredProjectRoles.length === 0 ||
-        props.requiredProjectRoles.includes(props.userProjectRole);
+    // If no permissions specified, show the button by default
+    if (permissionsToCheck.length === 0) {
+        return true;
+    }
     
-    return hasSystemPermission && hasProjectPermission;
+    if (props.globalPermissions) {
+        // Check global permissions
+        return props.permissionMode === 'all' 
+            ? hasAllGlobalPermissions(permissionsToCheck)
+            : hasAnyGlobalPermission(permissionsToCheck);
+    } else {
+        // Check project permissions
+        return props.permissionMode === 'all'
+            ? hasAllProjectPermissions(permissionsToCheck)
+            : hasAnyProjectPermission(permissionsToCheck);
+    }
 });
 
 // Only show if user has permissions and visibility is enabled
