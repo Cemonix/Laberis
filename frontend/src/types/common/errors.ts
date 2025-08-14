@@ -56,6 +56,13 @@ export class ServerError extends AppError {
     }
 }
 
+export class UnauthorizedError extends AppError {
+    constructor(message: string = 'Unauthorized - authentication required', cause?: Error) {
+        super(message, cause);
+        this.name = 'UnauthorizedError';
+    }
+}
+
 // Validation errors
 export class ValidationError extends AppError {
     constructor(message: string, public readonly field?: string) {
@@ -121,4 +128,11 @@ export const isUserVisibleError = (error: unknown): error is UserVisibleError =>
  */
 export const isToolError = (error: unknown): error is ToolError => {
     return error instanceof ToolError;
+};
+
+/**
+ * Type guard to check if an error is an unauthorized error
+ */
+export const isUnauthorizedError = (error: unknown): error is UnauthorizedError => {
+    return error instanceof UnauthorizedError;
 };
