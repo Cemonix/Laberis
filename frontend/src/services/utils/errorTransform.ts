@@ -3,7 +3,8 @@ import {
     ServerError,
     NetworkError,
     ValidationError,
-    ApiResponseError
+    ApiResponseError,
+    UnauthorizedError
 } from "@/types/common/errors";
 
 /**
@@ -23,6 +24,12 @@ export const transformApiError = (error: unknown, context: string): Error => {
     // Handle server responses
     if (apiError.response) {
         const { status, data } = apiError.response;
+        
+        // Handle unauthorized errors (401) - authentication required
+        if (status === 401) {
+            const unauthorizedMessage = data?.message || apiError.message || 'Unauthorized - authentication required';
+            return new UnauthorizedError(unauthorizedMessage, apiError);
+        }
         
         // Handle validation errors (400 with validation structure)
         if (status === 400 && data?.errors) {
