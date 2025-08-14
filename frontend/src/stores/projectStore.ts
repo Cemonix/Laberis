@@ -9,19 +9,9 @@ import { AppLogger } from "@/utils/logger";
 import { LastProjectManager, LastStageManager } from "@/core/storage";
 import type { LastStageData } from "@/types/storage";
 import { useAuthStore } from "@/stores/authStore";
+import type { ProjectState } from "@/types/stores/projectStore";
 
 const logger = AppLogger.createServiceLogger("ProjectStore");
-
-// TODO: Move to type folder
-interface ProjectState {
-    currentProject: Project | null;
-    teamMembers: ProjectMember[];
-    projectLabels: Label[];
-    loading: boolean;
-    membersLoading: boolean;
-    labelsLoading: boolean;
-    currentStageType: string;
-}
 
 export const useProjectStore = defineStore("project", {
     state: (): ProjectState => ({
