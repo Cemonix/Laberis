@@ -4,6 +4,7 @@ using server.Services.Interfaces;
 using System.Text.Json;
 using server.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace server.Services
 {
@@ -77,6 +78,41 @@ namespace server.Services
             return [.. _configuration.GlobalPermissions];
         }
 
+        /// <summary>
+        /// Gets global permissions for a specific user based on their system roles.
+        /// </summary>
+        /// <param name="userRoles">The user's system roles</param>
+        /// <returns>Global permissions available to the user</returns>
+        public HashSet<string> GetGlobalPermissionsForUser(IList<string> userRoles)
+        {
+            if (_configuration == null)
+            {
+                _logger.LogWarning("Permission configuration not loaded, returning empty global permissions");
+                return [];
+            }
+
+            var permissions = new HashSet<string>();
+
+            // Base global permissions available to all authenticated users
+            var basePermissions = new[] { "account:read", "account:update", "account:change:password" };
+            foreach (var permission in basePermissions)
+            {
+                permissions.Add(permission);
+            }
+
+            // Role-specific global permissions
+            if (userRoles.Contains(Role.ADMIN.ToString()) || userRoles.Contains(Role.MANAGER.ToString()))
+            {
+                // Admins and managers can create projects
+                permissions.Add("project:create");
+            }
+
+            _logger.LogDebug("Granted {PermissionCount} global permissions to user with roles [{UserRoles}]", 
+                permissions.Count, string.Join(", ", userRoles));
+
+            return permissions;
+        }
+
         public async Task<UserPermissionContext> BuildUserPermissionContextAsync(string userId)
         {
             EnsureConfigurationLoaded();
@@ -86,14 +122,19 @@ namespace server.Services
                 throw new InvalidOperationException("Permission configuration could not be loaded");
             }
 
-            var context = new UserPermissionContext
-            {
-                GlobalPermissions = GetGlobalPermissions()
-            };
-
-            // Get user's project memberships using a scoped DbContext
+            // Get user's system role and project memberships using a scoped DbContext
             using var scope = _serviceScopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<LaberisDbContext>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            
+            // Get user's system roles from Identity system
+            var user = await userManager.FindByIdAsync(userId);
+            var userRoles = user != null ? await userManager.GetRolesAsync(user) : [];
+            
+            var context = new UserPermissionContext
+            {
+                GlobalPermissions = GetGlobalPermissionsForUser(userRoles)
+            };
             
             var projectMemberships = await dbContext.ProjectMembers
                 .Where(pm => pm.UserId == userId)
