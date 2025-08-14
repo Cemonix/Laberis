@@ -33,7 +33,7 @@
         </div>
 
             <FloatingActionButton 
-                v-permission="{ permission: PERMISSIONS.DATA_SOURCE.CREATE }"
+                :permission="PERMISSIONS.DATA_SOURCE.CREATE"
                 :onClick="openModal" 
                 aria-label="Create New Data Source"
                 title="Create New Data Source"
