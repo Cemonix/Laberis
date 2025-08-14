@@ -54,13 +54,13 @@ import {projectService} from '@/services/api/projects';
 import type {CreateProjectRequest} from '@/types/project/requests';
 import {useToast} from '@/composables/useToast';
 import {usePermissions} from '@/composables/usePermissions';
-import {RoleEnum} from '@/types/auth/role';
+import { PERMISSIONS } from '@/types/permissions';
 import {AppLogger} from '@/utils/logger';
 
 const logger = AppLogger.createComponentLogger('ProjectView');
 
 const { showCreateSuccess, showError } = useToast();
-const { hasRole } = usePermissions();
+const { hasGlobalPermission } = usePermissions();
 
 const isModalOpen = ref(false);
 const projects = ref<Project[]>([]);
@@ -68,7 +68,7 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 
 const canCreateProject = computed(() => {
-    return !hasRole(RoleEnum.USER); // Only allow non-users to create projects
+    return hasGlobalPermission(PERMISSIONS.PROJECT.CREATE);
 });
 
 const openModal = () => isModalOpen.value = true;
