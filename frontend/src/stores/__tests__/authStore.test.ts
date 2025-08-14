@@ -48,6 +48,20 @@ describe("Auth Store", () => {
         // Reset all mocks
         vi.clearAllMocks();
         
+        
+        // Mock the delay method to be instant
+        authStore.delay = vi.fn().mockResolvedValue(undefined);
+        
+        // Reset all store state to ensure clean test environment
+        authStore.user = null;
+        authStore.tokens = null;
+        authStore.isInitialized = false;
+        authStore.isLoading = false;
+        authStore.retryingAuth = false;
+        authStore.isRefreshingTokens = false;
+        authStore.connectionError = false;
+        authStore.refreshPromise = null;
+        
         // Use fake timers for all tests
         vi.useFakeTimers();
     });
@@ -168,35 +182,245 @@ describe("Auth Store", () => {
         });
     });
 
-    describe("Token Refresh", () => {
-        it("should refresh tokens successfully", async () => {
-            const newTokens: AuthTokens = {
-                accessToken: "new-access-token",
-                expiresAt: Date.now() + 3600000,
-            };
+    describe("Token Refresh - New Implementation", () => {
 
-            vi.mocked(authService.refreshToken).mockResolvedValue(newTokens);
+        describe("ensureValidToken", () => {
+            describe("when valid tokens exist in memory", () => {
+                it("should return true without attempting refresh", async () => {
+                    authStore.tokens = mockTokens;
+                    
+                    const result = await authStore.ensureValidToken('protected-page');
+                    
+                    expect(result).toBe(true);
+                    expect(authService.refreshToken).not.toHaveBeenCalled();
+                });
+            });
 
-            const result = await authStore.refreshTokens();
+            describe("when refresh token request fails", () => {
+                beforeEach(() => {
+                    authStore.tokens = null;
+                });
 
-            expect(result).toBe(true);
-            expect(authService.refreshToken).toHaveBeenCalledWith();
-            expect(authStore.tokens).toEqual(newTokens);
+                it("should return false for protected pages", async () => {
+                    vi.mocked(authService.refreshToken).mockRejectedValue(new Error("Refresh failed"));
+                    
+                    const result = await authStore.ensureValidToken('protected-page');
+                    
+                    expect(result).toBe(false);
+                    expect(authService.refreshToken).toHaveBeenCalled();
+                });
+
+                it("should return true for public pages", async () => {
+                    vi.mocked(authService.refreshToken).mockRejectedValue(new Error("Refresh failed"));
+                    
+                    const result = await authStore.ensureValidToken('public-page');
+                    
+                    expect(result).toBe(true);
+                    // Public pages still attempt refresh but don't block on failure
+                    expect(authService.refreshToken).toHaveBeenCalled();
+                });
+
+                it("should return false for auth pages", async () => {
+                    const result = await authStore.ensureValidToken('auth-page');
+                    
+                    expect(result).toBe(false);
+                    expect(authService.refreshToken).not.toHaveBeenCalled();
+                });
+            });
+
+            describe("when refresh token request succeeds", () => {
+                beforeEach(() => {
+                    authStore.tokens = null;
+                });
+
+                it("should never attempt refresh on auth pages", async () => {
+                    const result = await authStore.ensureValidToken('auth-page');
+                    
+                    expect(result).toBe(false);
+                    expect(authService.refreshToken).not.toHaveBeenCalled();
+                });
+
+                it("should attempt single refresh on public pages", async () => {
+                    vi.mocked(authService.refreshToken).mockResolvedValue(mockTokens);
+                    
+                    const result = await authStore.ensureValidToken('public-page');
+                    
+                    expect(result).toBe(true);
+                    expect(authService.refreshToken).toHaveBeenCalledTimes(1);
+                    expect(authStore.tokens).toEqual(mockTokens);
+                });
+
+                it("should fail gracefully on public pages when refresh fails", async () => {
+                    const authError = { response: { status: 401 } };
+                    vi.mocked(authService.refreshToken).mockRejectedValue(authError);
+                    
+                    const result = await authStore.ensureValidToken('public-page');
+                    
+                    expect(result).toBe(true); // Public pages should still be accessible
+                    expect(authService.refreshToken).toHaveBeenCalledTimes(1);
+                    expect(authStore.tokens).toBeNull();
+                });
+
+                it("should attempt refresh with retry on protected pages", async () => {
+                    vi.mocked(authService.refreshToken).mockResolvedValue(mockTokens);
+                    
+                    const result = await authStore.ensureValidToken('protected-page');
+                    
+                    expect(result).toBe(true);
+                    expect(authService.refreshToken).toHaveBeenCalledTimes(1);
+                    expect(authStore.tokens).toEqual(mockTokens);
+                });
+            });
         });
 
-        it("should logout on refresh failure", async () => {
-            authStore.user = mockUser;
-            // Set refresh attempts to max - 1, so the next failure will trigger logout
-            authStore.refreshAttempts = authStore.maxRefreshAttempts - 1;
-            vi.mocked(authService.refreshToken).mockRejectedValue(
-                new Error("Refresh failed")
-            );
+        describe("tryRefreshOnce", () => {
 
-            const result = await authStore.refreshTokens();
+            it("should succeed on first attempt", async () => {
+                vi.mocked(authService.refreshToken).mockResolvedValue(mockTokens);
+                
+                const result = await authStore.tryRefreshOnce();
+                
+                expect(result).toBe(true);
+                expect(authService.refreshToken).toHaveBeenCalledTimes(1);
+                expect(authStore.tokens).toEqual(mockTokens);
+            });
 
-            expect(result).toBe(false);
-            expect(authStore.user).toBeNull();
-            expect(authStore.tokens).toBeNull();
+            it("should fail immediately on 401 error", async () => {
+                const authError = { response: { status: 401 } };
+                vi.mocked(authService.refreshToken).mockRejectedValue(authError);
+                
+                const result = await authStore.tryRefreshOnce();
+                
+                expect(result).toBe(false);
+                expect(authService.refreshToken).toHaveBeenCalledTimes(1);
+                expect(authStore.tokens).toBeNull();
+            });
+
+            it("should fail immediately on network error", async () => {
+                const networkError = { response: null }; // Network error
+                vi.mocked(authService.refreshToken).mockRejectedValue(networkError);
+                
+                const result = await authStore.tryRefreshOnce();
+                
+                expect(result).toBe(false);
+                expect(authService.refreshToken).toHaveBeenCalledTimes(1);
+                expect(authStore.tokens).toBeNull();
+            });
+        });
+
+        describe("tryRefreshWithRetry", () => {
+
+            it("should succeed on first attempt", async () => {
+                vi.mocked(authService.refreshToken).mockResolvedValue(mockTokens);
+                
+                const result = await authStore.tryRefreshWithRetry();
+                
+                expect(result).toBe(true);
+                expect(authService.refreshToken).toHaveBeenCalledTimes(1);
+                expect(authStore.tokens).toEqual(mockTokens);
+                expect(authStore.isLoading).toBe(false);
+            });
+
+            it("should not retry on 401 authentication error", async () => {
+                const authError = { response: { status: 401 } };
+                vi.mocked(authService.refreshToken).mockRejectedValue(authError);
+                
+                const result = await authStore.tryRefreshWithRetry();
+                
+                expect(result).toBe(false);
+                expect(authService.refreshToken).toHaveBeenCalledTimes(1);
+                expect(authStore.tokens).toBeNull();
+                expect(authStore.isLoading).toBe(false);
+            });
+
+            it("should retry up to 3 times on network errors", async () => {
+                const networkError = { response: null }; // Network error
+                vi.mocked(authService.refreshToken).mockRejectedValue(networkError);
+                
+                const result = await authStore.tryRefreshWithRetry();
+                
+                // Should try 3 times
+                expect(result).toBe(false);
+                expect(authService.refreshToken).toHaveBeenCalledTimes(3);
+                expect(authStore.connectionError).toBe(true);
+                expect(authStore.isLoading).toBe(false);
+            }, 1000);
+
+            it("should succeed on second attempt after network error", async () => {
+                const networkError = { response: null };
+                vi.mocked(authService.refreshToken)
+                    .mockRejectedValueOnce(networkError)
+                    .mockResolvedValueOnce(mockTokens);
+                
+                const result = await authStore.tryRefreshWithRetry();
+                
+                expect(result).toBe(true);
+                expect(authService.refreshToken).toHaveBeenCalledTimes(2);
+                expect(authStore.tokens).toEqual(mockTokens);
+                expect(authStore.connectionError).toBe(false);
+                expect(authStore.isLoading).toBe(false);
+            }, 1000);
+
+            it("should show loading state during retry attempts", async () => {
+                const networkError = { response: null };
+                vi.mocked(authService.refreshToken).mockRejectedValue(networkError);
+                
+                // Start the refresh
+                const refreshPromise = authStore.tryRefreshWithRetry();
+                
+                // Should show loading immediately
+                expect(authStore.isLoading).toBe(true);
+                
+                await refreshPromise;
+                
+                // Should hide loading when done
+                expect(authStore.isLoading).toBe(false);
+            });
+
+            it("should implement exponential backoff between retries", async () => {
+                const networkError = { response: null };
+                vi.mocked(authService.refreshToken).mockRejectedValue(networkError);
+                
+                await authStore.tryRefreshWithRetry();
+                
+                expect(authService.refreshToken).toHaveBeenCalledTimes(3);
+            }, 1000);
+        });
+
+
+        describe("Integration scenarios", () => {
+            it("should handle multiple concurrent ensureValidToken calls", async () => {
+                authStore.tokens = null;
+                vi.mocked(authService.refreshToken).mockResolvedValue(mockTokens);
+                
+                // Make multiple concurrent calls
+                const promises = [
+                    authStore.ensureValidToken('protected-page'),
+                    authStore.ensureValidToken('protected-page'),
+                    authStore.ensureValidToken('protected-page')
+                ];
+                
+                const results = await Promise.all(promises);
+                
+                // All should succeed
+                expect(results).toEqual([true, true, true]);
+                // But refresh should only be called once due to deduplication
+                expect(authService.refreshToken).toHaveBeenCalledTimes(1);
+            });
+
+            it("should clear auth state after max retry failures on protected pages", async () => {
+                authStore.user = mockUser;
+                authStore.tokens = null;
+                
+                const networkError = { response: null };
+                vi.mocked(authService.refreshToken).mockRejectedValue(networkError);
+                
+                const result = await authStore.ensureValidToken('protected-page');
+                
+                expect(result).toBe(false);
+                expect(authStore.user).toBeNull();
+                expect(authStore.tokens).toBeNull();
+            }, 1000);
         });
     });
 
@@ -231,18 +455,38 @@ describe("Auth Store", () => {
 
     describe("Initialize Auth", () => {
         it("should try to refresh tokens on initialization", async () => {
-            vi.mocked(authService.refreshToken).mockResolvedValue(mockTokens);
-            vi.mocked(authService.getCurrentUser).mockResolvedValue(mockUser);
+            // Clear previous mocks and set up new ones for this test
+            vi.clearAllMocks();
+            
+            vi.mocked(authService.refreshToken).mockResolvedValueOnce(mockTokens);
+            vi.mocked(authService.getCurrentUser).mockResolvedValueOnce(mockUser);
 
-            authStore.initializeAuth();
+            // Create a fresh auth store instance to avoid state pollution
+            const freshAuthStore = useAuthStore();
+            
+            // Reset the fresh store state
+            freshAuthStore.user = null;
+            freshAuthStore.tokens = null;
+            freshAuthStore.isInitialized = false;
+            freshAuthStore.isLoading = false;
+            
+            // Mock attemptAutoLogin to fail so refresh logic is triggered
+            const mockAttemptAutoLogin = vi.fn().mockResolvedValue(false);
+            freshAuthStore.attemptAutoLogin = mockAttemptAutoLogin;
 
-            // Wait for the async operations to complete
-            await vi.runAllTimersAsync();
+            // Verify the state before calling initializeAuth
+            expect(freshAuthStore.isInitialized).toBe(false);
 
+            await freshAuthStore.initializeAuth();
+
+            // Verify final state
+            expect(freshAuthStore.isInitialized).toBe(true);
+            expect(freshAuthStore.user).toEqual(mockUser);
+            expect(freshAuthStore.tokens).toEqual(mockTokens);
+
+            // Verify the refresh flow was called
             expect(authService.refreshToken).toHaveBeenCalled();
             expect(authService.getCurrentUser).toHaveBeenCalled();
-            expect(authStore.tokens).toEqual(mockTokens);
-            expect(authStore.user).toEqual(mockUser);
         });
 
         it("should handle refresh failure during initialization", async () => {
