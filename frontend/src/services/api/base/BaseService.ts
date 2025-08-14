@@ -124,7 +124,7 @@ export abstract class BaseService {
         
         try {
             const response = await apiClient.post<TResponse>(url, data);
-            
+
             if (validateResponse && !isValidApiResponse(response)) {
                 throw new Error('Invalid API response structure');
             }

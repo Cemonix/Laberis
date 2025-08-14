@@ -2,6 +2,7 @@ import axios from 'axios';
 import type { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { env } from '@/config/env';
 import type { useAuthStore } from '@/stores/authStore';
+import { isAuthOrPublicPath, isAuthPath } from '@/constants/routes';
 
 const apiClient: AxiosInstance = axios.create({
     baseURL: env.API_BASE_URL,
@@ -32,18 +33,6 @@ const processQueue = (error: Error | null, token: string | null = null) => {
 };
 
 /**
- * Check if a URL is an authentication endpoint that doesn't require token refresh
- */
-function isAuthEndpoint(url?: string): boolean {
-    if (!url) return false;
-    return url.includes('/auth/login') || 
-           url.includes('/auth/register') || 
-           url.includes('/auth/refresh-token') ||
-           url.includes('/auth/verify-email') ||
-           url.includes('/auth/resend-email-verification');
-}
-
-/**
  * Sets up the Axios interceptors for handling authentication and token refresh.
  * This should be called once when the application initializes.
  * @param authStore An instance of the authentication store.
@@ -72,8 +61,9 @@ export function setupInterceptors(authStore: ReturnType<typeof useAuthStore>): v
 
             // Check if the error is a 401 and we haven't retried this request yet.
             if (error.response?.status === 401 && !originalRequest._retry) {
-                // Skip refresh for auth endpoints
-                if (isAuthEndpoint(originalRequest.url)) {
+                // Skip refresh for auth endpoints and public paths
+                const requestUrl = originalRequest.url ?? '';
+                if (isAuthOrPublicPath(requestUrl) || requestUrl.startsWith('/auth')) {
                     return Promise.reject(error);
                 }
 
@@ -94,21 +84,32 @@ export function setupInterceptors(authStore: ReturnType<typeof useAuthStore>): v
                 isRefreshing = true;
 
                 try {
-                    const refreshSuccess = await authStore.refreshTokens(); 
+                    // Determine the context for the token refresh based on current route
+                    const currentRoute = window.location.pathname;
+                    let context: 'auth-page' | 'public-page' | 'protected-page';
+                    
+                    if (isAuthOrPublicPath(currentRoute)) {
+                        context = isAuthPath(currentRoute) ? 'auth-page' : 'public-page';
+                    } else {
+                        context = 'protected-page';
+                    }
+
+                    const refreshSuccess = await authStore.ensureValidToken(context); 
 
                     if (!refreshSuccess) {
-                        // If refresh failed, reject the request and clear the queue
-                        processQueue(new Error('Token refresh failed'), null);
-                        
-                        // Handle connection errors vs auth errors differently
-                        if (authStore.connectionError) {
-                            // Don't redirect to login on connection errors
-                            throw new Error('Connection error during token refresh');
-                        } else {
-                            // Clear auth state and let the app handle redirect to login
+                        const refreshError = new Error(
+                            context === 'protected-page' 
+                                ? 'Authentication failed - please log in again' 
+                                : 'Token refresh failed'
+                        );
+
+                        processQueue(refreshError, null);
+
+                        if (context === 'protected-page') {
                             authStore.clearAuthState();
-                            throw new Error('Authentication failed - please log in again');
                         }
+                        
+                        return Promise.reject(refreshError);
                     }
 
                     const newToken = authStore.getAccessToken;
