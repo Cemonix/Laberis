@@ -1,4 +1,5 @@
 import type { App, DirectiveBinding } from 'vue';
+import { watch } from 'vue';
 import { usePermissionStore } from '@/stores/permissionStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { AppLogger } from '@/utils/logger';
@@ -8,10 +9,40 @@ const logger = AppLogger.createServiceLogger('vPermission');
 
 export const vPermission = {
     mounted(el: HTMLElement, binding: DirectiveBinding<PermissionDirectiveBinding>) {
+        const permissionStore = usePermissionStore();
+        const projectStore = useProjectStore();
+        
+        // Initial check
         checkPermission(el, binding);
+        
+        // Watch for changes in permission store initialization and project ID
+        const unwatchPermissions = watch(
+            () => permissionStore.isInitialized,
+            () => {
+                checkPermission(el, binding);
+            }
+        );
+        
+        const unwatchProject = watch(
+            () => projectStore.currentProjectId,
+            () => {
+                checkPermission(el, binding);
+            }
+        );
+        
+        // Store cleanup functions on the element for unmount
+        (el as any)._permissionWatchers = [unwatchPermissions, unwatchProject];
     },
     updated(el: HTMLElement, binding: DirectiveBinding<PermissionDirectiveBinding>) {
         checkPermission(el, binding);
+    },
+    unmounted(el: HTMLElement) {
+        // Cleanup watchers when directive is unmounted
+        const watchers = (el as any)._permissionWatchers;
+        if (watchers) {
+            watchers.forEach((unwatch: () => void) => unwatch());
+            delete (el as any)._permissionWatchers;
+        }
     }
 };
 
@@ -63,7 +94,7 @@ function checkPermission(el: HTMLElement, binding: DirectiveBinding<PermissionDi
         const projectId = project || projectStore.currentProject?.id;
         
         if (!projectId) {
-            logger.warn('No project ID available for permission check');
+            logger.debug('No project ID available for permission check (project still loading)');
             hideElement(el);
             return;
         }
