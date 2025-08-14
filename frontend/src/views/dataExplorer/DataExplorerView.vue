@@ -1,6 +1,16 @@
 <template>
     <div class="explorer-container">
-        <header class="explorer-header">
+        <!-- Permission check for data explorer access (Viewer and Manager only) -->
+        <div v-if="!canAccessDataExplorer" class="access-denied-container">
+            <div class="access-denied">
+                <h2>Access Denied</h2>
+                <p>You don't have permission to access the data explorer. This section is only available to viewers and managers.</p>
+                <Button variant="secondary" @click="navigateToProject">Back to Project</Button>
+            </div>
+        </div>
+        
+        <template v-else>
+            <header class="explorer-header">
             <div class="header-left">
                 <nav class="breadcrumbs">
                     <Button 
@@ -18,7 +28,11 @@
                 <Button variant="secondary" @click="refreshAssets" :disabled="isLoading">
                     Refresh
                 </Button>
-                <Button variant="primary" @click="openUploadModal">
+                <Button 
+                    v-permission="{ permission: PERMISSIONS.DATA_SOURCE.UPDATE }"
+                    variant="primary" 
+                    @click="openUploadModal"
+                >
                     Upload Assets
                 </Button>
             </div>
@@ -109,12 +123,13 @@
             </div>
         </main>
 
-        <UploadImagesModal
-            v-if="currentDataSource"
-            v-model:isOpen="isUploadModalOpen"
-            :dataSource="currentDataSource"
-            @upload-complete="handleUploadComplete"
-        />
+            <UploadImagesModal
+                v-if="currentDataSource"
+                v-model:isOpen="isUploadModalOpen"
+                :dataSource="currentDataSource"
+                @upload-complete="handleUploadComplete"
+            />
+        </template>
     </div>
 </template>
 
@@ -132,11 +147,14 @@ import UploadImagesModal from '@/components/project/UploadImagesModal.vue';
 import {assetService, dataSourceService} from '@/services/api/projects';
 import {useAlert} from '@/composables/useAlert';
 import {AppLogger} from '@/utils/logger';
+import {usePermissions} from '@/composables/usePermissions';
+import {PERMISSIONS} from '@/types/permissions';
 
 const logger = AppLogger.createComponentLogger('DataExplorerView');
 const route = useRoute();
 const router = useRouter();
 const { showAlert } = useAlert();
+const { hasProjectPermission } = usePermissions();
 
 const projectId = Number(route.params.projectId);
 const dataSourceId = Number(route.params.dataSourceId);
@@ -187,6 +205,10 @@ const hasMoreAssets = computed(() =>
 
 const hasActiveFilters = computed(() => 
     Boolean(filterStatus.value || (searchQuery.value && searchQuery.value.trim()))
+);
+
+const canAccessDataExplorer = computed(() => 
+    hasProjectPermission(PERMISSIONS.DATA_EXPLORER.READ)
 );
 
 // Methods
@@ -547,6 +569,35 @@ onMounted(async () => {
 
     .explorer-main-content {
         padding: 1rem;
+    }
+}
+
+.access-denied-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+}
+
+.access-denied {
+    text-align: center;
+    max-width: 500px;
+    padding: 2rem;
+    background-color: var(--color-white);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    
+    h2 {
+        color: var(--color-error);
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+    }
+    
+    p {
+        color: var(--color-gray-600);
+        margin-bottom: 2rem;
+        line-height: 1.5;
     }
 }
 </style>
