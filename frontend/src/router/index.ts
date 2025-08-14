@@ -6,6 +6,7 @@ import WorkspaceLayout from '@/layouts/WorkspaceLayout.vue';
 import DataExplorerLayout from '@/layouts/DataExplorerLayout.vue';
 import { useAuthStore } from '@/stores/authStore';
 import { usePermissionStore } from '@/stores/permissionStore';
+import { useNavigationStore } from '@/stores/navigationStore';
 import { AppLogger } from '@/utils/logger';
 
 const routes: Array<RouteRecordRaw> = [
@@ -177,12 +178,56 @@ const authRoutes = ['Login', 'Register'];
 const logger = AppLogger.createServiceLogger('Router');
 
 // Navigation guards
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
     const permissionStore = usePermissionStore();
+    const navigationStore = useNavigationStore();
     
     const isPublicRoute = publicRoutes.includes(to.name as string);
     const isAuthRoute = authRoutes.includes(to.name as string);
+    
+    // Initialize auth only when:
+    // 1. Accessing a protected route, OR
+    // 2. We already have tokens in memory (user might be logged in), OR
+    // 3. This is the first navigation (page refresh/initial load) - we need to check for existing session
+    if (!authStore.isInitialized) {
+        const hasValidTokensInMemory = authStore.hasValidTokensInMemory;
+        const isFirstNavigation = from.name === undefined; // Initial load/refresh
+        const shouldInitializeAuth = !isPublicRoute || hasValidTokensInMemory || isFirstNavigation;
+
+        if (shouldInitializeAuth) {
+            logger.info(`Initializing auth for route: ${String(to.name)} (public: ${isPublicRoute}, hasTokens: ${hasValidTokensInMemory}, firstNav: ${isFirstNavigation})`);
+            try {
+                await authStore.initializeAuth();
+                
+                // After initialization, check if we actually got authenticated for protected routes
+                if (!isPublicRoute && !authStore.isAuthenticated) {
+                    logger.info(`Auth initialization completed but user not authenticated for protected route: ${String(to.name)}`);
+                    next({ name: 'Login' });
+                    return;
+                }
+            } catch (error) {
+                logger.warn('Auth initialization failed with exception', error);
+                // Clear any partial auth state
+                authStore.clearAuthState();
+                
+                // If we failed to initialize auth for a protected route, redirect to login
+                if (!isPublicRoute) {
+                    next({ name: 'Login' });
+                    return;
+                }
+            }
+        } else {
+            // This should rarely happen now, but keep as fallback
+            logger.info(`Skipping auth initialization for route: ${String(to.name)}`);
+            authStore.isInitialized = true;
+        }
+    }
+    
+    // Show loading for navigation between different routes (not auth initialization)
+    if (authStore.isInitialized && from.name !== to.name && to.name !== 'Error') {
+        navigationStore.startNavigation(getNavigationMessage(to.name as string));
+    }
 
     // Check authentication and handle redirects
     if (isAuthRoute && authStore.isAuthenticated) {
@@ -262,5 +307,29 @@ router.beforeEach(async (to, _from, next) => {
         next();
     }
 });
+
+// Hide loading spinner when navigation completes
+router.afterEach(() => {
+    const navigationStore = useNavigationStore();
+    navigationStore.finishNavigation();
+});
+
+// Helper function to get navigation message
+function getNavigationMessage(routeName: string): string {
+    const messages: Record<string, string> = {
+        'ProjectDetail': 'Loading project...',
+        'ProjectList': 'Loading projects...',
+        'TasksView': 'Loading tasks...',
+        'WorkflowPipelineView': 'Loading pipeline...',
+        'DataExplorerView': 'Loading data explorer...',
+        'LabelSchemesView': 'Loading label schemes...',
+        'ProjectSettingsView': 'Loading settings...',
+        'AnnotationWorkspace': 'Loading workspace...',
+        'Account': 'Loading account...',
+        'Home': 'Loading dashboard...',
+    };
+    
+    return messages[routeName] || 'Loading page...';
+}
 
 export default router;
