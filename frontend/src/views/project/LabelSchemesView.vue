@@ -25,6 +25,7 @@
         </div>
 
         <FloatingActionButton 
+            v-permission="{ permission: PERMISSIONS.LABEL_SCHEME.CREATE }"
             :onClick="openModal" 
             :disabled="isLoading"
             aria-label="Create New Label Scheme"
@@ -90,6 +91,7 @@ import {labelSchemeService, labelService} from '@/services/api/projects';
 import {useAlert} from '@/composables/useAlert';
 import {useToast} from '@/composables/useToast';
 import {AppLogger} from '@/utils/logger';
+import {PERMISSIONS} from '@/types/permissions';
 
 const logger = AppLogger.createComponentLogger('LabelSchemesView');
 

@@ -1,9 +1,16 @@
 <template>
     <div class="data-sources-page">
-        <div class="page-header">
-            <h1>Data Sources</h1>
-            <p>Manage collections of assets for annotation. Data sources can be buckets from S3-compatible storage or other origins.</p>
+        <!-- Permission check for data sources management (Manager only) -->
+        <div v-if="!canManageDataSources" class="access-denied">
+            <h2>Access Denied</h2>
+            <p>You don't have permission to manage data sources. This section is only available to project managers.</p>
         </div>
+        
+        <div v-else>
+            <div class="page-header">
+                <h1>Data Sources</h1>
+                <p>Manage collections of assets for annotation. Data sources can be buckets from S3-compatible storage or other origins.</p>
+            </div>
         
         <!-- TODO: Add bulk operations (select multiple, batch delete/archive) -->
         <div class="data-sources-list">
@@ -25,24 +32,26 @@
             </template>
         </div>
 
-        <FloatingActionButton 
-            :onClick="openModal" 
-            aria-label="Create New Data Source"
-            title="Create New Data Source"
-        />
-
-        <ModalWindow :is-open="isModalOpen" title="Create New Data Source" @close="closeModal" :hide-footer="true">
-            <CreateDataSourceForm 
-                :project-id="Number(route.params.projectId)" 
-                @cancel="closeModal" 
-                @save="handleCreateDataSource" 
+            <FloatingActionButton 
+                v-permission="{ permission: PERMISSIONS.DATA_SOURCE.CREATE }"
+                :onClick="openModal" 
+                aria-label="Create New Data Source"
+                title="Create New Data Source"
             />
-        </ModalWindow>
+
+            <ModalWindow :is-open="isModalOpen" title="Create New Data Source" @close="closeModal" :hide-footer="true">
+                <CreateDataSourceForm 
+                    :project-id="Number(route.params.projectId)" 
+                    @cancel="closeModal" 
+                    @save="handleCreateDataSource" 
+                />
+            </ModalWindow>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import {onMounted, ref} from 'vue';
+import {computed, onMounted, ref} from 'vue';
 import {useRoute} from 'vue-router';
 import DataSourceCard from '@/components/project/dataSource/DataSourceCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
@@ -52,15 +61,24 @@ import {type CreateDataSourceRequest, type DataSource} from '@/types/dataSource'
 import {dataSourceService} from '@/services/api/projects';
 import {useAlert} from '@/composables/useAlert';
 import {AppLogger} from '@/utils/logger';
+import {usePermissions} from '@/composables/usePermissions';
+import {PERMISSIONS} from '@/types/permissions';
 
 const logger = AppLogger.createComponentLogger('DataSourcesView');
 const route = useRoute();
 const { showAlert } = useAlert();
+const { hasProjectPermission } = usePermissions();
 
 const dataSources = ref<DataSource[]>([]);
 const isModalOpen = ref(false);
 const isLoading = ref(false);
 const isCreating = ref(false);
+
+// Permission checks
+const canManageDataSources = computed(() => 
+    hasProjectPermission(PERMISSIONS.DATA_SOURCE.READ) ||
+    hasProjectPermission(PERMISSIONS.DATA_SOURCE.CREATE)
+);
 
 const openModal = () => isModalOpen.value = true;
 const closeModal = () => isModalOpen.value = false;
@@ -160,6 +178,23 @@ onMounted(() => {
 .loading-message {
     color: var(--color-gray-600);
     font-style: italic;
+}
+
+.access-denied {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--color-gray-600);
+    
+    h2 {
+        color: var(--color-error);
+        margin-bottom: 1rem;
+    }
+    
+    p {
+        max-width: 60ch;
+        margin: 0 auto;
+        line-height: 1.5;
+    }
 }
 
 </style>

@@ -33,6 +33,8 @@
                 :team-members="projectStore.teamMembers || []"
                 :is-operation-in-progress="isBulkOperationInProgress"
                 :operation-progress-text="bulkOperationProgress"
+                :can-assign-tasks="canAssignTasks"
+                :can-update-task-status="canUpdateTaskStatus"
                 @clear-selection="selection.clearSelection"
                 @bulk-priority-change="handleBulkPriorityChange"
                 @bulk-assignment="handleBulkAssignment"
@@ -186,6 +188,7 @@ import type {TableColumn, TableRowAction} from '@/types/common';
 import {useErrorHandler} from '@/composables/useErrorHandler';
 import {usePermissions} from '@/composables/usePermissions';
 import {useAssetPreview} from '@/composables/useAssetPreview';
+import {PERMISSIONS} from '@/types/permissions';
 import {useProjectStore} from '@/stores/projectStore';
 import {taskService, workflowStageService} from '@/services/api/projects';
 import {taskStatusService} from '@/services/taskStatusService';
@@ -198,7 +201,7 @@ const route = useRoute();
 const router = useRouter();
 const { handleError } = useErrorHandler();
 const projectStore = useProjectStore();
-const { canUpdateProject } = usePermissions();
+const { hasProjectPermission } = usePermissions();
 const logger = AppLogger.createComponentLogger('TasksView');
 
 // Selection management
@@ -242,13 +245,19 @@ const bulkOperationProgress = ref<string>('Processing...');
 const currentSelectionCount = computed(() => selection.selectionCount.value);
 
 const canManageTasks = computed(() => {
-    return canUpdateProject.value;
+    return hasProjectPermission(PERMISSIONS.PROJECT.UPDATE);
+});
+
+const canAssignTasks = computed(() => {
+    return hasProjectPermission(PERMISSIONS.TASK.ASSIGN);
+});
+
+const canUpdateTaskStatus = computed(() => {
+    return hasProjectPermission(PERMISSIONS.TASK.UPDATE_STATUS);
 });
 
 const canReviewTasks = computed(() => {
-    // For now, assume that managers can also review
-    // TODO: reviewer or manager can review task
-    return canUpdateProject.value;
+    return hasProjectPermission(PERMISSIONS.ANNOTATION.REVIEW);
 });
 
 const isTaskClickable = (task: TaskTableRow): boolean => {
