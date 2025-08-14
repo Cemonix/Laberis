@@ -43,15 +43,9 @@ async function initializeApp() {
     const authStore = useAuthStore();
     setupInterceptors(authStore);
     
-    // Initialize authentication state before mounting the app
-    try {
-        await authStore.initializeAuth();
-        main_logger.info('Authentication initialized successfully');
-    } catch (error) {
-        main_logger.warn('Authentication initialization failed - user will start as guest:', error);
-        // Clear any partial auth state
-        authStore.clearAuthState();
-    }
+    // Auth will be initialized lazily by the router when needed
+    // This prevents unnecessary token refresh attempts on public pages
+    main_logger.info('App initialized - auth will be initialized on demand');
 
     app.use(router);
     app.mount('#app');
