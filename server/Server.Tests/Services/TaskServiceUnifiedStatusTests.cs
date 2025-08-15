@@ -3,13 +3,10 @@ using Microsoft.AspNetCore.Identity;
 using Moq;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
-using server.Models.DTOs.Task;
 using server.Models.DTOs.TaskEvent;
 using server.Repositories.Interfaces;
 using server.Services;
 using server.Services.Interfaces;
-using static server.Services.Interfaces.IAssetService;
-using Xunit;
 using LaberisTask = server.Models.Domain.Task;
 using TaskStatus = server.Models.Domain.Enums.TaskStatus;
 
@@ -24,6 +21,7 @@ public class TaskServiceUnifiedStatusTests
     private readonly Mock<IAssetService> _mockAssetService;
     private readonly Mock<IWorkflowStageRepository> _mockWorkflowStageRepository;
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
+    private readonly Mock<IProjectMembershipService> _mockProjectMembershipService;
     private readonly Mock<ILogger<TaskService>> _mockLogger;
     private readonly TaskService _taskService;
 
@@ -36,6 +34,7 @@ public class TaskServiceUnifiedStatusTests
         _mockAssetService = new Mock<IAssetService>();
         _mockWorkflowStageRepository = new Mock<IWorkflowStageRepository>();
         _mockUserManager = MockUserManager();
+        _mockProjectMembershipService = new Mock<IProjectMembershipService>();
         _mockLogger = new Mock<ILogger<TaskService>>();
 
         // Setup default asset service behavior
@@ -51,6 +50,7 @@ public class TaskServiceUnifiedStatusTests
             _mockAssetService.Object,
             _mockWorkflowStageRepository.Object,
             _mockUserManager.Object,
+            _mockProjectMembershipService.Object,
             _mockLogger.Object
         );
     }
