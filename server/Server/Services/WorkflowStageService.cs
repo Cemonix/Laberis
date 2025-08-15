@@ -41,7 +41,7 @@ public class WorkflowStageService : IWorkflowStageService
 
         _logger.LogInformation("Fetched {Count} workflow stages for workflow: {WorkflowId}", stages.Count(), workflowId);
 
-        var stageDtos = stages.Select(MapToDto).ToArray();
+        var stageDtos = stages.Select(MapToDtoWithConnections).ToArray();
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
         return new PaginatedResponse<WorkflowStageDto>
@@ -66,7 +66,7 @@ public class WorkflowStageService : IWorkflowStageService
             return null;
         }
 
-        return MapToDto(stage);
+        return MapToDtoWithConnections(stage);
     }
 
     public async Task<WorkflowStageDto> CreateWorkflowStageAsync(int workflowId, CreateWorkflowStageDto createDto)
