@@ -211,12 +211,15 @@ public class TasksController : ControllerBase
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateTask(int taskId, [FromBody] UpdateTaskDto updateTaskDto)
     {
+        var updatingUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        
         try
         {
-            var updatedTask = await _taskService.UpdateTaskAsync(taskId, updateTaskDto);
+            var updatedTask = await _taskService.UpdateTaskAsync(taskId, updateTaskDto, updatingUserId);
 
             if (updatedTask == null)
             {
@@ -224,6 +227,11 @@ public class TasksController : ControllerBase
             }
 
             return Ok(updatedTask);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized task update attempt by user {UpdatingUserId} for task {TaskId}.", updatingUserId, taskId);
+            return Forbid(ex.Message);
         }
         catch (Exception ex)
         {
@@ -276,12 +284,20 @@ public class TasksController : ControllerBase
     [HttpPost("{taskId:int}/assign/{userId}")]
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> AssignTask(int taskId, string userId)
     {
+        var assigningUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(assigningUserId))
+        {
+            return Unauthorized("User ID claim not found in token.");
+        }
+
         try
         {
-            var updatedTask = await _taskService.AssignTaskAsync(taskId, userId);
+            var updatedTask = await _taskService.AssignTaskAsync(taskId, userId, assigningUserId);
 
             if (updatedTask == null)
             {
@@ -289,6 +305,11 @@ public class TasksController : ControllerBase
             }
 
             return Ok(updatedTask);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized task assignment attempt by user {AssigningUserId} for task {TaskId} to user {UserId}.", assigningUserId, taskId, userId);
+            return Forbid(ex.Message);
         }
         catch (Exception ex)
         {
@@ -321,7 +342,7 @@ public class TasksController : ControllerBase
 
         try
         {
-            var updatedTask = await _taskService.AssignTaskAsync(taskId, userId);
+            var updatedTask = await _taskService.AssignTaskAsync(taskId, userId, userId);
 
             if (updatedTask == null)
             {
@@ -329,6 +350,11 @@ public class TasksController : ControllerBase
             }
 
             return Ok(updatedTask);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized self-assignment attempt by user {UserId} for task {TaskId}.", userId, taskId);
+            return Forbid(ex.Message);
         }
         catch (Exception ex)
         {

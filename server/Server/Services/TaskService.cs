@@ -20,6 +20,7 @@ public class TaskService : ITaskService
     private readonly IAssetService _assetService;
     private readonly IWorkflowStageRepository _workflowStageRepository;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IProjectMembershipService _projectMembershipService;
     private readonly ILogger<TaskService> _logger;
 
     public TaskService(
@@ -30,6 +31,7 @@ public class TaskService : ITaskService
         IAssetService assetService,
         IWorkflowStageRepository workflowStageRepository,
         UserManager<ApplicationUser> userManager,
+        IProjectMembershipService projectMembershipService,
         ILogger<TaskService> logger)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
@@ -39,6 +41,7 @@ public class TaskService : ITaskService
         _assetService = assetService ?? throw new ArgumentNullException(nameof(assetService));
         _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+        _projectMembershipService = projectMembershipService ?? throw new ArgumentNullException(nameof(projectMembershipService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -246,9 +249,9 @@ public class TaskService : ITaskService
         return MapToDto(createdTaskWithIncludes);
     }
 
-    public async Task<TaskDto?> UpdateTaskAsync(int taskId, UpdateTaskDto updateDto)
+    public async Task<TaskDto?> UpdateTaskAsync(int taskId, UpdateTaskDto updateDto, string? updatingUserId = null)
     {
-        _logger.LogInformation("Updating task with ID: {TaskId}", taskId);
+        _logger.LogInformation("Updating task with ID: {TaskId} by user: {UpdatingUserId}", taskId, updatingUserId);
 
         var existingTask = await _taskRepository.GetByIdAsync(taskId);
         if (existingTask == null)
@@ -266,11 +269,13 @@ public class TaskService : ITaskService
         // Handle assignment - support both userId and email assignment
         if (updateDto.AssignedToEmail != null)
         {
+            string? newAssignedUserId = null;
+            
             // Assignment by email - look up the user ID
             if (string.IsNullOrEmpty(updateDto.AssignedToEmail))
             {
                 // Empty email means unassign
-                existingTask.AssignedToUserId = null;
+                newAssignedUserId = null;
             }
             else
             {
@@ -281,11 +286,25 @@ public class TaskService : ITaskService
                     _logger.LogWarning("User not found for assignment email: {Email}", updateDto.AssignedToEmail);
                     throw new NotFoundException($"User with email '{updateDto.AssignedToEmail}' not found");
                 }
-                existingTask.AssignedToUserId = user.Id;
+                newAssignedUserId = user.Id;
             }
+            
+            // Validate assignment permissions if assignment is changing and updatingUserId is provided
+            if (existingTask.AssignedToUserId != newAssignedUserId && !string.IsNullOrEmpty(updatingUserId))
+            {
+                await ValidateTaskAssignmentPermissionAsync(existingTask.ProjectId, updatingUserId, newAssignedUserId);
+            }
+            
+            existingTask.AssignedToUserId = newAssignedUserId;
         }
         else if (updateDto.AssignedToUserId != null && updateDto.AssignedToUserId != existingTask.AssignedToUserId)
         {
+            // Validate assignment permissions if updatingUserId is provided
+            if (!string.IsNullOrEmpty(updatingUserId))
+            {
+                await ValidateTaskAssignmentPermissionAsync(existingTask.ProjectId, updatingUserId, updateDto.AssignedToUserId);
+            }
+            
             // Assignment by userId (legacy support) - only update if explicitly provided
             existingTask.AssignedToUserId = updateDto.AssignedToUserId;
         }
@@ -324,15 +343,21 @@ public class TaskService : ITaskService
         return true;
     }
 
-    public async Task<TaskDto?> AssignTaskAsync(int taskId, string userId)
+    public async Task<TaskDto?> AssignTaskAsync(int taskId, string userId, string? assigningUserId = null)
     {
-        _logger.LogInformation("Assigning task {TaskId} to user: {UserId}", taskId, userId);
+        _logger.LogInformation("Assigning task {TaskId} to user: {UserId} by user: {AssigningUserId}", taskId, userId, assigningUserId);
 
         var existingTask = await _taskRepository.GetByIdAsync(taskId);
         if (existingTask == null)
         {
             _logger.LogWarning("Task with ID: {TaskId} not found for assignment.", taskId);
             return null;
+        }
+
+        // Validate assignment permissions if assigningUserId is provided
+        if (!string.IsNullOrEmpty(assigningUserId))
+        {
+            await ValidateTaskAssignmentPermissionAsync(existingTask.ProjectId, assigningUserId, userId);
         }
 
         // Auto-resume suspended tasks when assigning them
@@ -348,7 +373,7 @@ public class TaskService : ITaskService
                 EventType = TaskEventType.STATUS_CHANGED,
                 Details = "Task automatically resumed during assignment",
                 TaskId = taskId,
-                UserId = userId,
+                UserId = assigningUserId ?? userId,
                 CreatedAt = DateTime.UtcNow
             };
             await _taskEventRepository.AddAsync(resumeEvent);
@@ -372,7 +397,7 @@ public class TaskService : ITaskService
             EventType = TaskEventType.TASK_ASSIGNED,
             Details = $"Task assigned to user {userId}",
             TaskId = taskId,
-            UserId = userId,
+            UserId = assigningUserId ?? userId,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -381,6 +406,56 @@ public class TaskService : ITaskService
 
         _logger.LogInformation("Successfully assigned task {TaskId} to user: {UserId}", taskId, userId);
         return MapToDto(existingTask);
+    }
+
+    /// <summary>
+    /// Validates that the assigning user has permission to assign tasks to the target user.
+    /// REVIEWER role users can only assign tasks to themselves or unassign tasks.
+    /// MANAGER role users can assign tasks to any project member.
+    /// </summary>
+    /// <param name="projectId">The project ID for role validation</param>
+    /// <param name="assigningUserId">The user performing the assignment</param>
+    /// <param name="targetUserId">The user being assigned the task (null for unassignment)</param>
+    /// <exception cref="UnauthorizedAccessException">Thrown when the assignment is not permitted</exception>
+    private async System.Threading.Tasks.Task ValidateTaskAssignmentPermissionAsync(int projectId, string assigningUserId, string? targetUserId)
+    {
+        var assigningUserMembership = await _projectMembershipService.GetProjectMembershipAsync(assigningUserId, projectId);
+        if (assigningUserMembership == null)
+        {
+            _logger.LogWarning("Assigning user {AssigningUserId} is not a member of project {ProjectId}", assigningUserId, projectId);
+            throw new UnauthorizedAccessException("User is not a member of this project");
+        }
+
+        // MANAGER role can assign tasks to anyone or unassign tasks
+        if (assigningUserMembership.Role == ProjectRole.MANAGER)
+        {
+            _logger.LogDebug("MANAGER user {AssigningUserId} can assign/unassign tasks", assigningUserId);
+            return;
+        }
+
+        // REVIEWER role can only assign tasks to themselves or unassign tasks
+        if (assigningUserMembership.Role == ProjectRole.REVIEWER)
+        {
+            // Allow unassigning tasks (targetUserId is null or empty)
+            if (string.IsNullOrEmpty(targetUserId))
+            {
+                _logger.LogDebug("REVIEWER user {AssigningUserId} is unassigning task", assigningUserId);
+                return;
+            }
+
+            // Allow assigning tasks to themselves only
+            if (assigningUserId != targetUserId)
+            {
+                _logger.LogWarning("REVIEWER user {AssigningUserId} attempted to assign task to different user {TargetUserId}", assigningUserId, targetUserId);
+                throw new UnauthorizedAccessException("Reviewers can only assign tasks to themselves");
+            }
+            _logger.LogDebug("REVIEWER user {AssigningUserId} is assigning task to themselves", assigningUserId);
+            return;
+        }
+
+        // ANNOTATOR and VIEWER roles should not have task:assign permission, but check anyway
+        _logger.LogWarning("User {AssigningUserId} with role {Role} attempted to assign task", assigningUserId, assigningUserMembership.Role);
+        throw new UnauthorizedAccessException($"Users with role {assigningUserMembership.Role} cannot assign tasks");
     }
 
     public async Task<TaskDto?> MoveTaskToStageAsync(int taskId, int workflowStageId, string userId)
