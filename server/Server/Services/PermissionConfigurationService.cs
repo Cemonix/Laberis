@@ -17,8 +17,7 @@ namespace server.Services
         private readonly ILogger<PermissionConfigurationService> _logger;
         private readonly IWebHostEnvironment _environment;
         private readonly IServiceScopeFactory _serviceScopeFactory;
-        private PermissionConfiguration? _configuration;
-        private readonly Lock _lock = new();
+        private Lazy<PermissionConfiguration> _configuration;
 
         public PermissionConfigurationService(
             ILogger<PermissionConfigurationService> logger,
@@ -28,19 +27,15 @@ namespace server.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
+            _configuration = new Lazy<PermissionConfiguration>(LoadConfiguration);
         }
 
 
         public bool HasPermission(ProjectRole role, string permission)
         {
-            if (_configuration == null)
-            {
-                _logger.LogWarning("Permission configuration not loaded, denying permission check for role {Role}, permission {Permission}", role, permission);
-                return false;
-            }
-
+            var config = _configuration.Value;
             var roleKey = role.ToString();
-            if (!_configuration.Roles.TryGetValue(roleKey, out var roleDefinition))
+            if (!config.Roles.TryGetValue(roleKey, out var roleDefinition))
             {
                 _logger.LogWarning("Role {Role} not found in permission configuration", role);
                 return false;
@@ -51,14 +46,9 @@ namespace server.Services
 
         public HashSet<string> GetPermissionsForRole(ProjectRole role)
         {
-            if (_configuration == null)
-            {
-                _logger.LogWarning("Permission configuration not loaded, returning empty permissions for role {Role}", role);
-                return [];
-            }
-
+            var config = _configuration.Value;
             var roleKey = role.ToString();
-            if (_configuration.Roles.TryGetValue(roleKey, out var roleDefinition))
+            if (config.Roles.TryGetValue(roleKey, out var roleDefinition))
             {
                 return [.. roleDefinition.Permissions];
             }
@@ -69,13 +59,8 @@ namespace server.Services
 
         public HashSet<string> GetGlobalPermissions()
         {
-            if (_configuration == null)
-            {
-                _logger.LogWarning("Permission configuration not loaded, returning empty global permissions");
-                return [];
-            }
-
-            return [.. _configuration.GlobalPermissions];
+            var config = _configuration.Value;
+            return [.. config.GlobalPermissions];
         }
 
         /// <summary>
@@ -85,12 +70,6 @@ namespace server.Services
         /// <returns>Global permissions available to the user</returns>
         public HashSet<string> GetGlobalPermissionsForUser(IList<string> userRoles)
         {
-            if (_configuration == null)
-            {
-                _logger.LogWarning("Permission configuration not loaded, returning empty global permissions");
-                return [];
-            }
-
             var permissions = new HashSet<string>();
 
             // Base global permissions available to all authenticated users
@@ -115,12 +94,7 @@ namespace server.Services
 
         public async Task<UserPermissionContext> BuildUserPermissionContextAsync(string userId)
         {
-            EnsureConfigurationLoaded();
-
-            if (_configuration == null)
-            {
-                throw new InvalidOperationException("Permission configuration could not be loaded");
-            }
+            var config = _configuration.Value;
 
             // Get user's system role and project memberships using a scoped DbContext
             using var scope = _serviceScopeFactory.CreateScope();
@@ -190,63 +164,49 @@ namespace server.Services
 
         public void ReloadConfiguration()
         {
-            lock (_lock)
-            {
-                _configuration = null;
-            }
-            EnsureConfigurationLoaded();
+            // Create a new Lazy instance to force reload
+            var newConfiguration = new Lazy<PermissionConfiguration>(LoadConfiguration);
+            Interlocked.Exchange(ref _configuration, newConfiguration);
         }
 
-        private void EnsureConfigurationLoaded()
+        private PermissionConfiguration LoadConfiguration()
         {
-            if (_configuration != null)
+            try
             {
-                return;
-            }
+                var configPath = Path.Combine(_environment.ContentRootPath, "Configs", "project-permissions.json");
+                
+                _logger.LogDebug("Looking for permission configuration at: {ConfigPath}", configPath);
+                _logger.LogDebug("ContentRootPath is: {ContentRootPath}", _environment.ContentRootPath);
 
-            lock (_lock)
-            {
-                if (_configuration != null)
+                if (!File.Exists(configPath))
                 {
-                    return;
-                }
-
-                try
-                {
-                    var configPath = Path.Combine(_environment.ContentRootPath, "Configs", "project-permissions.json");
+                    // Try alternative path in case we're running from parent directory
+                    var alternativePath = Path.Combine(_environment.ContentRootPath, "Server", "Configs", "project-permissions.json");
+                    _logger.LogDebug("Trying alternative path: {AlternativePath}", alternativePath);
                     
-                    _logger.LogDebug("Looking for permission configuration at: {ConfigPath}", configPath);
-                    _logger.LogDebug("ContentRootPath is: {ContentRootPath}", _environment.ContentRootPath);
-
-                    if (!File.Exists(configPath))
+                    if (File.Exists(alternativePath))
                     {
-                        // Try alternative path in case we're running from parent directory
-                        var alternativePath = Path.Combine(_environment.ContentRootPath, "Server", "Configs", "project-permissions.json");
-                        _logger.LogDebug("Trying alternative path: {AlternativePath}", alternativePath);
-                        
-                        if (File.Exists(alternativePath))
-                        {
-                            configPath = alternativePath;
-                        }
-                        else
-                        {
-                            throw new FileNotFoundException($"Permission configuration file not found at {configPath} or {alternativePath}");
-                        }
+                        configPath = alternativePath;
                     }
-
-                    var configJson = File.ReadAllText(configPath);
-                    var config = JsonSerializer.Deserialize<PermissionConfiguration>(configJson, new JsonSerializerOptions
+                    else
                     {
-                        PropertyNameCaseInsensitive = true
-                    }) ?? throw new InvalidOperationException("Failed to deserialize permission configuration");
-                    _configuration = config;
-                    _logger.LogInformation("Permission configuration loaded successfully from {ConfigPath}", configPath);
+                        throw new FileNotFoundException($"Permission configuration file not found at {configPath} or {alternativePath}");
+                    }
                 }
-                catch (Exception ex)
+
+                var configJson = File.ReadAllText(configPath);
+                var config = JsonSerializer.Deserialize<PermissionConfiguration>(configJson, new JsonSerializerOptions
                 {
-                    _logger.LogError(ex, "Failed to load permission configuration");
-                    throw;
-                }
+                    PropertyNameCaseInsensitive = true
+                }) ?? throw new InvalidOperationException("Failed to deserialize permission configuration");
+                
+                _logger.LogInformation("Permission configuration loaded successfully from {ConfigPath}", configPath);
+                return config;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load permission configuration");
+                throw;
             }
         }
     }
