@@ -20,10 +20,12 @@ public class WorkflowStageRepository : GenericRepository<WorkflowStage>, IWorkfl
     {
         // Include related data if needed for specific use cases
         return query
+            .Include(ws => ws.Workflow) // Include for validation in assignment service
             .Include(ws => ws.IncomingConnections)
             .Include(ws => ws.OutgoingConnections)
             .Include(ws => ws.StageAssignments)
-                .ThenInclude(sa => sa.ProjectMember);
+            .ThenInclude(sa => sa.ProjectMember)
+            .ThenInclude(pm => pm.User);
     }
 
     protected override IQueryable<WorkflowStage> ApplyFilter(IQueryable<WorkflowStage> query, string? filterOn, string? filterQuery)

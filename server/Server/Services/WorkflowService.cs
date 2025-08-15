@@ -250,8 +250,38 @@ public class WorkflowService : IWorkflowService
             _logger.LogInformation("Creating {StageCount} custom stages for workflow: {WorkflowId}",
                 createDto.Stages.Count, workflowId);
 
-            foreach (var stageDto in createDto.Stages)
+            // Ensure required data sources exist for custom stages too
+            var dataSources = await EnsureRequiredDataSourcesExistAsync(projectId, createDto.IncludeReviewStage);
+            
+            // Sort stages by order to process them in sequence
+            var sortedStages = createDto.Stages.OrderBy(s => s.StageOrder).ToList();
+
+            foreach (var stageDto in sortedStages)
             {
+                // Automatically assign target data source if not specified
+                int? targetDataSourceId = stageDto.TargetDataSourceId;
+                if (targetDataSourceId == null && !stageDto.IsFinalStage)
+                {
+                    // Assign target based on stage type and workflow progression
+                    switch (stageDto.StageType)
+                    {
+                        case WorkflowStageType.ANNOTATION:
+                            targetDataSourceId = createDto.IncludeReviewStage ? 
+                                dataSources.ReviewDataSource?.Id : dataSources.CompletionDataSource?.Id;
+                            break;
+                        case WorkflowStageType.REVISION:
+                            targetDataSourceId = dataSources.CompletionDataSource?.Id;
+                            break;
+                        case WorkflowStageType.COMPLETION:
+                            // Completion stages typically don't have target data sources
+                            targetDataSourceId = null;
+                            break;
+                    }
+                    
+                    _logger.LogInformation("Auto-assigned target data source {TargetDataSourceId} for stage {StageName} ({StageType})", 
+                        targetDataSourceId, stageDto.Name, stageDto.StageType);
+                }
+
                 // Create the stage
                 var createStageDto = new CreateWorkflowStageDto
                 {
@@ -262,7 +292,7 @@ public class WorkflowService : IWorkflowService
                     IsInitialStage = stageDto.IsInitialStage,
                     IsFinalStage = stageDto.IsFinalStage,
                     InputDataSourceId = stageDto.InputDataSourceId,
-                    TargetDataSourceId = stageDto.TargetDataSourceId
+                    TargetDataSourceId = targetDataSourceId
                 };
 
                 var createdStage = await _workflowStageService.CreateWorkflowStageAsync(workflowId, createStageDto);
