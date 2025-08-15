@@ -17,7 +17,12 @@
             </div>
 
             <div class="assignment-section">
-                <label class="form-label">Select team member:</label>
+                <label class="form-label">
+                    Select team member:
+                    <span v-if="isAssignmentRestricted" class="restriction-note">
+                        (Reviewers can only assign tasks to themselves)
+                    </span>
+                </label>
                 <select 
                     v-model="selectedMember" 
                     class="form-select"
@@ -31,7 +36,7 @@
                     >
                         {{ member.email }}
                     </option>
-                    <option value="unassign">🚫 Unassign task</option>
+                    <option v-if="canUnassign" value="unassign">🚫 Unassign task</option>
                 </select>
             </div>
 
@@ -65,8 +70,10 @@ import Button from '@/components/common/Button.vue';
 import type { TaskTableRow } from '@/types/task';
 import type { ProjectMember } from '@/types/projectMember/projectMember';
 import { useProjectStore } from '@/stores/projectStore';
+import { useAuthStore } from '@/stores/authStore';
 import { taskService } from '@/services/api/projects';
 import { AppLogger } from '@/utils/logger';
+import type { ProjectRole } from '@/types/project/project';
 
 interface Props {
     show: boolean;
@@ -83,15 +90,55 @@ const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 const projectStore = useProjectStore();
+const authStore = useAuthStore();
 const logger = AppLogger.createComponentLogger('TaskAssignModal');
 
 const selectedMember = ref<string>('');
 const isAssigning = ref<boolean>(false);
 const error = ref<string>('');
 
-// Get available members from project store
+// Get current user's role in the project
+const currentUserRole = computed((): ProjectRole | null => {
+    const currentUserEmail = authStore.currentUser?.email;
+    if (!currentUserEmail) return null;
+    
+    const currentUserMember = projectStore.teamMembers?.find(
+        member => member.email === currentUserEmail
+    );
+    return currentUserMember?.role || null;
+});
+
+// Get available members based on current user's role
 const availableMembers = computed((): ProjectMember[] => {
-    return projectStore.teamMembers || [];
+    const allMembers = projectStore.teamMembers || [];
+    const userRole = currentUserRole.value;
+    const currentUserEmail = authStore.currentUser?.email;
+    
+    // MANAGER can assign to any project member
+    if (userRole === 'MANAGER') {
+        return allMembers;
+    }
+    
+    // REVIEWER can only assign to themselves
+    if (userRole === 'REVIEWER') {
+        return allMembers.filter(member => member.email === currentUserEmail);
+    }
+    
+    // Other roles (ANNOTATOR, VIEWER) should not have task:assign permission anyway
+    // but return empty list to be safe
+    return [];
+});
+
+// Check if unassign option should be available
+const canUnassign = computed((): boolean => {
+    const userRole = currentUserRole.value;
+    // MANAGER and REVIEWER can unassign tasks
+    return userRole === 'MANAGER' || userRole === 'REVIEWER';
+});
+
+// Check if assignment is restricted (for UI feedback)
+const isAssignmentRestricted = computed((): boolean => {
+    return currentUserRole.value === 'REVIEWER';
 });
 
 // Reset form when modal opens/closes
@@ -207,6 +254,13 @@ const handleAssign = async () => {
     font-weight: 500;
     color: var(--color-gray-800);
     font-size: 0.875rem;
+    
+    .restriction-note {
+        font-weight: 400;
+        color: var(--color-warning-600);
+        font-size: 0.75rem;
+        font-style: italic;
+    }
 }
 
 .form-select {
