@@ -5,7 +5,6 @@ using server.Services;
 using server.Services.Interfaces;
 using server.Repositories.Interfaces;
 using server.Models.DTOs.Task;
-using server.Models.Domain;
 using LaberisTask = server.Models.Domain.Task;
 
 namespace Server.Tests.Services
@@ -19,6 +18,7 @@ namespace Server.Tests.Services
         private readonly Mock<IAssetService> _mockAssetService;
         private readonly Mock<IWorkflowStageRepository> _mockWorkflowStageRepository;
         private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
+        private readonly Mock<IProjectMembershipService> _mockProjectMembershipService;
         private readonly Mock<ILogger<TaskService>> _mockLogger;
         private readonly TaskService _taskService;
 
@@ -31,6 +31,7 @@ namespace Server.Tests.Services
             _mockAssetService = new Mock<IAssetService>();
             _mockWorkflowStageRepository = new Mock<IWorkflowStageRepository>();
             _mockUserManager = MockUserManager();
+            _mockProjectMembershipService = new Mock<IProjectMembershipService>();
             _mockLogger = new Mock<ILogger<TaskService>>();
             
             _taskService = new TaskService(
@@ -41,6 +42,7 @@ namespace Server.Tests.Services
                 _mockAssetService.Object,
                 _mockWorkflowStageRepository.Object,
                 _mockUserManager.Object,
+                _mockProjectMembershipService.Object,
                 _mockLogger.Object
             );
         }
