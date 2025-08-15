@@ -67,8 +67,9 @@ public interface ITaskService
     /// </summary>
     /// <param name="taskId">The ID of the task to update.</param>
     /// <param name="updateDto">The DTO containing updated task information.</param>
+    /// <param name="updatingUserId">The ID of the user performing the update (for role validation when changing assignments).</param>
     /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
-    Task<TaskDto?> UpdateTaskAsync(int taskId, UpdateTaskDto updateDto);
+    Task<TaskDto?> UpdateTaskAsync(int taskId, UpdateTaskDto updateDto, string? updatingUserId = null);
 
     /// <summary>
     /// Deletes a task by its ID.
@@ -82,8 +83,9 @@ public interface ITaskService
     /// </summary>
     /// <param name="taskId">The ID of the task to assign.</param>
     /// <param name="userId">The ID of the user to assign the task to.</param>
+    /// <param name="assigningUserId">The ID of the user performing the assignment (for role validation).</param>
     /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
-    Task<TaskDto?> AssignTaskAsync(int taskId, string userId);
+    Task<TaskDto?> AssignTaskAsync(int taskId, string userId, string? assigningUserId = null);
 
     /// <summary>
     /// Moves a task to a different workflow stage.
