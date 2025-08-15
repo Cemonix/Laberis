@@ -22,7 +22,7 @@
             <div class="stage-stats">
                 <div class="stat-item">
                     <font-awesome-icon :icon="faUsers" />
-                    <span>{{ stage.assignedUserCount || 0 }} users</span>
+                    <span>{{ stage.assignedMemberCount || 0 }} members</span>
                 </div>
                 
                 <div class="stat-item">
@@ -162,8 +162,8 @@ const stageIcon = computed(() => {
         border-color: var(--color-primary);
     }
     
-    // Clickable hover effects with stage-specific colors
-    &.stage-clickable.stage-annotation:hover {
+    // Hover effects with stage-specific colors for all cards
+    &.stage-annotation:hover {
         .stage-header {
             background: linear-gradient(135deg, var(--color-info), var(--color-info));
 
@@ -172,12 +172,12 @@ const stageIcon = computed(() => {
             }
             
             .stage-icon svg {
-                color: var(--color-white);
+                color: var(--color-blue-700);
             }
         }
     }
     
-    &.stage-clickable.stage-revision:hover {
+    &.stage-revision:hover {
         .stage-header {
             background: linear-gradient(135deg, var(--color-warning), var(--color-warning));
 
@@ -186,12 +186,12 @@ const stageIcon = computed(() => {
             }
             
             .stage-icon svg {
-                color: var(--color-white);
+                color: var(--color-blue-700);
             }
         }
     }
     
-    &.stage-clickable.stage-completion:hover {
+    &.stage-completion:hover {
         .stage-header {
             background: linear-gradient(135deg, var(--color-success), var(--color-success));
 
@@ -200,13 +200,13 @@ const stageIcon = computed(() => {
             }
             
             .stage-icon svg {
-                color: var(--color-white);
+                color: var(--color-blue-700);
             }
         }
     }
     
-    // Default clickable hover for cards without specific stage types
-    &.stage-clickable:not(.stage-annotation):not(.stage-revision):not(.stage-completion):hover {
+    // Default hover for cards without specific stage types
+    &:not(.stage-annotation):not(.stage-revision):not(.stage-completion):hover {
         .stage-header {
             background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
             
