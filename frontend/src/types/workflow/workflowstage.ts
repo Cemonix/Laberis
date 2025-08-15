@@ -55,7 +55,7 @@ export interface WorkflowStagePipeline {
     isFinalStage: boolean;
     previousStageIds: number[];
     nextStageIds: number[];
-    assignedUserCount: number;
+    assignedMemberCount: number;
 }
 
 export interface CreateWorkflowStageRequest {

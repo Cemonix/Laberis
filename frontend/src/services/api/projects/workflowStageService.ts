@@ -30,7 +30,7 @@ class WorkflowStageService extends BaseProjectService {
         
         const url = this.buildProjectResourceUrl(projectId, 'workflows/{workflowId}/stages', { workflowId });
         const response = await this.getPaginated<WorkflowStage>(url, options);
-        
+
         // Ensure proper ordering by stage order
         const sortedStages = response.data.sort((a, b) => a.stageOrder - b.stageOrder);
 
@@ -122,6 +122,19 @@ class WorkflowStageService extends BaseProjectService {
     }
 
     /**
+     * Gets workflow stages for pipeline visualization with connections and assignments
+     */
+    async getWorkflowStagesForPipeline(projectId: number, workflowId: number): Promise<WorkflowStage[]> {
+        this.logger.info(`Fetching pipeline stages for workflow ${workflowId} in project ${projectId}`);
+        
+        const url = this.buildProjectResourceUrl(projectId, 'workflows/{workflowId}/stages/pipeline', { workflowId });
+        const response = await this.get<WorkflowStage[]>(url);
+        
+        this.logger.info(`Successfully fetched ${response.length} pipeline stages for workflow ${workflowId}`);
+        return response;
+    }
+
+    /**
      * Gets a workflow with all its stages
      */
     async getWorkflowWithStages(projectId: number, workflowId: number): Promise<WorkflowWithStages> {
@@ -143,6 +156,32 @@ class WorkflowStageService extends BaseProjectService {
             return workflowWithStages;
         } catch (error) {
             this.logger.error(`Failed to fetch workflow with stages from project ${projectId}, workflow ${workflowId}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Gets a workflow with pipeline stages (includes connections and assignments)
+     */
+    async getWorkflowWithPipelineStages(projectId: number, workflowId: number): Promise<WorkflowWithStages> {
+        this.logger.info(`Fetching workflow ${workflowId} with pipeline stages from project ${projectId}`);
+        
+        try {
+            // Get workflow details and pipeline stages in parallel
+            const [workflow, stages] = await Promise.all([
+                workflowService.getWorkflowById(projectId, workflowId),
+                this.getWorkflowStagesForPipeline(projectId, workflowId)
+            ]);
+
+            const workflowWithStages: WorkflowWithStages = {
+                ...workflow,
+                stages: stages
+            };
+
+            this.logger.info(`Successfully fetched workflow with ${workflowWithStages.stages.length} pipeline stages`);
+            return workflowWithStages;
+        } catch (error) {
+            this.logger.error(`Failed to fetch workflow with pipeline stages from project ${projectId}, workflow ${workflowId}:`, error);
             throw error;
         }
     }
