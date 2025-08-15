@@ -1,5 +1,5 @@
 <template>
-    <div class="workflow-pipeline-view">
+    <div v-permission="{ permission: PERMISSIONS.WORKFLOW.READ }" class="workflow-pipeline-view">
         <div class="view-header">
             <div class="header-left">
                 <h2>Pipeline Viewer</h2>
@@ -24,7 +24,8 @@
         
         <!-- Stage Assignment Management Modal -->
         <StageAssignmentModal
-            v-if="showAssignmentModal && selectedStage && canManageWorkflows"
+            v-if="showAssignmentModal && selectedStage"
+            v-permission="{ permission: PERMISSIONS.WORKFLOW.UPDATE }"
             :stage="selectedStage"
             :project-id="projectId"
             :workflow-id="workflowId"
@@ -34,7 +35,8 @@
         
         <!-- Stage Edit Modal -->
         <StageEditModal
-            v-if="showEditModal && selectedStage && canManageWorkflows"
+            v-if="showEditModal && selectedStage"
+            v-permission="{ permission: PERMISSIONS.WORKFLOW.UPDATE }"
             :stage="selectedStage"
             :project-id="projectId"
             :workflow-id="workflowId"
@@ -99,7 +101,7 @@ const loadPipelineData = async () => {
     try {
         logger.info(`Loading pipeline data for workflow ${workflowId.value} in project ${projectId.value}`);
         
-        const workflowWithStages = await workflowStageService.getWorkflowWithStages(
+        const workflowWithStages = await workflowStageService.getWorkflowWithPipelineStages(
             projectId.value, 
             workflowId.value
         );
@@ -117,9 +119,9 @@ const loadPipelineData = async () => {
             isFinalStage: stage.isFinalStage,
             previousStageIds: stage.incomingConnections?.map((conn: WorkflowStageConnection) => conn.fromStageId) || [],
             nextStageIds: stage.outgoingConnections?.map((conn: WorkflowStageConnection) => conn.toStageId) || [],
-            assignedUserCount: stage.assignments?.length || 0,
+            assignedMemberCount: stage.assignments?.length || 0,
         }));
-        
+
         logger.info(`Successfully loaded ${pipelineStages.value.length} stages for workflow "${workflowName.value}"`);
         
     } catch (error) {
@@ -132,11 +134,19 @@ const loadPipelineData = async () => {
 };
 
 const handleEditPipeline = () => {
+    if (!hasProjectPermission(PERMISSIONS.WORKFLOW.UPDATE)) {
+        logger.warn('Unauthorized attempt to edit pipeline');
+        return;
+    }
     logger.debug('Edit pipeline requested');
     // TODO: Navigate to edit mode or show edit modal
 };
 
 const handleStageClick = (stage: WorkflowStagePipeline) => {
+    if (!hasProjectPermission(PERMISSIONS.TASK.READ)) {
+        logger.warn('Unauthorized attempt to view stage tasks', { stageId: stage.id, stageName: stage.name });
+        return;
+    }
     logger.info('Stage clicked, navigating to tasks view', { stageId: stage.id, stageName: stage.name });
     router.push({
         name: 'StageTasks',
@@ -149,12 +159,20 @@ const handleStageClick = (stage: WorkflowStagePipeline) => {
 };
 
 const handleEditStage = (stage: WorkflowStagePipeline) => {
+    if (!hasProjectPermission(PERMISSIONS.WORKFLOW.UPDATE)) {
+        logger.warn('Unauthorized attempt to edit stage', { stageId: stage.id, stageName: stage.name });
+        return;
+    }
     logger.debug('Edit stage requested', { stageId: stage.id, stageName: stage.name });
     selectedStage.value = stage;
     showEditModal.value = true;
 };
 
 const handleManageAssignments = (stage: WorkflowStagePipeline) => {
+    if (!hasProjectPermission(PERMISSIONS.WORKFLOW.UPDATE)) {
+        logger.warn('Unauthorized attempt to manage assignments', { stageId: stage.id, stageName: stage.name });
+        return;
+    }
     logger.debug('Manage assignments requested', { stageId: stage.id, stageName: stage.name });
     selectedStage.value = stage;
     showAssignmentModal.value = true;
