@@ -11,6 +11,7 @@ import {useAuthStore} from '@/stores/authStore'
 import {logger, piniaLogger, AppLogger} from '@/utils/logger'
 import {useErrorHandler} from '@/composables/useErrorHandler'
 import {registerPermissionDirective} from '@/directives/vPermission';
+import {clickOutside} from '@/directives/clickOutside';
 
 const main_logger = AppLogger.createServiceLogger('Main');
 
@@ -37,8 +38,9 @@ async function initializeApp() {
     app.use(pinia);
     app.use(logger);
     
-    // Register permission directive
+    // Register directives
     registerPermissionDirective(app);
+    app.directive('click-outside', clickOutside);
 
     const authStore = useAuthStore();
     setupInterceptors(authStore);
