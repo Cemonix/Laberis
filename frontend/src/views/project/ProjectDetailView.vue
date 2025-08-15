@@ -26,6 +26,7 @@
                     <!-- Advanced actions dropdown - Only for managers -->
                     <div 
                         class="dropdown" 
+                        v-click-outside="closeDropdown"
                         v-permission="{ 
                             permissions: [PERMISSIONS.PROJECT_MEMBER.INVITE, PERMISSIONS.PROJECT.DELETE], 
                             mode: 'any' 
@@ -112,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import {onMounted, ref, onUnmounted} from 'vue';
+import {onMounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import type {Project} from '@/types/project/project';
 import {projectService} from '@/services/api/projects';
@@ -162,6 +163,10 @@ const toggleDropdown = () => {
     showDropdown.value = !showDropdown.value;
 };
 
+const closeDropdown = () => {
+    showDropdown.value = false;
+};
+
 const inviteMembers = () => {
     showDropdown.value = false;
     // TODO: Navigate to invite members page or open modal
@@ -174,21 +179,8 @@ const deleteProject = () => {
     showAlert('Warning', 'Delete project functionality coming soon!');
 };
 
-// Close dropdown when clicking outside
-const handleClickOutside = (event: Event) => {
-    const target = event.target as HTMLElement;
-    if (!target.closest('.dropdown')) {
-        showDropdown.value = false;
-    }
-};
-
 onMounted(() => {
     fetchProject();
-    document.addEventListener('click', handleClickOutside);
-});
-
-onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside);
 });
 </script>
 
