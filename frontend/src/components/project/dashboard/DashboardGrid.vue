@@ -1,11 +1,5 @@
 <template>
     <div class="dashboard-grid-wrapper">
-        <div v-if="editMode" class="add-widget-zone">
-            <Button @click="showAddWidgetModal = true" variant="primary" class="add-widget-btn">
-                <font-awesome-icon :icon="faPlus" />
-                Add Widget
-            </Button>
-        </div>
 
         <div ref="gridstackContainer" class="grid-stack">
             <WidgetContainer
@@ -56,8 +50,6 @@
 
 <script setup lang="ts">
 import { computed, ref, reactive, onMounted, onUnmounted, watch, nextTick } from "vue";
-import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
 
 // Gridstack imports
 import { GridStack } from 'gridstack';
@@ -67,7 +59,6 @@ import 'gridstack/dist/gridstack.min.css';
 import WidgetContainer from "./WidgetContainer.vue";
 import AddWidgetModal from "./AddWidgetModal.vue";
 import WidgetSettingsModal from "./WidgetSettingsModal.vue";
-import Button from "@/components/common/Button.vue";
 import type { WidgetInstanceDto, WidgetDefinitionDto } from "@/types/dashboard/dashboard";
 
 // Widget Components (same as before)
@@ -82,7 +73,6 @@ import RecentActivitiesWidget from "./widgets/RecentActivitiesWidget.vue";
 interface Props {
     widgets: WidgetInstanceDto[];
     widgetDefinitions: WidgetDefinitionDto[];
-    editMode?: boolean;
     gridColumns?: number;
     gridRowHeight?: number;
     gridGap?: number;
@@ -97,15 +87,15 @@ interface Emits {
     (e: "layout-change"): void;
 }
 const props = withDefaults(defineProps<Props>(), {
-    editMode: false,
     gridColumns: 12,
     gridRowHeight: 100,
-    gridGap: 16,
+    gridGap: 8,
 });
 const emit = defineEmits<Emits>();
 
 const gridstackContainer = ref<HTMLElement>();
 const grid = ref<GridStack | null>(null);
+const isInitializing = ref(true);
 
 const selectedWidgetId = ref<string | null>(null);
 const showAddWidgetModal = ref(false);
@@ -116,9 +106,7 @@ const widgetErrors = reactive<Record<string, string | null>>({});
 const widgetRefreshingStates = reactive<Record<string, boolean>>({});
 
 const selectedWidget = computed(() =>
-    selectedWidgetId.value
-        ? props.widgets.find((w) => w.widgetId === selectedWidgetId.value)
-        : null
+    selectedWidgetId.value ? props.widgets.find((w) => w.widgetId === selectedWidgetId.value) : null
 );
 const widgetComponents: Record<string, any> = {
     project_health: ProjectHealthWidget,
@@ -133,13 +121,28 @@ onMounted(() => {
         column: props.gridColumns,
         cellHeight: props.gridRowHeight,
         margin: props.gridGap,
-        float: true, // Allows widgets to float up to fill empty space
-        disableDrag: !props.editMode,
-        disableResize: !props.editMode,
+        float: true,
+        disableDrag: false,
+        disableResize: false,
+        animate: true,
+        minRow: 0, // Allow grid to shrink when items are removed
+        acceptWidgets: true,
+        placeholderClass: 'grid-stack-placeholder', // Custom placeholder styling
+        resizable: {
+            handles: 'all' // Allow resizing from all corners/edges
+        },
+        draggable: {
+            handle: '.widget-header', // Only drag from the header
+            scroll: true, // Enable auto-scroll when dragging near edges
+            appendTo: 'parent' // Keep within grid boundaries
+        }
     });
 
     // Add event listeners to sync Gridstack changes back to the parent
     grid.value.on('change', (_event, items: GridStackNode[]) => {
+        // Don't emit events during initialization to avoid conflicts
+        if (isInitializing.value) return;
+        
         items.forEach((item) => {
             const widgetId = item.id as string;
             
@@ -148,7 +151,7 @@ onMounted(() => {
             if (!widgetInStore) return;
             
             if (widgetInStore.gridX !== item.x || widgetInStore.gridY !== item.y) {
-                 emit("widget-move", { widgetId, x: item.x!, y: item.y! });
+                emit("widget-move", { widgetId, x: item.x!, y: item.y! });
             }
             if(widgetInStore.gridWidth !== item.w || widgetInStore.gridHeight !== item.h) {
                 emit("widget-resize", { widgetId, width: item.w!, height: item.h! });
@@ -156,57 +159,111 @@ onMounted(() => {
         });
         emit("layout-change");
     });
+
+    // Add event listeners for drag/resize events to trigger compaction
+    grid.value.on('dragstop', () => {
+        nextTick(() => {
+            if (grid.value) {
+                grid.value.compact();
+            }
+        });
+    });
+
+    grid.value.on('resizestop', () => {
+        nextTick(() => {
+            if (grid.value) {
+                grid.value.compact();
+            }
+        });
+    });
+
+    grid.value.on('removed', () => {
+        nextTick(() => {
+            if (grid.value) {
+                grid.value.compact();
+            }
+        });
+    });
 });
 
 onUnmounted(() => {
     grid.value?.destroy();
 });
 
-
-watch(() => props.editMode, (isEditable) => {
-    if (grid.value) {
-        grid.value.enableMove(isEditable);
-        grid.value.enableResize(isEditable);
-    }
-});
+// Keep track of current widget IDs to detect changes
+const currentWidgetIds = ref<Set<string>>(new Set());
 
 // Watch for widgets being added or removed from the parent
-watch(() => props.widgets, async (newWidgets, oldWidgets) => {
+watch(() => props.widgets, async (newWidgets) => {
     if (!grid.value) return;
+    
+    // Complete initialization after widgets are loaded and positioned
+    if (isInitializing.value && newWidgets.length > 0) {
+        await nextTick();
+        // Allow one frame for GridStack to position widgets, then enable change tracking
+        setTimeout(() => {
+            isInitializing.value = false;
+        }, 100);
+    }
+    
+    // If widgets list becomes empty (new dashboard loading), reset initialization flag
+    if (newWidgets.length === 0 && !isInitializing.value) {
+        isInitializing.value = true;
+    }
 
     const newIds = new Set(newWidgets.map(w => w.widgetId));
-    const oldIds = new Set(oldWidgets.map(w => w.widgetId));
+    const oldIds = currentWidgetIds.value;
 
-    // Handle removals
-    for (const widget of oldWidgets) {
-        if (!newIds.has(widget.widgetId)) {
-            const el = grid.value.engine.nodes.find(n => n.id === widget.widgetId)?.el;
-            if (el) {
-                grid.value.removeWidget(el, false); // `false` to prevent DOM removal, Vue will do it
-            }
+    // Handle removals first
+    const removedWidgetIds = Array.from(oldIds).filter(id => !newIds.has(id));
+    
+    for (const widgetId of removedWidgetIds) {
+        const el = grid.value.engine.nodes.find(n => n.id === widgetId)?.el;
+        if (el) {
+            grid.value.removeWidget(el, false); // `false` to prevent DOM removal, Vue will handle it
         }
     }
     
-    // Handle additions
-    const addedWidgets = newWidgets.filter(w => !oldIds.has(w.widgetId));
-    if (addedWidgets.length > 0) {
-        // Wait for Vue to render the new widget elements in the DOM
+    // Handle additions using GridStack's makeWidget method
+    const addedWidgetIds = newWidgets.filter(w => !oldIds.has(w.widgetId)).map(w => w.widgetId);
+    
+    for (const widgetId of addedWidgetIds) {
+        // Wait for Vue to render the new widget element
         await nextTick();
-        addedWidgets.forEach(widget => {
-            const el = gridstackContainer.value?.querySelector(`[gs-id="${widget.widgetId}"]`);
-            if (el && grid.value && !grid.value.engine.nodes.some(n => n.id === widget.widgetId)) {
-                grid.value.makeWidget(el as HTMLElement);
-            }
-        });
+        
+        const el = gridstackContainer.value?.querySelector(`[gs-id="${widgetId}"]`);
+        
+        if (el && !grid.value.engine.nodes.some(n => n.id === widgetId)) {
+            grid.value.makeWidget(el as HTMLElement);
+        }
     }
-}, { deep: false });
+
+    // Update our tracking set
+    currentWidgetIds.value = newIds;
+
+    // Trigger compaction after changes
+    if (addedWidgetIds.length > 0 || removedWidgetIds.length > 0) {
+        await nextTick();
+        if (grid.value) {
+            grid.value.compact();
+        }
+    }
+}, { deep: true });
+
+// Initialize the tracking set when component mounts
+watch(() => props.widgets, (widgets) => {
+    currentWidgetIds.value = new Set(widgets.map(w => w.widgetId));
+}, { immediate: true });
 
 
 const getWidgetComponent = (widgetType: string) => widgetComponents[widgetType] || "div";
 const getWidgetDefinition = (widgetType: string) => props.widgetDefinitions.find((def) => def.widgetType === widgetType);
 
-const handleAddWidget = ({ widgetType, title }: { widgetType: string; title?: string; }) => {
-    emit("widget-add", { widgetType, title });
+const handleAddWidget = ({ widgetTypes }: { widgetTypes: string[] }) => {
+    // Emit add event for each selected widget type
+    widgetTypes.forEach(widgetType => {
+        emit("widget-add", { widgetType });
+    });
     showAddWidgetModal.value = false;
 };
 
@@ -240,40 +297,53 @@ defineExpose({
     setWidgetData: (widgetId: string, data: any) => { widgetData[widgetId] = data; },
     setWidgetLoading: (widgetId: string, loading: boolean) => { widgetLoadingStates[widgetId] = loading; },
     setWidgetError: (widgetId: string, error: string | null) => { widgetErrors[widgetId] = error; },
+    openAddWidgetModal: () => { showAddWidgetModal.value = true; },
 });
 </script>
 
 <style scoped>
-/* You may need to adjust some styles, but most should work as before */
 .dashboard-grid-wrapper {
     position: relative;
     width: 100%;
+    min-height: 200px;
 }
 
-/* Add some default styling for Gridstack placeholders */
-.grid-stack .grid-stack-placeholder > .placeholder-content {
-    border: 2px dashed var(--color-primary);
-    background-color: rgba(var(--color-primary-rgb), 0.1);
+.grid-stack {
+    background: #fafbfc;
     border-radius: 0.5rem;
+    padding: 1rem;
+    position: relative;
+    
+    /* Subtle grid pattern for better visual feedback */
+    background-image: 
+        linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
 }
 
-.add-widget-zone {
-    /* Styles are the same as before */
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    display: flex;
-    justify-content: center;
-    padding: 1rem 0;
-    margin-bottom: 1.5rem;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(12px);
-    border-radius: 0.75rem;
+/* Enhanced GridStack placeholder styling for better visual feedback */
+.grid-stack .grid-stack-placeholder {
+    background: rgba(59, 130, 246, 0.1) !important;
+    border: 2px dashed rgba(59, 130, 246, 0.4) !important;
+    border-radius: 0.75rem !important;
+    opacity: 0.8 !important;
+    transition: all 0.2s ease !important;
 }
 
-.add-widget-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+.grid-stack .grid-stack-placeholder.ui-resizable-resizing {
+    opacity: 1 !important;
+    background: rgba(59, 130, 246, 0.15) !important;
+    border-color: rgba(59, 130, 246, 0.6) !important;
+}
+
+/* Ensure smooth transitions for floating widgets */
+.grid-stack .grid-stack-item {
+    transition: transform 0.3s ease, opacity 0.2s ease !important;
+}
+
+.grid-stack .grid-stack-item.ui-draggable-dragging {
+    opacity: 0.8 !important;
+    transform: scale(1.02) !important;
+    z-index: 1000 !important;
 }
 </style>
