@@ -460,15 +460,16 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
         {
             var dayCompleted = await _context.Tasks
                 .CountAsync(t => t.ProjectId == projectId && 
-                               t.LastWorkedOnByUserId == userId &&
-                               t.CompletedAt.HasValue && 
-                               t.CompletedAt.Value.Date == date);
+                    t.LastWorkedOnByUserId == userId &&
+                    t.CompletedAt.HasValue && 
+                    t.CompletedAt.Value.Date == date);
 
+            // TODO:
             // Estimate hours worked based on task events (simplified calculation)
             var dayEvents = await _context.TaskEvents
                 .CountAsync(te => te.UserId == userId && 
-                                 te.Task!.ProjectId == projectId &&
-                                 te.CreatedAt.Date == date);
+                    te.Task!.ProjectId == projectId &&
+                    te.CreatedAt.Date == date);
 
             var estimatedHours = Math.Min(8, dayEvents * 0.5m); // Rough estimate
 
