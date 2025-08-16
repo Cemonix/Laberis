@@ -135,9 +135,17 @@ export const useDashboardStore = defineStore("dashboard", {
                 throw new Error("No layout to save");
             }
 
+            // Create a local reference to prevent race conditions
+            const layoutToSave = this.layout;
+
             try {
-                logger.info("Saving dashboard configuration", { projectId });
-                const configData = JSON.stringify(this.layout);
+                logger.info("Saving dashboard configuration", { 
+                    projectId,
+                    widgetCount: layoutToSave.widgets.length,
+                    lastModified: layoutToSave.lastModified
+                });
+                
+                const configData = JSON.stringify(layoutToSave);
                 
                 // Use the unified save configuration method
                 const savedConfig = await dashboardService.saveConfiguration(
@@ -146,11 +154,26 @@ export const useDashboardStore = defineStore("dashboard", {
                 );
                 
                 this.configuration = savedConfig;
-                this.layout.lastModified = new Date();
-                logger.info("Dashboard configuration saved successfully");
+                
+                // Update lastModified only if layout still exists
+                if (this.layout) {
+                    this.layout.lastModified = new Date();
+                    
+                    logger.info("Dashboard configuration saved successfully", {
+                        configurationId: savedConfig.dashboardConfigurationId,
+                        widgetPositions: this.layout.widgets.map(w => ({
+                            id: w.widgetId,
+                            type: w.widgetType,
+                            position: { x: w.gridX, y: w.gridY, w: w.gridWidth, h: w.gridHeight }
+                        }))
+                    });
+                } else {
+                    logger.warn("Layout became null during save operation");
+                }
             } catch (error) {
                 const { handleError } = useErrorHandler();
                 this.error = error instanceof Error ? error.message : "Failed to save dashboard configuration";
+                logger.error("Failed to save dashboard configuration", error);
                 handleError(error, "Dashboard Configuration Saving");
                 throw error;
             }
@@ -253,6 +276,14 @@ export const useDashboardStore = defineStore("dashboard", {
             if (widget) {
                 Object.assign(widget, updates, { lastUpdated: new Date() });
                 this.layout.lastModified = new Date();
+                
+                // Log position updates for debugging
+                if ('gridX' in updates || 'gridY' in updates || 'gridWidth' in updates || 'gridHeight' in updates) {
+                    logger.debug("Widget position updated", { 
+                        widgetId, 
+                        position: { x: widget.gridX, y: widget.gridY, w: widget.gridWidth, h: widget.gridHeight }
+                    });
+                }
             }
         },
 
