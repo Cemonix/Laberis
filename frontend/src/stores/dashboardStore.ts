@@ -361,60 +361,11 @@ export const useDashboardStore = defineStore("dashboard", {
         },
 
         /**
-         * Get default dashboard layout with comprehensive widget set
+         * Get default dashboard layout (empty, letting users choose their own widgets)
          */
         getDefaultLayout(): DashboardLayoutDto {
             return {
-                widgets: [
-                    {
-                        widgetId: 'project-health',
-                        widgetType: 'project_health',
-                        title: 'Project Health Overview',
-                        gridX: 0,
-                        gridY: 0,
-                        gridWidth: 6,
-                        gridHeight: 5,
-                        isVisible: true,
-                        settings: {},
-                        lastUpdated: new Date()
-                    },
-                    {
-                        widgetId: 'workflow-progress',
-                        widgetType: 'workflow_progress',
-                        title: 'Workflow Progress',
-                        gridX: 6,
-                        gridY: 0,
-                        gridWidth: 6,
-                        gridHeight: 5,
-                        isVisible: true,
-                        settings: {},
-                        lastUpdated: new Date()
-                    },
-                    {
-                        widgetId: 'task-statistics',
-                        widgetType: 'task_statistics',
-                        title: 'Task Statistics & Trends',
-                        gridX: 0,
-                        gridY: 5,
-                        gridWidth: 8,
-                        gridHeight: 4,
-                        isVisible: true,
-                        settings: {},
-                        lastUpdated: new Date()
-                    },
-                    {
-                        widgetId: 'recent-activities',
-                        widgetType: 'recent_activities',
-                        title: 'Recent Activities',
-                        gridX: 8,
-                        gridY: 5,
-                        gridWidth: 4,
-                        gridHeight: 4,
-                        isVisible: true,
-                        settings: {},
-                        lastUpdated: new Date()
-                    }
-                ],
+                widgets: [],
                 theme: 'light',
                 refreshIntervalSeconds: 300,
                 lastModified: new Date()
