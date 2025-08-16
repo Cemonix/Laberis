@@ -1,7 +1,23 @@
 <template>
     <div class="dashboard-grid-wrapper">
+        <!-- Empty State -->
+        <div v-if="widgets.length === 0" class="empty-dashboard">
+            <div class="empty-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 3h18v18H3V3zm2 2v14h14V5H5zm3 3h8v2H8V8zm0 4h6v2H8v-2z" fill="currentColor" opacity="0.3"/>
+                    <path d="M19 13v8H5v-8M3 3h18v10H3V3z" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <circle cx="17" cy="17" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <path d="M19 17l2 2" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <h3 class="empty-title">Start Building Your Dashboard</h3>
+            <p class="empty-description">
+                Add widgets to track your team's progress, monitor project health, and stay on top of important metrics.
+            </p>
+        </div>
 
-        <div ref="gridstackContainer" class="grid-stack">
+        <!-- Grid Container -->
+        <div v-show="widgets.length > 0" ref="gridstackContainer" class="grid-stack">
             <WidgetContainer
                 v-for="widget in widgets"
                 :key="widget.widgetId"
@@ -53,7 +69,6 @@ import { computed, ref, reactive, onMounted, onUnmounted, watch, nextTick } from
 
 // Gridstack imports
 import { GridStack } from 'gridstack';
-import type { GridStackNode } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
 
 import WidgetContainer from "./WidgetContainer.vue";
@@ -95,7 +110,8 @@ const emit = defineEmits<Emits>();
 
 const gridstackContainer = ref<HTMLElement>();
 const grid = ref<GridStack | null>(null);
-const isInitializing = ref(true);
+// Initialize isHidden based on whether we have widgets initially
+const isHidden = ref(true);
 
 const selectedWidgetId = ref<string | null>(null);
 const showAddWidgetModal = ref(false);
@@ -116,74 +132,76 @@ const widgetComponents: Record<string, any> = {
     recent_activities: RecentActivitiesWidget,
 };
 
-onMounted(() => {
+// Initialize GridStack with common configuration and event listeners
+const initializeGridStack = async () => {
+    if (grid.value) return; // Already initialized
+    
+    // Ensure container is ready
+    await nextTick();
+    
+    if (!gridstackContainer.value) {
+        console.warn('GridStack container not found, skipping initialization');
+        return;
+    }
+    
     grid.value = GridStack.init({
         column: props.gridColumns,
         cellHeight: props.gridRowHeight,
         margin: props.gridGap,
-        float: true,
+        float: true, // Allow widgets to float
         disableDrag: false,
         disableResize: false,
         animate: true,
         minRow: 0, // Allow grid to shrink when items are removed
         acceptWidgets: true,
         placeholderClass: 'grid-stack-placeholder', // Custom placeholder styling
-        resizable: {
-            handles: 'all' // Allow resizing from all corners/edges
-        },
+        resizable: { handles: 'all' }, // Allow resizing from all corners/edges
         draggable: {
             handle: '.widget-header', // Only drag from the header
             scroll: true, // Enable auto-scroll when dragging near edges
             appendTo: 'parent' // Keep within grid boundaries
         }
-    });
+    }, gridstackContainer.value);
 
-    // Add event listeners to sync Gridstack changes back to the parent
-    grid.value.on('change', (_event, items: GridStackNode[]) => {
-        // Don't emit events during initialization to avoid conflicts
-        if (isInitializing.value) return;
-        
-        items.forEach((item) => {
+    // Add event listeners only if grid was successfully created
+    if (!grid.value) {
+        console.error('Failed to initialize GridStack');
+        return;
+    }
+
+    // Handle all move/resize completions
+    grid.value.on('change', (_event, items) => {
+        if (isHidden.value) return;
+
+        items.forEach(item => {
             const widgetId = item.id as string;
-            
-            // Check if position or size actually changed to avoid redundant emits
             const widgetInStore = props.widgets.find(w => w.widgetId === widgetId);
+
             if (!widgetInStore) return;
-            
+
+            // Position changed
             if (widgetInStore.gridX !== item.x || widgetInStore.gridY !== item.y) {
                 emit("widget-move", { widgetId, x: item.x!, y: item.y! });
             }
-            if(widgetInStore.gridWidth !== item.w || widgetInStore.gridHeight !== item.h) {
+
+            // Size changed
+            if (widgetInStore.gridWidth !== item.w || widgetInStore.gridHeight !== item.h) {
                 emit("widget-resize", { widgetId, width: item.w!, height: item.h! });
             }
         });
+
         emit("layout-change");
     });
+};
 
-    // Add event listeners for drag/resize events to trigger compaction
-    grid.value.on('dragstop', () => {
-        nextTick(() => {
-            if (grid.value) {
-                grid.value.compact();
-            }
-        });
-    });
-
-    grid.value.on('resizestop', () => {
-        nextTick(() => {
-            if (grid.value) {
-                grid.value.compact();
-            }
-        });
-    });
-
-    grid.value.on('removed', () => {
-        nextTick(() => {
-            if (grid.value) {
-                grid.value.compact();
-            }
-        });
-    });
+onMounted(async () => {
+    // Initialize isHidden based on initial widgets
+    if (props.widgets.length > 0) {
+        isHidden.value = false;
+    }
+    
+    // The container element always exists now, so we can initialize immediately
+    await initializeGridStack();
 });
 
 onUnmounted(() => {
@@ -195,20 +213,15 @@ const currentWidgetIds = ref<Set<string>>(new Set());
 
 // Watch for widgets being added or removed from the parent
 watch(() => props.widgets, async (newWidgets) => {
+    // Grid must exist to continue
     if (!grid.value) return;
     
-    // Complete initialization after widgets are loaded and positioned
-    if (isInitializing.value && newWidgets.length > 0) {
-        await nextTick();
-        // Allow one frame for GridStack to position widgets, then enable change tracking
-        setTimeout(() => {
-            isInitializing.value = false;
-        }, 100);
+    // Set hidden state based on whether we have widgets
+    if (newWidgets.length === 0 && !isHidden.value) {
+        isHidden.value = true;
     }
-    
-    // If widgets list becomes empty (new dashboard loading), reset initialization flag
-    if (newWidgets.length === 0 && !isInitializing.value) {
-        isInitializing.value = true;
+    else if (newWidgets.length > 0 && isHidden.value) {
+        isHidden.value = false;
     }
 
     const newIds = new Set(newWidgets.map(w => w.widgetId));
@@ -233,7 +246,7 @@ watch(() => props.widgets, async (newWidgets) => {
         
         const el = gridstackContainer.value?.querySelector(`[gs-id="${widgetId}"]`);
         
-        if (el && !grid.value.engine.nodes.some(n => n.id === widgetId)) {
+        if (el && grid.value && !grid.value.engine.nodes.some(n => n.id === widgetId)) {
             grid.value.makeWidget(el as HTMLElement);
         }
     }
@@ -241,12 +254,18 @@ watch(() => props.widgets, async (newWidgets) => {
     // Update our tracking set
     currentWidgetIds.value = newIds;
 
-    // Trigger compaction after changes
+    // Emit layout change after widget additions/removals
     if (addedWidgetIds.length > 0 || removedWidgetIds.length > 0) {
         await nextTick();
-        if (grid.value) {
-            grid.value.compact();
-        }
+        emit("layout-change");
+    }
+
+    // Show grid after widgets are loaded and positioned
+    if (isHidden.value && newWidgets.length > 0) {
+        await nextTick();
+        setTimeout(() => {
+            isHidden.value = false;
+        }, 100);
     }
 }, { deep: true });
 
@@ -254,7 +273,6 @@ watch(() => props.widgets, async (newWidgets) => {
 watch(() => props.widgets, (widgets) => {
     currentWidgetIds.value = new Set(widgets.map(w => w.widgetId));
 }, { immediate: true });
-
 
 const getWidgetComponent = (widgetType: string) => widgetComponents[widgetType] || "div";
 const getWidgetDefinition = (widgetType: string) => props.widgetDefinitions.find((def) => def.widgetType === widgetType);
@@ -345,5 +363,58 @@ defineExpose({
     opacity: 0.8 !important;
     transform: scale(1.02) !important;
     z-index: 1000 !important;
+}
+
+/* Empty Dashboard State */
+.empty-dashboard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: var(--color-white);
+    border-radius: 0.75rem;
+    border: 2px dashed var(--color-border-light);
+    color: var(--color-text-secondary);
+}
+
+.empty-icon {
+    margin-bottom: 1.5rem;
+    color: var(--color-text-tertiary);
+    opacity: 0.6;
+}
+
+.empty-title {
+    margin: 0 0 1rem 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.empty-description {
+    margin: 0 0 2rem 0;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+    max-width: 400px;
+}
+
+
+/* Responsive adjustments for empty state */
+@media (max-width: 768px) {
+    .empty-dashboard {
+        min-height: 300px;
+        padding: 2rem 1rem;
+    }
+    
+    .empty-title {
+        font-size: 1.25rem;
+    }
+    
+    .empty-description {
+        font-size: 0.875rem;
+    }
 }
 </style>
