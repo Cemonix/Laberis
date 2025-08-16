@@ -23,11 +23,11 @@
 
                 <div class="header-actions">
                     <Button
-                        @click="toggleEditMode"
-                        :variant="editMode ? 'secondary' : 'primary'"
+                        @click="openAddWidget"
+                        variant="primary"
                     >
-                        <font-awesome-icon :icon="editMode ? faCheck : faEdit" />
-                        {{ editMode ? "Done" : "Edit Layout" }}
+                        <font-awesome-icon :icon="faPlus" />
+                        Add Widget
                     </Button>
 
                     <Button
@@ -78,7 +78,6 @@
                 ref="dashboardGridRef"
                 :widgets="dashboardStore.layout?.widgets || []"
                 :widget-definitions="dashboardStore.widgetDefinitions"
-                :edit-mode="editMode"
                 :auto-refresh="autoRefresh"
                 :refresh-interval="refreshInterval"
                 @widget-move="handleWidgetMove"
@@ -108,8 +107,7 @@ import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
-    faEdit,
-    faCheck,
+    faPlus,
     faRefresh,
     faCog,
     faExclamationCircle
@@ -141,7 +139,6 @@ const { handleError } = useErrorHandler();
 const dashboardGridRef = ref<InstanceType<typeof DashboardGrid>>();
 
 // Component state
-const editMode = ref(false);
 const refreshing = ref(false);
 const showSettingsModal = ref(false);
 const autoRefresh = ref(true);
@@ -243,8 +240,21 @@ onMounted(async () => {
     router.push("/projects");
 });
 
-onUnmounted(() => {
+onUnmounted(async () => {
     stopAutoRefresh();
+    
+    // Clear the debounced save timeout and save immediately if pending
+    if (saveLayoutTimeout) {
+        clearTimeout(saveLayoutTimeout);
+        try {
+            // Wait for save to complete before clearing state
+            await saveDashboardLayout();
+        } catch (error) {
+            // Log error but don't throw to prevent unmount issues
+            logger.error("Failed to save layout on unmount", error);
+        }
+    }
+    
     dashboardStore.clearState();
 });
 
@@ -327,18 +337,18 @@ const retryLoad = async (): Promise<void> => {
     await initializeDashboard(currentProject.value.id);
 };
 
-const toggleEditMode = (): void => {
-    editMode.value = !editMode.value;
-    logger.info("Edit mode toggled", { editMode: editMode.value });
-
-    if (!editMode.value) {
-        // Save layout when exiting edit mode
-        saveDashboardLayout();
-    }
+const openAddWidget = (): void => {
+    dashboardGridRef.value?.openAddWidgetModal();
 };
 
 const saveDashboardLayout = async (): Promise<void> => {
     if (!currentProject.value) return;
+    
+    // Check if we have a layout to save
+    if (!dashboardStore.layout) {
+        logger.debug("No layout to save, skipping save operation");
+        return;
+    }
 
     try {
         await dashboardStore.saveConfiguration(currentProject.value.id);
@@ -440,11 +450,22 @@ const handleWidgetRefresh = async ({
     }
 };
 
-const handleLayoutChange = (): void => {
-    // Auto-save layout changes if not in edit mode
-    if (!editMode.value) {
-        saveDashboardLayout();
+// Debounced save to prevent excessive API calls during drag operations
+let saveLayoutTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const debouncedSaveLayout = (): void => {
+    if (saveLayoutTimeout) {
+        clearTimeout(saveLayoutTimeout);
     }
+    
+    saveLayoutTimeout = setTimeout(() => {
+        saveDashboardLayout();
+    }, 500); // Wait 500ms after last change before saving
+};
+
+const handleLayoutChange = (): void => {
+    // Use debounced save for layout changes
+    debouncedSaveLayout();
 };
 
 const loadWidgetData = async (widget: any): Promise<void> => {
@@ -502,7 +523,7 @@ const startAutoRefresh = (): void => {
 
     if (refreshInterval.value > 0) {
         autoRefreshTimer.value = setInterval(() => {
-            if (!refreshing.value && !editMode.value) {
+            if (!refreshing.value) {
                 refreshDashboard();
             }
         }, refreshInterval.value);
