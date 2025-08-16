@@ -34,10 +34,18 @@
                     :class="{
                         'widget-card': true,
                         'widget-card-selected':
-                            selectedWidgetType === widget.widgetType,
+                            selectedWidgetTypes.includes(widget.widgetType),
                     }"
-                    @click="selectWidget(widget)"
+                    @click="toggleWidget(widget)"
                 >
+                    <div class="widget-checkbox">
+                        <input
+                            type="checkbox"
+                            :checked="selectedWidgetTypes.includes(widget.widgetType)"
+                            @click.stop
+                            @change="toggleWidget(widget)"
+                        />
+                    </div>
                     <div class="widget-icon">
                         <font-awesome-icon :icon="getWidgetIcon(widget.widgetType)" />
                     </div>
@@ -63,35 +71,34 @@
                 </div>
             </div>
 
-            <div v-if="selectedWidget" class="widget-preview">
-                <h4>Widget Preview</h4>
-                <div class="preview-container">
-                    <div class="preview-widget">
-                        <div class="preview-header">
-                            <span>{{
-                                customTitle || selectedWidget.title
-                            }}</span>
+            <div v-if="selectedWidgetTypes.length > 0" class="widget-preview">
+                <h4>Selected Widgets ({{ selectedWidgetTypes.length }})</h4>
+                <div class="selected-widgets-list">
+                    <div
+                        v-for="widgetType in selectedWidgetTypes"
+                        :key="widgetType"
+                        class="selected-widget-item"
+                    >
+                        <div class="selected-widget-info">
+                            <div class="selected-widget-icon">
+                                <font-awesome-icon :icon="getWidgetIcon(widgetType)" />
+                            </div>
+                            <div class="selected-widget-details">
+                                <span class="selected-widget-name">
+                                    {{ getWidgetDefinition(widgetType)?.title }}
+                                </span>
+                                <span class="selected-widget-size">
+                                    {{ getWidgetDefinition(widgetType)?.defaultWidth }}×{{ getWidgetDefinition(widgetType)?.defaultHeight }}
+                                </span>
+                            </div>
                         </div>
-                        <div class="preview-content">
-                            <span class="preview-placeholder">{{
-                                selectedWidget.description
-                            }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="widget-options">
-                    <div class="form-group">
-                        <label for="widget-title"
-                            >Custom Title (optional)</label
+                        <button
+                            @click="removeWidget(widgetType)"
+                            class="remove-widget-btn"
+                            type="button"
                         >
-                        <input
-                            id="widget-title"
-                            v-model="customTitle"
-                            type="text"
-                            :placeholder="selectedWidget.title"
-                            class="form-input"
-                        />
+                            <font-awesome-icon :icon="faTimes" />
+                        </button>
                     </div>
                 </div>
             </div>
@@ -109,10 +116,10 @@
                 </Button>
                 <Button
                     @click="addWidget"
-                    :disabled="!selectedWidget"
+                    :disabled="selectedWidgetTypes.length === 0"
                     variant="primary"
                 >
-                    Add Widget
+                    Add {{ selectedWidgetTypes.length > 1 ? `${selectedWidgetTypes.length} Widgets` : 'Widget' }}
                 </Button>
             </div>
         </template>
@@ -133,7 +140,8 @@ import {
     faDatabase, 
     faCube, 
     faCog, 
-    faSearch 
+    faSearch,
+    faTimes
 } from "@fortawesome/free-solid-svg-icons";
 import ModalWindow from "@/components/common/modal/ModalWindow.vue";
 import Button from "@/components/common/Button.vue";
@@ -144,7 +152,7 @@ interface Props {
 }
 
 interface Emits {
-    (e: "add", payload: { widgetType: string; title?: string }): void;
+    (e: "add", payload: { widgetTypes: string[] }): void;
     (e: "close"): void;
 }
 
@@ -154,8 +162,7 @@ const emit = defineEmits<Emits>();
 // Reactive state
 const searchQuery = ref("");
 const selectedCategory = ref("All");
-const selectedWidgetType = ref<string | null>(null);
-const customTitle = ref("");
+const selectedWidgetTypes = ref<string[]>([]);
 
 // Computed properties
 const categories = computed(() => {
@@ -225,18 +232,25 @@ const filteredWidgets = computed(() => {
     return widgets;
 });
 
-const selectedWidget = computed(() =>
-    selectedWidgetType.value
-        ? props.widgetDefinitions.find(
-              (w) => w.widgetType === selectedWidgetType.value
-          )
-        : null
-);
-
 // Methods
-const selectWidget = (widget: WidgetDefinitionDto) => {
-    selectedWidgetType.value = widget.widgetType;
-    customTitle.value = "";
+const toggleWidget = (widget: WidgetDefinitionDto) => {
+    const index = selectedWidgetTypes.value.indexOf(widget.widgetType);
+    if (index > -1) {
+        selectedWidgetTypes.value.splice(index, 1);
+    } else {
+        selectedWidgetTypes.value.push(widget.widgetType);
+    }
+};
+
+const removeWidget = (widgetType: string) => {
+    const index = selectedWidgetTypes.value.indexOf(widgetType);
+    if (index > -1) {
+        selectedWidgetTypes.value.splice(index, 1);
+    }
+};
+
+const getWidgetDefinition = (widgetType: string) => {
+    return props.widgetDefinitions.find(w => w.widgetType === widgetType);
 };
 
 const getWidgetIcon = (widgetType: string) => {
@@ -255,11 +269,10 @@ const getWidgetIcon = (widgetType: string) => {
 };
 
 const addWidget = () => {
-    if (!selectedWidget.value) return;
+    if (selectedWidgetTypes.value.length === 0) return;
 
     emit("add", {
-        widgetType: selectedWidget.value.widgetType,
-        title: customTitle.value || undefined,
+        widgetTypes: [...selectedWidgetTypes.value],
     });
 };
 </script>
@@ -342,6 +355,8 @@ const addWidget = () => {
     padding: 0.75rem;
     border-radius: 0.75rem;
     background: var(--color-gray-50);
+    overflow-y: auto;
+    z-index: 1;
 }
 
 .widget-card {
@@ -447,84 +462,104 @@ const addWidget = () => {
     gap: 0.125rem;
 }
 
+.widget-checkbox {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 10;
+}
+
+.widget-checkbox input[type="checkbox"] {
+    width: 1.125rem;
+    height: 1.125rem;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
 .widget-preview {
     padding: 1rem;
     background: var(--color-gray-100);
     border-radius: 0.5rem;
+    position: relative;
+    z-index: 2;
+}
+
+.selected-widgets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+.selected-widget-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-300);
+    border-radius: 0.5rem;
+}
+
+.selected-widget-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.selected-widget-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    background: linear-gradient(135deg, var(--color-blue-100) 0%, var(--color-gray-200) 100%);
+    border-radius: 0.5rem;
+    color: var(--color-primary);
+    font-size: 1rem;
+}
+
+.selected-widget-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.selected-widget-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-gray-800);
+}
+
+.selected-widget-size {
+    font-size: 0.75rem;
+    color: var(--color-gray-600);
+}
+
+.remove-widget-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    background: var(--color-gray-200);
+    border: none;
+    border-radius: 0.25rem;
+    color: var(--color-gray-600);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.remove-widget-btn:hover {
+    background: var(--color-error);
+    color: var(--color-white);
 }
 
 .widget-preview h4 {
     margin: 0 0 1rem 0;
     font-size: 0.875rem;
     font-weight: 600;
-}
-
-.preview-container {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 1rem;
-}
-
-.preview-widget {
-    width: 12.5rem;
-    height: 7.5rem;
-    background: var(--color-white);
-    border: 0.0625rem solid var(--color-gray-300);
-    border-radius: 0.375rem;
-}
-
-.preview-header {
-    padding: 0.5rem 0.75rem;
-    background: var(--color-gray-100);
-    border-bottom: 0.0625rem solid var(--color-gray-300);
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.preview-content {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: calc(100% - 2rem);
-    padding: 0.75rem;
-}
-
-.preview-placeholder {
-    font-size: 0.625rem;
-    color: var(--color-gray-600);
-    text-align: center;
-    line-height: 1.3;
-}
-
-.widget-options {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.form-group label {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--color-gray-800);
-}
-
-.form-input {
-    padding: 0.75rem;
-    border: 0.0625rem solid var(--color-gray-300);
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 0.125rem rgba(0, 123, 255, 0.2);
 }
 
 .no-widgets {
@@ -573,11 +608,21 @@ const addWidget = () => {
 
     .widget-card {
         padding: 0.75rem;
+        padding-right: 2.5rem; /* Make room for checkbox */
     }
 
-    .preview-widget {
-        width: 9.375rem;
-        height: 5.625rem;
+    .selected-widgets-list {
+        max-height: 8rem;
+    }
+
+    .selected-widget-item {
+        padding: 0.5rem;
+    }
+
+    .selected-widget-icon {
+        width: 1.5rem;
+        height: 1.5rem;
+        font-size: 0.875rem;
     }
 }
 </style>
