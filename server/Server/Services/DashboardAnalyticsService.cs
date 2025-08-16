@@ -341,17 +341,27 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
             status.Percentage = tasksInPeriod.Count > 0 ? (decimal)status.Count / tasksInPeriod.Count * 100 : 0;
         }
 
+        // Batch query for all vetoed events in the date range
+        var vetoedEvents = await _context.TaskEvents
+            .Where(te => te.Task!.ProjectId == projectId &&
+                te.CreatedAt.Date >= dateFrom.Value.Date &&
+                te.CreatedAt.Date <= dateTo.Value.Date &&
+                te.EventType == TaskEventType.STATUS_CHANGED &&
+                te.Details != null && te.Details.Contains("CHANGES_REQUIRED")
+            ).ToListAsync();
+
+        // Group vetoed events by date
+        var vetoedEventsByDate = vetoedEvents
+            .GroupBy(te => te.CreatedAt.Date)
+            .ToDictionary(g => g.Key, g => g.Count());
+
         // Daily task counts
         var dailyTaskCounts = new List<DailyTaskCountDto>();
         for (var date = dateFrom.Value.Date; date <= dateTo.Value.Date; date = date.AddDays(1))
         {
             var dayTasks = tasksInPeriod.Where(t => t.CreatedAt.Date == date).ToList();
             var dayCompleted = dayTasks.Count(t => t.CompletedAt?.Date == date);
-            var dayVetoed = await _context.TaskEvents
-                .CountAsync(te => te.Task!.ProjectId == projectId &&
-                    te.CreatedAt.Date == date &&
-                    te.EventType == TaskEventType.STATUS_CHANGED &&
-                    te.Details != null && te.Details.Contains("CHANGES_REQUIRED"));
+            var dayVetoed = vetoedEventsByDate.TryGetValue(date, out var count) ? count : 0;
 
             dailyTaskCounts.Add(new DailyTaskCountDto
             {
@@ -363,16 +373,16 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
         }
 
         return new TaskStatisticsDto
-        {
-            DateRange = dateTo.Value - dateFrom.Value,
-            TotalTasks = tasksInPeriod.Count,
-            CompletedTasks = completedTasks.Count,
-            VetoedTasks = vetoedTasks,
-            AverageCompletionTimeHours = averageCompletionTime,
-            ProductivityTrend = productivityTrend,
-            StatusDistribution = statusDistribution,
-            DailyTaskCounts = dailyTaskCounts
-        };
+            {
+                DateRange = dateTo.Value - dateFrom.Value,
+                TotalTasks = tasksInPeriod.Count,
+                CompletedTasks = completedTasks.Count,
+                VetoedTasks = vetoedTasks,
+                AverageCompletionTimeHours = averageCompletionTime,
+                ProductivityTrend = productivityTrend,
+                StatusDistribution = statusDistribution,
+                DailyTaskCounts = dailyTaskCounts
+            };
     }
 
     /// <summary>

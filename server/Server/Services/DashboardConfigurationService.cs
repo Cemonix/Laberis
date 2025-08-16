@@ -197,27 +197,6 @@ public class DashboardConfigurationService : IDashboardConfigurationService
             },
             new()
             {
-                WidgetType = "recent_activities",
-                Title = "Recent Activities",
-                Description = "Live feed of recent project activities and updates",
-                DefaultWidth = 4,
-                DefaultHeight = 6,
-                RequiresConfiguration = false,
-                SupportedRoles = ["VIEWER", "ANNOTATOR", "REVIEWER", "MANAGER"],
-                AvailableSettings =
-                [
-                    new WidgetSettingDto
-                    {
-                        Key = "limit",
-                        Label = "Number of Activities",
-                        Type = "number",
-                        DefaultValue = 20,
-                        HelpText = "Maximum number of activities to display"
-                    }
-                ]
-            },
-            new()
-            {
                 WidgetType = "project_health",
                 Title = "Project Health",
                 Description = "High-level project status and health indicators",
@@ -294,10 +273,7 @@ public class DashboardConfigurationService : IDashboardConfigurationService
             
             "recent_activity" => await _analyticsService.GetRecentActivityAsync(
                 projectId, request.Limit ?? 20),
-            
-            "recent_activities" => await _analyticsService.GetRecentActivityAsync(
-                projectId, request.Limit ?? 20),
-            
+                
             "project_health" => await _analyticsService.GetProjectHealthAsync(projectId),
             
             "task_statistics" => await _analyticsService.GetTaskStatisticsAsync(
