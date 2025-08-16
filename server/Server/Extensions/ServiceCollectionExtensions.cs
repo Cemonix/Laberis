@@ -201,6 +201,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPermissionConfigurationService, PermissionConfigurationService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<IDashboardAnalyticsService, DashboardAnalyticsService>();
+        services.AddScoped<IDashboardConfigurationService, DashboardConfigurationService>();
 
         return services;
     }
