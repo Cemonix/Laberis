@@ -10,14 +10,6 @@
         :transparent="false"
     />
     
-    <!-- Show navigation loader during route changes -->
-    <PageLoader
-        v-else-if="navigationStore.isNavigating"
-        :title="navigationStore.navigationMessage"
-        subtitle="Please wait..."
-        :transparent="true"
-    />
-    
     <!-- Main app content -->
     <component v-else :is="layout">
         <router-view />
@@ -30,11 +22,9 @@ import { useRoute } from 'vue-router';
 import DefaultLayout from '@/layouts/DefaultLayout.vue';
 import PageLoader from '@/components/common/PageLoader.vue';
 import { useAuthStore } from '@/stores/authStore';
-import { useNavigationStore } from '@/stores/navigationStore';
 
 const route = useRoute();
 const authStore = useAuthStore();
-const navigationStore = useNavigationStore();
 
 
 const layout = computed(() => {

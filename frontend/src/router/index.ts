@@ -6,7 +6,6 @@ import WorkspaceLayout from '@/layouts/WorkspaceLayout.vue';
 import DataExplorerLayout from '@/layouts/DataExplorerLayout.vue';
 import { useAuthStore } from '@/stores/authStore';
 import { usePermissionStore } from '@/stores/permissionStore';
-import { useNavigationStore } from '@/stores/navigationStore';
 import { AppLogger } from '@/utils/logger';
 
 const routes: Array<RouteRecordRaw> = [
@@ -181,7 +180,6 @@ const logger = AppLogger.createServiceLogger('Router');
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
     const permissionStore = usePermissionStore();
-    const navigationStore = useNavigationStore();
     
     const isPublicRoute = publicRoutes.includes(to.name as string);
     const isAuthRoute = authRoutes.includes(to.name as string);
@@ -222,11 +220,6 @@ router.beforeEach(async (to, from, next) => {
             logger.info(`Skipping auth initialization for route: ${String(to.name)}`);
             authStore.isInitialized = true;
         }
-    }
-    
-    // Show loading for navigation between different routes (not auth initialization)
-    if (authStore.isInitialized && from.name !== to.name && to.name !== 'Error') {
-        navigationStore.startNavigation(getNavigationMessage(to.name as string));
     }
 
     // Check authentication and handle redirects
@@ -307,29 +300,5 @@ router.beforeEach(async (to, from, next) => {
         next();
     }
 });
-
-// Hide loading spinner when navigation completes
-router.afterEach(() => {
-    const navigationStore = useNavigationStore();
-    navigationStore.finishNavigation();
-});
-
-// Helper function to get navigation message
-function getNavigationMessage(routeName: string): string {
-    const messages: Record<string, string> = {
-        'ProjectDetail': 'Loading project...',
-        'ProjectList': 'Loading projects...',
-        'TasksView': 'Loading tasks...',
-        'WorkflowPipelineView': 'Loading pipeline...',
-        'DataExplorerView': 'Loading data explorer...',
-        'LabelSchemesView': 'Loading label schemes...',
-        'ProjectSettingsView': 'Loading settings...',
-        'AnnotationWorkspace': 'Loading workspace...',
-        'Account': 'Loading account...',
-        'Home': 'Loading dashboard...',
-    };
-    
-    return messages[routeName] || 'Loading page...';
-}
 
 export default router;
