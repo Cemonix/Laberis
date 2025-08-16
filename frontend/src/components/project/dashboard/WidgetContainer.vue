@@ -1,5 +1,13 @@
 <template>
-    <div class="grid-stack-item" @click="$emit('select')">
+    <div 
+        class="grid-stack-item" 
+        :gs-id="gsId"
+        :gs-x="gsX"
+        :gs-y="gsY"
+        :gs-w="gsW"
+        :gs-h="gsH"
+        @click="$emit('select')"
+    >
         <div 
             class="widget-container grid-stack-item-content"
             :class="{ 'widget-selected': selected }"
@@ -74,6 +82,11 @@ interface Props {
     subtitle?: string;
     selected?: boolean;
     refreshing?: boolean;
+    gsId?: string;
+    gsX?: number;
+    gsY?: number;
+    gsW?: number;
+    gsH?: number;
 }
 
 interface Emits {
@@ -96,10 +109,6 @@ defineEmits<Emits>();
     overflow: hidden; /* Changed from auto to hidden for cleaner resizing */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.08);
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
 }
 
 .widget-container:hover {
