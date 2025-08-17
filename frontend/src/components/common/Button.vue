@@ -8,7 +8,7 @@
 import { computed } from 'vue';
 
 const props = withDefaults(defineProps<{
-    variant?: 'primary' | 'secondary' | 'danger' | 'success';
+    variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'info';
 }>(), {
     variant: 'primary',
 });
@@ -65,6 +65,24 @@ const buttonClass = computed(() => [
 
     &:hover {
         background-color: var(--color-green-700);
+    }
+}
+
+.btn-warning {
+    background-color: var(--color-yellow-500);
+    color: var(--color-white);
+
+    &:hover {
+        background-color: var(--color-yellow-600);
+    }
+}
+
+.btn-info {
+    background-color: var(--color-turquoise-500);
+    color: var(--color-white);
+
+    &:hover {
+        background-color: var(--color-turquoise-600);
     }
 }
 
