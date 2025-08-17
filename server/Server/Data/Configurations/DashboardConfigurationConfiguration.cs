@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using server.Models.Domain;
+using server.Models.Domain.Enums;
 
 namespace server.Data.Configurations;
 
@@ -55,5 +56,8 @@ public class DashboardConfigurationConfiguration : IEntityTypeConfiguration<Dash
             .WithMany()
             .HasForeignKey(dc => dc.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Query filter to match Project entity's filter - exclude configurations for projects pending deletion
+        entity.HasQueryFilter(dc => dc.Project.Status != ProjectStatus.PENDING_DELETION);
     }
 }
