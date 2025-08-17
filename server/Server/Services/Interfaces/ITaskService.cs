@@ -125,20 +125,6 @@ public interface ITaskService
     /// <returns>A task that represents the asynchronous operation, containing the number of tasks created.</returns>
     Task<int> CreateTasksForDataSourceAsync(int projectId, int workflowId, int workflowStageId, int dataSourceId);
 
-    /// <summary>
-    /// Checks if a data source has any assets available for task creation.
-    /// </summary>
-    /// <param name="projectId">The ID of the project.</param>
-    /// <param name="dataSourceId">The ID of the data source to check.</param>
-    /// <returns>A task that represents the asynchronous operation, returning true if assets are available, otherwise false.</returns>
-    Task<bool> HasAssetsAvailableAsync(int projectId, int dataSourceId);
-
-    /// <summary>
-    /// Gets the count of assets available in a project for task creation.
-    /// </summary>
-    /// <param name="projectId">The ID of the project.</param>
-    /// <returns>A task that represents the asynchronous operation, containing the count of available assets.</returns>
-    Task<int> GetAvailableAssetsCountAsync(int projectId);
 
     /// <summary>
     /// Marks a task as completed, unlocking the asset for subsequent workflow stages.
