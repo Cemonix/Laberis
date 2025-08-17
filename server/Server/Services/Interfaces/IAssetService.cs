@@ -3,6 +3,7 @@ using server.Models.DTOs.Asset;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
 using TaskStatus = server.Models.Domain.Enums.TaskStatus;
+using server.Models.Internal;
 
 namespace server.Services.Interfaces;
 
@@ -91,7 +92,7 @@ public interface IAssetService
     /// <param name="targetStatus">The target status the task is changing to.</param>
     /// <param name="userId">The ID of the user performing the action.</param>
     /// <returns>A task that represents the asynchronous operation, containing information about the movement.</returns>
-    Task<AssetMovementResult> HandleTaskWorkflowAssetMovementAsync(server.Models.Domain.Task task, TaskStatus targetStatus, string userId);
+    Task<AssetMovementResult> HandleTaskWorkflowAssetMovementAsync(Models.Domain.Task task, TaskStatus targetStatus, string userId);
 
     /// <summary>
     /// Handles asset movement back to annotation stage when a task is vetoed/returned for rework.
@@ -99,38 +100,27 @@ public interface IAssetService
     /// <param name="task">The task that is being vetoed.</param>
     /// <param name="userId">The ID of the user performing the veto action.</param>
     /// <returns>A task that represents the asynchronous operation, containing information about the movement.</returns>
-    Task<AssetMovementResult> HandleTaskVetoAssetMovementAsync(server.Models.Domain.Task task, string userId);
-}
-
-/// <summary>
-/// Result information for asset movement operations during workflow progression.
-/// </summary>
-public class AssetMovementResult
-{
-    /// <summary>
-    /// Whether the asset was moved to a different data source.
-    /// </summary>
-    public bool AssetMoved { get; set; }
+    Task<AssetMovementResult> HandleTaskVetoAssetMovementAsync(Models.Domain.Task task, string userId);
 
     /// <summary>
-    /// Whether the current task should be archived.
+    /// Checks if a data source has assets available for task creation.
     /// </summary>
-    public bool ShouldArchiveTask { get; set; }
+    /// <param name="projectId">The ID of the project.</param>
+    /// <returns>A task that represents the asynchronous operation, returning true if assets are available.</returns>
+    Task<bool> HasAssetsAvailableAsync(int projectId);
 
     /// <summary>
-    /// The ID of the workflow stage where tasks should be created, if any.
-    /// TaskService will handle the actual task creation.
+    /// Gets the count of available assets for task creation in a specific data source.
     /// </summary>
-    public int? TargetWorkflowStageId { get; set; }
+    /// <param name="projectId">The ID of the project.</param>
+    /// <returns>A task returning the count of available assets.</returns>
+    Task<int> GetAvailableAssetsCountAsync(int projectId);
 
     /// <summary>
-    /// The data source ID where tasks should be created, if any.
-    /// TaskService will use this information to create tasks.
+    /// Gets the count of available assets for task creation in a specific data source.
     /// </summary>
-    public int? TargetDataSourceId { get; set; }
-
-    /// <summary>
-    /// Any error messages that occurred during the process.
-    /// </summary>
-    public string? ErrorMessage { get; set; }
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="dataSourceId">The ID of the data source.</param>
+    /// <returns>A task returning the list of available assets.</returns>
+    Task<IEnumerable<Asset>> GetAvailableAssetsFromDataSourceAsync(int projectId, int dataSourceId);
 }
