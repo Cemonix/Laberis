@@ -28,7 +28,9 @@ export enum TaskStatus {
     DEFERRED = "DEFERRED",
     READY_FOR_ANNOTATION = "READY_FOR_ANNOTATION",
     READY_FOR_REVIEW = "READY_FOR_REVIEW",
-    READY_FOR_COMPLETION = "READY_FOR_COMPLETION"
+    READY_FOR_COMPLETION = "READY_FOR_COMPLETION",
+    CHANGES_REQUIRED = "CHANGES_REQUIRED",
+    VETOED = "VETOED"
 }
 
 export interface Task {
@@ -39,6 +41,9 @@ export interface Task {
     archivedAt?: string;
     suspendedAt?: string;
     deferredAt?: string;
+    vetoedAt?: string;
+    changesRequiredAt?: string;
+    workingTimeMs: number;
     createdAt: string;
     updatedAt: string;
     assetId: number;
@@ -84,6 +89,7 @@ export interface UpdateTaskRequest {
     assignedToUserId?: string;
     assignedToEmail?: string | null;
     status?: TaskStatus;
+    workingTimeMs?: number;
 }
 
 export interface TaskWithDetails extends Task {

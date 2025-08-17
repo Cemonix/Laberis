@@ -18,6 +18,8 @@ export interface WorkspaceState {
     timerInstance: Timer;
     elapsedTimeDisplay: string;
     timerIntervalId: number | null;
+    timeAutoSaveIntervalId: number | null;
+    lastSavedWorkingTime: number;
     viewOffset: Point
     zoomLevel: number;
     activeTool: ToolName;

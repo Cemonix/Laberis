@@ -78,7 +78,8 @@ export const PERMISSIONS = {
     TASK: {
         READ: 'task:read',
         ASSIGN: 'task:assign',
-        UPDATE_STATUS: 'task:update:status'
+        UPDATE_STATUS: 'task:update:status',
+        RETURN_FOR_REWORK: 'task:return:for:rework'
     },
 
     ANNOTATION: {
