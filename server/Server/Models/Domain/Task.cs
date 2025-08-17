@@ -12,6 +12,9 @@ public class Task
     public DateTime? ArchivedAt { get; set; }
     public DateTime? SuspendedAt { get; set; }
     public DateTime? DeferredAt { get; set; }
+    public DateTime? VetoedAt { get; set; }
+    public DateTime? ChangesRequiredAt { get; set; }
+    public long WorkingTimeMs { get; set; } = 0; // Total working time in milliseconds
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

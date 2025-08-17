@@ -11,7 +11,10 @@ public record class TaskDto
     public DateTime? ArchivedAt { get; init; }
     public DateTime? SuspendedAt { get; init; }
     public DateTime? DeferredAt { get; init; }
-    public server.Models.Domain.Enums.TaskStatus Status { get; init; }
+    public DateTime? VetoedAt { get; init; }
+    public DateTime? ChangesRequiredAt { get; init; }
+    public long WorkingTimeMs { get; init; }
+    public Domain.Enums.TaskStatus Status { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
     public int AssetId { get; init; }
