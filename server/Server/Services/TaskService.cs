@@ -316,6 +316,13 @@ public class TaskService : ITaskService
         existingTask.ArchivedAt = ConvertToUtcIfSpecified(updateDto.ArchivedAt) ?? existingTask.ArchivedAt;
         existingTask.SuspendedAt = ConvertToUtcIfSpecified(updateDto.SuspendedAt) ?? existingTask.SuspendedAt;
         existingTask.DeferredAt = ConvertToUtcIfSpecified(updateDto.DeferredAt) ?? existingTask.DeferredAt;
+        
+        // Update working time if provided
+        if (updateDto.WorkingTimeMs.HasValue)
+        {
+            existingTask.WorkingTimeMs = updateDto.WorkingTimeMs.Value;
+        }
+        
         existingTask.UpdatedAt = DateTime.UtcNow;
 
         await _taskRepository.SaveChangesAsync();
@@ -715,6 +722,13 @@ public class TaskService : ITaskService
             return MapToDto(existingTask);
         }
 
+        // Special handling for CHANGES_REQUIRED tasks - reactivate the vetoed task in review/completion stage
+        if (existingTask.ChangesRequiredAt.HasValue)
+        {
+            _logger.LogInformation("Task {TaskId} has CHANGES_REQUIRED status, reactivating vetoed task", taskId);
+            return await CompleteChangesRequiredTaskAsync(taskId, userId);
+        }
+
         // Find next workflow stage
         var nextStage = await _taskRepository.GetNextWorkflowStageAsync(existingTask.CurrentWorkflowStageId);
         
@@ -783,6 +797,82 @@ public class TaskService : ITaskService
             taskId, nextStage.WorkflowStageId);
 
         return MapToDto(existingTask);
+    }
+
+    private async Task<TaskDto?> CompleteChangesRequiredTaskAsync(int taskId, string userId)
+    {
+        _logger.LogInformation("Completing CHANGES_REQUIRED task {TaskId} and reactivating vetoed task by user {UserId}", taskId, userId);
+
+        var changesRequiredTask = await _taskRepository.GetByIdAsync(taskId);
+        if (changesRequiredTask == null)
+        {
+            _logger.LogWarning("Task with ID {TaskId} not found for changes required completion", taskId);
+            return null;
+        }
+
+        // Complete the annotation task with changes required
+        changesRequiredTask.CompletedAt = DateTime.UtcNow;
+        changesRequiredTask.ChangesRequiredAt = null;  // Clear the changes required flag
+        // Clear any conflicting state timestamps to ensure proper completion
+        changesRequiredTask.SuspendedAt = null;
+        changesRequiredTask.DeferredAt = null;
+        changesRequiredTask.LastWorkedOnByUserId = userId;
+        changesRequiredTask.UpdatedAt = DateTime.UtcNow;
+
+        // Find the vetoed task for the same asset in review or completion stages
+        var vetoedTasks = await _taskRepository.FindAsync(t => 
+            t.AssetId == changesRequiredTask.AssetId && 
+            t.WorkflowId == changesRequiredTask.WorkflowId &&
+            t.VetoedAt.HasValue &&
+            t.CurrentWorkflowStage != null &&
+            (t.CurrentWorkflowStage.StageType == WorkflowStageType.REVISION || 
+             t.CurrentWorkflowStage.StageType == WorkflowStageType.COMPLETION));
+
+        var vetoedTask = vetoedTasks.FirstOrDefault();
+        
+        if (vetoedTask != null)
+        {
+            // Reactivate the vetoed task by clearing the veto timestamp
+            vetoedTask.VetoedAt = null;
+            vetoedTask.UpdatedAt = DateTime.UtcNow;
+            
+            _logger.LogInformation("Reactivated vetoed task {VetoedTaskId} for asset {AssetId} in stage {StageId}", 
+                vetoedTask.TaskId, changesRequiredTask.AssetId, vetoedTask.CurrentWorkflowStageId);
+
+            // Create TaskEvent for reactivation
+            var reactivationEvent = new TaskEvent
+            {
+                EventType = TaskEventType.STATUS_CHANGED,
+                Details = $"Task reactivated after changes were completed in annotation",
+                TaskId = vetoedTask.TaskId,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _taskEventRepository.AddAsync(reactivationEvent);
+        }
+        else
+        {
+            _logger.LogWarning("No vetoed task found for asset {AssetId} in workflow {WorkflowId}", 
+                changesRequiredTask.AssetId, changesRequiredTask.WorkflowId);
+        }
+
+        // Create TaskEvent for completion of changes required task
+        var completionEvent = new TaskEvent
+        {
+            EventType = TaskEventType.STATUS_CHANGED,
+            Details = $"CHANGES_REQUIRED task completed, changes addressed",
+            TaskId = taskId,
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _taskEventRepository.AddAsync(completionEvent);
+        await _taskRepository.SaveChangesAsync();
+
+        _logger.LogInformation("Successfully completed CHANGES_REQUIRED task {TaskId} and reactivated vetoed task", taskId);
+
+        return MapToDto(changesRequiredTask);
     }
 
     public async Task<TaskDto?> MarkTaskIncompleteAsync(int taskId, string userId)
@@ -935,9 +1025,15 @@ public class TaskService : ITaskService
 
         // Allow returning tasks in review stages (by reviewers) or completion stages (by managers)
         var currentStageType = existingTask.CurrentWorkflowStage?.StageType;
+        _logger.LogInformation("Task {TaskId} workflow stage info - StageId: {StageId}, StageType: {StageType}, StageName: {StageName}", 
+            taskId, 
+            existingTask.CurrentWorkflowStageId, 
+            currentStageType,
+            existingTask.CurrentWorkflowStage?.Name);
+        
         if (currentStageType != WorkflowStageType.REVISION && currentStageType != WorkflowStageType.COMPLETION)
         {
-            throw new InvalidOperationException($"Task {taskId} is not in a review or completion stage and cannot be returned for rework");
+            throw new InvalidOperationException($"Task {taskId} is not in a review or completion stage (current: {currentStageType}) and cannot be returned for rework");
         }
 
         if (existingTask.ArchivedAt != null)
@@ -945,47 +1041,125 @@ public class TaskService : ITaskService
             throw new InvalidOperationException($"Task {taskId} is archived and cannot be returned");
         }
 
-        // Archive the current review task (it's been rejected)
-        existingTask.ArchivedAt = DateTime.UtcNow;
+        // Set the current review/completion task status to VETOED
+        existingTask.VetoedAt = DateTime.UtcNow;
         existingTask.LastWorkedOnByUserId = userId;
         existingTask.UpdatedAt = DateTime.UtcNow;
 
-        await _taskRepository.SaveChangesAsync();
-
-        // Create TaskEvent for the return/rejection
-        var returnEvent = new TaskEvent
+        // Create TaskEvent for the veto action
+        var vetoEvent = new TaskEvent
         {
             EventType = TaskEventType.STATUS_CHANGED,
-            Details = $"Task returned for rework{(string.IsNullOrEmpty(reason) ? "" : $": {reason}")}",
+            Details = $"Task vetoed{(string.IsNullOrEmpty(reason) ? "" : $": {reason}")}",
             TaskId = taskId,
             UserId = userId,
             CreatedAt = DateTime.UtcNow
         };
 
-        await _taskEventRepository.AddAsync(returnEvent);
-        await _taskEventRepository.SaveChangesAsync();
+        await _taskEventRepository.AddAsync(vetoEvent);
 
-        // Handle asset movement back to annotation stage and create new task
+        // Find the existing annotation task for the same asset
+        var annotationTasks = await _taskRepository.FindAsync(t => 
+            t.AssetId == existingTask.AssetId && 
+            t.WorkflowId == existingTask.WorkflowId &&
+            t.CurrentWorkflowStage != null &&
+            t.CurrentWorkflowStage.StageType == WorkflowStageType.ANNOTATION);
+
+        var annotationTask = annotationTasks.FirstOrDefault();
+        
+        if (annotationTask != null)
+        {
+            // Update existing annotation task to CHANGES_REQUIRED status
+            annotationTask.ChangesRequiredAt = DateTime.UtcNow;
+            annotationTask.SuspendedAt = null;
+            annotationTask.DeferredAt = null;
+            annotationTask.CompletedAt = null;
+            annotationTask.ArchivedAt = null;
+            annotationTask.UpdatedAt = DateTime.UtcNow;
+
+            _logger.LogInformation("Updated existing annotation task {AnnotationTaskId} to CHANGES_REQUIRED status for asset {AssetId}", 
+                annotationTask.TaskId, existingTask.AssetId);
+
+            // Create TaskEvent for the changes required action
+            var changesRequiredEvent = new TaskEvent
+            {
+                EventType = TaskEventType.STATUS_CHANGED,
+                Details = $"Task requires changes due to veto{(string.IsNullOrEmpty(reason) ? "" : $": {reason}")}",
+                TaskId = annotationTask.TaskId,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _taskEventRepository.AddAsync(changesRequiredEvent);
+        }
+        else
+        {
+            _logger.LogWarning("No existing annotation task found for asset {AssetId} in workflow {WorkflowId} - creating new annotation task", 
+                existingTask.AssetId, existingTask.WorkflowId);
+            
+            // Find the annotation stage for this workflow
+            var annotationStages = await _workflowStageRepository.FindAsync(ws => 
+                ws.WorkflowId == existingTask.WorkflowId &&
+                ws.StageType == WorkflowStageType.ANNOTATION);
+            
+            var annotationStage = annotationStages.FirstOrDefault();
+            
+            if (annotationStage != null)
+            {
+                // Create new annotation task for the asset since it was never in annotation stage
+                var newTask = new Models.Domain.Task
+                {
+                    AssetId = existingTask.AssetId,
+                    WorkflowId = existingTask.WorkflowId,
+                    CurrentWorkflowStageId = annotationStage.WorkflowStageId,
+                    ProjectId = existingTask.ProjectId,
+                    Priority = existingTask.Priority,
+                    ChangesRequiredAt = DateTime.UtcNow, // Set to CHANGES_REQUIRED immediately
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    Metadata = null,
+                    AssignedToUserId = null
+                };
+
+                await _taskRepository.AddAsync(newTask);
+                await _taskRepository.SaveChangesAsync(); // Save to get the auto-generated TaskId
+                
+                _logger.LogInformation("Created new annotation task {NewTaskId} for asset {AssetId} that was vetoed from {StageType} stage", 
+                    newTask.TaskId, existingTask.AssetId, existingTask.CurrentWorkflowStage?.StageType);
+
+                // Create TaskEvent for the new task creation (now that we have a valid TaskId)
+                var taskCreationEvent = new TaskEvent
+                {
+                    EventType = TaskEventType.STATUS_CHANGED,
+                    Details = $"New annotation task created due to veto from {existingTask.CurrentWorkflowStage?.StageType} stage{(string.IsNullOrEmpty(reason) ? "" : $": {reason}")}",
+                    TaskId = newTask.TaskId,
+                    UserId = userId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _taskEventRepository.AddAsync(taskCreationEvent);
+            }
+            else
+            {
+                _logger.LogError("No annotation stage found for workflow {WorkflowId} - cannot create veto task", existingTask.WorkflowId);
+            }
+        }
+
+        // Handle asset movement back to annotation stage
         try
         {
             var assetMovementResult = await _assetService.HandleTaskVetoAssetMovementAsync(
                 existingTask, userId);
             
-            if (assetMovementResult.AssetMoved && assetMovementResult.TargetWorkflowStageId.HasValue)
-            {
-                // Create new tasks for the annotation workflow stage
-                var tasksCreated = await CreateTasksForWorkflowStageAsync(
-                    existingTask.ProjectId, 
-                    existingTask.WorkflowId, 
-                    assetMovementResult.TargetWorkflowStageId.Value);
-                
-                _logger.LogInformation("Created {TasksCreated} new annotation tasks after returning task {TaskId} for rework", 
-                    tasksCreated, taskId);
-            }
-            else if (!string.IsNullOrEmpty(assetMovementResult.ErrorMessage))
+            if (!assetMovementResult.AssetMoved && !string.IsNullOrEmpty(assetMovementResult.ErrorMessage))
             {
                 _logger.LogWarning("Asset movement failed when returning task {TaskId} for rework: {ErrorMessage}", 
                     taskId, assetMovementResult.ErrorMessage);
+            }
+            else if (assetMovementResult.AssetMoved)
+            {
+                _logger.LogInformation("Successfully moved asset {AssetId} back to annotation stage for task {TaskId}", 
+                    existingTask.AssetId, taskId);
             }
         }
         catch (Exception ex)
@@ -993,6 +1167,9 @@ public class TaskService : ITaskService
             _logger.LogError(ex, "Failed to move asset back to annotation when returning task {TaskId} for rework", taskId);
             // Don't fail the return operation if asset movement fails
         }
+
+        await _taskRepository.SaveChangesAsync();
+        await _taskEventRepository.SaveChangesAsync();
 
         _logger.LogInformation("Successfully returned task {TaskId} for rework", taskId);
         return MapToDto(existingTask);
@@ -1143,6 +1320,8 @@ public class TaskService : ITaskService
         task.DeferredAt = null;
         task.CompletedAt = null;
         task.ArchivedAt = null;
+        task.VetoedAt = null;
+        task.ChangesRequiredAt = null;
         
         // Set the appropriate timestamp for the target status
         switch (targetStatus)
@@ -1159,6 +1338,12 @@ public class TaskService : ITaskService
             case TaskStatus.ARCHIVED:
                 task.ArchivedAt = now;
                 task.CompletedAt = now; // Archived tasks must be completed
+                break;
+            case TaskStatus.VETOED:
+                task.VetoedAt = now;
+                break;
+            case TaskStatus.CHANGES_REQUIRED:
+                task.ChangesRequiredAt = now;
                 break;
             // IN_PROGRESS, READY_FOR_* statuses are calculated based on assignment and no timestamps are set
         }
@@ -1179,8 +1364,10 @@ public class TaskService : ITaskService
         // Check in logical order of finality
         
         if (task.ArchivedAt.HasValue) return TaskStatus.ARCHIVED;
+        if (task.VetoedAt.HasValue) return TaskStatus.VETOED;
         if (task.SuspendedAt.HasValue) return TaskStatus.SUSPENDED;
         if (task.DeferredAt.HasValue) return TaskStatus.DEFERRED;
+        if (task.ChangesRequiredAt.HasValue) return TaskStatus.CHANGES_REQUIRED;
         if (task.CompletedAt.HasValue) return TaskStatus.COMPLETED;
         
         // Determine working state based on assignment
@@ -1215,6 +1402,9 @@ public class TaskService : ITaskService
             ArchivedAt = task.ArchivedAt,
             SuspendedAt = task.SuspendedAt,
             DeferredAt = task.DeferredAt,
+            VetoedAt = task.VetoedAt,
+            ChangesRequiredAt = task.ChangesRequiredAt,
+            WorkingTimeMs = task.WorkingTimeMs,
             Status = CalculateTaskStatus(task, task.CurrentWorkflowStage?.StageType?.ToString()),
             CreatedAt = task.CreatedAt,
             UpdatedAt = task.UpdatedAt,

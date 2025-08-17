@@ -39,6 +39,8 @@ public class TaskStatusValidator : ITaskStatusValidator
             TaskStatus.READY_FOR_REVIEW => ValidateReadyForReviewTransition(currentStatus, stageType),
             TaskStatus.READY_FOR_COMPLETION => ValidateReadyForCompletionTransition(currentStatus, stageType),
             TaskStatus.NOT_STARTED => ValidateNotStartedTransition(currentStatus, stageType),
+            TaskStatus.VETOED => ValidateVetoedTransition(currentStatus, stageType),
+            TaskStatus.CHANGES_REQUIRED => ValidateChangesRequiredTransition(currentStatus, stageType),
             _ => (false, $"Unknown target status: {targetStatus}")
         };
 
@@ -59,10 +61,12 @@ public class TaskStatusValidator : ITaskStatusValidator
             TaskStatus.SUSPENDED => (true, string.Empty), // Unsuspending
             TaskStatus.DEFERRED => (true, string.Empty), // Undefer
             TaskStatus.NOT_STARTED => (true, string.Empty),
+            TaskStatus.CHANGES_REQUIRED => (true, string.Empty), // Allow resuming tasks that require changes
             TaskStatus.COMPLETED when stageType == WorkflowStageType.COMPLETION => (
                 false, "Cannot mark completion stage tasks as incomplete. Use return-for-rework endpoint instead."
             ),
             TaskStatus.COMPLETED => (true, string.Empty), // Allow uncompleting tasks in annotation/review stages
+            TaskStatus.VETOED => (false, "Cannot restart a vetoed task"),
             _ => (false, $"Cannot change status from {currentStatus} to IN_PROGRESS")
         };
     }
@@ -72,6 +76,8 @@ public class TaskStatusValidator : ITaskStatusValidator
         return currentStatus switch
         {
             TaskStatus.IN_PROGRESS => (true, string.Empty),
+            TaskStatus.CHANGES_REQUIRED => (true, string.Empty), // Allow completing tasks that require changes (after fixing them)
+            TaskStatus.VETOED => (false, "Cannot complete a vetoed task"),
             _ => (false, $"Cannot complete task from status {currentStatus}")
         };
     }
@@ -84,9 +90,11 @@ public class TaskStatusValidator : ITaskStatusValidator
             or TaskStatus.READY_FOR_ANNOTATION
             or TaskStatus.READY_FOR_REVIEW
             or TaskStatus.READY_FOR_COMPLETION
-            or TaskStatus.NOT_STARTED => (true, string.Empty),
+            or TaskStatus.NOT_STARTED
+            or TaskStatus.CHANGES_REQUIRED => (true, string.Empty), // Allow suspending tasks that require changes
             TaskStatus.COMPLETED => (false, "Cannot suspend a completed task"),
             TaskStatus.ARCHIVED => (false, "Cannot suspend an archived task"),
+            TaskStatus.VETOED => (false, "Cannot suspend a vetoed task"),
             _ => (false, $"Cannot suspend task from status {currentStatus}")
         };
     }
@@ -99,10 +107,12 @@ public class TaskStatusValidator : ITaskStatusValidator
             or TaskStatus.READY_FOR_ANNOTATION
             or TaskStatus.READY_FOR_REVIEW
             or TaskStatus.READY_FOR_COMPLETION
-            or TaskStatus.NOT_STARTED => (true, string.Empty),
+            or TaskStatus.NOT_STARTED
+            or TaskStatus.CHANGES_REQUIRED => (true, string.Empty), // Allow deferring tasks that require changes
             TaskStatus.SUSPENDED => (false, "Cannot defer a suspended task - please unsuspend first"),
             TaskStatus.COMPLETED => (false, "Cannot defer a completed task"),
             TaskStatus.ARCHIVED => (false, "Cannot defer an archived task"),
+            TaskStatus.VETOED => (false, "Cannot defer a vetoed task"),
             _ => (false, $"Cannot defer task from status {currentStatus}")
         };
     }
@@ -138,5 +148,19 @@ public class TaskStatusValidator : ITaskStatusValidator
     private static (bool IsValid, string ErrorMessage) ValidateNotStartedTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
     {
         return (false, "NOT_STARTED is typically only set during task creation");
+    }
+
+    private static (bool IsValid, string ErrorMessage) ValidateVetoedTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
+    {
+        // VETOED status can only be set through the return-for-rework API endpoint
+        // and should only be applied to completed tasks in review/completion stages
+        return (false, "VETOED status can only be set through the return-for-rework endpoint");
+    }
+
+    private static (bool IsValid, string ErrorMessage) ValidateChangesRequiredTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
+    {
+        // CHANGES_REQUIRED status can only be set through the return-for-rework API endpoint
+        // and should only be applied to completed tasks being sent back to annotation stage
+        return (false, "CHANGES_REQUIRED status can only be set through the return-for-rework endpoint");
     }
 }
