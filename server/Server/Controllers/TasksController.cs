@@ -703,6 +703,7 @@ public class TasksController : ControllerBase
     /// <response code="404">If the task is not found.</response>
     /// <response code="500">If an internal server error occurs.</response>
     [HttpPost("{taskId:int}/return-for-rework")]
+    [Authorize(Policy = "CanReviewAnnotations")]  // Only reviewers and managers can return tasks for rework
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
