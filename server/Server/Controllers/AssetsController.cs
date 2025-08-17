@@ -62,16 +62,95 @@ public class AssetsController : ControllerBase
     /// <summary>
     /// Gets a specific asset by its unique ID.
     /// </summary>
-    /// <param name="projectId">The ID of the project the asset belongs to.</param>
     /// <param name="assetId">The ID of the asset.</param>
     /// <returns>The requested asset.</returns>
     [HttpGet("{assetId:int}")]
     [ProducesResponseType(typeof(AssetDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetAssetById(int projectId, int assetId)
+    public async Task<IActionResult> GetAssetById(int assetId)
     {
         var asset = await _assetService.GetAssetByIdAsync(assetId);
         return asset == null ? this.CreateNotFoundResponse("Asset", assetId) : Ok(asset);
+    }
+
+    /// <summary>
+    /// Gets the count of available assets for task creation in a project.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <returns>The count of available assets.</returns>
+    /// <response code="200">Returns the count of available assets.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
+    [HttpGet("available-assets-count")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetAvailableAssetsCount(int projectId)
+    {
+        try
+        {
+            var count = await _assetService.GetAvailableAssetsCountAsync(projectId);
+            return Ok(new { count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex, "An error occurred while getting available assets count for project {ProjectId}",
+                projectId
+            );
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
+
+    /// <summary>
+    /// Gets available assets from data source in a project.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="dataSourceId">The ID of the data source.</param>
+    /// <returns>A list of available assets.</returns>
+    [HttpGet("available-assets")]
+    [ProducesResponseType(typeof(IEnumerable<AssetDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetAvailableAssets(int projectId, int dataSourceId)
+    {
+        try
+        {
+            var assets = await _assetService.GetAvailableAssetsFromDataSourceAsync(projectId, dataSourceId);
+            return Ok(assets);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex, "An error occurred while getting available assets for project {ProjectId} and data source {DataSourceId}",
+                projectId, dataSourceId
+            );
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
+
+    /// <summary>
+    ///  Gets available asset count from data source in a project.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="dataSourceId">The ID of the data source.</param>
+    /// <returns>The count of available assets.</returns>
+    [HttpGet("available-assets-for-data-source-count")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetAvailableAssetsCount(int projectId, int dataSourceId)
+    {
+        try
+        {
+            var assets = await _assetService.GetAvailableAssetsFromDataSourceAsync(projectId, dataSourceId);
+            return Ok(new { count = assets.Count() });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex, "An error occurred while getting available assets count for project {ProjectId} and data source {DataSourceId}",
+                projectId, dataSourceId
+            );
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
     }
 
     /// <summary>
