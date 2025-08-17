@@ -8,6 +8,7 @@ using server.Models.Internal;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 using server.Data;
+using server.Core.DataSourceWatching.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
@@ -21,6 +22,7 @@ public class WorkflowService : IWorkflowService
     private readonly IWorkflowStageConnectionService _workflowStageConnectionService;
     private readonly ITaskService _taskService;
     private readonly IDataSourceService _dataSourceService;
+    private readonly IWorkflowWatchingService _workflowWatchingService;
     private readonly LaberisDbContext _context;
     private readonly ILogger<WorkflowService> _logger;
 
@@ -31,6 +33,7 @@ public class WorkflowService : IWorkflowService
         IWorkflowStageConnectionService workflowStageConnectionService,
         ITaskService taskService,
         IDataSourceService dataSourceService,
+        IWorkflowWatchingService workflowWatchingService,
         LaberisDbContext context,
         ILogger<WorkflowService> logger)
     {
@@ -40,6 +43,7 @@ public class WorkflowService : IWorkflowService
         _workflowStageConnectionService = workflowStageConnectionService ?? throw new ArgumentNullException(nameof(workflowStageConnectionService));
         _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
         _dataSourceService = dataSourceService ?? throw new ArgumentNullException(nameof(dataSourceService));
+        _workflowWatchingService = workflowWatchingService ?? throw new ArgumentNullException(nameof(workflowWatchingService));
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -148,6 +152,18 @@ public class WorkflowService : IWorkflowService
                     totalTasksCreated, workflow.WorkflowId);
             }
 
+            // Start watching the workflow for automatic task creation on asset changes
+            try
+            {
+                await _workflowWatchingService.StartWatchingWorkflowAsync(workflow.WorkflowId);
+                _logger.LogInformation("Started data source watching for workflow {WorkflowId}", workflow.WorkflowId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to start data source watching for workflow {WorkflowId}. Manual activation may be required.", workflow.WorkflowId);
+                // Don't fail workflow creation if watching setup fails
+            }
+
             await transaction.CommitAsync();
             return MapToDto(workflow);
         }
@@ -186,6 +202,19 @@ public class WorkflowService : IWorkflowService
             if (dataSources.AnnotationDataSource == null)
             {
                 _logger.LogError("No annotation data source available for project {ProjectId}", projectId);
+                return (null, createdStages);
+            }
+
+            // Validate all required data sources exist before creating stages
+            if (createDto.IncludeReviewStage && dataSources.ReviewDataSource == null)
+            {
+                _logger.LogError("Review stage requested but no review data source available for project {ProjectId}", projectId);
+                return (null, createdStages);
+            }
+
+            if (dataSources.CompletionDataSource == null)
+            {
+                _logger.LogError("No completion data source available for project {ProjectId}", projectId);
                 return (null, createdStages);
             }
 
@@ -379,6 +408,12 @@ public class WorkflowService : IWorkflowService
                 Description = "Default data source for annotation assets",
                 SourceType = DataSourceType.MINIO_BUCKET
             });
+
+            if (result.AnnotationDataSource == null)
+            {
+                _logger.LogError("Failed to create annotation data source for project {ProjectId}", projectId);
+                throw new InvalidOperationException($"Failed to create required annotation data source for project {projectId}");
+            }
         }
 
         // Create or find review data source (if review stage requested)
@@ -398,6 +433,12 @@ public class WorkflowService : IWorkflowService
                     Description = "Data source for assets in review stage",
                     SourceType = DataSourceType.MINIO_BUCKET
                 });
+
+                if (result.ReviewDataSource == null)
+                {
+                    _logger.LogError("Failed to create review data source for project {ProjectId}", projectId);
+                    throw new InvalidOperationException($"Failed to create required review data source for project {projectId}");
+                }
             }
         }
 
@@ -417,6 +458,12 @@ public class WorkflowService : IWorkflowService
                 Description = "Data source for completed and exported assets",
                 SourceType = DataSourceType.MINIO_BUCKET
             });
+
+            if (result.CompletionDataSource == null)
+            {
+                _logger.LogError("Failed to create completion data source for project {ProjectId}", projectId);
+                throw new InvalidOperationException($"Failed to create required completion data source for project {projectId}");
+            }
         }
 
         _logger.LogInformation("Data sources configured - Annotation: {AnnotationId}, Review: {ReviewId}, Completion: {CompletionId}",
