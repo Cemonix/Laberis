@@ -16,6 +16,21 @@
             </div>
             <div class="view-actions">
                 <Button 
+                    v-if="stageType !== 'ANNOTATION'"
+                    variant="secondary" 
+                    @click="showVetoedTasks = !showVetoedTasks"
+                    class="toggle-vetoed-button"
+                >
+                    {{ showVetoedTasks ? 'Hide Vetoed' : 'Show Vetoed' }}
+                </Button>
+                <Button 
+                    variant="secondary" 
+                    @click="showDeferredTasks = !showDeferredTasks"
+                    class="toggle-deferred-button"
+                >
+                    {{ showDeferredTasks ? 'Hide Deferred' : 'Show Deferred' }}
+                </Button>
+                <Button 
                     variant="primary" 
                     @click="handleRefresh"
                     :disabled="isLoading"
@@ -236,6 +251,8 @@ const showEditModal = ref<boolean>(false);
 const showAssignModal = ref<boolean>(false);
 const showPriorityModal = ref<boolean>(false);
 const selectedTask = ref<TaskTableRow | null>(null);
+const showVetoedTasks = ref<boolean>(false);
+const showDeferredTasks = ref<boolean>(false);
 
 // Bulk operations state
 const isBulkOperationInProgress = ref<boolean>(false);
@@ -266,6 +283,11 @@ const isTaskClickable = (task: TaskTableRow): boolean => {
         return false;
     }
     
+    // VETOED tasks are view-only and cannot be clicked
+    if (task.status === TaskStatus.VETOED) {
+        return false;
+    }
+    
     // Only archived tasks cannot be opened (completed tasks can be viewed in preview mode)
     if (task.status === TaskStatus.ARCHIVED) {
         return false;
@@ -284,6 +306,9 @@ const createTaskFromRow = (taskRow: TaskTableRow): Task => {
         archivedAt: undefined, // Not available in TaskTableRow
         suspendedAt: undefined, // Not available in TaskTableRow
         deferredAt: undefined, // Not available in TaskTableRow
+        vetoedAt: undefined, // Not available in TaskTableRow
+        changesRequiredAt: undefined, // Not available in TaskTableRow
+        workingTimeMs: 0, // Not available in TaskTableRow
         createdAt: taskRow.createdAt,
         updatedAt: taskRow.createdAt, // Fallback to createdAt
         assetId: taskRow.assetId,
@@ -325,7 +350,8 @@ const rowActions = computed((): TableRowAction<TaskTableRow>[] => {
                 row.status === TaskStatus.SUSPENDED ||
                 row.status === TaskStatus.DEFERRED ||
                 row.status === TaskStatus.COMPLETED ||
-                row.status === TaskStatus.ARCHIVED
+                row.status === TaskStatus.ARCHIVED ||
+                row.status === TaskStatus.VETOED
         },
         { 
             key: 'priority', 
@@ -333,7 +359,8 @@ const rowActions = computed((): TableRowAction<TaskTableRow>[] => {
             icon: faSort, 
             variant: 'secondary',
             disabled: (row: TaskTableRow) => 
-                row.status === TaskStatus.ARCHIVED
+                row.status === TaskStatus.ARCHIVED ||
+                row.status === TaskStatus.VETOED
         }
     ];
 
@@ -346,15 +373,32 @@ const rowActions = computed((): TableRowAction<TaskTableRow>[] => {
             variant: 'secondary',
             disabled: (row: TaskTableRow) => 
                 row.status === TaskStatus.COMPLETED ||
-                row.status === TaskStatus.ARCHIVED
+                row.status === TaskStatus.ARCHIVED ||
+                row.status === TaskStatus.VETOED
         });
     }
 
     return actions;
 });
 
-const taskTableData = computed((): TaskTableRow[] => {
-    return tasks.value;
+const taskTableData = computed((): (TaskTableRow & { isClickable: boolean })[] => {
+    let filteredTasks = tasks.value;
+    
+    // Filter vetoed tasks
+    if (!showVetoedTasks.value) {
+        filteredTasks = filteredTasks.filter(task => task.status !== TaskStatus.VETOED);
+    }
+    
+    // Filter deferred tasks
+    if (!showDeferredTasks.value) {
+        filteredTasks = filteredTasks.filter(task => task.status !== TaskStatus.DEFERRED);
+    }
+    
+    // Add clickability information to each task
+    return filteredTasks.map(task => ({
+        ...task,
+        isClickable: isTaskClickable(task)
+    }));
 });
 
 const paginationData = computed(() => ({
@@ -1002,6 +1046,16 @@ onMounted(async () => {
     flex-grow: 1;
     padding: 1.5rem;
     overflow: hidden;
+}
+
+/* Override cursor for non-clickable task rows */
+.tasks-container :deep(.data-table .table tbody tr.clickable[data-clickable="false"]) {
+    cursor: not-allowed;
+    
+    &:hover {
+        background: var(--color-gray-50);
+        /* Remove the primary-light hover effect */
+    }
 }
 
 @media (max-width: 768px) {
