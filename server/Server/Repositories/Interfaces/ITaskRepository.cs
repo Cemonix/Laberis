@@ -43,4 +43,5 @@ public interface ITaskRepository : IGenericRepository<LaberisTask>
     /// <param name="workflowId">The ID of the workflow.</param>
     /// <returns>The initial workflow stage if found, otherwise null.</returns>
     Task<WorkflowStage?> GetInitialWorkflowStageAsync(int workflowId);
+
 }

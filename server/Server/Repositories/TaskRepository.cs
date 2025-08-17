@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using server.Data;
 using server.Models.Domain;
+using server.Models.Domain.Enums;
 using server.Repositories.Interfaces;
 using System.Linq.Expressions;
 using LaberisTask = server.Models.Domain.Task;
@@ -14,6 +15,18 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
     public TaskRepository(LaberisDbContext context, ILogger<TaskRepository> logger) : base(context)
     {
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Override GetByIdAsync to ensure navigation properties are loaded
+    /// </summary>
+    public override async Task<LaberisTask?> GetByIdAsync(object id)
+    {
+        return await _dbSet
+            .Include(t => t.CurrentWorkflowStage)
+            .Include(t => t.AssignedToUser)
+            .Include(t => t.LastWorkedOnByUser)
+            .FirstOrDefaultAsync(t => t.TaskId == (int)id);
     }
 
     protected override IQueryable<LaberisTask> ApplyIncludes(IQueryable<LaberisTask> query)
@@ -129,21 +142,28 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
                 keySelector = t => t.Priority;
                 break;
             case "due_date":
+            case "duedate":
                 keySelector = t => t.DueDate ?? DateTime.MaxValue;
                 break;
             case "created_at":
+            case "createdat":
                 keySelector = t => t.CreatedAt;
                 break;
             case "updated_at":
+            case "updatedat":
                 keySelector = t => t.UpdatedAt;
                 break;
             case "completed_at":
+            case "completedat":
                 keySelector = t => t.CompletedAt ?? DateTime.MaxValue;
                 break;
             case "archived_at":
+            case "archivedat":
                 keySelector = t => t.ArchivedAt ?? DateTime.MaxValue;
                 break;
             case "task_id":
+            case "taskid":
+            case "id":
                 keySelector = t => t.TaskId;
                 break;
             default:
@@ -307,4 +327,5 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
 
         return initialStage;
     }
+
 }
