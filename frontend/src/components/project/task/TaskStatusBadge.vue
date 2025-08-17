@@ -8,7 +8,7 @@
 <script setup lang="ts">
 import {computed} from 'vue';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
-import {faArchive, faCheckCircle, faHourglass, faPause, faPlay, faForward, faPen, faEye, faFlag} from '@fortawesome/free-solid-svg-icons';
+import {faArchive, faCheckCircle, faHourglass, faPause, faPlay, faForward, faPen, faEye, faFlag, faBan, faExclamationTriangle} from '@fortawesome/free-solid-svg-icons';
 import type {TaskStatus} from '@/types/task';
 
 interface Props {
@@ -62,6 +62,16 @@ const statusConfig = {
         label: 'Ready for Completion',
         icon: faFlag,
         class: 'ready-completion'
+    },
+    CHANGES_REQUIRED: {
+        label: 'Changes Required',
+        icon: faExclamationTriangle,
+        class: 'changes-required'
+    },
+    VETOED: {
+        label: 'Vetoed',
+        icon: faBan,
+        class: 'vetoed'
     }
 };
 
@@ -136,6 +146,18 @@ const statusClass = computed(() => statusInfo.value.class);
         background: var(--color-emerald-100);
         color: var(--color-emerald-600);
         border: 1px solid var(--color-emerald-500);
+    }
+    
+    &.changes-required {
+        background: var(--color-orange-100);
+        color: var(--color-orange-700);
+        border: 1px solid var(--color-orange-600);
+    }
+    
+    &.vetoed {
+        background: var(--color-red-100);
+        color: var(--color-red-700);
+        border: 1px solid var(--color-red-600);
     }
     
     svg {
