@@ -166,6 +166,46 @@ class AssetService extends BaseProjectService {
         this.logger.info(`Fetched asset ${assetId} for project ${projectId}`, response);
         return response;
     }
+
+    /**
+     * Get the count of available assets for a project
+     */
+    async getAvailableAssetsCount(projectId: number): Promise<number> {
+        this.logger.info(`Checking available assets for project ${projectId}`);
+
+        try {
+            const url = this.buildProjectUrl(projectId, `assets/available-assets-count`);
+            const data = await this.get<{ count: number }>(url);
+
+            this.logger.info(`Project ${projectId} has ${data.count} assets available`);
+
+            return data.count;
+        } catch (error) {
+            this.logger.warn('Failed to check assets availability:', error);
+            return 0;
+        }
+    }
+
+    /**
+     * Gets the count of available assets for a data source in a project
+     */
+    async getAvailableAssetsCountForDataSource(projectId: number, dataSourceId: number): Promise<number> {
+        this.logger.info(`Checking available assets for project ${projectId} in data source ${dataSourceId}`);
+
+        try {
+            const url = this.buildProjectUrl(projectId, `assets/available-assets-for-data-source-count?dataSourceId=${dataSourceId}`);
+            const data = await this.get<{ count: number }>(url);
+
+            const count = data.count;
+
+            this.logger.info(`Project ${projectId} has ${count} assets available in data source ${dataSourceId}`);
+
+            return count;
+        } catch (error) {
+            this.logger.warn('Failed to check assets availability:', error);
+            return 0;
+        }
+    }
 }
 
 export const assetService = new AssetService();

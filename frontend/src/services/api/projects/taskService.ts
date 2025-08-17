@@ -453,33 +453,6 @@ class TaskService extends BaseProjectService {
 
 
 
-    /**
-     * Check if there are assets available for task creation in a project
-     */
-    async checkAssetsAvailable(projectId: number): Promise<{ 
-        hasAssets: boolean; 
-        count: number; 
-    }> {
-        this.logger.info(`Checking asset availability for project ${projectId}`);
-
-        try {
-            const url = this.buildProjectUrl(projectId, 'tasks/available-assets-count');
-            const data = await this.get<{ count: number }>(url);
-            
-            const hasAssets = data.count > 0;
-            const count = data.count;
-            
-            this.logger.info(`Project ${projectId} has ${count} assets available`);
-            
-            return {
-                hasAssets,
-                count
-            };
-        } catch (error) {
-            this.logger.warn('Failed to check assets availability:', error);
-            return { hasAssets: false, count: 0 };
-        }
-    }
 
     /**
      * Update working time for a task
