@@ -135,11 +135,82 @@ public class WorkflowStageRepository : GenericRepository<WorkflowStage>, IWorkfl
         }
         return query;
     }
+    
+    public async Task<WorkflowStage?> GetNextWorkflowStageAsync(int currentStageId, string? condition = null)
+    {
+        _logger.LogInformation("Finding next workflow stage for stage {CurrentStageId} with condition '{Condition}'", 
+            currentStageId, condition ?? "none");
+
+        WorkflowStage? nextStage = null;
+        
+        if (!string.IsNullOrEmpty(condition))
+        {
+            // First, try to find a connection with the exact condition
+            nextStage = await _context.WorkflowStageConnections
+                .Where(c => c.FromStageId == currentStageId && c.Condition == condition)
+                .Select(c => c.ToStage)
+                .FirstOrDefaultAsync();
+                
+            if (nextStage != null)
+            {
+                _logger.LogInformation("Found next stage via condition-based routing: {NextStageId} with condition '{Condition}'", 
+                    nextStage.WorkflowStageId, condition);
+            }
+        }
+        
+        // If no stage found with specific condition, look for default connection (no condition)
+        if (nextStage == null)
+        {
+            nextStage = await _context.WorkflowStageConnections
+                .Where(c => c.FromStageId == currentStageId && c.Condition == null)
+                .Select(c => c.ToStage)
+                .FirstOrDefaultAsync();
+                
+            if (nextStage != null)
+            {
+                _logger.LogInformation("Found next stage via default routing: {NextStageId} (no condition)", 
+                    nextStage.WorkflowStageId);
+            }
+        }
+
+        if (nextStage != null)
+        {
+            _logger.LogInformation("Found next stage: {NextStageId} ({NextStageName})", 
+                nextStage.WorkflowStageId, nextStage.Name);
+        }
+        else
+        {
+            _logger.LogInformation("No next stage found for stage {CurrentStageId}", currentStageId);
+        }
+
+        return nextStage;
+    }
+
+    public async Task<WorkflowStage?> GetInitialWorkflowStageAsync(int workflowId)
+    {
+        _logger.LogInformation("Finding initial workflow stage for workflow {WorkflowId}", workflowId);
+
+        var initialStage = await _context.WorkflowStages
+            .Where(ws => ws.WorkflowId == workflowId && ws.IsInitialStage)
+            .FirstOrDefaultAsync();
+
+        if (initialStage != null)
+        {
+            _logger.LogInformation("Found initial stage: {StageId} ({StageName})", 
+                initialStage.WorkflowStageId, initialStage.Name);
+        }
+        else
+        {
+            _logger.LogWarning("No initial stage found for workflow {WorkflowId}", workflowId);
+        }
+
+        return initialStage;
+    }
 
     public async Task<IEnumerable<WorkflowStage>> GetWorkflowStagesWithConnectionsAsync(int workflowId)
     {
         _logger.LogInformation("Fetching workflow stages with connections for workflow: {WorkflowId}", workflowId);
-        
+
         return await _context.Set<WorkflowStage>()
             .Include(ws => ws.IncomingConnections)
             .Include(ws => ws.OutgoingConnections)

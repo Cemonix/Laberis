@@ -106,4 +106,95 @@ public class AssetRepository : GenericRepository<Asset>, IAssetRepository
         }
         return query;
     }
+
+    public async Task<int> GetAvailableAssetsCountAsync(int projectId)
+    {
+        _logger.LogInformation("Getting available assets count for project {ProjectId}", projectId);
+
+        var query = _context.Assets
+            .Where(a => a.ProjectId == projectId
+                && a.Status == AssetStatus.IMPORTED
+                && !_context.Tasks.Any(t => t.AssetId == a.AssetId));
+
+        var count = await query.CountAsync();
+
+        _logger.LogInformation("Found {Count} available assets in project {ProjectId}",
+            count, projectId);
+
+        return count;
+    }
+
+    public async Task<IEnumerable<Asset>> GetAvailableAssetsFromDataSourceAsync(int projectId, int dataSourceId)
+    {
+        _logger.LogInformation("Getting available assets from data source {DataSourceId} in project {ProjectId}",
+            dataSourceId, projectId);
+
+        var availableAssets = await _context.Assets
+            .Where(a => a.ProjectId == projectId
+                && a.DataSourceId == dataSourceId
+                && a.Status == AssetStatus.IMPORTED
+                && !_context.Tasks.Any(t => t.AssetId == a.AssetId))
+            .ToListAsync();
+
+        _logger.LogInformation("Found {Count} available assets in data source {DataSourceId} in project {ProjectId}",
+            availableAssets.Count, dataSourceId, projectId);
+
+        return availableAssets;
+    }
+    
+    public async Task<IEnumerable<Asset>> GetAvailableAssetsForTaskCreationAsync(int projectId, int? workflowStageId = null)
+    {
+        _logger.LogInformation("Getting available assets for task creation in project {ProjectId} for workflow stage {WorkflowStageId}", 
+            projectId, workflowStageId);
+
+        var query = _context.Assets
+            .Where(a => a.ProjectId == projectId 
+                && a.Status == AssetStatus.IMPORTED
+                && !_context.Tasks.Any(t => t.AssetId == a.AssetId));
+
+        // If a workflow stage is specified, filter assets to only those in the stage's input data source
+        if (workflowStageId.HasValue)
+        {
+            var workflowStage = await _context.WorkflowStages
+                .FirstOrDefaultAsync(ws => ws.WorkflowStageId == workflowStageId.Value);
+
+            if (workflowStage?.InputDataSourceId.HasValue == true)
+            {
+                _logger.LogInformation("Filtering assets by input data source {DataSourceId} for workflow stage {WorkflowStageId}", 
+                    workflowStage.InputDataSourceId, workflowStageId);
+                    
+                query = query.Where(a => a.DataSourceId == workflowStage.InputDataSourceId.Value);
+            }
+            else
+            {
+                _logger.LogWarning("Workflow stage {WorkflowStageId} has no input data source configured, attempting fallback to project's default data source", workflowStageId);
+                
+                // Fallback: Find the project's default data source (usually the first one created for the project)
+                var defaultDataSource = await _context.DataSources
+                    .Where(ds => ds.ProjectId == projectId)
+                    .OrderBy(ds => ds.CreatedAt)
+                    .FirstOrDefaultAsync();
+                
+                if (defaultDataSource != null)
+                {
+                    _logger.LogInformation("Using fallback data source {DataSourceId} for workflow stage {WorkflowStageId}", 
+                        defaultDataSource.DataSourceId, workflowStageId);
+                    query = query.Where(a => a.DataSourceId == defaultDataSource.DataSourceId);
+                }
+                else
+                {
+                    _logger.LogError("No data sources found for project {ProjectId}, cannot create tasks for workflow stage {WorkflowStageId}", 
+                        projectId, workflowStageId);
+                    return [];
+                }
+            }
+        }
+
+        var availableAssets = await query.ToListAsync();
+
+        _logger.LogInformation("Found {Count} available assets for task creation in project {ProjectId} for workflow stage {WorkflowStageId}", 
+            availableAssets.Count, projectId, workflowStageId);
+
+        return availableAssets;
+    }
 }
