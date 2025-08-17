@@ -30,6 +30,7 @@ const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 10.0;
 const ZOOM_SENSITIVITY = 0.005;
 
+// TODO: Refactor the store
 
 export const useWorkspaceStore = defineStore("workspace", {
     state: (): WorkspaceState => ({
@@ -42,6 +43,8 @@ export const useWorkspaceStore = defineStore("workspace", {
         timerInstance: new Timer(),
         elapsedTimeDisplay: "00:00:00",
         timerIntervalId: null,
+        timeAutoSaveIntervalId: null,
+        lastSavedWorkingTime: 0,
         viewOffset: { x: 0, y: 0 },
         zoomLevel: 1.0,
         activeTool: ToolName.CURSOR,
@@ -129,16 +132,41 @@ export const useWorkspaceStore = defineStore("workspace", {
             return state.availableTasks.findIndex(task => task.id === state.currentTaskData?.id);
         },
         getTaskNavigationInfo(state): { current: number; total: number } {
-            const currentIndex = state.currentTaskData && state.availableTasks.length > 0 
-                ? state.availableTasks.findIndex(task => task.id === state.currentTaskData?.id)
+            // Filter out tasks that cannot be opened for navigation
+            // Note: Deferred tasks permission checking is handled in the navigation buttons themselves
+            const accessibleTasks = state.availableTasks.filter(task => {
+                // Vetoed tasks cannot be opened (they are view-only)
+                if (task.status === TaskStatus.VETOED) {
+                    return false;
+                }
+                
+                // Completed and archived tasks cannot be opened for editing
+                if (task.status && [TaskStatus.COMPLETED, TaskStatus.ARCHIVED].includes(task.status)) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            const currentIndex = state.currentTaskData && accessibleTasks.length > 0 
+                ? accessibleTasks.findIndex(task => task.id === state.currentTaskData?.id)
                 : -1;
+            
             return {
                 current: currentIndex >= 0 ? currentIndex + 1 : 0,
-                total: state.availableTasks.length
+                total: accessibleTasks.length
             };
         },
         isTaskCompleted(state): boolean {
-            return state.currentTaskData?.completedAt !== null && state.currentTaskData?.completedAt !== undefined;
+            if (!state.currentTaskData) return false;
+            
+            // Task is NOT considered completed (i.e., should be editable) if it has CHANGES_REQUIRED status
+            if (state.currentTaskData.status === TaskStatus.CHANGES_REQUIRED) {
+                return false;
+            }
+            
+            // Otherwise, check if task is actually completed
+            return state.currentTaskData.status === TaskStatus.COMPLETED;
         },
         isAnnotationEditingDisabled(): boolean {
             // Annotation editing is disabled when task is completed (preview mode)
@@ -159,8 +187,8 @@ export const useWorkspaceStore = defineStore("workspace", {
                 return false;
             }
 
-            // Check if task is already completed
-            if (state.currentTaskData.completedAt) {
+            // Check if task is already completed (but allow completion for CHANGES_REQUIRED tasks)
+            if (state.currentTaskData.status === TaskStatus.COMPLETED) {
                 return false;
             }
 
@@ -181,6 +209,21 @@ export const useWorkspaceStore = defineStore("workspace", {
                 );
                 return taskAnnotations.length > 0;
             }
+        },
+        canVetoCurrentTask(state): boolean {
+            // Check if there's a current task that exists and is not archived
+            if (!state.currentTaskData || state.currentTaskData.archivedAt) {
+                return false;
+            }
+
+            // Only show veto for review and completion stages (not annotation stages)
+            if (state.currentWorkflowStageType === WorkflowStageType.REVISION || 
+                state.currentWorkflowStageType === WorkflowStageType.COMPLETION) {
+                // Permission check will be handled in the component
+                return true;
+            }
+
+            return false;
         },
     },
 
@@ -281,7 +324,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                         // Auto-assign task to current user if not already assigned (makes it IN_PROGRESS)
                         try {
                             // If task is suspended, resume it first before assignment
-                            if (currentTask.status === 'SUSPENDED') {
+                            if (currentTask.status === TaskStatus.SUSPENDED) {
                                 logger.info(`Task ${currentTask.id} is suspended, resuming it before assignment`);
                                 const resumedTask = await taskStatusService.resumeTask(numericProjectId, currentTask, false);
                                 
@@ -642,39 +685,74 @@ export const useWorkspaceStore = defineStore("workspace", {
 
         startTimer() {
             this._clearInterval();
+            this._clearAutoSaveInterval();
 
+            // Store the saved working time for this session
+            this.lastSavedWorkingTime = this.currentTaskData?.workingTimeMs || 0;
+            
+            
+            // For completed/archived tasks, only display the saved time - don't run the timer
+            if (!this._shouldTrackTime()) {
+                this.timerInstance.reset();
+                // Don't start the timer - just display the saved time
+                this._updateElapsedTimeDisplay();
+                logger.info('Task is completed/archived - displaying saved working time only');
+                return;
+            }
+            
+            // For active tasks, start the timer fresh for this session
+            this.timerInstance.reset();
             this.timerInstance.start();
+
             this._updateElapsedTimeDisplay();
 
+            // Update display every second
             this.timerIntervalId = window.setInterval(() => {
                 this._updateElapsedTimeDisplay();
             }, 1000);
+
+            // Auto-save working time every 30 seconds
+            this.timeAutoSaveIntervalId = window.setInterval(() => {
+                this._autoSaveWorkingTime();
+            }, 30000); // 30 seconds
         },
 
         pauseTimer() {
             if (this.timerInstance.isRunning) {
                 this.timerInstance.pause();
                 this._clearInterval();
+                this._clearAutoSaveInterval();
                 this._updateElapsedTimeDisplay();
+                
+                // Save current working time when pausing
+                this._autoSaveWorkingTime();
             }
         },
 
         stopAndResetTimer() {
+            // Save working time before stopping
+            this._autoSaveWorkingTime();
+            
             this.timerInstance.stop();
             this.timerInstance.reset();
             this._clearInterval();
+            this._clearAutoSaveInterval();
+            this.lastSavedWorkingTime = 0;
             this.elapsedTimeDisplay = "00:00:00";
         },
         
         cleanupTimer() {
+            // Save current working time before cleanup
+            this._autoSaveWorkingTime();
+            
             this._clearInterval();
+            this._clearAutoSaveInterval();
 
-            // TODO:
-            // We might not want to stop/reset the timer itself here
-            // if the user might return to the same asset.
-            // loadAsset will handle resetting for a *new* asset.
-            // For now, we will stop it.
-            this.timerInstance.stop();
+            // Pause the timer instead of stopping it completely
+            // so time is preserved when user returns to the same task
+            if (this.timerInstance.isRunning) {
+                this.timerInstance.pause();
+            }
         },
 
         setViewOffset(offset: Point) {
@@ -708,7 +786,150 @@ export const useWorkspaceStore = defineStore("workspace", {
         },
 
         _updateElapsedTimeDisplay() {
-            this.elapsedTimeDisplay = this.timerInstance.getFormattedElapsedTime();
+            // For completed/archived tasks, only show the saved working time
+            if (!this._shouldTrackTime()) {
+                this.elapsedTimeDisplay = this.timerInstance.getFormattedElapsedTime(this.lastSavedWorkingTime);
+                return;
+            }
+            
+            // For active tasks, calculate total working time (saved time + current session time)
+            const currentSessionTime = this.timerInstance.getElapsedTime();
+            const totalWorkingTime = this.lastSavedWorkingTime + currentSessionTime;
+            
+            // Format the total time
+            this.elapsedTimeDisplay = this.timerInstance.getFormattedElapsedTime(totalWorkingTime);
+        },
+
+        _clearAutoSaveInterval() {
+            if (this.timeAutoSaveIntervalId) {
+                clearInterval(this.timeAutoSaveIntervalId);
+                this.timeAutoSaveIntervalId = null;
+            }
+        },
+
+        _shouldTrackTime(): boolean {
+            // Only track time for active, non-completed tasks
+            return !!(this.currentTaskData && 
+                     !this.currentTaskData.completedAt && 
+                     !this.currentTaskData.archivedAt);
+        },
+
+        async _autoSaveWorkingTime() {
+            if (!this.currentTaskData || !this.currentProjectId || !this._shouldTrackTime()) {
+                return;
+            }
+
+            try {
+                const currentElapsedTime = this.timerInstance.getElapsedTime();
+                const totalWorkingTime = this.lastSavedWorkingTime + currentElapsedTime;
+
+                // Only save if there's been a meaningful change (at least 1 second)
+                if (totalWorkingTime > this.currentTaskData.workingTimeMs + 1000) {
+                    logger.info(`Auto-saving working time for task ${this.currentTaskData.id}: ${totalWorkingTime}ms`);
+                    
+                    const updatedTask = await taskService.updateWorkingTime(
+                        parseInt(this.currentProjectId), 
+                        this.currentTaskData.id, 
+                        totalWorkingTime
+                    );
+
+                    if (updatedTask) {
+                        // Update the current task data with the new working time
+                        this.currentTaskData.workingTimeMs = totalWorkingTime;
+                        
+                        // Update in the available tasks list as well
+                        const taskIndex = this.availableTasks.findIndex(task => task.id === this.currentTaskData?.id);
+                        if (taskIndex !== -1) {
+                            this.availableTasks[taskIndex].workingTimeMs = totalWorkingTime;
+                        }
+                    }
+                }
+            } catch (error) {
+                logger.warn('Failed to auto-save working time:', error);
+                // Don't throw error - this is a background operation
+            }
+        },
+
+        /**
+         * Save working time before page unload using the task service
+         */
+        async saveWorkingTimeBeforeUnload() {
+            if (!this.currentTaskData || !this.currentProjectId || !this._shouldTrackTime()) {
+                return;
+            }
+
+            try {
+                const currentElapsedTime = this.timerInstance.getElapsedTime();
+                const totalWorkingTime = this.lastSavedWorkingTime + currentElapsedTime;
+
+                // Only save if there's been a meaningful change (at least 1 second)
+                if (totalWorkingTime > this.currentTaskData.workingTimeMs + 1000) {
+                    const success = await taskService.saveWorkingTimeBeforeUnload(
+                        parseInt(this.currentProjectId),
+                        this.currentTaskData.id,
+                        totalWorkingTime
+                    );
+
+                    if (success) {
+                        // Update the current task data with the new working time
+                        this.currentTaskData.workingTimeMs = totalWorkingTime;
+                        
+                        // Update in the available tasks list as well
+                        const taskIndex = this.availableTasks.findIndex(task => task.id === this.currentTaskData?.id);
+                        if (taskIndex !== -1) {
+                            this.availableTasks[taskIndex].workingTimeMs = totalWorkingTime;
+                        }
+                    }
+                }
+            } catch (error) {
+                logger.warn('Failed to save working time before unload:', error);
+                // Don't throw error - this is a background operation during page unload
+            }
+        },
+
+        /**
+         * Common helper to save working time and preserve it across task status changes
+         * @param statusChangeOperation - Function that performs the status change and returns the updated task
+         * @param operationName - Name of the operation for logging (e.g., "completion", "suspension")
+         */
+        async _saveWorkingTimeAndChangeStatus<T extends Task>(
+            statusChangeOperation: () => Promise<T>,
+            operationName: string
+        ): Promise<T> {
+            // Calculate the final working time before the status change
+            const currentElapsedTime = this.timerInstance.getElapsedTime();
+            const finalWorkingTime = this.lastSavedWorkingTime + currentElapsedTime;
+            
+            // Save working time before the status change
+            await this._autoSaveWorkingTime();
+            
+            // Perform the status change operation
+            const updatedTask = await statusChangeOperation();
+            
+            // Pause timer since task status has changed to a non-active state
+            this.pauseTimer();
+            
+            // Update the current task data and ensure working time is preserved
+            this.currentTaskData = updatedTask;
+            
+            // Ensure the working time is preserved in case the backend didn't return the latest value
+            if (this.currentTaskData.workingTimeMs < finalWorkingTime) {
+                logger.warn(`Working time mismatch after ${operationName}. Backend: ${this.currentTaskData.workingTimeMs}ms, Expected: ${finalWorkingTime}ms. Updating...`);
+                try {
+                    const correctedTask = await taskService.updateWorkingTime(
+                        parseInt(this.currentProjectId!), 
+                        this.currentTaskData.id, 
+                        finalWorkingTime
+                    );
+                    this.currentTaskData = correctedTask;
+                } catch (error) {
+                    logger.error(`Failed to correct working time after ${operationName}:`, error);
+                    // At least update the local state
+                    this.currentTaskData.workingTimeMs = finalWorkingTime;
+                }
+            }
+            
+            return updatedTask;
         },
 
         /**
@@ -721,6 +942,11 @@ export const useWorkspaceStore = defineStore("workspace", {
             
             // Deferred tasks can only be opened by managers
             if (task.status === TaskStatus.DEFERRED && !canUpdateProject.value) {
+                return false;
+            }
+            
+            // Vetoed tasks cannot be opened (they are view-only)
+            if (task.status === TaskStatus.VETOED) {
                 return false;
             }
             
@@ -813,11 +1039,11 @@ export const useWorkspaceStore = defineStore("workspace", {
                 const { canUpdateProject } = usePermissions();
                 const isManager = canUpdateProject.value;
                 
-                // Use the smart task status service that understands workflow context
-                const updatedTask = await taskStatusService.completeTask(numericProjectId, this.currentTaskData, isManager);
-                
-                // Update the current task data
-                this.currentTaskData = updatedTask;
+                // Use the shared working time preservation logic
+                const updatedTask = await this._saveWorkingTimeAndChangeStatus(
+                    () => taskStatusService.completeTask(numericProjectId, this.currentTaskData!, isManager),
+                    'completion'
+                );
                 
                 // Update the task in the available tasks list
                 const taskIndex = this.availableTasks.findIndex(task => task.id === updatedTask.id);
@@ -892,6 +1118,11 @@ export const useWorkspaceStore = defineStore("workspace", {
                 // Use the smart task status service
                 const updatedTask = await taskStatusService.uncompleteTask(numericProjectId, this.currentTaskData, isManager);
                 
+                // Resume timer since task is back to active state
+                if (!updatedTask.completedAt && !updatedTask.suspendedAt && !updatedTask.deferredAt) {
+                    this.startTimer();
+                }
+                
                 // Update the current task data
                 this.currentTaskData = updatedTask;
                 
@@ -927,11 +1158,11 @@ export const useWorkspaceStore = defineStore("workspace", {
                 const { canUpdateProject } = usePermissions();
                 const isManager = canUpdateProject.value;
                 
-                // Use the smart task status service
-                const suspendedTask = await taskStatusService.suspendTask(numericProjectId, this.currentTaskData, isManager);
-                
-                // Update the current task data
-                this.currentTaskData = suspendedTask;
+                // Use the shared working time preservation logic
+                const suspendedTask = await this._saveWorkingTimeAndChangeStatus(
+                    () => taskStatusService.suspendTask(numericProjectId, this.currentTaskData!, isManager),
+                    'suspension'
+                );
                 
                 // Update the task in the available tasks list
                 const taskIndex = this.availableTasks.findIndex(task => task.id === suspendedTask.id);
@@ -965,11 +1196,11 @@ export const useWorkspaceStore = defineStore("workspace", {
                 const { canUpdateProject } = usePermissions();
                 const isManager = canUpdateProject.value;
                 
-                // Call the backend API to set task status to deferred
-                const deferredTask = await taskStatusService.deferTask(numericProjectId, this.currentTaskData, isManager);
-                
-                // Update the current task data
-                this.currentTaskData = deferredTask;
+                // Use the shared working time preservation logic
+                const deferredTask = await this._saveWorkingTimeAndChangeStatus(
+                    () => taskStatusService.deferTask(numericProjectId, this.currentTaskData!, isManager),
+                    'deferring'
+                );
                 
                 // Update the task in the available tasks list
                 const taskIndex = this.availableTasks.findIndex(task => task.id === deferredTask.id);
