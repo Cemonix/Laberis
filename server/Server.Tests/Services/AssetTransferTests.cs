@@ -17,7 +17,6 @@ public class AssetTransferTests
     private readonly Mock<IFileStorageService> _mockFileStorageService;
     private readonly Mock<IDataSourceRepository> _mockDataSourceRepository;
     private readonly Mock<IStorageService> _mockStorageService;
-    private readonly Mock<ITaskRepository> _mockTaskRepository;
     private readonly Mock<IDomainEventService> _mockDomainEventService;
     private readonly Mock<IWorkflowStageRepository> _mockWorkflowStageRepository;
     private readonly Mock<ILogger<AssetService>> _mockLogger;
@@ -29,7 +28,6 @@ public class AssetTransferTests
         _mockFileStorageService = new Mock<IFileStorageService>();
         _mockDataSourceRepository = new Mock<IDataSourceRepository>();
         _mockStorageService = new Mock<IStorageService>();
-        _mockTaskRepository = new Mock<ITaskRepository>();
         _mockDomainEventService = new Mock<IDomainEventService>();
         _mockWorkflowStageRepository = new Mock<IWorkflowStageRepository>();
         _mockLogger = new Mock<ILogger<AssetService>>();
@@ -39,7 +37,6 @@ public class AssetTransferTests
             _mockFileStorageService.Object,
             _mockDataSourceRepository.Object,
             _mockStorageService.Object,
-            _mockTaskRepository.Object,
             _mockWorkflowStageRepository.Object,
             _mockDomainEventService.Object,
             _mockLogger.Object
@@ -75,7 +72,7 @@ public class AssetTransferTests
             .Setup(x => x.GetByIdAsync(nextDataSourceId))
             .ReturnsAsync(nextDataSource);
 
-        _mockTaskRepository
+        _mockWorkflowStageRepository
             .Setup(x => x.GetNextWorkflowStageAsync(task.CurrentWorkflowStageId, It.IsAny<string?>()))
             .ReturnsAsync(nextStage);
 
@@ -160,7 +157,7 @@ public class AssetTransferTests
             .Setup(x => x.GetByIdAsync(annotationDataSourceId))
             .ReturnsAsync(annotationDataSource);
 
-        _mockTaskRepository
+        _mockWorkflowStageRepository
             .Setup(x => x.GetInitialWorkflowStageAsync(task.WorkflowId))
             .ReturnsAsync(annotationStage);
 
@@ -233,7 +230,7 @@ public class AssetTransferTests
             .Setup(x => x.GetByIdAsync(assetId))
             .ReturnsAsync(asset);
 
-        _mockTaskRepository
+        _mockWorkflowStageRepository
             .Setup(x => x.GetNextWorkflowStageAsync(task.CurrentWorkflowStageId, It.IsAny<string?>()))
             .ReturnsAsync(nextStage);
 
@@ -281,7 +278,7 @@ public class AssetTransferTests
             .Setup(x => x.GetByIdAsync(nextDataSourceId))
             .ReturnsAsync(nextDataSource);
 
-        _mockTaskRepository
+        _mockWorkflowStageRepository
             .Setup(x => x.GetNextWorkflowStageAsync(task.CurrentWorkflowStageId, It.IsAny<string?>()))
             .ReturnsAsync(nextStage);
 
@@ -357,7 +354,7 @@ public class AssetTransferTests
             .Setup(x => x.GetByIdAsync(nextDataSourceId))
             .ReturnsAsync(nextDataSource);
 
-        _mockTaskRepository
+        _mockWorkflowStageRepository
             .Setup(x => x.GetNextWorkflowStageAsync(task.CurrentWorkflowStageId, It.IsAny<string?>()))
             .ReturnsAsync(nextStage);
 
@@ -411,7 +408,7 @@ public class AssetTransferTests
             .Setup(x => x.GetByIdAsync(assetId))
             .ReturnsAsync((Asset?)null);
 
-        _mockTaskRepository
+        _mockWorkflowStageRepository
             .Setup(x => x.GetNextWorkflowStageAsync(task.CurrentWorkflowStageId, It.IsAny<string?>()))
             .ReturnsAsync(nextStage);
 
@@ -452,7 +449,7 @@ public class AssetTransferTests
 
         // Verify no operations were performed for completion stage
         _mockAssetRepository.Verify(x => x.GetByIdAsync(It.IsAny<int>()), Times.Never);
-        _mockTaskRepository.Verify(x => x.GetNextWorkflowStageAsync(It.IsAny<int>(), It.IsAny<string?>()), Times.Never);
+        _mockWorkflowStageRepository.Verify(x => x.GetNextWorkflowStageAsync(It.IsAny<int>(), It.IsAny<string?>()), Times.Never);
     }
 
     #region Helper Methods

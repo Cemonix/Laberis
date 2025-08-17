@@ -220,7 +220,6 @@ namespace Server.Tests.Controllers
         public async Task GetAssetById_Should_ReturnOkResult_WhenAssetExists()
         {
             // Arrange
-            var projectId = 1;
             var assetId = 1;
             var expectedAsset = new AssetDto
             {
@@ -237,7 +236,7 @@ namespace Server.Tests.Controllers
                 .ReturnsAsync(expectedAsset);
 
             // Act
-            var result = await _controller.GetAssetById(projectId, assetId);
+            var result = await _controller.GetAssetById(assetId);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -252,14 +251,13 @@ namespace Server.Tests.Controllers
         public async Task GetAssetById_Should_ReturnNotFound_WhenAssetDoesNotExist()
         {
             // Arrange
-            var projectId = 1;
             var assetId = 999;
 
             _mockAssetService.Setup(s => s.GetAssetByIdAsync(assetId))
                 .ReturnsAsync((AssetDto?)null);
 
             // Act
-            var result = await _controller.GetAssetById(projectId, assetId);
+            var result = await _controller.GetAssetById(assetId);
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -274,7 +272,6 @@ namespace Server.Tests.Controllers
         public async Task GetAssetById_Should_ThrowException_WhenServiceThrowsException()
         {
             // Arrange
-            var projectId = 1;
             var assetId = 1;
 
             _mockAssetService.Setup(s => s.GetAssetByIdAsync(assetId))
@@ -282,7 +279,7 @@ namespace Server.Tests.Controllers
 
             // Act & Assert
             var exception = await Assert.ThrowsAsync<Exception>(() => 
-                _controller.GetAssetById(projectId, assetId));
+                _controller.GetAssetById(assetId));
             Assert.Equal("Database error", exception.Message);
         }
 
