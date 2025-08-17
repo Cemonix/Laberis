@@ -46,6 +46,8 @@ class TaskService extends BaseProjectService {
             case 'READY_FOR_ANNOTATION': return TaskStatus.READY_FOR_ANNOTATION;
             case 'READY_FOR_REVIEW': return TaskStatus.READY_FOR_REVIEW;
             case 'READY_FOR_COMPLETION': return TaskStatus.READY_FOR_COMPLETION;
+            case 'CHANGES_REQUIRED': return TaskStatus.CHANGES_REQUIRED;
+            case 'VETOED': return TaskStatus.VETOED;
             default: 
                 this.logger.warn('Unknown task status received, defaulting to NOT_STARTED', { backendStatus, statusStr });
                 return TaskStatus.NOT_STARTED;
@@ -65,7 +67,9 @@ class TaskService extends BaseProjectService {
             5: 'DEFERRED',
             6: 'READY_FOR_ANNOTATION',
             7: 'READY_FOR_REVIEW',
-            8: 'READY_FOR_COMPLETION'
+            8: 'READY_FOR_COMPLETION',
+            9: 'CHANGES_REQUIRED',
+            10: 'VETOED'
         };
         return statusMap[enumValue] || 'NOT_STARTED';
     }
@@ -84,6 +88,9 @@ class TaskService extends BaseProjectService {
             archivedAt: dto.archivedAt,
             suspendedAt: dto.suspendedAt,
             deferredAt: dto.deferredAt,
+            vetoedAt: dto.vetoedAt,
+            changesRequiredAt: dto.changesRequiredAt,
+            workingTimeMs: dto.workingTimeMs || 0,
             createdAt: dto.createdAt,
             updatedAt: dto.updatedAt,
             assetId: dto.assetId,
@@ -471,6 +478,39 @@ class TaskService extends BaseProjectService {
         } catch (error) {
             this.logger.warn('Failed to check assets availability:', error);
             return { hasAssets: false, count: 0 };
+        }
+    }
+
+    /**
+     * Update working time for a task
+     * This is a specialized method for updating only the working time field
+     */
+    async updateWorkingTime(projectId: number, taskId: number, workingTimeMs: number): Promise<Task> {
+        this.logger.info(`Updating working time for task ${taskId} in project ${projectId}: ${workingTimeMs}ms`);
+        
+        const updates: UpdateTaskRequest = {
+            workingTimeMs: workingTimeMs
+        };
+        
+        return this.updateTask(projectId, taskId, updates);
+    }
+
+    /**
+     * Save working time before page unload (optimized for beforeunload events)
+     * Uses the existing updateTask method but with optimized logging for page unload scenarios
+     */
+    async saveWorkingTimeBeforeUnload(projectId: number, taskId: number, workingTimeMs: number): Promise<boolean> {
+        try {
+            this.logger.info(`Saving working time before unload for task ${taskId}: ${workingTimeMs}ms`);
+            
+            await this.updateWorkingTime(projectId, taskId, workingTimeMs);
+            
+            this.logger.info(`Successfully saved working time before unload: ${workingTimeMs}ms`);
+            return true;
+        } catch (error) {
+            this.logger.warn('Failed to save working time before unload:', error);
+            // Don't throw error - this is a background operation during page unload
+            return false;
         }
     }
 }
