@@ -65,6 +65,7 @@
                         v-for="(row, index) in sortedData"
                         :key="getRowKey(row, index)"
                         :class="getRowClass(row, index)"
+                        v-bind="getRowAttributes(row)"
                         @click="handleRowClick(row, index)"
                     >
                         <td
@@ -263,6 +264,22 @@ const getRowClass = (_row: T, index: number) => ({
     'even': index % 2 === 0,
     'odd': index % 2 === 1,
 });
+
+const getRowAttributes = (row: T) => {
+    const attributes: Record<string, string> = {};
+    
+    // Add data-task-status attribute for task rows that have a status property
+    if ('status' in row && row.status) {
+        attributes['data-task-status'] = String(row.status);
+    }
+    
+    // Add data-clickable attribute for task rows that have clickability info
+    if ('isClickable' in row && typeof row.isClickable === 'boolean') {
+        attributes['data-clickable'] = String(row.isClickable);
+    }
+    
+    return attributes;
+};
 
 const getSortIcon = (columnKey: string) => {
     if (sortKey.value !== columnKey) return faSort;
