@@ -146,6 +146,20 @@ export class TaskStatusService {
                     ? { allowed: true }
                     : { allowed: false, reason: 'Only managers can modify deferred tasks' };
 
+            case TaskStatus.CHANGES_REQUIRED:
+                // Tasks marked for changes can be suspended, deferred, or put back in progress
+                const allowedFromChangesRequired = [TaskStatus.IN_PROGRESS, TaskStatus.SUSPENDED, TaskStatus.DEFERRED];
+                return allowedFromChangesRequired.includes(toStatus)
+                    ? { allowed: true }
+                    : { allowed: false, reason: `Cannot transition from CHANGES_REQUIRED to ${toStatus}` };
+
+            case TaskStatus.VETOED:
+                // Vetoed tasks can be suspended, deferred, or put back in progress
+                const allowedFromVetoed = [TaskStatus.IN_PROGRESS, TaskStatus.SUSPENDED, TaskStatus.DEFERRED];
+                return allowedFromVetoed.includes(toStatus)
+                    ? { allowed: true }
+                    : { allowed: false, reason: `Cannot transition from VETOED to ${toStatus}` };
+
             default:
                 return { allowed: false, reason: `Unknown status transition from ${fromStatus} to ${toStatus}` };
         }
