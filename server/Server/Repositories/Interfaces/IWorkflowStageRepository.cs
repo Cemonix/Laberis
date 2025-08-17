@@ -5,6 +5,21 @@ namespace server.Repositories.Interfaces;
 public interface IWorkflowStageRepository : IGenericRepository<WorkflowStage>
 {
     /// <summary>
+    /// Gets the next workflow stage for a task based on workflow stage connections.
+    /// </summary>
+    /// <param name="currentStageId">The ID of the current workflow stage.</param>
+    /// <param name="condition">Optional condition for stage transition (e.g., "approved", "rejected").</param>
+    /// <returns>The next workflow stage if found, otherwise null.</returns>
+    Task<WorkflowStage?> GetNextWorkflowStageAsync(int currentStageId, string? condition = null);
+
+    /// <summary>
+    /// Gets the initial workflow stage for a workflow (annotation stage).
+    /// </summary>
+    /// <param name="workflowId">The ID of the workflow.</param>
+    /// <returns>The initial workflow stage if found, otherwise null.</returns>
+    Task<WorkflowStage?> GetInitialWorkflowStageAsync(int workflowId);
+
+    /// <summary>
     /// Gets all workflow stages for a specific workflow with their connections included.
     /// </summary>
     /// <param name="workflowId">The ID of the workflow.</param>
