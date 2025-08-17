@@ -12,6 +12,7 @@ namespace Server.Tests.Services
     public class TaskServiceTests
     {
         private readonly Mock<ITaskRepository> _mockTaskRepository;
+        private readonly Mock<IAssetRepository> _mockAssetRepository;
         private readonly Mock<ITaskEventRepository> _mockTaskEventRepository;
         private readonly Mock<ITaskEventService> _mockTaskEventService;
         private readonly Mock<ITaskStatusValidator> _mockTaskStatusValidator;
@@ -25,6 +26,7 @@ namespace Server.Tests.Services
         public TaskServiceTests()
         {
             _mockTaskRepository = new Mock<ITaskRepository>();
+            _mockAssetRepository = new Mock<IAssetRepository>();
             _mockTaskEventRepository = new Mock<ITaskEventRepository>();
             _mockTaskEventService = new Mock<ITaskEventService>();
             _mockTaskStatusValidator = new Mock<ITaskStatusValidator>();
@@ -36,6 +38,7 @@ namespace Server.Tests.Services
             
             _taskService = new TaskService(
                 _mockTaskRepository.Object, 
+                _mockAssetRepository.Object,
                 _mockTaskEventRepository.Object,
                 _mockTaskEventService.Object,
                 _mockTaskStatusValidator.Object,

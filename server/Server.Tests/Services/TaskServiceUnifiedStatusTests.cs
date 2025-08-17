@@ -4,9 +4,11 @@ using Moq;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
 using server.Models.DTOs.TaskEvent;
+using server.Models.Internal;
 using server.Repositories.Interfaces;
 using server.Services;
 using server.Services.Interfaces;
+using System.Linq.Expressions;
 using LaberisTask = server.Models.Domain.Task;
 using TaskStatus = server.Models.Domain.Enums.TaskStatus;
 
@@ -15,6 +17,7 @@ namespace Server.Tests.Services;
 public class TaskServiceUnifiedStatusTests
 {
     private readonly Mock<ITaskRepository> _mockTaskRepository;
+    private readonly Mock<IAssetRepository> _mockAssetRepository;
     private readonly Mock<ITaskEventRepository> _mockTaskEventRepository;
     private readonly Mock<ITaskEventService> _mockTaskEventService;
     private readonly Mock<ITaskStatusValidator> _mockTaskStatusValidator;
@@ -28,6 +31,7 @@ public class TaskServiceUnifiedStatusTests
     public TaskServiceUnifiedStatusTests()
     {
         _mockTaskRepository = new Mock<ITaskRepository>();
+        _mockAssetRepository = new Mock<IAssetRepository>();
         _mockTaskEventRepository = new Mock<ITaskEventRepository>();
         _mockTaskEventService = new Mock<ITaskEventService>();
         _mockTaskStatusValidator = new Mock<ITaskStatusValidator>();
@@ -44,6 +48,7 @@ public class TaskServiceUnifiedStatusTests
 
         _taskService = new TaskService(
             _mockTaskRepository.Object,
+            _mockAssetRepository.Object,
             _mockTaskEventRepository.Object,
             _mockTaskEventService.Object,
             _mockTaskStatusValidator.Object,
@@ -134,6 +139,7 @@ public class TaskServiceUnifiedStatusTests
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
         existingTask.AssignedToUserId = userId; // Make it IN_PROGRESS
+        existingTask.LastWorkedOnByUserId = userId; // Task has been worked on
 
         _mockTaskRepository
             .Setup(x => x.GetByIdAsync(taskId))
@@ -161,7 +167,7 @@ public class TaskServiceUnifiedStatusTests
         Assert.Null(existingTask.CompletedAt);
         Assert.Null(existingTask.DeferredAt);
         Assert.Null(existingTask.ArchivedAt);
-        Assert.Null(existingTask.LastWorkedOnByUserId);
+        Assert.Equal(userId, existingTask.LastWorkedOnByUserId); // Should preserve who last worked on it
 
         _mockTaskRepository.Verify(x => x.SaveChangesAsync(), Times.Once);
         _mockTaskEventService.Verify(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.SUSPENDED, userId), Times.Once);
@@ -175,6 +181,7 @@ public class TaskServiceUnifiedStatusTests
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
         existingTask.AssignedToUserId = userId; // Make it IN_PROGRESS
+        existingTask.LastWorkedOnByUserId = userId; // Task has been worked on
 
         _mockTaskRepository
             .Setup(x => x.GetByIdAsync(taskId))
@@ -297,6 +304,7 @@ public class TaskServiceUnifiedStatusTests
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
         existingTask.AssignedToUserId = userId;
+        existingTask.LastWorkedOnByUserId = userId; // Task has been worked on
 
         _mockTaskRepository
             .Setup(x => x.GetByIdAsync(taskId))
@@ -326,7 +334,7 @@ public class TaskServiceUnifiedStatusTests
         Assert.NotNull(existingTask.CompletedAt);
 
         // Should not call methods related to workflow stage navigation
-        _mockTaskRepository.Verify(x => x.GetNextWorkflowStageAsync(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
+        _mockWorkflowStageRepository.Verify(x => x.GetNextWorkflowStageAsync(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -372,6 +380,58 @@ public class TaskServiceUnifiedStatusTests
         Assert.Null(existingTask.CompletedAt);
         Assert.Null(existingTask.ArchivedAt);
     }
+
+
+
+    [Fact]
+    public async System.Threading.Tasks.Task ChangeTaskStatusAsync_SuspendedChangesRequiredToInProgress_ShouldHandleChangesRequiredCorrectly()
+    {
+        // Arrange - This tests the exact issue: CHANGES_REQUIRED → SUSPENDED → IN_PROGRESS (frontend call)
+        const int taskId = 1;
+        const string userId = "user123";
+        var originalChangesRequiredTime = DateTime.UtcNow.AddDays(-1);
+
+        var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
+        existingTask.AssignedToUserId = userId;
+        existingTask.LastWorkedOnByUserId = userId;
+        existingTask.SuspendedAt = DateTime.UtcNow.AddHours(-1); // Currently suspended
+        existingTask.ChangesRequiredAt = originalChangesRequiredTime; // Originally had changes required
+
+        _mockTaskRepository
+            .Setup(x => x.GetByIdAsync(taskId))
+            .ReturnsAsync(existingTask);
+
+        _mockTaskStatusValidator
+            .Setup(x => x.ValidateStatusTransition(existingTask, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId))
+            .Returns((true, string.Empty));
+
+        _mockTaskRepository
+            .Setup(x => x.SaveChangesAsync())
+            .ReturnsAsync(1);
+
+        _mockTaskEventService
+            .Setup(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId))
+            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
+
+        // Act - Frontend explicitly changes status to IN_PROGRESS when starting annotation
+        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.IN_PROGRESS, userId, moveAsset: false);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(TaskStatus.IN_PROGRESS, result.Status);
+        
+        // This shows the current issue - what should happen to ChangesRequiredAt?
+        // Current behavior: ChangesRequiredAt is cleared, task shows as IN_PROGRESS
+        // Desired behavior: Remember that it originally required changes for completion logic
+        
+        Assert.Null(existingTask.SuspendedAt); // Should be cleared
+        Assert.Equal(userId, existingTask.AssignedToUserId); // Should remain assigned
+        Assert.Equal(userId, existingTask.LastWorkedOnByUserId); // Should be set since it's IN_PROGRESS
+
+        _mockTaskRepository.Verify(x => x.SaveChangesAsync(), Times.Once);
+        _mockTaskEventService.Verify(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId), Times.Once);
+    }
+
 
     private static LaberisTask CreateTestTask(int taskId, WorkflowStageType stageType)
     {
