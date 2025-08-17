@@ -14,13 +14,14 @@ const logger = AppLogger.createServiceLogger('WorkflowNavigationUtil');
 export class WorkflowNavigationHelper {
     
     /**
-     * Map user roles to their primary workflow stage types
+     * Map user roles to their preferred workflow stage types (in order of preference)
+     * Note: ANNOTATION and COMPLETION stages are always present, REVISION is optional
      */
-    private static readonly ROLE_STAGE_MAPPING: Record<ProjectRole, WorkflowStageType> = {
-        [ProjectRole.ANNOTATOR]: WorkflowStageType.ANNOTATION,
-        [ProjectRole.REVIEWER]: WorkflowStageType.REVISION,
-        [ProjectRole.MANAGER]: WorkflowStageType.COMPLETION,
-        [ProjectRole.VIEWER]: WorkflowStageType.ANNOTATION, // Viewers default to annotation stage for viewing
+    private static readonly ROLE_STAGE_PREFERENCES: Record<ProjectRole, WorkflowStageType[]> = {
+        [ProjectRole.ANNOTATOR]: [WorkflowStageType.ANNOTATION],
+        [ProjectRole.REVIEWER]: [WorkflowStageType.REVISION, WorkflowStageType.COMPLETION], // If no review stage, fall back to completion for oversight
+        [ProjectRole.MANAGER]: [WorkflowStageType.COMPLETION], // Managers primarily work in completion stage
+        [ProjectRole.VIEWER]: [WorkflowStageType.ANNOTATION, WorkflowStageType.REVISION, WorkflowStageType.COMPLETION], // Viewers can view any stage
     };
 
     /**
@@ -63,35 +64,25 @@ export class WorkflowNavigationHelper {
      * Get appropriate stage for user role from workflow stages
      */
     static getStageForRole(stages: WorkflowStage[], userRole: ProjectRole): WorkflowStage | null {
-        const targetStageType = this.ROLE_STAGE_MAPPING[userRole];
+        const preferences = this.ROLE_STAGE_PREFERENCES[userRole];
         
-        // Find stage matching the user's role
-        const roleStage = stages.find(stage => stage.stageType === targetStageType);
-        if (roleStage) {
-            logger.info(`Found ${targetStageType} stage for ${userRole}: ${roleStage.name}`);
-            return roleStage;
-        }
-
-        // Fallback strategies
-        logger.warn(`No ${targetStageType} stage found for ${userRole}, using fallback`);
-        
-        // For managers, try annotation stage as fallback
-        if (userRole === ProjectRole.MANAGER) {
-            const annotationStage = stages.find(stage => stage.stageType === WorkflowStageType.ANNOTATION);
-            if (annotationStage) {
-                logger.info(`Manager fallback: using annotation stage ${annotationStage.name}`);
-                return annotationStage;
+        // Try each preferred stage type in order
+        for (const preferredStageType of preferences) {
+            const matchingStage = stages.find(stage => stage.stageType === preferredStageType);
+            if (matchingStage) {
+                logger.info(`Found ${preferredStageType} stage for ${userRole}: ${matchingStage.name}`);
+                return matchingStage;
             }
         }
 
-        // For viewers and others, use the first stage
+        // If no preferred stages found, use the first available stage
         if (stages.length > 0) {
             const firstStage = stages[0];
-            logger.info(`Using first stage as fallback: ${firstStage.name}`);
+            logger.info(`No preferred stages found for ${userRole}, using first available stage: ${firstStage.name}`);
             return firstStage;
         }
 
-        logger.warn('No suitable stage found for user role');
+        logger.warn('No stages available in workflow - this may indicate a workflow configuration issue');
         return null;
     }
 
