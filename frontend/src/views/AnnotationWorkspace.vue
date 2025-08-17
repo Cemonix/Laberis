@@ -49,28 +49,45 @@
                             <span class="preview-badge">📋 Preview Only</span>
                             <small>This task is completed</small>
                         </div>
-                        <template v-else>
-                            <button 
+                        
+                        <!-- Veto button (available for both completed and active tasks in review/completion stages) -->
+                        <Button 
+                            v-if="canVetoTask"
+                            @click="handleVetoTask"
+                            :disabled="!currentTask"
+                            variant="danger"
+                            class="task-action-btn veto-btn"
+                            title="Return task for rework"
+                        >
+                            <font-awesome-icon :icon="faUndo" />
+                            Veto
+                        </Button>
+                        
+                        <!-- Active task actions -->
+                        <template v-if="!isTaskCompleted">
+                            <Button 
                                 @click="handleSuspendTask"
                                 :disabled="!currentTask"
-                                class="task-action-btn suspend-btn"
+                                variant="warning"
+                                class="task-action-btn"
                                 title="Suspend task (pause work)"
                             >
                                 <font-awesome-icon :icon="faPause" />
-                            </button>
-                            <button 
+                            </Button>
+                            <Button 
                                 @click="handleDeferTask"
                                 :disabled="!currentTask"
-                                class="task-action-btn defer-btn"
+                                variant="info"
+                                class="task-action-btn"
                                 title="Defer task (skip for now)"
                             >
                                 <font-awesome-icon :icon="faForward" />
-                            </button>
+                            </Button>
                             <Button 
                                 @click="handleCompleteTaskAndNext"
                                 :disabled="!canCompleteTask"
                                 variant="success"
-                                class="complete-btn"
+                                class="task-action-btn complete-btn"
                                 title="Complete annotation and move to next task"
                             >
                                 Complete & Next
@@ -122,7 +139,9 @@ import AnnotationsPanel from "@/components/annotationWorkspace/AnnotationsPanel.
 import {useRoute, useRouter} from "vue-router";
 import ModalWindow from "@/components/common/modal/ModalWindow.vue";
 import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
-import {faPause, faForward} from "@fortawesome/free-solid-svg-icons";
+import {faPause, faForward, faUndo} from "@fortawesome/free-solid-svg-icons";
+import {usePermissions} from "@/composables/usePermissions";
+import {PERMISSIONS} from "@/types/permissions";
 
 const props = defineProps({
     projectId: {
@@ -138,6 +157,7 @@ const props = defineProps({
 const workspaceStore = useWorkspaceStore();
 const route = useRoute();
 const router = useRouter();
+const { hasPermissionInProject } = usePermissions();
 
 const isLoading = computed(() => workspaceStore.getLoadingState);
 const error = computed(() => workspaceStore.getError);
@@ -149,6 +169,16 @@ const canNavigateToNext = computed(() => workspaceStore.canNavigateToNext);
 const canCompleteTask = computed(() => workspaceStore.canCompleteCurrentTask);
 const currentTask = computed(() => workspaceStore.getCurrentTask);
 const isTaskCompleted = computed(() => workspaceStore.isTaskCompleted);
+const canVetoTask = computed(() => {
+    if (!workspaceStore.canVetoCurrentTask) return false;
+    
+    // Get project ID from props
+    const projectId = parseInt(props.projectId, 10);
+    if (isNaN(projectId)) return false;
+
+    // Check if user has the return for rework permission
+    return hasPermissionInProject(PERMISSIONS.TASK.RETURN_FOR_REWORK, projectId);
+});
 const zoomPercentageDisplay = computed(() => {
     const zoomLevel = workspaceStore.zoomLevel;
     return `${(zoomLevel * 100).toFixed(0)}%`;
@@ -161,6 +191,9 @@ const retryLoading = async () => {
 };
 
 const handlePreviousTask = async () => {
+    // Save current working time before navigating to another task
+    await workspaceStore.saveWorkingTimeBeforeUnload();
+    
     const navigationInfo = await workspaceStore.navigateToPreviousTask();
     
     if (navigationInfo) {
@@ -184,6 +217,9 @@ const handlePreviousTask = async () => {
 const showCompletionModal = ref(false);
 
 const handleNextTask = async () => {
+    // Save current working time before navigating to another task
+    await workspaceStore.saveWorkingTimeBeforeUnload();
+    
     const navigationInfo = await workspaceStore.navigateToNextTask();
     if (navigationInfo) {
         // Directly load the new asset instead of using router.push to avoid same-route issues
@@ -206,7 +242,10 @@ const handleNextTask = async () => {
     }
 };
 
-const handleCompletionModalConfirm = () => {
+const handleCompletionModalConfirm = async () => {
+    // Save working time before navigating away
+    await workspaceStore.saveWorkingTimeBeforeUnload();
+    
     const currentTask = workspaceStore.getCurrentTask;
     if (currentTask) {
         router.push({
@@ -225,7 +264,10 @@ const handleCompletionModalCancel = () => {
     showCompletionModal.value = false;
 };
 
-const handleBackToTasks = () => {
+const handleBackToTasks = async () => {
+    // Save working time before navigating away
+    await workspaceStore.saveWorkingTimeBeforeUnload();
+    
     const task = currentTask.value;
     if (task) {
         router.push({
@@ -339,14 +381,58 @@ const handleDeferTask = async () => {
     }
 };
 
+const handleVetoTask = async () => {
+    if (!currentTask.value) return;
+    
+    try {
+        // Optionally prompt for a reason
+        const reason = prompt('Please provide a reason for returning this task for rework (optional):');
+        
+        const success = await workspaceStore.returnCurrentTaskForRework(reason || undefined);
+        if (success) {
+            // Move to next task after veto
+            const nextTaskInfo = await workspaceStore.getNextAvailableTask();
+            if (nextTaskInfo) {
+                await workspaceStore.loadAsset(nextTaskInfo.projectId, nextTaskInfo.assetId, nextTaskInfo.taskId);
+                await router.replace({
+                    name: 'AnnotationWorkspace',
+                    params: {
+                        projectId: nextTaskInfo.projectId,
+                        assetId: nextTaskInfo.assetId
+                    },
+                    query: {
+                        taskId: nextTaskInfo.taskId
+                    }
+                });
+            } else {
+                showCompletionModal.value = true;
+            }
+        }
+    } catch (error) {
+        console.error('Error in handleVetoTask:', error);
+    }
+};
+
+
+// Handler to save working time before page unload (refresh, close, navigation)
+const handleBeforeUnload = async () => {
+    // Save working time before the page is unloaded
+    await workspaceStore.saveWorkingTimeBeforeUnload();
+};
 
 onMounted(async () => {
     const taskId = route.query.taskId as string | undefined;
     await workspaceStore.loadAsset(props.projectId, props.assetId, taskId);
+    
+    // Add beforeunload event listener to save working time on page refresh/close
+    window.addEventListener('beforeunload', handleBeforeUnload);
 });
 
 onUnmounted(() => {
     workspaceStore.cleanupTimer();
+    
+    // Remove beforeunload event listener
+    window.removeEventListener('beforeunload', handleBeforeUnload);
 });
 </script>
 
@@ -420,61 +506,43 @@ onUnmounted(() => {
         justify-content: center;
         width: 36px;
         height: 36px;
-        border: none;
         border-radius: 6px;
-        cursor: pointer;
         font-size: 1rem;
         transition: all 0.2s ease-in-out;
-        
-        &:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
         
         &:hover:not(:disabled) {
             transform: translateY(-1px);
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
         }
-    }
-    
-    .suspend-btn {
-        background-color: var(--color-yellow-500);
-        color: var(--color-white);
         
-        &:hover:not(:disabled) {
-            background-color: var(--color-yellow-600);
+        &.veto-btn {
+            width: auto;
+            padding: 0.5rem 1rem;
+            gap: 0.5rem;
+        }
+
+        &.complete-btn {
+            width: auto;
+            background-color: var(--color-green-500);
+            color: var(--color-white);
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        &.complete-btn:hover:not(:disabled) {
+            background-color: var(--color-green-600);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+        
+        &.complete-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
     }
     
-    .defer-btn {
-        background-color: var(--color-turquoise-500);
-        color: var(--color-white);
-        
-        &:hover:not(:disabled) {
-            background-color: var(--color-turquoise-600);
-        }
-    }
-    
-    .complete-btn {
-        background-color: var(--color-green-500);
-        color: var(--color-white);
-        font-size: 0.875rem;
-        font-weight: 600;
-        margin-left: 0.5rem;
-    }
-    
-    .complete-btn:hover:not(:disabled) {
-        background-color: var(--color-green-600);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
-    }
-    
-    .complete-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none;
-        box-shadow: none;
-    }
     
     .task-preview-indicator {
         display: flex;
