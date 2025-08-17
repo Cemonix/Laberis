@@ -12,4 +12,5 @@ public enum TaskStatus
     READY_FOR_REVIEW,
     READY_FOR_COMPLETION,
     CHANGES_REQUIRED,
+    VETOED,
 }

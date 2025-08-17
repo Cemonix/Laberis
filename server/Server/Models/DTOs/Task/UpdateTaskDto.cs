@@ -23,4 +23,6 @@ public record class UpdateTaskDto
     public DateTime? SuspendedAt { get; init; }
 
     public DateTime? DeferredAt { get; init; }
+
+    public long? WorkingTimeMs { get; init; }
 }
