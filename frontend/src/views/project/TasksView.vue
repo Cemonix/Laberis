@@ -205,7 +205,7 @@ import {usePermissions} from '@/composables/usePermissions';
 import {useAssetPreview} from '@/composables/useAssetPreview';
 import {PERMISSIONS} from '@/types/permissions';
 import {useProjectStore} from '@/stores/projectStore';
-import {taskService, workflowStageService} from '@/services/api/projects';
+import {taskService, workflowStageService, assetService} from '@/services/api/projects';
 import {taskStatusService} from '@/services/taskStatusService';
 import {useTaskSelection} from '@/composables/useTaskSelection';
 import {taskBulkOperations} from '@/services/taskBulkOperations';
@@ -235,6 +235,7 @@ const stageId = ref<number>(parseInt(route.params.stageId as string));
 const stageName = ref<string>('');
 const stageDescription = ref<string>('');
 const stageType = ref<string>('');
+const currentStage = ref<any>(null);
 
 const tasks = ref<TaskTableRow[]>([]);
 const isLoading = ref<boolean>(true);
@@ -423,9 +424,15 @@ const loadTasks = async () => {
         
         // First check if there are any available assets for task creation (non-blocking)
         try {
-            const assetsCheck = await taskService.checkAssetsAvailable(projectId.value);
-            hasAvailableAssets.value = assetsCheck.hasAssets;
-            availableAssetsCount.value = assetsCheck.count;
+            if (currentStage.value?.inputDataSourceId) {
+                const assetsCount = await assetService.getAvailableAssetsCountForDataSource(projectId.value, currentStage.value.inputDataSourceId);
+                hasAvailableAssets.value = assetsCount > 0;
+                availableAssetsCount.value = assetsCount;
+            } else {
+                logger.warn('No input data source ID available for stage, assuming no assets available');
+                hasAvailableAssets.value = false;
+                availableAssetsCount.value = 0;
+            }
         } catch (assetCheckError) {
             logger.warn('Failed to check assets availability, assuming assets are unavailable', assetCheckError);
             hasAvailableAssets.value = false;
@@ -931,6 +938,7 @@ const loadStageInfo = async () => {
             workflowId.value, 
             stageId.value
         );
+        currentStage.value = stage;
         stageName.value = stage.name;
         stageDescription.value = stage.description || '';
         stageType.value = stage.stageType || '';
