@@ -15,6 +15,7 @@ public class TaskService : ITaskService
 {
     private readonly ITaskRepository _taskRepository;
     private readonly ITaskEventRepository _taskEventRepository;
+    private readonly IAssetRepository _assetRepository;
     private readonly ITaskEventService _taskEventService;
     private readonly ITaskStatusValidator _taskStatusValidator;
     private readonly IAssetService _assetService;
@@ -25,6 +26,7 @@ public class TaskService : ITaskService
 
     public TaskService(
         ITaskRepository taskRepository,
+        IAssetRepository assetRepository,
         ITaskEventRepository taskEventRepository,
         ITaskEventService taskEventService,
         ITaskStatusValidator taskStatusValidator,
@@ -35,6 +37,7 @@ public class TaskService : ITaskService
         ILogger<TaskService> logger)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
+        _assetRepository = assetRepository ?? throw new ArgumentNullException(nameof(assetRepository));
         _taskEventRepository = taskEventRepository ?? throw new ArgumentNullException(nameof(taskEventRepository));
         _taskEventService = taskEventService ?? throw new ArgumentNullException(nameof(taskEventService));
         _taskStatusValidator = taskStatusValidator ?? throw new ArgumentNullException(nameof(taskStatusValidator));
@@ -373,6 +376,8 @@ public class TaskService : ITaskService
             _logger.LogInformation("Task {TaskId} is suspended, auto-resuming before assignment", taskId);
             existingTask.SuspendedAt = null; // Clear suspended state
             existingTask.UpdatedAt = DateTime.UtcNow;
+            // Note: We intentionally preserve other state timestamps like ChangesRequiredAt, VetoedAt, etc.
+            // when auto-resuming from suspension, as suspension is a temporary overlay state
             
             // Create TaskEvent for auto-resume
             var resumeEvent = new TaskEvent
@@ -507,7 +512,7 @@ public class TaskService : ITaskService
         _logger.LogInformation("Creating tasks for all assets in project {ProjectId} for workflow {WorkflowId}", projectId, workflowId);
 
         // Get all imported assets for the project that don't already have tasks, filtered by the initial stage's input data source
-        var availableAssets = await _taskRepository.GetAvailableAssetsForTaskCreationAsync(projectId, initialStageId);
+        var availableAssets = await _assetRepository.GetAvailableAssetsForTaskCreationAsync(projectId, initialStageId);
 
         if (!availableAssets.Any())
         {
@@ -556,7 +561,7 @@ public class TaskService : ITaskService
         }
 
         // Get assets specifically from the workflow stage's input data source
-        var availableAssets = await _taskRepository.GetAvailableAssetsForTaskCreationAsync(projectId, workflowStageId);
+        var availableAssets = await _assetRepository.GetAvailableAssetsForTaskCreationAsync(projectId, workflowStageId);
 
         if (!availableAssets.Any())
         {
@@ -600,7 +605,7 @@ public class TaskService : ITaskService
             dataSourceId, projectId, workflowStageId);
 
         // Get available assets from the specific data source
-        var availableAssets = await _taskRepository.GetAvailableAssetsFromDataSourceAsync(projectId, dataSourceId);
+        var availableAssets = await _assetRepository.GetAvailableAssetsFromDataSourceAsync(projectId, dataSourceId);
         
         if (!availableAssets.Any())
         {
@@ -640,26 +645,6 @@ public class TaskService : ITaskService
         return tasksCreated;
     }
 
-    public async Task<bool> HasAssetsAvailableAsync(int projectId, int dataSourceId)
-    {
-        _logger.LogInformation("Checking if data source {DataSourceId} has assets available for project {ProjectId}", dataSourceId, projectId);
-        
-        var assetsCount = await _taskRepository.GetAvailableAssetsCountAsync(projectId, dataSourceId);
-        var hasAssets = assetsCount > 0;
-        
-        _logger.LogInformation("Data source {DataSourceId} has {AssetsCount} assets available", dataSourceId, assetsCount);
-        return hasAssets;
-    }
-
-    public async Task<int> GetAvailableAssetsCountAsync(int projectId)
-    {
-        _logger.LogInformation("Getting available assets count for project {ProjectId}", projectId);
-        
-        var count = await _taskRepository.GetAvailableAssetsCountAsync(projectId);
-        
-        _logger.LogInformation("Project {ProjectId} has {AssetsCount} available assets", projectId, count);
-        return count;
-    }
 
     public async Task<TaskDto?> CompleteTaskAsync(int taskId, string userId)
     {
@@ -722,15 +707,36 @@ public class TaskService : ITaskService
             return MapToDto(existingTask);
         }
 
-        // Special handling for CHANGES_REQUIRED tasks - reactivate the vetoed task in review/completion stage
-        if (existingTask.ChangesRequiredAt.HasValue)
+        // Check if there are any existing tasks for this asset to determine completion behavior
+        var existingTasksForAsset = await GetTasksForAssetAsync(existingTask.AssetId, existingTask.WorkflowId);
+        var completedTasksForAsset = existingTasksForAsset.Where(t => t.CompletedAt.HasValue && t.TaskId != taskId).ToList();
+        
+        if (completedTasksForAsset.Count != 0)
         {
-            _logger.LogInformation("Task {TaskId} has CHANGES_REQUIRED status, reactivating vetoed task", taskId);
-            return await CompleteChangesRequiredTaskAsync(taskId, userId);
+            // Case 2 & 3: There is already a completed task for this asset
+            var vetoedTask = completedTasksForAsset.FirstOrDefault(t => t.VetoedAt.HasValue);
+            
+            if (vetoedTask != null)
+            {
+                // Case 2: There is a vetoed task - reactivate it
+                _logger.LogInformation("Task {TaskId} completion: Found vetoed task {VetoedTaskId} for asset {AssetId}, reactivating", 
+                    taskId, vetoedTask.TaskId, existingTask.AssetId);
+                return await CompleteChangesRequiredTaskAsync(taskId, userId);
+            }
+            else
+            {
+                // Case 3: There is a completed task but it's not vetoed - data integrity violation
+                var completedTaskId = completedTasksForAsset.First().TaskId;
+                _logger.LogError("Data integrity violation: Asset {AssetId} already has a completed task {CompletedTaskId} that is not vetoed. Cannot complete task {TaskId}.",
+                    existingTask.AssetId, completedTaskId, taskId);
+                throw new InvalidOperationException("Data integrity violation");
+            }
         }
+        
+        // Case 1: No existing completed tasks for this asset - proceed with normal completion
 
         // Find next workflow stage
-        var nextStage = await _taskRepository.GetNextWorkflowStageAsync(existingTask.CurrentWorkflowStageId);
+        var nextStage = await _workflowStageRepository.GetNextWorkflowStageAsync(existingTask.CurrentWorkflowStageId);
         
         if (nextStage == null)
         {
@@ -874,6 +880,19 @@ public class TaskService : ITaskService
 
         return MapToDto(changesRequiredTask);
     }
+
+    /// <summary>
+    /// Gets all tasks for a specific asset within a workflow to enable asset-centric task management
+    /// </summary>
+    private async Task<List<LaberisTask>> GetTasksForAssetAsync(int assetId, int workflowId)
+    {
+        var tasks = await _taskRepository.FindAsync(t => 
+            t.AssetId == assetId && 
+            t.WorkflowId == workflowId);
+        
+        return [.. tasks];
+    }
+
 
     public async Task<TaskDto?> MarkTaskIncompleteAsync(int taskId, string userId)
     {
@@ -1316,6 +1335,7 @@ public class TaskService : ITaskService
         var now = DateTime.UtcNow;
         
         // Clear all state timestamps first (mutual exclusion)
+        
         task.SuspendedAt = null;
         task.DeferredAt = null;
         task.CompletedAt = null;
@@ -1370,13 +1390,15 @@ public class TaskService : ITaskService
         if (task.ChangesRequiredAt.HasValue) return TaskStatus.CHANGES_REQUIRED;
         if (task.CompletedAt.HasValue) return TaskStatus.COMPLETED;
         
-        // Determine working state based on assignment
-        if (!string.IsNullOrEmpty(task.AssignedToUserId))
+        // Check if task has been worked on (has LastWorkedOnByUserId set)
+        // Only tasks that have actual work done should be IN_PROGRESS
+        if (!string.IsNullOrEmpty(task.AssignedToUserId) && !string.IsNullOrEmpty(task.LastWorkedOnByUserId))
         {
             return TaskStatus.IN_PROGRESS;
         }
         
         // Context-aware status for unstarted tasks based on workflow stage type
+        // This applies to both unassigned tasks and newly assigned tasks that haven't been worked on
         if (!string.IsNullOrEmpty(stageType))
         {
             return stageType.ToUpperInvariant() switch
