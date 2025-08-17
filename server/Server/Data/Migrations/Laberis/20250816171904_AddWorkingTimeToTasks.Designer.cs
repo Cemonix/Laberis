@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using server.Data;
@@ -12,9 +13,11 @@ using server.Models.Domain.Enums;
 namespace server.Data.Migrations.Laberis
 {
     [DbContext(typeof(LaberisDbContext))]
-    partial class LaberisDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250816171904_AddWorkingTimeToTasks")]
+    partial class AddWorkingTimeToTasks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -999,10 +1002,6 @@ namespace server.Data.Migrations.Laberis
                         .HasColumnType("text")
                         .HasColumnName("assigned_to_user_id");
 
-                    b.Property<DateTime?>("ChangesRequiredAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("changes_required_at");
-
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
@@ -1052,10 +1051,6 @@ namespace server.Data.Migrations.Laberis
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<DateTime?>("VetoedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("vetoed_at");
 
                     b.Property<int>("WorkflowId")
                         .HasColumnType("integer")
