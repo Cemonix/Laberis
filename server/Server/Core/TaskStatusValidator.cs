@@ -14,7 +14,7 @@ public class TaskStatusValidator : ITaskStatusValidator
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public (bool IsValid, string ErrorMessage) ValidateStatusTransition(
+    public bool ValidateStatusTransition(
         LaberisTask task, 
         TaskStatus currentStatus, 
         TaskStatus targetStatus, 
@@ -23,66 +23,39 @@ public class TaskStatusValidator : ITaskStatusValidator
         _logger.LogDebug("Validating status transition for task {TaskId}: {CurrentStatus} → {TargetStatus}", 
             task.TaskId, currentStatus, targetStatus);
 
-        var stageType = task.CurrentWorkflowStage?.StageType;
-        
-        // TODO: Add role-based validation (manager vs regular user)
-        // For now, we'll implement the basic transition rules
-        
-        var result = targetStatus switch
+        bool result = targetStatus switch
         {
-            TaskStatus.IN_PROGRESS => ValidateInProgressTransition(currentStatus, stageType),
-            TaskStatus.COMPLETED => ValidateCompletedTransition(currentStatus, stageType),
-            TaskStatus.SUSPENDED => ValidateSuspendedTransition(currentStatus, stageType),
-            TaskStatus.DEFERRED => ValidateDeferredTransition(currentStatus, stageType),
-            TaskStatus.ARCHIVED => ValidateArchivedTransition(currentStatus, stageType),
-            TaskStatus.READY_FOR_ANNOTATION => ValidateReadyForAnnotationTransition(currentStatus, stageType),
-            TaskStatus.READY_FOR_REVIEW => ValidateReadyForReviewTransition(currentStatus, stageType),
-            TaskStatus.READY_FOR_COMPLETION => ValidateReadyForCompletionTransition(currentStatus, stageType),
-            TaskStatus.NOT_STARTED => ValidateNotStartedTransition(currentStatus, stageType),
-            TaskStatus.VETOED => ValidateVetoedTransition(currentStatus, stageType),
-            TaskStatus.CHANGES_REQUIRED => ValidateChangesRequiredTransition(currentStatus, stageType),
-            _ => (false, $"Unknown target status: {targetStatus}")
+            TaskStatus.NOT_STARTED => false,
+            TaskStatus.READY_FOR_ANNOTATION => false,
+            TaskStatus.READY_FOR_REVIEW => false,
+            TaskStatus.READY_FOR_COMPLETION => false,
+            TaskStatus.IN_PROGRESS => ValidateInProgressTransition(currentStatus),
+            TaskStatus.SUSPENDED => ValidateSuspendedTransition(currentStatus),
+            TaskStatus.DEFERRED => ValidateDeferredTransition(currentStatus),
+            TaskStatus.COMPLETED => ValidateCompletedTransition(currentStatus),
+            TaskStatus.VETOED => ValidateVetoedTransition(currentStatus),
+            TaskStatus.CHANGES_REQUIRED => ValidateChangesRequiredTransition(currentStatus),
+            TaskStatus.ARCHIVED => ValidateArchivedTransition(currentStatus),
+            _ => false
         };
-
-        if (!result.Item1)
-        {
-            _logger.LogWarning("Invalid status transition for task {TaskId}: {ErrorMessage}", 
-                task.TaskId, result.Item2);
-        }
 
         return result;
     }
 
-    private static (bool IsValid, string ErrorMessage) ValidateInProgressTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
+    private static bool ValidateInProgressTransition(TaskStatus currentStatus)
     {
         return currentStatus switch
         {
-            TaskStatus.READY_FOR_ANNOTATION or TaskStatus.READY_FOR_REVIEW or TaskStatus.READY_FOR_COMPLETION => (true, string.Empty),
-            TaskStatus.SUSPENDED => (true, string.Empty), // Unsuspending
-            TaskStatus.DEFERRED => (true, string.Empty), // Undefer
-            TaskStatus.NOT_STARTED => (true, string.Empty),
-            TaskStatus.CHANGES_REQUIRED => (true, string.Empty), // Allow resuming tasks that require changes
-            TaskStatus.COMPLETED when stageType == WorkflowStageType.COMPLETION => (
-                false, "Cannot mark completion stage tasks as incomplete. Use return-for-rework endpoint instead."
-            ),
-            TaskStatus.COMPLETED => (true, string.Empty), // Allow uncompleting tasks in annotation/review stages
-            TaskStatus.VETOED => (false, "Cannot restart a vetoed task"),
-            _ => (false, $"Cannot change status from {currentStatus} to IN_PROGRESS")
+            TaskStatus.READY_FOR_ANNOTATION or TaskStatus.READY_FOR_REVIEW or TaskStatus.READY_FOR_COMPLETION => true,
+            TaskStatus.SUSPENDED => true, // Unsuspending
+            TaskStatus.DEFERRED => true, // Undefer
+            TaskStatus.NOT_STARTED => true,
+            TaskStatus.CHANGES_REQUIRED => true, // Allow resuming tasks that require changes
+            _ => false
         };
     }
 
-    private static (bool IsValid, string ErrorMessage) ValidateCompletedTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
-    {
-        return currentStatus switch
-        {
-            TaskStatus.IN_PROGRESS => (true, string.Empty),
-            TaskStatus.CHANGES_REQUIRED => (true, string.Empty), // Allow completing tasks that require changes (after fixing them)
-            TaskStatus.VETOED => (false, "Cannot complete a vetoed task"),
-            _ => (false, $"Cannot complete task from status {currentStatus}")
-        };
-    }
-
-    private static (bool IsValid, string ErrorMessage) ValidateSuspendedTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
+    private static bool ValidateSuspendedTransition(TaskStatus currentStatus)
     {
         return currentStatus switch
         {
@@ -91,15 +64,12 @@ public class TaskStatusValidator : ITaskStatusValidator
             or TaskStatus.READY_FOR_REVIEW
             or TaskStatus.READY_FOR_COMPLETION
             or TaskStatus.NOT_STARTED
-            or TaskStatus.CHANGES_REQUIRED => (true, string.Empty), // Allow suspending tasks that require changes
-            TaskStatus.COMPLETED => (false, "Cannot suspend a completed task"),
-            TaskStatus.ARCHIVED => (false, "Cannot suspend an archived task"),
-            TaskStatus.VETOED => (false, "Cannot suspend a vetoed task"),
-            _ => (false, $"Cannot suspend task from status {currentStatus}")
+            or TaskStatus.CHANGES_REQUIRED => true, // Allow suspending tasks that require changes
+            _ => false
         };
     }
 
-    private static (bool IsValid, string ErrorMessage) ValidateDeferredTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
+    private static bool ValidateDeferredTransition(TaskStatus currentStatus)
     {
         return currentStatus switch
         {
@@ -108,59 +78,45 @@ public class TaskStatusValidator : ITaskStatusValidator
             or TaskStatus.READY_FOR_REVIEW
             or TaskStatus.READY_FOR_COMPLETION
             or TaskStatus.NOT_STARTED
-            or TaskStatus.CHANGES_REQUIRED => (true, string.Empty), // Allow deferring tasks that require changes
-            TaskStatus.SUSPENDED => (false, "Cannot defer a suspended task - please unsuspend first"),
-            TaskStatus.COMPLETED => (false, "Cannot defer a completed task"),
-            TaskStatus.ARCHIVED => (false, "Cannot defer an archived task"),
-            TaskStatus.VETOED => (false, "Cannot defer a vetoed task"),
-            _ => (false, $"Cannot defer task from status {currentStatus}")
+            or TaskStatus.CHANGES_REQUIRED => true, // Allow deferring tasks that require changes
+            _ => false
         };
     }
 
-    private static (bool IsValid, string ErrorMessage) ValidateArchivedTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
+    private static bool ValidateCompletedTransition(TaskStatus currentStatus)
     {
         return currentStatus switch
         {
-            TaskStatus.COMPLETED => (true, string.Empty),
-            _ => (false, $"Cannot archive task from status {currentStatus}")
+            TaskStatus.IN_PROGRESS => true,
+            TaskStatus.CHANGES_REQUIRED => true, // Allow completing tasks that require changes (after fixing them)
+            _ => false
         };
     }
 
-    private static (bool IsValid, string ErrorMessage) ValidateReadyForAnnotationTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
+    private static bool ValidateVetoedTransition(TaskStatus currentStatus)
     {
-        // READY_FOR_ANNOTATION status changes are not allowed via direct status transitions
-        // Use the return-for-rework API endpoint instead for vetoing completed tasks
-        return (false, $"Cannot change to READY_FOR_ANNOTATION from {currentStatus}. Use return-for-rework endpoint instead for vetoing tasks.");
+        return currentStatus switch
+        {
+            TaskStatus.IN_PROGRESS => true,
+            _ => false
+        };
     }
 
-    private static (bool IsValid, string ErrorMessage) ValidateReadyForReviewTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
+    private static bool ValidateChangesRequiredTransition(TaskStatus currentStatus)
     {
-        // Typically set when task moves from annotation to review stage
-        return (false, "READY_FOR_REVIEW status is typically set automatically during workflow progression");
+        return currentStatus switch
+        {
+            TaskStatus.COMPLETED => true,
+            _ => false
+        };
     }
 
-    private static (bool IsValid, string ErrorMessage) ValidateReadyForCompletionTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
+    private static bool ValidateArchivedTransition(TaskStatus currentStatus)
     {
-        // Typically set when task moves from review to completion stage
-        return (false, "READY_FOR_COMPLETION status is typically set automatically during workflow progression");
-    }
-
-    private static (bool IsValid, string ErrorMessage) ValidateNotStartedTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
-    {
-        return (false, "NOT_STARTED is typically only set during task creation");
-    }
-
-    private static (bool IsValid, string ErrorMessage) ValidateVetoedTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
-    {
-        // VETOED status can only be set through the return-for-rework API endpoint
-        // and should only be applied to completed tasks in review/completion stages
-        return (false, "VETOED status can only be set through the return-for-rework endpoint");
-    }
-
-    private static (bool IsValid, string ErrorMessage) ValidateChangesRequiredTransition(TaskStatus currentStatus, WorkflowStageType? stageType)
-    {
-        // CHANGES_REQUIRED status can only be set through the return-for-rework API endpoint
-        // and should only be applied to completed tasks being sent back to annotation stage
-        return (false, "CHANGES_REQUIRED status can only be set through the return-for-rework endpoint");
+        return currentStatus switch
+        {
+            TaskStatus.COMPLETED => true,
+            _ => false
+        };
     }
 }
