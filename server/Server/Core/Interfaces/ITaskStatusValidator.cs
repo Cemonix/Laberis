@@ -13,9 +13,10 @@ public interface ITaskStatusValidator
     /// <param name="targetStatus">The desired target status.</param>
     /// <param name="userId">The ID of the user attempting the transition (for role-based validation).</param>
     /// <returns>A validation result indicating if the transition is valid and any error message.</returns>
-    (bool IsValid, string ErrorMessage) ValidateStatusTransition(
-        server.Models.Domain.Task task, 
-        server.Models.Domain.Enums.TaskStatus currentStatus, 
-        server.Models.Domain.Enums.TaskStatus targetStatus, 
-        string userId);
+    bool ValidateStatusTransition(
+        Models.Domain.Task task, 
+        Models.Domain.Enums.TaskStatus currentStatus, 
+        Models.Domain.Enums.TaskStatus targetStatus, 
+        string userId
+    );
 }
