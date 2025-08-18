@@ -2,6 +2,7 @@ using System;
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using server.Data;
+using server.Repositories.Interfaces;
 
 namespace server.Repositories;
 
