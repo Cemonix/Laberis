@@ -3,13 +3,15 @@ using System.Text.RegularExpressions;
 using Minio;
 using Minio.DataModel.Args;
 using Minio.Exceptions;
+using server.Core.Storage;
 using server.Exceptions;
 using server.Models.Domain.Enums;
 using server.Services.Interfaces;
+using InvalidBucketNameException = Minio.Exceptions.InvalidBucketNameException;
 
 namespace server.Services.Storage;
 
-public class MinioStorageService : IStorageService, IFileStorageService
+public partial class MinioStorageService : IStorageService, IFileStorageService
 {
     private readonly ILogger<MinioStorageService> _logger;
     private readonly IMinioClient _minioClient;
@@ -324,6 +326,60 @@ public class MinioStorageService : IStorageService, IFileStorageService
         }
     }
 
+    public async Task<string> MoveFileAsync(string sourceBucketName, string targetBucketName, string objectName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Moving file from MinIO bucket '{SourceBucket}' to '{TargetBucket}' with object name '{ObjectName}'",
+                sourceBucketName, targetBucketName, objectName);
+
+            // Ensure target bucket exists
+            if (!await BucketExistsAsync(targetBucketName, cancellationToken))
+            {
+                _logger.LogInformation("Target bucket {TargetBucket} does not exist, creating it", targetBucketName);
+                await CreateBucketAsync(targetBucketName, cancellationToken);
+            }
+
+            // Check if source file exists
+            if (!await FileExistsAsync(sourceBucketName, objectName, cancellationToken))
+            {
+                _logger.LogError("Source file {ObjectName} does not exist in bucket {SourceBucket}", objectName, sourceBucketName);
+                throw new NotFoundException($"Source file not found: {sourceBucketName}/{objectName}");
+            }
+
+            // Check if file already exists in target bucket
+            if (await FileExistsAsync(targetBucketName, objectName, cancellationToken))
+            {
+                _logger.LogInformation(
+                    "File {ObjectName} already exists in target bucket {TargetBucket}, deleting from source only",
+                    objectName, targetBucketName);
+                await DeleteFileAsync(sourceBucketName, objectName, cancellationToken);
+                return objectName;
+            }
+
+            // Download from source bucket
+            using var sourceStream = await DownloadFileAsync(sourceBucketName, objectName, cancellationToken);
+            
+            // Upload to target bucket
+            var targetPath = await UploadFileAsync(sourceStream, targetBucketName, objectName, cancellationToken);
+
+            // Delete from source bucket after successful upload
+            await DeleteFileAsync(sourceBucketName, objectName, cancellationToken);
+
+            _logger.LogInformation(
+                "Successfully moved file from {SourceBucket}/{ObjectName} to {TargetBucket}/{ObjectName}",
+                sourceBucketName, objectName, targetBucketName, objectName);
+            return targetPath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to move file from MinIO bucket '{SourceBucket}' to '{TargetBucket}' with object name '{ObjectName}'",
+                sourceBucketName, targetBucketName, objectName);
+            throw new StorageException($"Failed to move file from {sourceBucketName} to {targetBucketName}: {ex.Message}", ex);
+        }
+    }
+
     #endregion
     
     /// <summary>
@@ -338,16 +394,14 @@ public class MinioStorageService : IStorageService, IFileStorageService
             .Replace("_", "-");
 
         // Remove any characters that aren't letters, numbers, or hyphens
-        // TODO: Use GeneratedRegexAttribute
-        sanitized = Regex.Replace(sanitized, "[^a-z0-9-]", "");
+        sanitized = BucketNameSanitizeRegex().Replace(sanitized, "");
 
         // Ensure it doesn't start or end with hyphen
         sanitized = sanitized.Trim('-');
 
         // Ensure it's not empty after sanitization and limit length to avoid bucket name issues
         if (string.IsNullOrEmpty(sanitized))
-            // TODO: Create a custom exception for this
-            throw new ArgumentException("Bucket name cannot be empty or consist only of invalid characters.");
+            throw new InvalidBucketNameException();
 
         // MinIO bucket names have length restrictions
         if (sanitized.Length > MaxBucketNameLength)
@@ -355,4 +409,7 @@ public class MinioStorageService : IStorageService, IFileStorageService
 
         return sanitized;
     }
+
+    [GeneratedRegex("[^a-z0-9-]")]
+    private static partial Regex BucketNameSanitizeRegex();
 }
