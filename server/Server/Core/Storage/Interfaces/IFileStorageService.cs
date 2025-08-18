@@ -49,6 +49,16 @@ public interface IFileStorageService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>File metadata including size, content type, etc.</returns>
     Task<FileMetadata> GetFileMetadataAsync(string bucketName, string objectName, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Moves a file from one bucket to another (copy + delete source)
+    /// </summary>
+    /// <param name="sourceBucketName">The source bucket name</param>
+    /// <param name="targetBucketName">The target bucket name</param>
+    /// <param name="objectName">The object name (path) in storage</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The storage path of the moved file</returns>
+    Task<string> MoveFileAsync(string sourceBucketName, string targetBucketName, string objectName, CancellationToken cancellationToken = default);
 }
 
 
