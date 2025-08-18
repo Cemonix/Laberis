@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Identity;
-
 namespace server.Models.Domain;
 
 public class Task
@@ -15,6 +13,7 @@ public class Task
     public DateTime? VetoedAt { get; set; }
     public DateTime? ChangesRequiredAt { get; set; }
     public long WorkingTimeMs { get; set; } = 0; // Total working time in milliseconds
+    public Enums.TaskStatus Status { get; set; } = Enums.TaskStatus.NOT_STARTED; // Current status of the task
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

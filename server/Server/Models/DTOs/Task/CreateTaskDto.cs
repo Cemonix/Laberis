@@ -15,6 +15,8 @@ public record class CreateTaskDto
 
     public int Priority { get; init; } = 0;
 
+    public Domain.Enums.TaskStatus Status { get; init; } = Domain.Enums.TaskStatus.NOT_STARTED;
+
     public DateTime? DueDate { get; init; }
 
     public string? Metadata { get; init; }
