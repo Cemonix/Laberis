@@ -11,13 +11,16 @@ namespace server.Services;
 public class WorkflowStageService : IWorkflowStageService
 {
     private readonly IWorkflowStageRepository _workflowStageRepository;
+    private readonly IDataSourceService _dataSourceService;
     private readonly ILogger<WorkflowStageService> _logger;
 
     public WorkflowStageService(
         IWorkflowStageRepository workflowStageRepository,
+        IDataSourceService dataSourceService,
         ILogger<WorkflowStageService> logger)
     {
         _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
+        _dataSourceService = dataSourceService ?? throw new ArgumentNullException(nameof(dataSourceService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -82,10 +85,9 @@ public class WorkflowStageService : IWorkflowStageService
             Name = createDto.Name,
             Description = createDto.Description,
             StageOrder = createDto.StageOrder,
-            StageType = createDto.StageType,
+            StageType = createDto.StageType ?? WorkflowStageType.ANNOTATION,
             IsInitialStage = createDto.IsInitialStage,
             IsFinalStage = createDto.IsFinalStage,
-            UiConfiguration = createDto.UiConfiguration,
             WorkflowId = workflowId,
             InputDataSourceId = createDto.InputDataSourceId,
             TargetDataSourceId = createDto.TargetDataSourceId,
@@ -134,7 +136,6 @@ public class WorkflowStageService : IWorkflowStageService
         stage.StageType = newStageType;
         stage.IsInitialStage = updateDto.IsInitialStage;
         stage.IsFinalStage = updateDto.IsFinalStage;
-        stage.UiConfiguration = updateDto.UiConfiguration ?? stage.UiConfiguration;
         stage.InputDataSourceId = newInputDataSourceId;
         stage.TargetDataSourceId = newTargetDataSourceId;
         stage.UpdatedAt = DateTime.UtcNow;
@@ -343,4 +344,102 @@ public class WorkflowStageService : IWorkflowStageService
 
         return conflictDtos;
     }
+
+    public async Task<(int? initialStageId, List<WorkflowStageDto> createdStages)> CreateWorkflowStagesPipelineAsync(
+        int workflowId, 
+        int projectId, 
+        bool createDefaultStages, 
+        bool includeReviewStage)
+    {
+        var stageOrder = 1;
+        int? initialStageId = null;
+        var createdStages = new List<WorkflowStageDto>();
+
+        _logger.LogInformation("Creating default workflow stages pipeline for workflow {WorkflowId}, project {ProjectId}", workflowId, projectId);
+
+        if (!createDefaultStages)
+        {
+            _logger.LogWarning("Default stages creation disabled for workflow {WorkflowId}", workflowId);
+            return (null, createdStages);
+        }
+
+        // Get or ensure required data sources exist
+        var dataSources = await _dataSourceService.EnsureRequiredDataSourcesExistAsync(projectId, includeReviewStage);
+
+        if (dataSources.AnnotationDataSource == null)
+        {
+            _logger.LogError("No annotation data source available for project {ProjectId}", projectId);
+            return (null, createdStages);
+        }
+
+        // Validate all required data sources exist before creating stages
+        if (includeReviewStage && dataSources.ReviewDataSource == null)
+        {
+            _logger.LogError("Review stage requested but no review data source available for project {ProjectId}", projectId);
+            return (null, createdStages);
+        }
+
+        if (dataSources.CompletionDataSource == null)
+        {
+            _logger.LogError("No completion data source available for project {ProjectId}", projectId);
+            return (null, createdStages);
+        }
+
+        // Create Annotation Stage (connected to default/annotation data source)
+        var annotationStage = new CreateWorkflowStageDto
+        {
+            Name = "Annotation",
+            Description = "Initial annotation stage for labeling assets",
+            StageType = WorkflowStageType.ANNOTATION,
+            StageOrder = stageOrder++,
+            IsInitialStage = true,
+            IsFinalStage = !includeReviewStage, // If no review stage, this is final
+            InputDataSourceId = dataSources.AnnotationDataSource.Id,
+            TargetDataSourceId = includeReviewStage ? dataSources.ReviewDataSource?.Id : dataSources.CompletionDataSource?.Id
+        };
+        var createdAnnotationStage = await CreateWorkflowStageAsync(workflowId, annotationStage);
+        initialStageId = createdAnnotationStage.Id; // This is where tasks are first created
+        createdStages.Add(createdAnnotationStage);
+
+        // Create Review Stage (if requested)
+        if (includeReviewStage && dataSources.ReviewDataSource != null)
+        {
+            var revisionStage = new CreateWorkflowStageDto
+            {
+                Name = "Review",
+                Description = "Review and quality control stage",
+                StageType = WorkflowStageType.REVISION,
+                StageOrder = stageOrder++,
+                IsInitialStage = false,
+                IsFinalStage = false,
+                InputDataSourceId = dataSources.ReviewDataSource.Id,
+                TargetDataSourceId = dataSources.CompletionDataSource?.Id
+            };
+            var createdRevisionStage = await CreateWorkflowStageAsync(workflowId, revisionStage);
+            createdStages.Add(createdRevisionStage);
+        }
+
+        // Create Completion Stage (final stage)
+        if (dataSources.CompletionDataSource != null)
+        {
+            var completionStage = new CreateWorkflowStageDto
+            {
+                Name = "Completion",
+                Description = "Final completion and export stage",
+                StageType = WorkflowStageType.COMPLETION,
+                StageOrder = stageOrder++,
+                IsInitialStage = false,
+                IsFinalStage = true,
+                InputDataSourceId = dataSources.CompletionDataSource.Id,
+                TargetDataSourceId = null // Final stage - no target needed
+            };
+            var createdCompletionStage = await CreateWorkflowStageAsync(workflowId, completionStage);
+            createdStages.Add(createdCompletionStage);
+        }
+
+        _logger.LogInformation("Successfully created default workflow stages with data source connections for workflow {WorkflowId}", workflowId);
+
+        return (initialStageId, createdStages);
+    }
+
 }
