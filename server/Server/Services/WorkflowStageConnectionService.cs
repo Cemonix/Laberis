@@ -180,6 +180,32 @@ public class WorkflowStageConnectionService : IWorkflowStageConnectionService
         return isValid;
     }
 
+    public async System.Threading.Tasks.Task CreateStageConnectionsAsync(List<WorkflowStageDto> stages)
+    {
+        // Sort stages by order to ensure proper connections
+        var sortedStages = stages.OrderBy(s => s.StageOrder).ToList();
+
+        _logger.LogInformation("Creating {ConnectionCount} workflow stage connections", sortedStages.Count - 1);
+
+        for (int i = 0; i < sortedStages.Count - 1; i++)
+        {
+            var fromStage = sortedStages[i];
+            var toStage = sortedStages[i + 1];
+
+            var connectionDto = new CreateWorkflowStageConnectionDto
+            {
+                FromStageId = fromStage.Id,
+                ToStageId = toStage.Id,
+                Condition = null // Default connection without condition
+            };
+
+            await CreateConnectionAsync(connectionDto);
+
+            _logger.LogInformation("Created connection: {FromStageName} ({FromStageId}) → {ToStageName} ({ToStageId})",
+                fromStage.Name, fromStage.Id, toStage.Name, toStage.Id);
+        }
+    }
+
     private static WorkflowStageConnectionDto MapToDto(WorkflowStageConnection connection)
     {
         return new WorkflowStageConnectionDto
