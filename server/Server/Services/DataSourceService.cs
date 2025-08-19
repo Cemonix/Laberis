@@ -2,6 +2,7 @@ using server.Models.Domain;
 using server.Models.Domain.Enums;
 using server.Models.Common;
 using server.Models.DTOs.DataSource;
+using server.Models.Internal;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
 
@@ -184,6 +185,96 @@ namespace server.Services
             }
             
             return await System.Threading.Tasks.Task.FromResult(availableTypes);
+        }
+
+        public async Task<WorkflowDataSources> EnsureRequiredDataSourcesExistAsync(int projectId, bool includeReviewStage)
+        {
+            _logger.LogInformation("Ensuring required data sources exist for project {ProjectId}, includeReview: {IncludeReview}",
+                projectId, includeReviewStage);
+
+            // Get all existing data sources for the project
+            var existingDataSources = await GetAllDataSourcesForProjectAsync(
+                projectId, pageNumber: 1, pageSize: 100); // Get all data sources
+
+            var result = new WorkflowDataSources
+            {
+                // Find or create annotation data source (look for default first)
+                AnnotationDataSource = existingDataSources.Data.FirstOrDefault(ds => ds.IsDefault)
+                    ?? existingDataSources.Data.FirstOrDefault()
+            };
+
+            if (result.AnnotationDataSource == null)
+            {
+                _logger.LogWarning("No data sources exist for project {ProjectId} - creating default annotation data source", projectId);
+
+                result.AnnotationDataSource = await CreateDataSourceAsync(projectId, new CreateDataSourceDto
+                {
+                    Name = "Default Annotation Source",
+                    Description = "Default data source for annotation assets",
+                    SourceType = DataSourceType.MINIO_BUCKET
+                });
+
+                if (result.AnnotationDataSource == null)
+                {
+                    _logger.LogError("Failed to create annotation data source for project {ProjectId}", projectId);
+                    throw new InvalidOperationException($"Failed to create required annotation data source for project {projectId}");
+                }
+            }
+
+            // Create or find review data source (if review stage requested)
+            if (includeReviewStage)
+            {
+                result.ReviewDataSource = existingDataSources.Data.FirstOrDefault(ds =>
+                    ds.Name.Contains("review", StringComparison.CurrentCultureIgnoreCase)
+                    || ds.Name.Contains("revision", StringComparison.CurrentCultureIgnoreCase));
+
+                if (result.ReviewDataSource == null)
+                {
+                    _logger.LogInformation("Creating review data source for project {ProjectId}", projectId);
+
+                    result.ReviewDataSource = await CreateDataSourceAsync(projectId, new CreateDataSourceDto
+                    {
+                        Name = "Review Stage Source",
+                        Description = "Data source for assets in review stage",
+                        SourceType = DataSourceType.MINIO_BUCKET
+                    });
+
+                    if (result.ReviewDataSource == null)
+                    {
+                        _logger.LogError("Failed to create review data source for project {ProjectId}", projectId);
+                        throw new InvalidOperationException($"Failed to create required review data source for project {projectId}");
+                    }
+                }
+            }
+
+            // Create or find completion data source
+            result.CompletionDataSource = existingDataSources.Data.FirstOrDefault(ds =>
+                ds.Name.Contains("completion", StringComparison.CurrentCultureIgnoreCase)
+                || ds.Name.Contains("final", StringComparison.CurrentCultureIgnoreCase)
+                || ds.Name.Contains("complete", StringComparison.CurrentCultureIgnoreCase));
+
+            if (result.CompletionDataSource == null)
+            {
+                _logger.LogInformation("Creating completion data source for project {ProjectId}", projectId);
+
+                result.CompletionDataSource = await CreateDataSourceAsync(projectId, new CreateDataSourceDto
+                {
+                    Name = "Completion Stage Source",
+                    Description = "Data source for completed and exported assets",
+                    SourceType = DataSourceType.MINIO_BUCKET
+                });
+
+                if (result.CompletionDataSource == null)
+                {
+                    _logger.LogError("Failed to create completion data source for project {ProjectId}", projectId);
+                    throw new InvalidOperationException($"Failed to create required completion data source for project {projectId}");
+                }
+            }
+
+            _logger.LogInformation("Data sources configured - Annotation: {AnnotationId}, Review: {ReviewId}, Completion: {CompletionId}",
+                result.AnnotationDataSource?.Id, result.ReviewDataSource?.Id, result.CompletionDataSource?.Id);
+
+            return result;
         }
     }
 }
