@@ -118,37 +118,16 @@ public class TasksController : ControllerBase
     /// Gets a specific task by its unique ID, with optional auto-assignment to the requesting user.
     /// </summary>
     /// <param name="taskId">The ID of the task.</param>
-    /// <param name="autoAssign">Whether to automatically assign the task to the requesting user if it's unassigned (default: true).</param>
     /// <returns>The requested task.</returns>
     [HttpGet("{taskId:int}")]
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetTaskById(
-        int taskId,
-        [FromQuery] bool autoAssign = true)
+    public async Task<IActionResult> GetTaskById(int taskId)
     {
         try
         {
-            TaskDto? task;
+            TaskDto? task = await _taskService.GetTaskByIdAsync(taskId);
             
-            if (autoAssign)
-            {
-                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (!string.IsNullOrEmpty(userId))
-                {
-                    task = await _taskService.GetTaskByIdWithAutoAssignAsync(taskId, userId);
-                }
-                else
-                {
-                    // Fallback to regular get if user ID is not available
-                    task = await _taskService.GetTaskByIdAsync(taskId);
-                }
-            }
-            else
-            {
-                task = await _taskService.GetTaskByIdAsync(taskId);
-            }
-
             if (task == null)
             {
                 return NotFound($"Task with ID {taskId} not found.");
@@ -236,38 +215,6 @@ public class TasksController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "An error occurred while updating task {TaskId}.", taskId);
-            return StatusCode(500, "An unexpected error occurred. Please try again later.");
-        }
-    }
-
-    /// <summary>
-    /// Deletes a task by its ID.
-    /// </summary>
-    /// <param name="taskId">The ID of the task to delete.</param>
-    /// <returns>No content if successful.</returns>
-    /// <response code="204">If the task was successfully deleted.</response>
-    /// <response code="404">If the task is not found.</response>
-    /// <response code="500">If an internal server error occurs.</response>
-    [HttpDelete("{taskId:int}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DeleteTask(int taskId)
-    {
-        try
-        {
-            var result = await _taskService.DeleteTaskAsync(taskId);
-
-            if (!result)
-            {
-                return NotFound($"Task with ID {taskId} not found.");
-            }
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while deleting task {TaskId}.", taskId);
             return StatusCode(500, "An unexpected error occurred. Please try again later.");
         }
     }
@@ -364,47 +311,6 @@ public class TasksController : ControllerBase
     }
 
     /// <summary>
-    /// Moves a task to a different workflow stage.
-    /// </summary>
-    /// <param name="taskId">The ID of the task to move.</param>
-    /// <param name="workflowStageId">The ID of the workflow stage to move the task to.</param>
-    /// <returns>The updated task.</returns>
-    /// <response code="200">Returns the updated task.</response>
-    /// <response code="401">If the user is not authenticated.</response>
-    /// <response code="404">If the task is not found.</response>
-    /// <response code="500">If an internal server error occurs.</response>
-    [HttpPost("{taskId:int}/move-to-stage/{workflowStageId:int}")]
-    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> MoveTaskToStage(int taskId, int workflowStageId)
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-        {
-            return Unauthorized("User ID claim not found in token.");
-        }
-
-        try
-        {
-            var updatedTask = await _taskService.MoveTaskToStageAsync(taskId, workflowStageId, userId);
-
-            if (updatedTask == null)
-            {
-                return NotFound($"Task with ID {taskId} not found.");
-            }
-
-            return Ok(updatedTask);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while moving task {TaskId} to stage {WorkflowStageId}.", taskId, workflowStageId);
-            return StatusCode(500, "An unexpected error occurred. Please try again later.");
-        }
-    }
-
-    /// <summary>
     /// Gets all tasks for a specific workflow stage, properly filtered by the stage's input data source.
     /// This ensures only tasks for assets that belong to the stage's assigned data source are returned.
     /// </summary>
@@ -450,275 +356,6 @@ public class TasksController : ControllerBase
     }
 
     /// <summary>
-    /// Marks a task as completed, unlocking the asset for subsequent workflow stages.
-    /// </summary>
-    /// <param name="taskId">The ID of the task to complete.</param>
-    /// <returns>The completed task.</returns>
-    /// <response code="200">Returns the completed task.</response>
-    /// <response code="404">If the task is not found.</response>
-    /// <response code="500">If an internal server error occurs.</response>
-    [HttpPut("{taskId:int}/complete")]
-    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CompleteTask(int taskId)
-    {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized();
-            }
-
-            var completedTask = await _taskService.CompleteTaskAsync(taskId, userId);
-
-            if (completedTask == null)
-            {
-                return NotFound($"Task with ID {taskId} not found.");
-            }
-
-            return Ok(completedTask);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while completing task {TaskId}.", taskId);
-            return StatusCode(500, "An unexpected error occurred. Please try again later.");
-        }
-    }
-
-    /// <summary>
-    /// Marks a task as completed and moves it to the next workflow stage if one exists.
-    /// </summary>
-    /// <param name="taskId">The ID of the task to complete and move.</param>
-    /// <returns>The completed task.</returns>
-    /// <response code="200">Returns the completed task.</response>
-    /// <response code="404">If the task is not found.</response>
-    /// <response code="500">If an internal server error occurs.</response>
-    [HttpPut("{taskId:int}/complete-and-move")]
-    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CompleteAndMoveTask(int taskId)
-    {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized();
-            }
-
-            var completedTask = await _taskService.CompleteAndMoveTaskAsync(taskId, userId);
-
-            if (completedTask == null)
-            {
-                return NotFound($"Task with ID {taskId} not found.");
-            }
-
-            return Ok(completedTask);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while completing and moving task {TaskId}.", taskId);
-            return StatusCode(500, "An unexpected error occurred. Please try again later.");
-        }
-    }
-
-    /// <summary>
-    /// Marks a completed task as incomplete, allowing it to be worked on again.
-    /// </summary>
-    /// <param name="taskId">The ID of the task to mark as incomplete.</param>
-    /// <returns>The uncompleted task.</returns>
-    /// <response code="200">Returns the uncompleted task.</response>
-    /// <response code="404">If the task is not found.</response>
-    /// <response code="400">If the task is not in a completed state.</response>
-    /// <response code="401">If the user is not authenticated.</response>
-    /// <response code="500">If an internal server error occurs.</response>
-    [HttpPut("{taskId:int}/incomplete")]
-    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> MarkTaskIncomplete(int taskId)
-    {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized();
-            }
-
-            var uncompletedTask = await _taskService.MarkTaskIncompleteAsync(taskId, userId);
-
-            if (uncompletedTask == null)
-            {
-                return NotFound($"Task with ID {taskId} not found.");
-            }
-
-            return Ok(uncompletedTask);
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Invalid operation while marking task {TaskId} as incomplete.", taskId);
-            return BadRequest(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while marking task {TaskId} as incomplete.", taskId);
-            return StatusCode(500, "An unexpected error occurred. Please try again later.");
-        }
-    }
-
-    /// <summary>
-    /// Suspends a task, marking it as suspended so it can be resumed later.
-    /// </summary>
-    /// <param name="taskId">The ID of the task to suspend.</param>
-    /// <returns>The suspended task.</returns>
-    /// <response code="200">Returns the suspended task.</response>
-    /// <response code="404">If the task is not found.</response>
-    /// <response code="400">If the task cannot be suspended.</response>
-    /// <response code="401">If the user is not authenticated.</response>
-    /// <response code="500">If an internal server error occurs.</response>
-    [HttpPut("{taskId:int}/suspend")]
-    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> SuspendTask(int taskId)
-    {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized();
-            }
-
-            var suspendedTask = await _taskService.SuspendTaskAsync(taskId, userId);
-
-            if (suspendedTask == null)
-            {
-                return NotFound($"Task with ID {taskId} not found.");
-            }
-
-            return Ok(suspendedTask);
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Invalid operation while suspending task {TaskId}.", taskId);
-            return BadRequest(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while suspending task {TaskId}.", taskId);
-            return StatusCode(500, "An unexpected error occurred. Please try again later.");
-        }
-    }
-    
-    /// <summary>
-    /// Defers a task, marking it as deferred so the user can skip it for now.
-    /// </summary>
-    /// <param name="taskId">The ID of the task to defer.</param>
-    /// <returns>The deferred task.</returns>
-    /// <response code="200">Returns the deferred task.</response>
-    /// <response code="404">If the task is not found.</response>
-    /// <response code="400">If the task cannot be deferred.</response>
-    /// <response code="401">If the user is not authenticated.</response>
-    /// <response code="500">If an internal server error occurs.</response>
-    [HttpPut("{taskId:int}/defer")]
-    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DeferTask(int taskId)
-    {
-        try
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized();
-            }
-
-            var deferredTask = await _taskService.DeferTaskAsync(taskId, userId);
-
-            if (deferredTask == null)
-            {
-                return NotFound($"Task with ID {taskId} not found.");
-            }
-
-            return Ok(deferredTask);
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Invalid operation while deferring task {TaskId}.", taskId);
-            return BadRequest(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while deferring task {TaskId}.", taskId);
-            return StatusCode(500, "An unexpected error occurred. Please try again later.");
-        }
-    }
-
-    /// <summary>
-    /// Returns a task for rework, available to reviewers (from review stages) and managers (from completion stages).
-    /// This will archive the current task and move the asset back to annotation stage for rework.
-    /// </summary>
-    /// <param name="taskId">The ID of the task to return for rework.</param>
-    /// <param name="dto">The return request containing optional reason.</param>
-    /// <returns>The archived task that was returned.</returns>
-    /// <response code="200">Returns the archived task.</response>
-    /// <response code="400">If the task cannot be returned (wrong stage, already archived, etc.).</response>
-    /// <response code="401">If the user is not authenticated.</response>
-    /// <response code="404">If the task is not found.</response>
-    /// <response code="500">If an internal server error occurs.</response>
-    [HttpPost("{taskId:int}/return-for-rework")]
-    [Authorize(Policy = "CanReviewAnnotations")]  // Only reviewers and managers can return tasks for rework
-    [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> ReturnTaskForRework(
-        int taskId,
-        [FromBody] ReturnTaskForReworkDto? dto = null)
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-        {
-            return Unauthorized("User ID claim not found in token.");
-        }
-
-        try
-        {
-            var returnedTask = await _taskService.ReturnTaskForReworkAsync(taskId, userId, dto?.Reason);
-
-            if (returnedTask == null)
-            {
-                return NotFound($"Task with ID {taskId} not found.");
-            }
-
-            return Ok(returnedTask);
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Invalid operation when returning task {TaskId} for rework by user {UserId}", taskId, userId);
-            return BadRequest(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while returning task {TaskId} for rework by user {UserId}", taskId, userId);
-            return StatusCode(500, "An unexpected error occurred. Please try again later.");
-        }
-    }
-
-    /// <summary>
     /// Changes the status of a task using the unified status change system with workflow-aware validation.
     /// This endpoint handles all task status transitions according to workflow stage rules.
     /// </summary>
@@ -746,7 +383,7 @@ public class TasksController : ControllerBase
                 return Unauthorized("User ID claim not found in token.");
             }
 
-            var updatedTask = await _taskService.ChangeTaskStatusAsync(taskId, dto.TargetStatus, userId, dto.MoveAsset);
+            var updatedTask = await _taskService.ChangeTaskStatusAsync(taskId, dto.TargetStatus, userId);
 
             if (updatedTask == null)
             {
