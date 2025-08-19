@@ -418,7 +418,7 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
                 WorkflowStageId = stage.WorkflowStageId,
                 StageName = stage.Name,
                 StageOrder = stage.StageOrder,
-                StageType = stage.StageType?.ToString() ?? "",
+                StageType = stage.StageType.ToString(),
                 TotalTasks = tasks.Count,
                 CompletedTasks = completedTasks.Count,
                 InProgressTasks = inProgressTasks,
