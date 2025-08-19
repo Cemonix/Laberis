@@ -119,7 +119,7 @@ public class WorkflowStageRepository : GenericRepository<WorkflowStage>, IWorkfl
                 keySelector = ws => ws.UpdatedAt;
                 break;
             case "stage_type":
-                keySelector = ws => ws.StageType ?? WorkflowStageType.ANNOTATION;
+                keySelector = ws => ws.StageType;
                 break;
             case "workflow_stage_id":
                 keySelector = ws => ws.WorkflowStageId;
