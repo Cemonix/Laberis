@@ -9,10 +9,9 @@ public class WorkflowStage
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public int StageOrder { get; set; }
-    public WorkflowStageType? StageType { get; set; }
+    public WorkflowStageType StageType { get; set; }
     public bool IsInitialStage { get; set; }
     public bool IsFinalStage { get; set; }
-    public string? UiConfiguration { get; set; } // TODO: Remove this column
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
