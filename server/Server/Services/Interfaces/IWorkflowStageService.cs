@@ -1,5 +1,6 @@
 using server.Models.Common;
 using server.Models.DTOs.WorkflowStage;
+using server.Models.DTOs.Workflow;
 
 namespace server.Services.Interfaces;
 
@@ -84,4 +85,20 @@ public interface IWorkflowStageService
     /// <param name="excludeWorkflowId">Optional workflow ID to exclude from the check (for updates).</param>
     /// <returns>A task that represents the asynchronous operation, containing workflow stages using the data source.</returns>
     Task<IEnumerable<WorkflowStageDto>> GetDataSourceUsageConflictsAsync(int dataSourceId, int? excludeWorkflowId = null);
+
+    /// <summary>
+    /// Creates a complete pipeline of default workflow stages for a workflow.
+    /// Orchestrates the creation of default stages (annotation, review, completion) and
+    /// manages data source requirements, returning the initial stage ID for task creation.
+    /// </summary>
+    /// <param name="workflowId">The ID of the workflow to create stages for.</param>
+    /// <param name="projectId">The ID of the project (needed for data source management).</param>
+    /// <param name="createDefaultStages">Whether to create default pipeline stages.</param>
+    /// <param name="includeReviewStage">Whether to include a review stage in the default pipeline.</param>
+    /// <returns>A task containing the initial stage ID and list of created stages.</returns>
+    Task<(int? initialStageId, List<WorkflowStageDto> createdStages)> CreateWorkflowStagesPipelineAsync(
+        int workflowId, 
+        int projectId, 
+        bool createDefaultStages, 
+        bool includeReviewStage);
 }

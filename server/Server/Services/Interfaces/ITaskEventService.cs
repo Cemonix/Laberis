@@ -27,16 +27,16 @@ public interface ITaskEventService
     /// Retrieves a task event by its ID.
     /// </summary>
     /// <param name="eventId">The ID of the task event to retrieve.</param>
-    /// <returns>A task that represents the asynchronous operation, containing the TaskEventDto if found, otherwise null.</returns>
+    /// <returns>Gets a task event by its ID.</returns>
     Task<TaskEventDto?> GetTaskEventByIdAsync(long eventId);
 
     /// <summary>
-    /// Creates a new task event (logs an event).
+    /// Creates a new task event.
     /// </summary>
     /// <param name="createDto">The DTO containing information for the new task event.</param>
     /// <param name="userId">The ID of the user performing the action (optional).</param>
-    /// <returns>A task that represents the asynchronous operation, containing the newly created TaskEventDto.</returns>
-    Task<TaskEventDto> LogTaskEventAsync(CreateTaskEventDto createDto, string? userId = null);
+    /// <returns>Creates a new task event.</returns>
+    Task<TaskEventDto> CreateTaskEventAsync(CreateTaskEventDto createDto, string? userId = null);
 
     /// <summary>
     /// Creates a task event specifically for status changes, with appropriate event type mapping.
@@ -45,6 +45,6 @@ public interface ITaskEventService
     /// <param name="fromStatus">The previous status of the task.</param>
     /// <param name="toStatus">The new status of the task.</param>
     /// <param name="userId">The ID of the user who performed the status change.</param>
-    /// <returns>A task that represents the asynchronous operation, containing the newly created TaskEventDto.</returns>
-    Task<TaskEventDto> LogStatusChangeEventAsync(int taskId, TaskStatus fromStatus, TaskStatus toStatus, string userId);
+    /// <returns>Logs a status change event.</returns>
+    Task<TaskEventDto> CreateStatusChangeEventAsync(int taskId, TaskStatus fromStatus, TaskStatus toStatus, string userId);
 }

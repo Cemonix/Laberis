@@ -1,6 +1,7 @@
 using server.Models.Domain.Enums;
 using server.Models.Common;
 using server.Models.DTOs.DataSource;
+using server.Models.Internal;
 
 namespace server.Services.Interfaces
 {
@@ -58,5 +59,14 @@ namespace server.Services.Interfaces
         /// </summary>
         /// <returns>A task that represents the asynchronous operation, containing a collection of available DataSourceType.</returns>
         Task<IEnumerable<DataSourceType>> GetAvailableDataSourceTypesAsync();
+
+        /// <summary>
+        /// Ensures that the required data sources exist for workflow stages.
+        /// Creates missing data sources automatically to support the complete workflow pipeline.
+        /// </summary>
+        /// <param name="projectId">The ID of the project.</param>
+        /// <param name="includeReviewStage">Whether to ensure review stage data source exists.</param>
+        /// <returns>A task containing the organized data sources needed for workflow stages.</returns>
+        Task<WorkflowDataSources> EnsureRequiredDataSourcesExistAsync(int projectId, bool includeReviewStage);
     }
 }
