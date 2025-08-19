@@ -76,4 +76,12 @@ public interface IWorkflowStageConnectionService
     /// <param name="workflowId">The ID of the workflow.</param>
     /// <returns>A task that represents the asynchronous operation, returning true if both stages belong to the workflow, otherwise false.</returns>
     Task<bool> ValidateConnectionStagesBelongToWorkflowAsync(CreateWorkflowStageConnectionDto createDto, int workflowId);
+
+    /// <summary>
+    /// Creates workflow stage connections to enable proper stage progression.
+    /// Connects stages in order based on their StageOrder property.
+    /// </summary>
+    /// <param name="stages">List of stages to connect in sequence.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task CreateStageConnectionsAsync(List<WorkflowStageDto> stages);
 }

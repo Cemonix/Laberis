@@ -39,6 +39,21 @@ public interface IAssetService
     Task<AssetDto?> GetAssetByIdAsync(int assetId);
 
     /// <summary>
+    /// Gets the count of available assets for task creation in a specific data source.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <returns>A task returning the count of available assets.</returns>
+    Task<int> GetAvailableAssetsCountAsync(int projectId);
+
+    /// <summary>
+    /// Gets the count of available assets for task creation in a specific data source.
+    /// </summary>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="dataSourceId">The ID of the data source.</param>
+    /// <returns>A task returning the list of available assets.</returns>
+    Task<IEnumerable<Asset>> GetAvailableAssetsFromDataSourceAsync(int projectId, int dataSourceId);
+
+    /// <summary>
     /// Creates a new asset.
     /// </summary>
     /// <param name="projectId">The ID of the project to create the asset in.</param>
@@ -62,6 +77,15 @@ public interface IAssetService
     Task<bool> DeleteAssetAsync(int assetId);
 
     /// <summary>
+    /// Transfers an asset from its current data source to a target data source.
+    /// This involves copying the file in MinIO and updating the database record.
+    /// </summary>
+    /// <param name="assetId">The ID of the asset to transfer</param>
+    /// <param name="targetDataSourceId">The ID of the target data source</param>
+    /// <returns>True if the transfer was successful, false otherwise</returns>
+    Task<bool> TransferAssetToDataSourceAsync(int assetId, int targetDataSourceId);
+
+    /// <summary>
     /// Uploads a single asset file.
     /// </summary>
     /// <param name="projectId">The ID of the project to upload the asset to.</param>
@@ -76,51 +100,4 @@ public interface IAssetService
     /// <param name="bulkUploadDto">The bulk upload DTO containing the files and metadata.</param>
     /// <returns>A task that represents the asynchronous operation, containing the bulk upload result.</returns>
     Task<BulkUploadResultDto> UploadAssetsAsync(int projectId, BulkUploadAssetDto bulkUploadDto);
-
-    /// <summary>
-    /// Validates that an asset belongs to a specific project.
-    /// </summary>
-    /// <param name="assetId">The ID of the asset.</param>
-    /// <param name="projectId">The ID of the project.</param>
-    /// <returns>A task that represents the asynchronous operation, returning true if the asset belongs to the project.</returns>
-    Task<bool> ValidateAssetBelongsToProjectAsync(int assetId, int projectId);
-
-    /// <summary>
-    /// Handles asset movement as part of task workflow progression.
-    /// </summary>
-    /// <param name="task">The task that is being completed or status changed.</param>
-    /// <param name="targetStatus">The target status the task is changing to.</param>
-    /// <param name="userId">The ID of the user performing the action.</param>
-    /// <returns>A task that represents the asynchronous operation, containing information about the movement.</returns>
-    Task<AssetMovementResult> HandleTaskWorkflowAssetMovementAsync(Models.Domain.Task task, TaskStatus targetStatus, string userId);
-
-    /// <summary>
-    /// Handles asset movement back to annotation stage when a task is vetoed/returned for rework.
-    /// </summary>
-    /// <param name="task">The task that is being vetoed.</param>
-    /// <param name="userId">The ID of the user performing the veto action.</param>
-    /// <returns>A task that represents the asynchronous operation, containing information about the movement.</returns>
-    Task<AssetMovementResult> HandleTaskVetoAssetMovementAsync(Models.Domain.Task task, string userId);
-
-    /// <summary>
-    /// Checks if a data source has assets available for task creation.
-    /// </summary>
-    /// <param name="projectId">The ID of the project.</param>
-    /// <returns>A task that represents the asynchronous operation, returning true if assets are available.</returns>
-    Task<bool> HasAssetsAvailableAsync(int projectId);
-
-    /// <summary>
-    /// Gets the count of available assets for task creation in a specific data source.
-    /// </summary>
-    /// <param name="projectId">The ID of the project.</param>
-    /// <returns>A task returning the count of available assets.</returns>
-    Task<int> GetAvailableAssetsCountAsync(int projectId);
-
-    /// <summary>
-    /// Gets the count of available assets for task creation in a specific data source.
-    /// </summary>
-    /// <param name="projectId">The ID of the project.</param>
-    /// <param name="dataSourceId">The ID of the data source.</param>
-    /// <returns>A task returning the list of available assets.</returns>
-    Task<IEnumerable<Asset>> GetAvailableAssetsFromDataSourceAsync(int projectId, int dataSourceId);
 }
