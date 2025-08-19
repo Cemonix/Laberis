@@ -294,4 +294,44 @@ public class AssetsController : ControllerBase
         var result = await _assetService.UploadAssetsAsync(projectId, bulkUploadDto);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Transfers an asset to a different data source.
+    /// This involves copying the file in MinIO and updating the database record.
+    /// </summary>
+    /// <param name="assetId">The ID of the asset to transfer.</param>
+    /// <param name="transferAssetDto">The transfer request containing the target data source ID.</param>
+    /// <returns>Success status of the transfer operation.</returns>
+    /// <response code="200">If the transfer was successful.</response>
+    /// <response code="400">If the request data is invalid.</response>
+    /// <response code="404">If the asset is not found.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPost("{assetId:int}/transfer")]
+    [Authorize(Policy = "CanManageProject")]  // Manager only
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> TransferAsset(int assetId, [FromBody] TransferAssetDto transferAssetDto)
+    {
+        try
+        {
+            var result = await _assetService.TransferAssetToDataSourceAsync(assetId, transferAssetDto.TargetDataSourceId);
+            
+            if (!result)
+            {
+                return this.CreateNotFoundResponse("Asset", assetId);
+            }
+
+            return Ok(new { success = true, message = "Asset transferred successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex, "An error occurred while transferring asset {AssetId} to data source {TargetDataSourceId}",
+                assetId, transferAssetDto.TargetDataSourceId
+            );
+            return StatusCode(500, "An unexpected error occurred during asset transfer. Please try again later.");
+        }
+    }
 }
