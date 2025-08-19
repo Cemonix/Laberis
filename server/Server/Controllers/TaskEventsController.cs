@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -126,11 +127,11 @@ public class TaskEventsController : ControllerBase
             }
 
             // Get the current user ID from the token
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             
-            var newTaskEvent = await _taskEventService.LogTaskEventAsync(createTaskEventDto, userIdClaim);
+            var newTaskEvent = await _taskEventService.CreateTaskEventAsync(createTaskEventDto, userIdClaim);
             return CreatedAtAction(nameof(GetTaskEventById), 
-                new { taskId = taskId, eventId = newTaskEvent.Id }, newTaskEvent);
+                new { taskId, eventId = newTaskEvent.Id }, newTaskEvent);
         }
         catch (Exception ex)
         {
