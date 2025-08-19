@@ -4,11 +4,9 @@ using Moq;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
 using server.Models.DTOs.TaskEvent;
-using server.Models.Internal;
 using server.Repositories.Interfaces;
 using server.Services;
 using server.Services.Interfaces;
-using System.Linq.Expressions;
 using LaberisTask = server.Models.Domain.Task;
 using TaskStatus = server.Models.Domain.Enums.TaskStatus;
 
@@ -18,7 +16,6 @@ public class TaskServiceUnifiedStatusTests
 {
     private readonly Mock<ITaskRepository> _mockTaskRepository;
     private readonly Mock<IAssetRepository> _mockAssetRepository;
-    private readonly Mock<ITaskEventRepository> _mockTaskEventRepository;
     private readonly Mock<ITaskEventService> _mockTaskEventService;
     private readonly Mock<ITaskStatusValidator> _mockTaskStatusValidator;
     private readonly Mock<IAssetService> _mockAssetService;
@@ -32,7 +29,6 @@ public class TaskServiceUnifiedStatusTests
     {
         _mockTaskRepository = new Mock<ITaskRepository>();
         _mockAssetRepository = new Mock<IAssetRepository>();
-        _mockTaskEventRepository = new Mock<ITaskEventRepository>();
         _mockTaskEventService = new Mock<ITaskEventService>();
         _mockTaskStatusValidator = new Mock<ITaskStatusValidator>();
         _mockAssetService = new Mock<IAssetService>();
@@ -41,15 +37,10 @@ public class TaskServiceUnifiedStatusTests
         _mockProjectMembershipService = new Mock<IProjectMembershipService>();
         _mockLogger = new Mock<ILogger<TaskService>>();
 
-        // Setup default asset service behavior
-        _mockAssetService
-            .Setup(x => x.HandleTaskWorkflowAssetMovementAsync(It.IsAny<LaberisTask>(), It.IsAny<TaskStatus>(), It.IsAny<string>()))
-            .ReturnsAsync(new AssetMovementResult());
 
         _taskService = new TaskService(
             _mockTaskRepository.Object,
             _mockAssetRepository.Object,
-            _mockTaskEventRepository.Object,
             _mockTaskEventService.Object,
             _mockTaskStatusValidator.Object,
             _mockAssetService.Object,
@@ -86,6 +77,7 @@ public class TaskServiceUnifiedStatusTests
         const int taskId = 1;
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
+        existingTask.Status = TaskStatus.COMPLETED; // Set status explicitly
         existingTask.CompletedAt = DateTime.UtcNow; // Already completed
 
         _mockTaskRepository
@@ -102,7 +94,7 @@ public class TaskServiceUnifiedStatusTests
         // Should not call validation or event logging
         _mockTaskStatusValidator.Verify(x => x.ValidateStatusTransition(
             It.IsAny<LaberisTask>(), It.IsAny<TaskStatus>(), It.IsAny<TaskStatus>(), It.IsAny<string>()), Times.Never);
-        _mockTaskEventService.Verify(x => x.LogStatusChangeEventAsync(
+        _mockTaskEventService.Verify(x => x.CreateStatusChangeEventAsync(
             It.IsAny<int>(), It.IsAny<TaskStatus>(), It.IsAny<TaskStatus>(), It.IsAny<string>()), Times.Never);
     }
 
@@ -113,15 +105,16 @@ public class TaskServiceUnifiedStatusTests
         const int taskId = 1;
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
-        const string errorMessage = "Cannot suspend a completed task";
+        existingTask.Status = TaskStatus.COMPLETED; // Set status explicitly
+        const string errorMessage = "Cannot change to SUSPENDED from COMPLETED. SUSPENDED status changes are not allowed via direct status transitions.";
 
         _mockTaskRepository
             .Setup(x => x.GetByIdAsync(taskId))
             .ReturnsAsync(existingTask);
 
         _mockTaskStatusValidator
-            .Setup(x => x.ValidateStatusTransition(existingTask, It.IsAny<TaskStatus>(), TaskStatus.SUSPENDED, userId))
-            .Returns((false, errorMessage));
+            .Setup(x => x.ValidateStatusTransition(existingTask, TaskStatus.COMPLETED, TaskStatus.SUSPENDED, userId))
+            .Returns(false);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -138,6 +131,7 @@ public class TaskServiceUnifiedStatusTests
         const int taskId = 1;
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
+        existingTask.Status = TaskStatus.IN_PROGRESS; // Set status explicitly
         existingTask.AssignedToUserId = userId; // Make it IN_PROGRESS
         existingTask.LastWorkedOnByUserId = userId; // Task has been worked on
 
@@ -147,14 +141,14 @@ public class TaskServiceUnifiedStatusTests
 
         _mockTaskStatusValidator
             .Setup(x => x.ValidateStatusTransition(existingTask, TaskStatus.IN_PROGRESS, TaskStatus.SUSPENDED, userId))
-            .Returns((true, string.Empty));
+            .Returns(true);
 
         _mockTaskRepository
             .Setup(x => x.SaveChangesAsync())
             .ReturnsAsync(1);
 
         _mockTaskEventService
-            .Setup(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.SUSPENDED, userId))
+            .Setup(x => x.CreateStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.SUSPENDED, userId))
             .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act
@@ -170,7 +164,7 @@ public class TaskServiceUnifiedStatusTests
         Assert.Equal(userId, existingTask.LastWorkedOnByUserId); // Should preserve who last worked on it
 
         _mockTaskRepository.Verify(x => x.SaveChangesAsync(), Times.Once);
-        _mockTaskEventService.Verify(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.SUSPENDED, userId), Times.Once);
+        _mockTaskEventService.Verify(x => x.CreateStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.SUSPENDED, userId), Times.Once);
     }
 
     [Fact]
@@ -180,6 +174,7 @@ public class TaskServiceUnifiedStatusTests
         const int taskId = 1;
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
+        existingTask.Status = TaskStatus.IN_PROGRESS; // Set status explicitly
         existingTask.AssignedToUserId = userId; // Make it IN_PROGRESS
         existingTask.LastWorkedOnByUserId = userId; // Task has been worked on
 
@@ -189,18 +184,18 @@ public class TaskServiceUnifiedStatusTests
 
         _mockTaskStatusValidator
             .Setup(x => x.ValidateStatusTransition(existingTask, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, userId))
-            .Returns((true, string.Empty));
+            .Returns(true);
 
         _mockTaskRepository
             .Setup(x => x.SaveChangesAsync())
             .ReturnsAsync(1);
 
         _mockTaskEventService
-            .Setup(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, userId))
+            .Setup(x => x.CreateStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, userId))
             .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act - disable asset movement to test pure status change
-        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.COMPLETED, userId, moveAsset: false);
+        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.COMPLETED, userId);
 
         // Assert
         Assert.NotNull(result);
@@ -212,7 +207,7 @@ public class TaskServiceUnifiedStatusTests
         Assert.Equal(userId, existingTask.LastWorkedOnByUserId);
 
         _mockTaskRepository.Verify(x => x.SaveChangesAsync(), Times.Once);
-        _mockTaskEventService.Verify(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, userId), Times.Once);
+        _mockTaskEventService.Verify(x => x.CreateStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, userId), Times.Once);
     }
 
     [Fact]
@@ -222,6 +217,7 @@ public class TaskServiceUnifiedStatusTests
         const int taskId = 1;
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
+        existingTask.Status = TaskStatus.SUSPENDED; // Set status explicitly
         existingTask.SuspendedAt = DateTime.UtcNow.AddHours(-1); // Previously suspended
         existingTask.AssignedToUserId = userId;
 
@@ -231,14 +227,14 @@ public class TaskServiceUnifiedStatusTests
 
         _mockTaskStatusValidator
             .Setup(x => x.ValidateStatusTransition(existingTask, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId))
-            .Returns((true, string.Empty));
+            .Returns(true);
 
         _mockTaskRepository
             .Setup(x => x.SaveChangesAsync())
             .ReturnsAsync(1);
 
         _mockTaskEventService
-            .Setup(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId))
+            .Setup(x => x.CreateStatusChangeEventAsync(taskId, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId))
             .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act
@@ -247,13 +243,13 @@ public class TaskServiceUnifiedStatusTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal(TaskStatus.IN_PROGRESS, result.Status);
-        Assert.Null(existingTask.SuspendedAt); // Should be cleared
+        Assert.NotNull(existingTask.SuspendedAt); // Timestamp is preserved
         Assert.Null(existingTask.CompletedAt);
         Assert.Null(existingTask.DeferredAt);
         Assert.Null(existingTask.ArchivedAt);
 
         _mockTaskRepository.Verify(x => x.SaveChangesAsync(), Times.Once);
-        _mockTaskEventService.Verify(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId), Times.Once);
+        _mockTaskEventService.Verify(x => x.CreateStatusChangeEventAsync(taskId, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId), Times.Once);
     }
 
     [Fact]
@@ -263,6 +259,7 @@ public class TaskServiceUnifiedStatusTests
         const int taskId = 1;
         const string userId = "manager123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.COMPLETION);
+        existingTask.Status = TaskStatus.COMPLETED; // Set status explicitly
         existingTask.CompletedAt = DateTime.UtcNow.AddHours(-1); // Previously completed
 
         _mockTaskRepository
@@ -271,14 +268,14 @@ public class TaskServiceUnifiedStatusTests
 
         _mockTaskStatusValidator
             .Setup(x => x.ValidateStatusTransition(existingTask, TaskStatus.COMPLETED, TaskStatus.ARCHIVED, userId))
-            .Returns((true, string.Empty));
+            .Returns(true);
 
         _mockTaskRepository
             .Setup(x => x.SaveChangesAsync())
             .ReturnsAsync(1);
 
         _mockTaskEventService
-            .Setup(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.COMPLETED, TaskStatus.ARCHIVED, userId))
+            .Setup(x => x.CreateStatusChangeEventAsync(taskId, TaskStatus.COMPLETED, TaskStatus.ARCHIVED, userId))
             .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act
@@ -293,7 +290,7 @@ public class TaskServiceUnifiedStatusTests
         Assert.Null(existingTask.DeferredAt);
 
         _mockTaskRepository.Verify(x => x.SaveChangesAsync(), Times.Once);
-        _mockTaskEventService.Verify(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.COMPLETED, TaskStatus.ARCHIVED, userId), Times.Once);
+        _mockTaskEventService.Verify(x => x.CreateStatusChangeEventAsync(taskId, TaskStatus.COMPLETED, TaskStatus.ARCHIVED, userId), Times.Once);
     }
 
     [Fact]
@@ -303,6 +300,7 @@ public class TaskServiceUnifiedStatusTests
         const int taskId = 1;
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
+        existingTask.Status = TaskStatus.IN_PROGRESS; // Set status explicitly
         existingTask.AssignedToUserId = userId;
         existingTask.LastWorkedOnByUserId = userId; // Task has been worked on
 
@@ -312,18 +310,18 @@ public class TaskServiceUnifiedStatusTests
 
         _mockTaskStatusValidator
             .Setup(x => x.ValidateStatusTransition(existingTask, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, userId))
-            .Returns((true, string.Empty));
+            .Returns(true);
 
         _mockTaskRepository
             .Setup(x => x.SaveChangesAsync())
             .ReturnsAsync(1);
 
         _mockTaskEventService
-            .Setup(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, userId))
+            .Setup(x => x.CreateStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, userId))
             .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act - disable asset movement
-        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.COMPLETED, userId, moveAsset: false);
+        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.COMPLETED, userId);
 
         // Assert
         Assert.NotNull(result);
@@ -338,52 +336,6 @@ public class TaskServiceUnifiedStatusTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task ChangeTaskStatusAsync_MutualExclusion_ShouldClearConflictingTimestamps()
-    {
-        // Arrange
-        const int taskId = 1;
-        const string userId = "user123";
-        var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
-        
-        // Set multiple conflicting timestamps
-        existingTask.SuspendedAt = DateTime.UtcNow.AddHours(-2);
-        existingTask.DeferredAt = DateTime.UtcNow.AddHours(-1);
-        existingTask.CompletedAt = DateTime.UtcNow.AddMinutes(-30);
-        existingTask.ArchivedAt = DateTime.UtcNow.AddMinutes(-10);
-
-        _mockTaskRepository
-            .Setup(x => x.GetByIdAsync(taskId))
-            .ReturnsAsync(existingTask);
-
-        _mockTaskStatusValidator
-            .Setup(x => x.ValidateStatusTransition(existingTask, It.IsAny<TaskStatus>(), TaskStatus.SUSPENDED, userId))
-            .Returns((true, string.Empty));
-
-        _mockTaskRepository
-            .Setup(x => x.SaveChangesAsync())
-            .ReturnsAsync(1);
-
-        _mockTaskEventService
-            .Setup(x => x.LogStatusChangeEventAsync(It.IsAny<int>(), It.IsAny<TaskStatus>(), TaskStatus.SUSPENDED, userId))
-            .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
-
-        // Act
-        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.SUSPENDED, userId);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal(TaskStatus.SUSPENDED, result.Status);
-        
-        // Only SuspendedAt should be set, all others cleared
-        Assert.NotNull(existingTask.SuspendedAt);
-        Assert.Null(existingTask.DeferredAt);
-        Assert.Null(existingTask.CompletedAt);
-        Assert.Null(existingTask.ArchivedAt);
-    }
-
-
-
-    [Fact]
     public async System.Threading.Tasks.Task ChangeTaskStatusAsync_SuspendedChangesRequiredToInProgress_ShouldHandleChangesRequiredCorrectly()
     {
         // Arrange - This tests the exact issue: CHANGES_REQUIRED → SUSPENDED → IN_PROGRESS (frontend call)
@@ -392,6 +344,7 @@ public class TaskServiceUnifiedStatusTests
         var originalChangesRequiredTime = DateTime.UtcNow.AddDays(-1);
 
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
+        existingTask.Status = TaskStatus.SUSPENDED; // Set status explicitly
         existingTask.AssignedToUserId = userId;
         existingTask.LastWorkedOnByUserId = userId;
         existingTask.SuspendedAt = DateTime.UtcNow.AddHours(-1); // Currently suspended
@@ -403,33 +356,34 @@ public class TaskServiceUnifiedStatusTests
 
         _mockTaskStatusValidator
             .Setup(x => x.ValidateStatusTransition(existingTask, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId))
-            .Returns((true, string.Empty));
+            .Returns(true);
 
         _mockTaskRepository
             .Setup(x => x.SaveChangesAsync())
             .ReturnsAsync(1);
 
         _mockTaskEventService
-            .Setup(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId))
+            .Setup(x => x.CreateStatusChangeEventAsync(taskId, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId))
             .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act - Frontend explicitly changes status to IN_PROGRESS when starting annotation
-        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.IN_PROGRESS, userId, moveAsset: false);
+        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.IN_PROGRESS, userId);
 
         // Assert
         Assert.NotNull(result);
+        // Task transitions to IN_PROGRESS as requested
         Assert.Equal(TaskStatus.IN_PROGRESS, result.Status);
         
-        // This shows the current issue - what should happen to ChangesRequiredAt?
-        // Current behavior: ChangesRequiredAt is cleared, task shows as IN_PROGRESS
-        // Desired behavior: Remember that it originally required changes for completion logic
+        // Veto tracking: ChangesRequiredAt should be preserved for proper workflow tracking
+        Assert.NotNull(existingTask.ChangesRequiredAt);
+        Assert.Equal(originalChangesRequiredTime, existingTask.ChangesRequiredAt);
         
-        Assert.Null(existingTask.SuspendedAt); // Should be cleared
+        Assert.NotNull(existingTask.SuspendedAt); // Timestamp is preserved
         Assert.Equal(userId, existingTask.AssignedToUserId); // Should remain assigned
         Assert.Equal(userId, existingTask.LastWorkedOnByUserId); // Should be set since it's IN_PROGRESS
 
         _mockTaskRepository.Verify(x => x.SaveChangesAsync(), Times.Once);
-        _mockTaskEventService.Verify(x => x.LogStatusChangeEventAsync(taskId, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId), Times.Once);
+        _mockTaskEventService.Verify(x => x.CreateStatusChangeEventAsync(taskId, TaskStatus.SUSPENDED, TaskStatus.IN_PROGRESS, userId), Times.Once);
     }
 
 
@@ -460,6 +414,24 @@ public class TaskServiceUnifiedStatusTests
     private static Mock<UserManager<ApplicationUser>> MockUserManager()
     {
         var store = new Mock<IUserStore<ApplicationUser>>();
-        return new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
+        var optionsAccessor = new Mock<Microsoft.Extensions.Options.IOptions<IdentityOptions>>();
+        var passwordHasher = new Mock<IPasswordHasher<ApplicationUser>>();
+        var userValidators = new List<IUserValidator<ApplicationUser>>();
+        var passwordValidators = new List<IPasswordValidator<ApplicationUser>>();
+        var keyNormalizer = new Mock<ILookupNormalizer>();
+        var errors = new Mock<IdentityErrorDescriber>();
+        var services = new Mock<IServiceProvider>();
+        var logger = new Mock<ILogger<UserManager<ApplicationUser>>>();
+        
+        return new Mock<UserManager<ApplicationUser>>(
+            store.Object, 
+            optionsAccessor.Object, 
+            passwordHasher.Object, 
+            userValidators, 
+            passwordValidators, 
+            keyNormalizer.Object, 
+            errors.Object, 
+            services.Object, 
+            logger.Object);
     }
 }

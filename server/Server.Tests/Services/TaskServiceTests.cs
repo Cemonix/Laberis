@@ -39,7 +39,6 @@ namespace Server.Tests.Services
             _taskService = new TaskService(
                 _mockTaskRepository.Object, 
                 _mockAssetRepository.Object,
-                _mockTaskEventRepository.Object,
                 _mockTaskEventService.Object,
                 _mockTaskStatusValidator.Object,
                 _mockAssetService.Object,
@@ -141,7 +140,25 @@ namespace Server.Tests.Services
         private static Mock<UserManager<ApplicationUser>> MockUserManager()
         {
             var store = new Mock<IUserStore<ApplicationUser>>();
-            return new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
+            var optionsAccessor = new Mock<Microsoft.Extensions.Options.IOptions<IdentityOptions>>();
+            var passwordHasher = new Mock<IPasswordHasher<ApplicationUser>>();
+            var userValidators = new List<IUserValidator<ApplicationUser>>();
+            var passwordValidators = new List<IPasswordValidator<ApplicationUser>>();
+            var keyNormalizer = new Mock<ILookupNormalizer>();
+            var errors = new Mock<IdentityErrorDescriber>();
+            var services = new Mock<IServiceProvider>();
+            var logger = new Mock<ILogger<UserManager<ApplicationUser>>>();
+            
+            return new Mock<UserManager<ApplicationUser>>(
+                store.Object, 
+                optionsAccessor.Object, 
+                passwordHasher.Object, 
+                userValidators, 
+                passwordValidators, 
+                keyNormalizer.Object, 
+                errors.Object, 
+                services.Object, 
+                logger.Object);
         }
     }
 }

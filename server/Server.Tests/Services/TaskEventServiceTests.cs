@@ -56,7 +56,7 @@ public class TaskEventServiceTests
             .ReturnsAsync(1);
 
         // Act
-        var result = await _taskEventService.LogStatusChangeEventAsync(taskId, fromStatus, toStatus, userId);
+        var result = await _taskEventService.CreateStatusChangeEventAsync(taskId, fromStatus, toStatus, userId);
 
         // Assert
         Assert.NotNull(result);
@@ -93,7 +93,7 @@ public class TaskEventServiceTests
             .ReturnsAsync(1);
 
         // Act
-        await _taskEventService.LogStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, userId);
+        await _taskEventService.CreateStatusChangeEventAsync(taskId, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, userId);
         var afterCall = DateTime.UtcNow;
 
         // Assert
@@ -120,7 +120,7 @@ public class TaskEventServiceTests
             .ReturnsAsync(1);
 
         // Act
-        var result = await _taskEventService.LogStatusChangeEventAsync(taskId, unknownFromStatus, unknownToStatus, userId);
+        var result = await _taskEventService.CreateStatusChangeEventAsync(taskId, unknownFromStatus, unknownToStatus, userId);
 
         // Assert
         Assert.NotNull(result);
