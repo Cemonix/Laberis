@@ -85,7 +85,7 @@ public class WorkflowStageService : IWorkflowStageService
             Name = createDto.Name,
             Description = createDto.Description,
             StageOrder = createDto.StageOrder,
-            StageType = createDto.StageType ?? WorkflowStageType.ANNOTATION,
+            StageType = createDto.StageType,
             IsInitialStage = createDto.IsInitialStage,
             IsFinalStage = createDto.IsFinalStage,
             WorkflowId = workflowId,

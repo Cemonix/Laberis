@@ -14,7 +14,7 @@ public record class CreateWorkflowStageDto
     [Required]
     public int StageOrder { get; init; }
 
-    public WorkflowStageType? StageType { get; init; }
+    public WorkflowStageType StageType { get; init; }
 
     public bool IsInitialStage { get; init; } = false;
 
