@@ -68,9 +68,9 @@ public class TaskEventService : ITaskEventService
         return MapToDto(taskEvent);
     }
 
-    public async Task<TaskEventDto> LogTaskEventAsync(CreateTaskEventDto createDto, string? userId = null)
+    public async Task<TaskEventDto> CreateTaskEventAsync(CreateTaskEventDto createDto, string? userId = null)
     {
-        _logger.LogInformation("Logging new task event for task: {TaskId}, event type: {EventType}", createDto.TaskId, createDto.EventType);
+        _logger.LogInformation("Creating new task event for task: {TaskId}, event type: {EventType}", createDto.TaskId, createDto.EventType);
 
         var taskEvent = new TaskEvent
         {
@@ -83,33 +83,49 @@ public class TaskEventService : ITaskEventService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _taskEventRepository.AddAsync(taskEvent);
-        await _taskEventRepository.SaveChangesAsync();
+        try
+        {
+            await _taskEventRepository.AddAsync(taskEvent);
+            await _taskEventRepository.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating task event: {Message}", ex.Message);
+            // TODO: Create custom exception for task event errors
+            throw;
+        }
+        
 
-        _logger.LogInformation("Successfully logged task event with ID: {EventId}", taskEvent.EventId);
+        _logger.LogInformation("Successfully created task event with ID: {EventId}", taskEvent.EventId);
 
         return MapToDto(taskEvent);
     }
 
-    public async Task<TaskEventDto> LogStatusChangeEventAsync(int taskId, TaskStatus fromStatus, TaskStatus toStatus, string userId)
+    public async Task<TaskEventDto> CreateStatusChangeEventAsync(int taskId, TaskStatus fromStatus, TaskStatus toStatus, string userId)
     {
         _logger.LogInformation("Logging status change event for task {TaskId}: {FromStatus} → {ToStatus} by user {UserId}", 
             taskId, fromStatus, toStatus, userId);
 
-        // All status changes now use STATUS_CHANGED with specific details
-        var eventType = TaskEventType.STATUS_CHANGED;
-
         var taskEvent = new TaskEvent
         {
-            EventType = eventType,
+            EventType = TaskEventType.STATUS_CHANGED,
             Details = $"Task status changed from {fromStatus} to {toStatus}",
             TaskId = taskId,
             UserId = userId,
             CreatedAt = DateTime.UtcNow
         };
 
-        await _taskEventRepository.AddAsync(taskEvent);
-        await _taskEventRepository.SaveChangesAsync();
+        try
+        {
+            await _taskEventRepository.AddAsync(taskEvent);
+            await _taskEventRepository.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error logging status change event: {Message}", ex.Message);
+            // TODO: Create custom exception for task event errors
+            throw;
+        }
 
         _logger.LogInformation("Successfully logged status change event for task {TaskId}", taskId);
         
