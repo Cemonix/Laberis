@@ -20,8 +20,6 @@ public record class UpdateWorkflowStageDto
 
     public bool IsFinalStage { get; init; }
 
-    public string? UiConfiguration { get; init; }
-
     public int? InputDataSourceId { get; init; }
 
     public int? TargetDataSourceId { get; init; }

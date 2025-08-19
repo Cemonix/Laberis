@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace server.Models.DTOs.Task;
 
 public record class UpdateTaskDto
@@ -13,8 +11,10 @@ public record class UpdateTaskDto
     public int? CurrentWorkflowStageId { get; init; }
 
     public string? AssignedToUserId { get; init; }
-    
+
     public string? AssignedToEmail { get; init; }
+
+    public Domain.Enums.TaskStatus? Status { get; init; }
 
     public DateTime? CompletedAt { get; init; }
 
