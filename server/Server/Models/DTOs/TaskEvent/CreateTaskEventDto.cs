@@ -13,6 +13,9 @@ public record class CreateTaskEventDto
     [Required]
     public int TaskId { get; init; }
 
+    [Required]
+    public string? UserId { get; init; }
+
     public int? FromWorkflowStageId { get; init; }
 
     public int? ToWorkflowStageId { get; init; }
