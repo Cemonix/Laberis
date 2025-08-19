@@ -25,16 +25,11 @@ public class WorkflowStageConfiguration : IEntityTypeConfiguration<WorkflowStage
 
         entity.Property(ws => ws.StageType)
             .HasColumnName("stage_type")
-            .IsRequired(false)
+            .IsRequired(true)
             .HasColumnType("public.workflow_stage_type_enum");
 
         entity.Property(ws => ws.IsInitialStage).HasColumnName("is_initial_stage").IsRequired().HasDefaultValue(false);
         entity.Property(ws => ws.IsFinalStage).HasColumnName("is_final_stage").IsRequired().HasDefaultValue(false);
-
-        entity.Property(ws => ws.UiConfiguration)
-            .HasColumnName("ui_configuration")
-            .HasColumnType("jsonb")
-            .IsRequired(false);
 
         entity.Property(ws => ws.CreatedAt)
             .HasColumnName("created_at")
