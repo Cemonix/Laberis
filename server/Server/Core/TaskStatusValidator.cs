@@ -1,9 +1,8 @@
-using server.Models.Domain.Enums;
 using server.Services.Interfaces;
 using LaberisTask = server.Models.Domain.Task;
 using TaskStatus = server.Models.Domain.Enums.TaskStatus;
 
-namespace server.Services;
+namespace server.Core;
 
 public class TaskStatusValidator : ITaskStatusValidator
 {
