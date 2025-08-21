@@ -408,7 +408,7 @@ public class DashboardAnalyticsService : IDashboardAnalyticsService
 
             var lastActivity = await _context.TaskEvents
                 .Where(te => te.ToWorkflowStageId == stage.WorkflowStageId || 
-                            te.Task!.CurrentWorkflowStageId == stage.WorkflowStageId)
+                            te.Task!.WorkflowStageId == stage.WorkflowStageId)
                 .OrderByDescending(te => te.CreatedAt)
                 .Select(te => te.CreatedAt)
                 .FirstOrDefaultAsync();

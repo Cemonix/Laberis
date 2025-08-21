@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Moq;
+using server.Core;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
 using server.Services;
@@ -187,10 +188,10 @@ public class TaskStatusValidatorTests
             WorkflowId = 1,
             AssetId = 1,
             Priority = 1,
-            CurrentWorkflowStageId = 1,
+            WorkflowStageId = 1,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            CurrentWorkflowStage = new WorkflowStage
+            WorkflowStage = new WorkflowStage
             {
                 WorkflowStageId = 1,
                 Name = "Test Stage",

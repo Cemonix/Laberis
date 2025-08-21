@@ -136,7 +136,7 @@ public class TaskService : ITaskService
         _logger.LogInformation("Fetching tasks for workflow stage {StageId} in project {ProjectId}", stageId, projectId);
 
         var (tasks, totalCount) = await _taskRepository.GetAllWithCountAsync(
-            filter: t => t.ProjectId == projectId && t.CurrentWorkflowStageId == stageId,
+            filter: t => t.ProjectId == projectId && t.WorkflowStageId == stageId,
             filterOn: filterOn,
             filterQuery: filterQuery,
             sortBy: sortBy ?? "created_at",
@@ -172,7 +172,7 @@ public class TaskService : ITaskService
             ProjectId = projectId,
             WorkflowId = createDto.WorkflowId,
             AssignedToUserId = createDto.AssignedToUserId,
-            CurrentWorkflowStageId = createDto.CurrentWorkflowStageId,
+            WorkflowStageId = createDto.WorkflowStageId,
             Status = createDto.Status,
             DueDate = createDto.DueDate,
             Metadata = createDto.Metadata,
@@ -253,7 +253,7 @@ public class TaskService : ITaskService
             ApplyStatusChange(existingTask, updateDto.Status.Value);
         }
 
-        existingTask.CurrentWorkflowStageId = updateDto.CurrentWorkflowStageId ?? existingTask.CurrentWorkflowStageId;
+        existingTask.WorkflowStageId = updateDto.WorkflowStageId ?? existingTask.WorkflowStageId;
         existingTask.DueDate = updateDto.DueDate is not null ? Time.ConvertToUtcIfSpecified(updateDto.DueDate.Value) : existingTask.DueDate;
         existingTask.Metadata = updateDto.Metadata ?? existingTask.Metadata;
         existingTask.CompletedAt = updateDto.CompletedAt is not null ? Time.ConvertToUtcIfSpecified(updateDto.CompletedAt.Value) : existingTask.CompletedAt;
@@ -349,7 +349,7 @@ public class TaskService : ITaskService
             {
                 AssetId = asset.AssetId,
                 WorkflowId = workflowId,
-                CurrentWorkflowStageId = workflowStageId,
+                WorkflowStageId = workflowStageId,
                 Priority = 1, // Default priority
                 Status = GetInitialTaskStatusForStage(workflowStage.StageType),
                 Metadata = null,
@@ -547,7 +547,7 @@ public class TaskService : ITaskService
             AssetId = task.AssetId,
             ProjectId = task.ProjectId,
             WorkflowId = task.WorkflowId,
-            CurrentWorkflowStageId = task.CurrentWorkflowStageId,
+            WorkflowStageId = task.WorkflowStageId,
             AssignedToEmail = task.AssignedToUser?.Email,
             LastWorkedOnByEmail = task.LastWorkedOnByUser?.Email
         };

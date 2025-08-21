@@ -39,7 +39,7 @@ public class TaskConfiguration : IEntityTypeConfiguration<Task>
         entity.Property(t => t.AssetId).HasColumnName("asset_id");
         entity.Property(t => t.ProjectId).HasColumnName("project_id");
         entity.Property(t => t.WorkflowId).HasColumnName("workflow_id");
-        entity.Property(t => t.CurrentWorkflowStageId).HasColumnName("current_workflow_stage_id");
+        entity.Property(t => t.WorkflowStageId).HasColumnName("workflow_stage_id");
         entity.Property(t => t.AssignedToUserId).HasColumnName("assigned_to_user_id").IsRequired(false);
         entity.Property(t => t.LastWorkedOnByUserId).HasColumnName("last_worked_on_by_user_id").IsRequired(false);
 
@@ -62,9 +62,9 @@ public class TaskConfiguration : IEntityTypeConfiguration<Task>
             .HasForeignKey(t => t.WorkflowId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        entity.HasOne(t => t.CurrentWorkflowStage)
+        entity.HasOne(t => t.WorkflowStage)
             .WithMany(ws => ws.TasksAtThisStage)
-            .HasForeignKey(t => t.CurrentWorkflowStageId)
+            .HasForeignKey(t => t.WorkflowStageId)
             .OnDelete(DeleteBehavior.Restrict);
 
         entity.HasOne(t => t.AssignedToUser)

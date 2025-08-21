@@ -20,7 +20,7 @@ public record class TaskDto
     public int AssetId { get; init; }
     public int ProjectId { get; init; }
     public int WorkflowId { get; init; }
-    public int CurrentWorkflowStageId { get; init; }
+    public int WorkflowStageId { get; init; }
     public string? AssignedToEmail { get; init; }
     public string? LastWorkedOnByEmail { get; init; }
 }

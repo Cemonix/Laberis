@@ -75,8 +75,8 @@ public class WorkflowStageConfiguration : IEntityTypeConfiguration<WorkflowStage
 
         // Relationship: WorkflowStage to Tasks (One-to-Many where this stage is current)
         entity.HasMany(ws => ws.TasksAtThisStage)
-            .WithOne(t => t.CurrentWorkflowStage)
-            .HasForeignKey(t => t.CurrentWorkflowStageId)
+            .WithOne(t => t.WorkflowStage)
+            .HasForeignKey(t => t.WorkflowStageId)
             .OnDelete(DeleteBehavior.Restrict);
 
         entity.HasQueryFilter(ws => ws.Workflow.Project.Status != ProjectStatus.PENDING_DELETION);
