@@ -50,7 +50,7 @@ namespace Server.Tests.Services
         }
 
         [Fact]
-        public async System.Threading.Tasks.Task GetTaskByIdAsync_Should_ReturnTaskDto_WhenTaskExists()
+        public async Task GetTaskByIdAsync_Should_ReturnTaskDto_WhenTaskExists()
         {
             // Arrange
             var taskId = 1;
@@ -62,7 +62,7 @@ namespace Server.Tests.Services
                 ProjectId = 1,
                 AssetId = 1,
                 WorkflowId = 1,
-                CurrentWorkflowStageId = 1,
+                WorkflowStageId = 1,
                 AssignedToUserId = "user123",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -85,7 +85,7 @@ namespace Server.Tests.Services
         }
 
         [Fact]
-        public async System.Threading.Tasks.Task GetTaskByIdAsync_Should_ReturnNull_WhenTaskDoesNotExist()
+        public async Task GetTaskByIdAsync_Should_ReturnNull_WhenTaskDoesNotExist()
         {
             // Arrange
             var taskId = 999;
@@ -101,7 +101,7 @@ namespace Server.Tests.Services
         }
 
         [Fact]  
-        public async System.Threading.Tasks.Task CreateTaskAsync_Should_ReturnTaskDto_WhenValidData()
+        public async Task CreateTaskAsync_Should_ReturnTaskDto_WhenValidData()
         {
             // Arrange
             var projectId = 1;
@@ -109,14 +109,14 @@ namespace Server.Tests.Services
             {
                 AssetId = 1,
                 WorkflowId = 1,
-                CurrentWorkflowStageId = 1,
+                WorkflowStageId = 1,
                 Priority = 2,
                 DueDate = DateTime.UtcNow.AddDays(7),
                 AssignedToUserId = "user123"
             };
 
             _mockTaskRepository.Setup(r => r.AddAsync(It.IsAny<LaberisTask>()))
-                .Returns(System.Threading.Tasks.Task.CompletedTask);
+                .Returns(Task.CompletedTask);
             _mockTaskRepository.Setup(r => r.SaveChangesAsync())
                 .ReturnsAsync(1);
 

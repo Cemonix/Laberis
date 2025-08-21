@@ -22,7 +22,7 @@ public class Task
     public int AssetId { get; set; }
     public int ProjectId { get; set; }
     public int WorkflowId { get; set; }
-    public int CurrentWorkflowStageId { get; set; }
+    public int WorkflowStageId { get; set; }
     public string? AssignedToUserId { get; set; }
     public string? LastWorkedOnByUserId { get; set; }
 
@@ -30,7 +30,7 @@ public class Task
     public virtual Asset Asset { get; set; } = null!;
     public virtual Project Project { get; set; } = null!;
     public virtual Workflow Workflow { get; set; } = null!;
-    public virtual WorkflowStage CurrentWorkflowStage { get; set; } = null!;
+    public virtual WorkflowStage WorkflowStage { get; set; } = null!;
     public virtual ApplicationUser? AssignedToUser { get; set; }
     public virtual ApplicationUser? LastWorkedOnByUser { get; set; }
 

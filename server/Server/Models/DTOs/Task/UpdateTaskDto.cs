@@ -8,7 +8,7 @@ public record class UpdateTaskDto
 
     public string? Metadata { get; init; }
 
-    public int? CurrentWorkflowStageId { get; init; }
+    public int? WorkflowStageId { get; init; }
 
     public string? AssignedToUserId { get; init; }
 

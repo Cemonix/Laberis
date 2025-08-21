@@ -76,7 +76,7 @@ public class AssetImportedEventHandler : IDomainEventHandler<AssetImportedEvent>
                 AssetId = asset.AssetId,
                 ProjectId = asset.ProjectId,
                 WorkflowId = stage.WorkflowId,
-                CurrentWorkflowStageId = stage.WorkflowStageId,
+                WorkflowStageId = stage.WorkflowStageId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };

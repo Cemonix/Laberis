@@ -11,7 +11,7 @@ public record class CreateTaskDto
     public int WorkflowId { get; init; }
 
     [Required]
-    public int CurrentWorkflowStageId { get; init; }
+    public int WorkflowStageId { get; init; }
 
     public int Priority { get; init; } = 0;
 
