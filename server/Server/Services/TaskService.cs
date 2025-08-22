@@ -1,3 +1,4 @@
+using server.Core;
 using server.Models.Domain;
 using server.Models.DTOs.Task;
 using server.Models.Domain.Enums;
@@ -250,7 +251,7 @@ public class TaskService : ITaskService
 
         if (updateDto.Status.HasValue)
         {
-            ApplyStatusChange(existingTask, updateDto.Status.Value);
+            TaskStatusManager.ApplyStatusChange(existingTask, updateDto.Status.Value, updatingUserId ?? "system");
         }
 
         existingTask.WorkflowStageId = updateDto.WorkflowStageId ?? existingTask.WorkflowStageId;
@@ -407,14 +408,8 @@ public class TaskService : ITaskService
             );
         }
 
-        // Apply the status change
-        ApplyStatusChange(existingTask, targetStatus);
-
-        // Update LastWorkedOnByUserId only for statuses representing actual work
-        if (targetStatus == TaskStatus.IN_PROGRESS || targetStatus == TaskStatus.COMPLETED)
-        {
-            existingTask.LastWorkedOnByUserId = userId;
-        }
+        // Apply the status change (includes user tracking)
+        TaskStatusManager.ApplyStatusChange(existingTask, targetStatus, userId);
 
         await _taskRepository.SaveChangesAsync();
 
@@ -494,38 +489,6 @@ public class TaskService : ITaskService
         throw new UnauthorizedAccessException($"Users with role {assigningUserMembership.Role} cannot assign tasks");
     }
 
-    private static void ApplyStatusChange(LaberisTask task, TaskStatus targetStatus)
-    {
-        var now = DateTime.UtcNow;
-
-        task.Status = targetStatus;
-
-        switch (targetStatus)
-        {
-            case TaskStatus.SUSPENDED:
-                task.SuspendedAt = now;
-                break;
-            case TaskStatus.DEFERRED:
-                task.DeferredAt = now;
-                break;
-            case TaskStatus.COMPLETED:
-                task.CompletedAt = now;
-                break;
-            case TaskStatus.ARCHIVED:
-                task.ArchivedAt = now;
-                task.CompletedAt = now;
-                break;
-            case TaskStatus.VETOED:
-                task.VetoedAt = now;
-                break;
-            case TaskStatus.CHANGES_REQUIRED:
-                task.ChangesRequiredAt = now;
-                break;
-            default:
-                break;
-        }
-        task.UpdatedAt = now;
-    }
 
     private static TaskDto MapToDto(LaberisTask task)
     {
