@@ -16,11 +16,13 @@ namespace server.Controllers;
 public class TasksController : ControllerBase
 {
     private readonly ITaskService _taskService;
+    private readonly ITaskWorkflowService _taskWorkflowService;
     private readonly ILogger<TasksController> _logger;
 
-    public TasksController(ITaskService taskService, ILogger<TasksController> logger)
+    public TasksController(ITaskService taskService, ITaskWorkflowService taskWorkflowService, ILogger<TasksController> logger)
     {
         _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
+        _taskWorkflowService = taskWorkflowService ?? throw new ArgumentNullException(nameof(taskWorkflowService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -403,4 +405,235 @@ public class TasksController : ControllerBase
             return StatusCode(500, "An unexpected error occurred. Please try again later.");
         }
     }
+
+    /// <summary>
+    /// Completes a task using the workflow pipeline system.
+    /// This triggers the complete workflow progression including asset transfer and next stage task creation.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to complete.</param>
+    /// <param name="dto">The task completion request containing optional notes.</param>
+    /// <returns>The pipeline result with updated task information.</returns>
+    /// <response code="200">Returns the pipeline result with updated task.</response>
+    /// <response code="400">If the completion operation is invalid or request data is malformed.</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="403">If the user doesn't have permission to complete this task.</response>
+    /// <response code="404">If the task is not found.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPost("{taskId:int}/complete")]
+    [ProducesResponseType(typeof(PipelineResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CompleteTask(int taskId, [FromBody] CompleteTaskDto dto)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID claim not found in token.");
+            }
+
+            var result = await _taskWorkflowService.CompleteTaskAsync(taskId, userId);
+
+            if (!result.IsSuccess)
+            {
+                if (result.ErrorMessage?.Contains("not found") == true)
+                {
+                    return NotFound(result.ErrorMessage);
+                }
+                else if (result.ErrorMessage?.Contains("permission") == true)
+                {
+                    return Forbid(result.ErrorMessage);
+                }
+                else
+                {
+                    return BadRequest(result.ErrorMessage);
+                }
+            }
+
+            // Map PipelineResult to PipelineResultDto
+            var responseDto = new PipelineResultDto
+            {
+                IsSuccess = result.IsSuccess,
+                Details = result.Details,
+                UpdatedTask = result.UpdatedTask != null ? MapTaskToDto(result.UpdatedTask) : null
+            };
+
+            return Ok(responseDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while completing task {TaskId}.", taskId);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
+
+    /// <summary>
+    /// Vetoes a task using the workflow pipeline system.
+    /// This triggers the veto workflow progression including asset transfer back to annotation and task updates.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to veto.</param>
+    /// <param name="dto">The task veto request containing the reason for veto.</param>
+    /// <returns>The pipeline result with updated task information.</returns>
+    /// <response code="200">Returns the pipeline result with updated task.</response>
+    /// <response code="400">If the veto operation is invalid or request data is malformed.</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="403">If the user doesn't have permission to veto this task.</response>
+    /// <response code="404">If the task is not found.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpPost("{taskId:int}/veto")]
+    [ProducesResponseType(typeof(PipelineResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> VetoTask(int taskId, [FromBody] VetoTaskDto dto)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID claim not found in token.");
+            }
+
+            var result = await _taskWorkflowService.VetoTaskAsync(taskId, userId, dto.Reason);
+
+            if (!result.IsSuccess)
+            {
+                if (result.ErrorMessage?.Contains("not found") == true)
+                {
+                    return NotFound(result.ErrorMessage);
+                }
+                else if (result.ErrorMessage?.Contains("permission") == true)
+                {
+                    return Forbid(result.ErrorMessage);
+                }
+                else
+                {
+                    return BadRequest(result.ErrorMessage);
+                }
+            }
+
+            // Map PipelineResult to PipelineResultDto
+            var responseDto = new PipelineResultDto
+            {
+                IsSuccess = result.IsSuccess,
+                Details = result.Details,
+                UpdatedTask = result.UpdatedTask != null ? MapTaskToDto(result.UpdatedTask) : null
+            };
+
+            return Ok(responseDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while vetoing task {TaskId}.", taskId);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
+
+    /// <summary>
+    /// Checks if the current user can complete the specified task.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to check.</param>
+    /// <returns>Boolean indicating if the task can be completed.</returns>
+    /// <response code="200">Returns true if the task can be completed, false otherwise.</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="404">If the task is not found.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpGet("{taskId:int}/can-complete")]
+    [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CanCompleteTask(int taskId)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID claim not found in token.");
+            }
+
+            var canComplete = await _taskWorkflowService.CanCompleteTaskAsync(taskId, userId);
+            return Ok(canComplete);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while checking completion permissions for task {TaskId}.", taskId);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
+
+    /// <summary>
+    /// Checks if the current user can veto the specified task.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to check.</param>
+    /// <returns>Boolean indicating if the task can be vetoed.</returns>
+    /// <response code="200">Returns true if the task can be vetoed, false otherwise.</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="404">If the task is not found.</response>
+    /// <response code="500">If an internal server error occurs.</response>
+    [HttpGet("{taskId:int}/can-veto")]
+    [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CanVetoTask(int taskId)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID claim not found in token.");
+            }
+
+            var canVeto = await _taskWorkflowService.CanVetoTaskAsync(taskId, userId);
+            return Ok(canVeto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while checking veto permissions for task {TaskId}.", taskId);
+            return StatusCode(500, "An unexpected error occurred. Please try again later.");
+        }
+    }
+
+    #region Private Helper Methods
+
+    /// <summary>
+    /// Maps a domain Task to TaskDto
+    /// </summary>
+    private static TaskDto MapTaskToDto(Models.Domain.Task task)
+    {
+        return new TaskDto
+        {
+            Id = task.TaskId,
+            Priority = task.Priority,
+            DueDate = task.DueDate,
+            CompletedAt = task.CompletedAt,
+            ArchivedAt = task.ArchivedAt,
+            SuspendedAt = task.SuspendedAt,
+            DeferredAt = task.DeferredAt,
+            VetoedAt = task.VetoedAt,
+            ChangesRequiredAt = task.ChangesRequiredAt,
+            WorkingTimeMs = task.WorkingTimeMs,
+            Status = task.Status,
+            CreatedAt = task.CreatedAt,
+            UpdatedAt = task.UpdatedAt,
+            AssetId = task.AssetId,
+            ProjectId = task.ProjectId,
+            WorkflowId = task.WorkflowId,
+            WorkflowStageId = task.WorkflowStageId,
+            AssignedToEmail = task.AssignedToUser?.Email,
+            LastWorkedOnByEmail = task.LastWorkedOnByUser?.Email
+        };
+    }
+
+    #endregion
 }
