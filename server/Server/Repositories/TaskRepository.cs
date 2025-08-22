@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using server.Core;
 using server.Data;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
@@ -23,7 +24,7 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
     public override async Task<LaberisTask?> GetByIdAsync(object id)
     {
         return await _dbSet
-            .Include(t => t.CurrentWorkflowStage)
+            .Include(t => t.WorkflowStage)
             .Include(t => t.AssignedToUser)
             .Include(t => t.LastWorkedOnByUser)
             .FirstOrDefaultAsync(t => t.TaskId == (int)id);
@@ -33,7 +34,7 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
     {
         // Include related data needed for status calculation and user info
         return query
-            .Include(t => t.CurrentWorkflowStage)
+            .Include(t => t.WorkflowStage)
             .Include(t => t.AssignedToUser)
             .Include(t => t.LastWorkedOnByUser);
     }
@@ -89,7 +90,7 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
             case "current_workflow_stage_id":
                 if (int.TryParse(trimmedFilterQuery, out var stageId))
                 {
-                    query = query.Where(t => t.CurrentWorkflowStageId == stageId);
+                    query = query.Where(t => t.WorkflowStageId == stageId);
                 }
                 else
                 {
@@ -176,5 +177,33 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
             query = isAscending ? query.OrderBy(keySelector) : query.OrderByDescending(keySelector);
         }
         return query;
+    }
+
+    public async Task<LaberisTask?> FindByAssetAndStageAsync(int assetId, int workflowStageId)
+    {
+        return await _dbSet
+            .Include(t => t.WorkflowStage)
+            .Include(t => t.AssignedToUser)
+            .Include(t => t.LastWorkedOnByUser)
+            .FirstOrDefaultAsync(t => t.AssetId == assetId && t.WorkflowStageId == workflowStageId);
+    }
+
+    public async Task<IEnumerable<LaberisTask>> GetTasksByAssetIdAsync(int assetId)
+    {
+        return await _dbSet
+            .Include(t => t.WorkflowStage)
+            .Include(t => t.AssignedToUser)
+            .Include(t => t.LastWorkedOnByUser)
+            .Where(t => t.AssetId == assetId)
+            .ToListAsync();
+    }
+
+    public async Task<LaberisTask> UpdateTaskStatusAsync(LaberisTask task, Models.Domain.Enums.TaskStatus newStatus, string userId)
+    {
+        TaskStatusManager.ApplyStatusChange(task, newStatus, userId);
+
+        Update(task);
+        await SaveChangesAsync();
+        return task;
     }
 }
