@@ -352,7 +352,7 @@ public class WorkflowStageService : IWorkflowStageService
         bool includeReviewStage)
     {
         var stageOrder = 1;
-        int? initialStageId = null;
+        int? initialStageId;
         var createdStages = new List<WorkflowStageDto>();
 
         _logger.LogInformation("Creating default workflow stages pipeline for workflow {WorkflowId}, project {ProjectId}", workflowId, projectId);
