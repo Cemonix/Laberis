@@ -9,7 +9,13 @@ using server.Services;
 using server.Services.EventHandlers;
 using server.Services.Interfaces;
 using server.Services.Storage;
-using server.Models.Domain.Enums;
+using server.Core;
+using server.Core.Workflow.Interfaces.Steps;
+using server.Core.Workflow.Interfaces;
+using server.Core.Alerts.Interfaces;
+using server.Core.Workflow.Steps;
+using server.Core.Workflow;
+using server.Core.Alerts;
 
 namespace server.Extensions;
 
@@ -203,6 +209,34 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IDashboardAnalyticsService, DashboardAnalyticsService>();
         services.AddScoped<IDashboardConfigurationService, DashboardConfigurationService>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers pipeline services and workflow orchestration.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddPipelineServices(this IServiceCollection services)
+    {
+        // Register pipeline steps
+        services.AddScoped<ITaskStatusUpdateStep, TaskStatusUpdateStep>();
+        services.AddScoped<IAssetTransferStep, AssetTransferStep>();
+        services.AddScoped<ITaskManagementStep, TaskManagementStep>();
+
+        // Register workflow resolvers and utilities
+        services.AddScoped<IWorkflowStageResolver, WorkflowStageResolver>();
+
+        // Register pipeline orchestrators
+        services.AddScoped<ITaskCompletionPipeline, TaskCompletionPipeline>();
+        services.AddScoped<ITaskVetoPipeline, TaskVetoPipeline>();
+
+        // Register alert services
+        services.AddScoped<IManagementAlertService, ManagementAlertService>();
+
+        // Register high-level workflow service
+        services.AddScoped<ITaskWorkflowService, TaskWorkflowService>();
 
         return services;
     }

@@ -73,6 +73,9 @@ public class Program
         // Register business services  
         builder.Services.AddBusinessServices();
 
+        // Register pipeline services and workflow orchestration
+        builder.Services.AddPipelineServices();
+
         // Add framework services
         builder.Services.AddControllers()
             .AddJsonOptions(options =>
