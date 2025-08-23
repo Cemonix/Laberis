@@ -19,19 +19,14 @@ public record class CreateWorkflowDto
 
     /// <summary>
     /// Workflow stages to create along with the workflow.
-    /// If empty, no stages will be created automatically.
+    /// If empty, default stages (annotation and completion) will be created automatically.
     /// </summary>
     public ICollection<CreateWorkflowStageWithAssignmentsDto> Stages { get; init; } = [];
 
     /// <summary>
-    /// Whether to create default stages (annotation and completion) if no stages are provided.
-    /// Default stages will be created automatically with proper order and stage types.
-    /// </summary>
-    public bool CreateDefaultStages { get; init; } = false;
-
-    /// <summary>
     /// Whether to include a review stage between annotation and completion stages.
-    /// Only applies when CreateDefaultStages is true.
+    /// If true: Annotation → Review → Completion
+    /// If false: Annotation → Completion
     /// </summary>
     public bool IncludeReviewStage { get; init; } = false;
 }
