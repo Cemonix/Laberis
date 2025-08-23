@@ -107,8 +107,7 @@ class TaskBulkOperations implements TaskBulkOperationsService {
             async (taskId) => {
                 // Use the task status change API to archive tasks
                 await taskService.changeTaskStatus(projectId, taskId, {
-                    targetStatus: 'ARCHIVED' as any, // TODO: Fix this when TaskStatus enum is properly imported
-                    moveAsset: false
+                    targetStatus: 'ARCHIVED' as any // TODO: Fix this when TaskStatus enum is properly imported
                 });
                 return taskId;
             },
