@@ -103,7 +103,7 @@ public class WorkflowService : IWorkflowService
 
             // Create workflow stages pipeline using the dedicated service
             var pipelineResult = await _workflowStageService.CreateWorkflowStagesPipelineAsync(
-                workflow.WorkflowId, projectId, createDto.CreateDefaultStages, createDto.IncludeReviewStage);
+                workflow.WorkflowId, projectId, createDto.IncludeReviewStage);
             var initialStageId = pipelineResult.initialStageId;
             var createdStages = pipelineResult.createdStages;
 
