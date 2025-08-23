@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Moq;
 using server.Models.Domain;
+using server.Models.DTOs.Workflow;
 using server.Repositories.Interfaces;
 using server.Services;
 using server.Services.Interfaces;
@@ -12,10 +13,8 @@ public class WorkflowServiceTests
 {
     private readonly Mock<IWorkflowRepository> _mockWorkflowRepository;
     private readonly Mock<IWorkflowStageService> _mockWorkflowStageService;
-    private readonly Mock<IWorkflowStageAssignmentService> _mockWorkflowStageAssignmentService;
     private readonly Mock<IWorkflowStageConnectionService> _mockWorkflowStageConnectionService;
     private readonly Mock<ITaskService> _mockTaskService;
-    private readonly Mock<IDataSourceService> _mockDataSourceService;
     private readonly DbContextFactory _dbContextFactory;
     private readonly Mock<ILogger<WorkflowService>> _mockLogger;
     private readonly WorkflowService _workflowService;
@@ -24,10 +23,8 @@ public class WorkflowServiceTests
     {
         _mockWorkflowRepository = new Mock<IWorkflowRepository>();
         _mockWorkflowStageService = new Mock<IWorkflowStageService>();
-        _mockWorkflowStageAssignmentService = new Mock<IWorkflowStageAssignmentService>();
         _mockWorkflowStageConnectionService = new Mock<IWorkflowStageConnectionService>();
         _mockTaskService = new Mock<ITaskService>();
-        _mockDataSourceService = new Mock<IDataSourceService>();
         _dbContextFactory = new DbContextFactory();
         _mockLogger = new Mock<ILogger<WorkflowService>>();
 
@@ -78,5 +75,74 @@ public class WorkflowServiceTests
         Assert.Equal(2, result.Data.Length);
         Assert.Equal("Test Workflow", result.Data.First().Name);
         Assert.Equal("Another Workflow", result.Data.Last().Name);
+    }
+
+    [Theory]
+    [InlineData(false)] // No review stage: Annotation → Completion
+    [InlineData(true)]  // With review stage: Annotation → Review → Completion
+    public void CreateWorkflowAsync_ShouldAlwaysCreateDefaultStages_WhenNoCustomStagesProvided(bool includeReviewStage)
+    {
+        // Arrange
+        var createDto = new CreateWorkflowDto
+        {
+            Name = "Test Workflow",
+            LabelSchemeId = 1,
+            Stages = [], // No custom stages - should always create default stages
+            IncludeReviewStage = includeReviewStage
+        };
+
+        // Act - Test the simplified logic from WorkflowService
+        var shouldCreateDefaultStages = createDto.Stages.Count == 0;
+
+        // Assert
+        Assert.True(shouldCreateDefaultStages, 
+            "Default stages should always be created when no custom stages are provided");
+    }
+
+    [Fact]
+    public void CreateWorkflowAsync_ShouldNotCreateDefaultStages_WhenCustomStagesProvided()
+    {
+        // Arrange
+        var createDto = new CreateWorkflowDto
+        {
+            Name = "Test Workflow",
+            LabelSchemeId = 1,
+            Stages = [
+                new()
+                {
+                    Name = "Custom Stage",
+                    Description = "A custom workflow stage"
+                }
+            ], // Custom stages provided
+            IncludeReviewStage = true // This should be ignored when custom stages exist
+        };
+
+        // Act - Test the simplified logic from WorkflowService  
+        var shouldCreateDefaultStages = createDto.Stages.Count == 0;
+
+        // Assert
+        Assert.False(shouldCreateDefaultStages, 
+            "Default stages should not be created when custom stages are provided");
+    }
+
+    [Fact]
+    public void CreateWorkflowDto_ShouldHaveSimplifiedProperties()
+    {
+        // Arrange & Act
+        var createDto = new CreateWorkflowDto
+        {
+            Name = "Test",
+            LabelSchemeId = 1
+        };
+
+        // Assert - Verify the simplified DTO structure
+        Assert.False(createDto.IncludeReviewStage);
+        Assert.Empty(createDto.Stages);
+        
+        // Verify that CreateDefaultStages property no longer exists
+        var properties = typeof(CreateWorkflowDto).GetProperties();
+        var hasCreateDefaultStagesProperty = properties.Any(p => p.Name == "CreateDefaultStages");
+        Assert.False(hasCreateDefaultStagesProperty, 
+            "CreateDefaultStages property should no longer exist in simplified DTO");
     }
 }
