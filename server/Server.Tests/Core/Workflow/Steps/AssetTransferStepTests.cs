@@ -5,6 +5,8 @@ using server.Core.Workflow.Models;
 using server.Core.Workflow.Steps;
 using server.Models.Domain;
 using server.Models.Domain.Enums;
+using server.Models.DTOs.DataSource;
+using server.Models.Internal;
 using server.Services.Interfaces;
 using Xunit;
 using LaberisTask = server.Models.Domain.Task;
@@ -19,11 +21,13 @@ namespace server.Tests.Core.Workflow.Steps;
 public class AssetTransferStepTests
 {
     private readonly Mock<IAssetService> _mockAssetService;
+    private readonly Mock<IDataSourceService> _mockDataSourceService;
     private readonly Mock<ILogger<IAssetTransferStep>> _mockLogger;
 
     public AssetTransferStepTests()
     {
         _mockAssetService = new Mock<IAssetService>();
+        _mockDataSourceService = new Mock<IDataSourceService>();
         _mockLogger = new Mock<ILogger<IAssetTransferStep>>();
     }
 
@@ -122,9 +126,13 @@ public class AssetTransferStepTests
         var currentStage = CreateTestWorkflowStage(2, WorkflowStageType.REVISION, 2);
         var context = new PipelineContext(task, asset, currentStage, "reviewer123");
 
-        // Mock workflow service to return first annotation stage
-        var firstAnnotationStage = CreateTestWorkflowStage(1, WorkflowStageType.ANNOTATION, 1);
-        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.AssetId, firstAnnotationStage.TargetDataSourceId!.Value))
+        // Mock data source service to return annotation data source
+        var mockDataSource = new DataSourceDto { Id = 1, Name = "Test Annotation Source", IsDefault = true, ProjectId = asset.ProjectId, SourceType = DataSourceType.MINIO_BUCKET, Status = DataSourceStatus.ACTIVE, CreatedAt = DateTime.UtcNow, AssetCount = 10 };
+        var mockWorkflowDataSources = new WorkflowDataSources { AnnotationDataSource = mockDataSource };
+        _mockDataSourceService.Setup(x => x.EnsureRequiredDataSourcesExistAsync(asset.ProjectId, false))
+                             .ReturnsAsync(mockWorkflowDataSources);
+        
+        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.AssetId, mockDataSource.Id))
                         .ReturnsAsync(true);
 
         var step = CreateStep();
@@ -134,7 +142,7 @@ public class AssetTransferStepTests
 
         // Assert
         Assert.NotNull(result);
-        _mockAssetService.Verify(x => x.TransferAssetToDataSourceAsync(asset.AssetId, 1), Times.Once);
+        _mockAssetService.Verify(x => x.TransferAssetToDataSourceAsync(asset.AssetId, mockDataSource.Id), Times.Once);
     }
 
     [Fact]
@@ -146,7 +154,13 @@ public class AssetTransferStepTests
         var currentStage = CreateTestWorkflowStage(2, WorkflowStageType.REVISION, 2);
         var context = new PipelineContext(task, asset, currentStage, "reviewer123");
 
-        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.AssetId, It.IsAny<int>()))
+        // Mock data source service to return annotation data source
+        var mockDataSource = new DataSourceDto { Id = 1, Name = "Test Annotation Source", IsDefault = true, ProjectId = asset.ProjectId, SourceType = DataSourceType.MINIO_BUCKET, Status = DataSourceStatus.ACTIVE, CreatedAt = DateTime.UtcNow, AssetCount = 10 };
+        var mockWorkflowDataSources = new WorkflowDataSources { AnnotationDataSource = mockDataSource };
+        _mockDataSourceService.Setup(x => x.EnsureRequiredDataSourcesExistAsync(asset.ProjectId, false))
+                             .ReturnsAsync(mockWorkflowDataSources);
+                             
+        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.AssetId, mockDataSource.Id))
                         .ReturnsAsync(false);
 
         var step = CreateStep();
@@ -314,7 +328,7 @@ public class AssetTransferStepTests
 
     private AssetTransferStep CreateStep()
     {
-        return new AssetTransferStep(_mockAssetService.Object, _mockLogger.Object);
+        return new AssetTransferStep(_mockAssetService.Object, _mockDataSourceService.Object, _mockLogger.Object);
     }
 
     #endregion
