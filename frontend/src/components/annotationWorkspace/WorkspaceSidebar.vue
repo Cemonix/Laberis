@@ -20,23 +20,6 @@
         <!-- Label Scheme Selector -->
         <div class="panel-section">
             <h3 class="section-title">Labels</h3>
-            <div v-if="availableLabelSchemes.length > 1" class="scheme-selector">
-                <label for="scheme-dropdown" class="selector-label">Label Scheme:</label>
-                <select 
-                    id="scheme-dropdown"
-                    v-model="selectedSchemeId" 
-                    @change="onSchemeChange"
-                    class="scheme-dropdown"
-                >
-                    <option 
-                        v-for="scheme in availableLabelSchemes" 
-                        :key="scheme.labelSchemeId"
-                        :value="scheme.labelSchemeId"
-                    >
-                        {{ scheme.name }}
-                    </option>
-                </select>
-            </div>
 
             <!-- Loading state -->
             <div v-if="isLoading" class="panel-loading">
@@ -131,7 +114,6 @@ const isLoading = computed(() => workspaceStore.getLoadingState);
 const availableLabels = computed(() => workspaceStore.getAvailableLabels);
 const selectedLabelId = computed(() => workspaceStore.getSelectedLabelId);
 const currentLabelScheme = computed(() => workspaceStore.getCurrentLabelScheme);
-const availableLabelSchemes = computed(() => workspaceStore.getAvailableLabelSchemes);
 const annotations = computed(() => workspaceStore.getAnnotations);
 const isAnnotationEditingDisabled = computed(() => workspaceStore.isAnnotationEditingDisabled);
 
@@ -168,12 +150,6 @@ const selectLabel = (labelId: number) => {
         workspaceStore.setCurrentLabelId(null);
     } else {
         workspaceStore.setCurrentLabelId(labelId);
-    }
-};
-
-const onSchemeChange = async () => {
-    if (selectedSchemeId.value) {
-        await workspaceStore.switchLabelScheme(selectedSchemeId.value);
     }
 };
 
