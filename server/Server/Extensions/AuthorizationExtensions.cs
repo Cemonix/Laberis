@@ -45,6 +45,10 @@ public static class AuthorizationExtensions
             {
                 policy.AddRequirements(new ProjectRoleRequirement(ProjectRole.MANAGER));
             })
+            .AddPolicy("CanManageProject", policy =>
+            {
+                policy.AddRequirements(new ProjectRoleRequirement(ProjectRole.MANAGER));
+            })
             .AddPolicy("CanManageWorkflows", policy =>
             {
                 policy.AddRequirements(new ProjectRoleRequirement(ProjectRole.MANAGER));
