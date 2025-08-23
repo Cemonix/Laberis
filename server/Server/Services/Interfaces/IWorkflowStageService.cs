@@ -93,12 +93,10 @@ public interface IWorkflowStageService
     /// </summary>
     /// <param name="workflowId">The ID of the workflow to create stages for.</param>
     /// <param name="projectId">The ID of the project (needed for data source management).</param>
-    /// <param name="createDefaultStages">Whether to create default pipeline stages.</param>
     /// <param name="includeReviewStage">Whether to include a review stage in the default pipeline.</param>
     /// <returns>A task containing the initial stage ID and list of created stages.</returns>
     Task<(int? initialStageId, List<WorkflowStageDto> createdStages)> CreateWorkflowStagesPipelineAsync(
         int workflowId, 
-        int projectId, 
-        bool createDefaultStages, 
+        int projectId,
         bool includeReviewStage);
 }
