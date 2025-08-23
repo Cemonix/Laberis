@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using server.Core.Workflow.Interfaces;
 using server.Core.Workflow.Interfaces.Steps;
 using server.Core.Workflow.Models;
 using server.Models.Domain;
@@ -17,6 +18,7 @@ public class TaskManagementStep : ITaskManagementStep
 {
     private readonly ITaskRepository _taskRepository;
     private readonly IWorkflowStageRepository _workflowStageRepository;
+    private readonly IWorkflowStageResolver _workflowStageResolver;
     private readonly ILogger<ITaskManagementStep> _logger;
     
     // Store task operation info for rollback purposes
@@ -27,10 +29,12 @@ public class TaskManagementStep : ITaskManagementStep
     public TaskManagementStep(
         ITaskRepository taskRepository,
         IWorkflowStageRepository workflowStageRepository,
+        IWorkflowStageResolver workflowStageResolver,
         ILogger<ITaskManagementStep> logger)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
         _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
+        _workflowStageResolver = workflowStageResolver ?? throw new ArgumentNullException(nameof(workflowStageResolver));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -48,8 +52,8 @@ public class TaskManagementStep : ITaskManagementStep
         PipelineContext context,
         CancellationToken cancellationToken = default)
     {
-        if (context == null) throw new ArgumentNullException(nameof(context));
-        
+        ArgumentNullException.ThrowIfNull(context);
+
         if (context.TargetStage == null)
         {
             throw new InvalidOperationException("Target stage is required for task management");
@@ -90,12 +94,13 @@ public class TaskManagementStep : ITaskManagementStep
             }
             else
             {
-                // Update existing task to NOT_STARTED status (ready for work)
-                await _taskRepository.UpdateTaskStatusAsync(existingTask, TaskStatus.NOT_STARTED, context.UserId);
+                // Update existing task to appropriate ready status based on target stage type
+                var readyStatus = GetReadyStatusForStageType(context.TargetStage.StageType);
+                await _taskRepository.UpdateTaskStatusAsync(existingTask, readyStatus, context.UserId);
                 _lastOperation = TaskOperation.Updated;
 
-                _logger.LogInformation("Updated existing task {TaskId} to NOT_STARTED status for asset {AssetId}",
-                    existingTask.TaskId, context.Asset.AssetId);
+                _logger.LogInformation("Updated existing task {TaskId} to {Status} status for asset {AssetId}",
+                    existingTask.TaskId, readyStatus, context.Asset.AssetId);
             }
 
             return context;
@@ -119,35 +124,55 @@ public class TaskManagementStep : ITaskManagementStep
 
         try
         {
-            // Find the initial annotation stage for this workflow
-            var initialStage = await _workflowStageRepository.GetInitialWorkflowStageAsync(
-                context.CurrentStage.WorkflowId);
+            // Find the first annotation stage for this workflow (consistent with TaskVetoPipeline)
+            var annotationStage = await _workflowStageResolver.GetFirstAnnotationStageAsync(context.CurrentStage.WorkflowId, cancellationToken);
 
-            if (initialStage == null)
+            if (annotationStage == null)
             {
                 throw new InvalidOperationException(
-                    $"Initial annotation stage not found for workflow {context.CurrentStage.WorkflowId}");
+                    $"First annotation stage not found for workflow {context.CurrentStage.WorkflowId}");
             }
 
             // Find the annotation task for this asset
             var annotationTask = await _taskRepository.FindByAssetAndStageAsync(
                 context.Asset.AssetId, 
-                initialStage.WorkflowStageId);
+                annotationStage.WorkflowStageId);
 
             if (annotationTask == null)
             {
-                throw new InvalidOperationException(
-                    $"Annotation task not found for asset {context.Asset.AssetId} in stage {initialStage.WorkflowStageId}");
+                // No annotation task exists - this is the imported asset scenario
+                // Create a new task with CHANGES_REQUIRED status
+                var newTask = new LaberisTask
+                {
+                    AssetId = context.Asset.AssetId,
+                    WorkflowStageId = annotationStage.WorkflowStageId,
+                    ProjectId = context.Asset.ProjectId,
+                    WorkflowId = annotationStage.WorkflowId,
+                    Status = TaskStatus.CHANGES_REQUIRED,
+                    AssignedToUserId = null, // Will be assigned later based on workflow stage assignments
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                await _taskRepository.AddAsync(newTask);
+                await _taskRepository.SaveChangesAsync();
+                _lastOperation = TaskOperation.Created;
+                _createdTaskId = newTask.TaskId;
+
+                _logger.LogInformation("Created new annotation task {TaskId} with CHANGES_REQUIRED status for asset {AssetId} (imported asset scenario)",
+                    newTask.TaskId, context.Asset.AssetId);
             }
+            else
+            {
+                // Annotation task exists - update it to CHANGES_REQUIRED status
+                await _taskRepository.UpdateTaskStatusAsync(
+                    annotationTask, 
+                    TaskStatus.CHANGES_REQUIRED, 
+                    context.UserId);
 
-            // Update the annotation task to CHANGES_REQUIRED status
-            await _taskRepository.UpdateTaskStatusAsync(
-                annotationTask, 
-                TaskStatus.CHANGES_REQUIRED, 
-                context.UserId);
-
-            _logger.LogInformation("Updated annotation task {TaskId} to CHANGES_REQUIRED status for asset {AssetId}",
-                annotationTask.TaskId, context.Asset.AssetId);
+                _logger.LogInformation("Updated existing annotation task {TaskId} to CHANGES_REQUIRED status for asset {AssetId}",
+                    annotationTask.TaskId, context.Asset.AssetId);
+            }
 
             return context;
         }
@@ -164,7 +189,7 @@ public class TaskManagementStep : ITaskManagementStep
         LaberisTask? targetTask,
         CancellationToken cancellationToken = default)
     {
-        if (context == null) throw new ArgumentNullException(nameof(context));
+        ArgumentNullException.ThrowIfNull(context);
 
         _logger.LogInformation("Validating data integrity for asset {AssetId}", context.Asset.AssetId);
 
@@ -199,8 +224,8 @@ public class TaskManagementStep : ITaskManagementStep
 
     public async Task<bool> RollbackAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
-        if (context == null) throw new ArgumentNullException(nameof(context));
-        
+        ArgumentNullException.ThrowIfNull(context);
+
         _logger.LogInformation("Rolling back task management operations for asset {AssetId}", context.Asset.AssetId);
 
         try
@@ -249,5 +274,19 @@ public class TaskManagementStep : ITaskManagementStep
                 context.Asset.AssetId);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Gets the appropriate "ready" task status based on the workflow stage type.
+    /// </summary>
+    private static TaskStatus GetReadyStatusForStageType(WorkflowStageType stageType)
+    {
+        return stageType switch
+        {
+            WorkflowStageType.ANNOTATION => TaskStatus.READY_FOR_ANNOTATION,
+            WorkflowStageType.REVISION => TaskStatus.READY_FOR_REVIEW,
+            WorkflowStageType.COMPLETION => TaskStatus.READY_FOR_COMPLETION,
+            _ => TaskStatus.NOT_STARTED // Fallback for unknown stage types
+        };
     }
 }
