@@ -13,6 +13,7 @@ namespace server.Core.Workflow.Steps;
 public class AssetTransferStep : IAssetTransferStep
 {
     private readonly IAssetService _assetService;
+    private readonly IDataSourceService _dataSourceService;
     private readonly ILogger<IAssetTransferStep> _logger;
     
     // Store original data source ID for rollback purposes
@@ -20,9 +21,11 @@ public class AssetTransferStep : IAssetTransferStep
 
     public AssetTransferStep(
         IAssetService assetService,
+        IDataSourceService dataSourceService,
         ILogger<IAssetTransferStep> logger)
     {
         _assetService = assetService ?? throw new ArgumentNullException(nameof(assetService));
+        _dataSourceService = dataSourceService ?? throw new ArgumentNullException(nameof(dataSourceService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -87,14 +90,23 @@ public class AssetTransferStep : IAssetTransferStep
         PipelineContext context,
         CancellationToken cancellationToken = default)
     {
-        if (context == null) throw new ArgumentNullException(nameof(context));
+        ArgumentNullException.ThrowIfNull(context);
 
-        // For veto operations, transfer back to the first annotation stage (data source ID 1)
-        // This is a business rule assumption based on the workflow design
-        const int firstAnnotationDataSourceId = 1;
+        // For veto operations, transfer back to the annotation data source
+        // Dynamically find the annotation data source for the project
+        var workflowDataSources = await _dataSourceService.EnsureRequiredDataSourcesExistAsync(
+            context.Asset.ProjectId, includeReviewStage: false);
+        
+        if (workflowDataSources.AnnotationDataSource == null)
+        {
+            throw new InvalidOperationException(
+                $"No annotation data source found for project {context.Asset.ProjectId}");
+        }
+        
+        var annotationDataSourceId = workflowDataSources.AnnotationDataSource.Id;
 
         _logger.LogInformation("Transferring asset {AssetId} back to annotation data source {DataSourceId} for veto",
-            context.Asset.AssetId, firstAnnotationDataSourceId);
+            context.Asset.AssetId, annotationDataSourceId);
 
         // Store original data source ID for potential rollback
         _originalDataSourceId = context.Asset.DataSourceId;
@@ -103,7 +115,7 @@ public class AssetTransferStep : IAssetTransferStep
         {
             var transferResult = await _assetService.TransferAssetToDataSourceAsync(
                 context.Asset.AssetId,
-                firstAnnotationDataSourceId);
+                annotationDataSourceId);
 
             if (!transferResult)
             {
@@ -111,8 +123,8 @@ public class AssetTransferStep : IAssetTransferStep
                     $"Failed to transfer asset back to annotation stage");
             }
 
-            _logger.LogInformation("Successfully transferred asset {AssetId} back to annotation data source",
-                context.Asset.AssetId);
+            _logger.LogInformation("Successfully transferred asset {AssetId} back to annotation data source {DataSourceId}",
+                context.Asset.AssetId, annotationDataSourceId);
 
             return context;
         }
@@ -126,8 +138,8 @@ public class AssetTransferStep : IAssetTransferStep
 
     public async Task<bool> RollbackAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
-        if (context == null) throw new ArgumentNullException(nameof(context));
-        
+        ArgumentNullException.ThrowIfNull(context);
+
         // Determine the rollback target data source
         // If we have a stored original data source, use that. Otherwise, use the current stage's target data source
         int rollbackDataSourceId;
