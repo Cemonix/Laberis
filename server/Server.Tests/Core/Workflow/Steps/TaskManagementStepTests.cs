@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Moq;
+using server.Core.Workflow.Interfaces;
 using server.Core.Workflow.Interfaces.Steps;
 using server.Core.Workflow.Models;
 using server.Core.Workflow.Steps;
@@ -20,12 +21,14 @@ public class TaskManagementStepTests
 {
     private readonly Mock<ITaskRepository> _mockTaskRepository;
     private readonly Mock<IWorkflowStageRepository> _mockWorkflowStageRepository;
+    private readonly Mock<IWorkflowStageResolver> _mockWorkflowStageResolver;
     private readonly Mock<ILogger<ITaskManagementStep>> _mockLogger;
 
     public TaskManagementStepTests()
     {
         _mockTaskRepository = new Mock<ITaskRepository>();
         _mockWorkflowStageRepository = new Mock<IWorkflowStageRepository>();
+        _mockWorkflowStageResolver = new Mock<IWorkflowStageResolver>();
         _mockLogger = new Mock<ILogger<ITaskManagementStep>>();
     }
 
@@ -68,7 +71,7 @@ public class TaskManagementStepTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task CreateOrUpdateTaskForTargetStageAsync_WithExistingCompletedTask_ShouldUpdateToNotStarted()
+    public async System.Threading.Tasks.Task CreateOrUpdateTaskForTargetStageAsync_WithExistingCompletedTask_ShouldUpdateToReadyForReview()
     {
         // Arrange
         var task = CreateTestTask(1, TaskStatus.COMPLETED);
@@ -84,9 +87,9 @@ public class TaskManagementStepTests
         _mockTaskRepository.Setup(x => x.FindByAssetAndStageAsync(asset.AssetId, targetStage.WorkflowStageId))
                           .ReturnsAsync(existingTask);
 
-        var updatedTask = CreateTestTask(2, TaskStatus.NOT_STARTED);
+        var updatedTask = CreateTestTask(2, TaskStatus.READY_FOR_REVIEW);
         updatedTask.WorkflowStageId = targetStage.WorkflowStageId;
-        _mockTaskRepository.Setup(x => x.UpdateTaskStatusAsync(existingTask, TaskStatus.NOT_STARTED, "user123"))
+        _mockTaskRepository.Setup(x => x.UpdateTaskStatusAsync(existingTask, TaskStatus.READY_FOR_REVIEW, "user123"))
                           .ReturnsAsync(updatedTask);
 
         var step = CreateStep();
@@ -97,7 +100,7 @@ public class TaskManagementStepTests
         // Assert
         Assert.NotNull(result);
         _mockTaskRepository.Verify(x => x.FindByAssetAndStageAsync(asset.AssetId, targetStage.WorkflowStageId), Times.Once);
-        _mockTaskRepository.Verify(x => x.UpdateTaskStatusAsync(existingTask, TaskStatus.NOT_STARTED, "user123"), Times.Once);
+        _mockTaskRepository.Verify(x => x.UpdateTaskStatusAsync(existingTask, TaskStatus.READY_FOR_REVIEW, "user123"), Times.Once);
         _mockTaskRepository.Verify(x => x.AddAsync(It.IsAny<LaberisTask>()), Times.Never);
     }
 
@@ -155,9 +158,9 @@ public class TaskManagementStepTests
         var currentStage = CreateTestWorkflowStage(2, WorkflowStageType.REVISION, 2);
         var context = new PipelineContext(task, asset, currentStage, "reviewer123");
 
-        // Mock finding the initial workflow stage (annotation)
+        // Mock finding the first annotation stage
         var annotationStage = CreateTestWorkflowStage(1, WorkflowStageType.ANNOTATION, 1);
-        _mockWorkflowStageRepository.Setup(x => x.GetInitialWorkflowStageAsync(currentStage.WorkflowId))
+        _mockWorkflowStageResolver.Setup(x => x.GetFirstAnnotationStageAsync(currentStage.WorkflowId, default))
                                    .ReturnsAsync(annotationStage);
 
         // Mock finding the annotation task
@@ -178,7 +181,7 @@ public class TaskManagementStepTests
 
         // Assert
         Assert.NotNull(result);
-        _mockWorkflowStageRepository.Verify(x => x.GetInitialWorkflowStageAsync(currentStage.WorkflowId), Times.Once);
+        _mockWorkflowStageResolver.Verify(x => x.GetFirstAnnotationStageAsync(currentStage.WorkflowId, default), Times.Once);
         _mockTaskRepository.Verify(x => x.FindByAssetAndStageAsync(asset.AssetId, annotationStage.WorkflowStageId), Times.Once);
         _mockTaskRepository.Verify(x => x.UpdateTaskStatusAsync(annotationTask, TaskStatus.CHANGES_REQUIRED, "reviewer123"), Times.Once);
     }
@@ -192,7 +195,7 @@ public class TaskManagementStepTests
         var currentStage = CreateTestWorkflowStage(2, WorkflowStageType.REVISION, 2);
         var context = new PipelineContext(task, asset, currentStage, "reviewer123");
 
-        _mockWorkflowStageRepository.Setup(x => x.GetInitialWorkflowStageAsync(currentStage.WorkflowId))
+        _mockWorkflowStageResolver.Setup(x => x.GetFirstAnnotationStageAsync(currentStage.WorkflowId, default))
                                    .ReturnsAsync((WorkflowStage?)null);
 
         var step = CreateStep();
@@ -201,11 +204,11 @@ public class TaskManagementStepTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             step.UpdateAnnotationTaskForChangesAsync(context));
         
-        Assert.Contains("Initial annotation stage not found", exception.Message);
+        Assert.Contains("First annotation stage not found", exception.Message);
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task UpdateAnnotationTaskForChangesAsync_WithNoAnnotationTask_ShouldThrowException()
+    public async System.Threading.Tasks.Task UpdateAnnotationTaskForChangesAsync_WithNoAnnotationTask_ShouldCreateNewTask()
     {
         // Arrange
         var task = CreateTestTask(1, TaskStatus.VETOED);
@@ -214,19 +217,101 @@ public class TaskManagementStepTests
         var context = new PipelineContext(task, asset, currentStage, "reviewer123");
 
         var annotationStage = CreateTestWorkflowStage(1, WorkflowStageType.ANNOTATION, 1);
-        _mockWorkflowStageRepository.Setup(x => x.GetInitialWorkflowStageAsync(currentStage.WorkflowId))
+        _mockWorkflowStageResolver.Setup(x => x.GetFirstAnnotationStageAsync(currentStage.WorkflowId, default))
                                    .ReturnsAsync(annotationStage);
 
+        // No annotation task exists (imported asset scenario)
         _mockTaskRepository.Setup(x => x.FindByAssetAndStageAsync(asset.AssetId, annotationStage.WorkflowStageId))
                           .ReturnsAsync((LaberisTask?)null);
 
+        // Mock task creation
+        _mockTaskRepository.Setup(x => x.AddAsync(It.IsAny<LaberisTask>()))
+                          .Returns(System.Threading.Tasks.Task.CompletedTask);
+        _mockTaskRepository.Setup(x => x.SaveChangesAsync())
+                          .ReturnsAsync(1);
+
         var step = CreateStep();
 
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            step.UpdateAnnotationTaskForChangesAsync(context));
-        
-        Assert.Contains("Annotation task not found", exception.Message);
+        // Act
+        var result = await step.UpdateAnnotationTaskForChangesAsync(context);
+
+        // Assert
+        Assert.NotNull(result);
+        _mockTaskRepository.Verify(x => x.FindByAssetAndStageAsync(asset.AssetId, annotationStage.WorkflowStageId), Times.Once);
+        _mockTaskRepository.Verify(x => x.AddAsync(It.Is<LaberisTask>(t => 
+            t.AssetId == asset.AssetId && 
+            t.WorkflowStageId == annotationStage.WorkflowStageId &&
+            t.Status == TaskStatus.CHANGES_REQUIRED
+        )), Times.Once);
+        _mockTaskRepository.Verify(x => x.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task CreateOrUpdateTaskForTargetStageAsync_WithAnnotationStage_ShouldUpdateToReadyForAnnotation()
+    {
+        // Arrange
+        var task = CreateTestTask(1, TaskStatus.COMPLETED);
+        var asset = CreateTestAsset(1, 1);
+        var currentStage = CreateTestWorkflowStage(2, WorkflowStageType.REVISION, 2);
+        var targetStage = CreateTestWorkflowStage(1, WorkflowStageType.ANNOTATION, 1);
+        var context = new PipelineContext(task, asset, currentStage, "user123")
+            .WithTargetStage(targetStage);
+
+        // Existing task in VETOED state
+        var existingTask = CreateTestTask(2, TaskStatus.VETOED);
+        existingTask.WorkflowStageId = targetStage.WorkflowStageId;
+        _mockTaskRepository.Setup(x => x.FindByAssetAndStageAsync(asset.AssetId, targetStage.WorkflowStageId))
+                          .ReturnsAsync(existingTask);
+
+        var updatedTask = CreateTestTask(2, TaskStatus.READY_FOR_ANNOTATION);
+        updatedTask.WorkflowStageId = targetStage.WorkflowStageId;
+        _mockTaskRepository.Setup(x => x.UpdateTaskStatusAsync(existingTask, TaskStatus.READY_FOR_ANNOTATION, "user123"))
+                          .ReturnsAsync(updatedTask);
+
+        var step = CreateStep();
+
+        // Act
+        var result = await step.CreateOrUpdateTaskForTargetStageAsync(context);
+
+        // Assert
+        Assert.NotNull(result);
+        _mockTaskRepository.Verify(x => x.FindByAssetAndStageAsync(asset.AssetId, targetStage.WorkflowStageId), Times.Once);
+        _mockTaskRepository.Verify(x => x.UpdateTaskStatusAsync(existingTask, TaskStatus.READY_FOR_ANNOTATION, "user123"), Times.Once);
+        _mockTaskRepository.Verify(x => x.AddAsync(It.IsAny<LaberisTask>()), Times.Never);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task CreateOrUpdateTaskForTargetStageAsync_WithCompletionStage_ShouldUpdateToReadyForCompletion()
+    {
+        // Arrange
+        var task = CreateTestTask(1, TaskStatus.COMPLETED);
+        var asset = CreateTestAsset(1, 1);
+        var currentStage = CreateTestWorkflowStage(2, WorkflowStageType.REVISION, 2);
+        var targetStage = CreateTestWorkflowStage(3, WorkflowStageType.COMPLETION, 3);
+        var context = new PipelineContext(task, asset, currentStage, "user123")
+            .WithTargetStage(targetStage);
+
+        // Existing task in COMPLETED state
+        var existingTask = CreateTestTask(3, TaskStatus.COMPLETED);
+        existingTask.WorkflowStageId = targetStage.WorkflowStageId;
+        _mockTaskRepository.Setup(x => x.FindByAssetAndStageAsync(asset.AssetId, targetStage.WorkflowStageId))
+                          .ReturnsAsync(existingTask);
+
+        var updatedTask = CreateTestTask(3, TaskStatus.READY_FOR_COMPLETION);
+        updatedTask.WorkflowStageId = targetStage.WorkflowStageId;
+        _mockTaskRepository.Setup(x => x.UpdateTaskStatusAsync(existingTask, TaskStatus.READY_FOR_COMPLETION, "user123"))
+                          .ReturnsAsync(updatedTask);
+
+        var step = CreateStep();
+
+        // Act
+        var result = await step.CreateOrUpdateTaskForTargetStageAsync(context);
+
+        // Assert
+        Assert.NotNull(result);
+        _mockTaskRepository.Verify(x => x.FindByAssetAndStageAsync(asset.AssetId, targetStage.WorkflowStageId), Times.Once);
+        _mockTaskRepository.Verify(x => x.UpdateTaskStatusAsync(existingTask, TaskStatus.READY_FOR_COMPLETION, "user123"), Times.Once);
+        _mockTaskRepository.Verify(x => x.AddAsync(It.IsAny<LaberisTask>()), Times.Never);
     }
 
     #endregion
@@ -498,7 +583,7 @@ public class TaskManagementStepTests
 
     private ITaskManagementStep CreateStep()
     {
-        return new TaskManagementStep(_mockTaskRepository.Object, _mockWorkflowStageRepository.Object, _mockLogger.Object);
+        return new TaskManagementStep(_mockTaskRepository.Object, _mockWorkflowStageRepository.Object, _mockWorkflowStageResolver.Object, _mockLogger.Object);
     }
 
     #endregion
