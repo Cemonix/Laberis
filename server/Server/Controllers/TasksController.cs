@@ -446,7 +446,7 @@ public class TasksController : ControllerBase
                 }
                 else if (result.ErrorMessage?.Contains("permission") == true)
                 {
-                    return Forbid(result.ErrorMessage);
+                    return StatusCode(403, result.ErrorMessage);
                 }
                 else
                 {
@@ -511,7 +511,7 @@ public class TasksController : ControllerBase
                 }
                 else if (result.ErrorMessage?.Contains("permission") == true)
                 {
-                    return Forbid(result.ErrorMessage);
+                    return StatusCode(403, result.ErrorMessage);
                 }
                 else
                 {
