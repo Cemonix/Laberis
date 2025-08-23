@@ -17,7 +17,6 @@ import {
     workflowService,
     workflowStageService
 } from '@/services/api/projects';
-import { taskStatusService } from '@/services/taskStatusService';
 import type { Asset } from '@/types/asset/asset';
 import type { Task } from '@/types/task';
 import { TaskStatus } from '@/types/task';
@@ -43,7 +42,6 @@ export const useWorkspaceStore = defineStore("workspace", {
         timerInstance: new Timer(),
         elapsedTimeDisplay: "00:00:00",
         timerIntervalId: null,
-        timeAutoSaveIntervalId: null,
         lastSavedWorkingTime: 0,
         viewOffset: { x: 0, y: 0 },
         zoomLevel: 1.0,
@@ -283,7 +281,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                         // If we have a specific task ID (from URL query), load that task first
                         try {
                             currentTask = await taskService.getTaskById(numericProjectId, this.initialTaskId);
-                            workflowStageId = currentTask.currentWorkflowStageId;
+                            workflowStageId = currentTask.workflowStageId;
                             logger.info(`Loaded specific task ${this.initialTaskId} for stage ${workflowStageId}`);
                         } catch (taskByIdError) {
                             logger.warn(`Failed to load task ${this.initialTaskId}, falling back to asset tasks:`, taskByIdError);
@@ -295,7 +293,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                         const assetTasks = await taskService.getTasksForAsset(numericProjectId, numericAssetId);
                         if (assetTasks.length > 0) {
                             currentTask = assetTasks[0];
-                            workflowStageId = currentTask?.currentWorkflowStageId || null;
+                            workflowStageId = currentTask?.workflowStageId || null;
                             logger.info(`Found asset task ${currentTask.id} for asset ${assetId} in stage ${workflowStageId}`);
                         }
                     }
@@ -319,55 +317,6 @@ export const useWorkspaceStore = defineStore("workspace", {
                         } catch (stageError) {
                             logger.warn('Failed to fetch workflow stage type:', stageError);
                             this.currentWorkflowStageType = null;
-                        }
-                        
-                        // Auto-assign task to current user if not already assigned (makes it IN_PROGRESS)
-                        try {
-                            // If task is suspended, resume it first before assignment
-                            if (currentTask.status === TaskStatus.SUSPENDED) {
-                                logger.info(`Task ${currentTask.id} is suspended, resuming it before assignment`);
-                                const resumedTask = await taskStatusService.resumeTask(numericProjectId, currentTask, false);
-                                
-                                // Update current task data with resumed task
-                                currentTask = resumedTask;
-                                this.currentTaskData = resumedTask;
-                                
-                                // Update the task in the available tasks list
-                                const taskIndex = this.availableTasks.findIndex(task => task.id === resumedTask.id);
-                                if (taskIndex !== -1) {
-                                    this.availableTasks[taskIndex] = resumedTask;
-                                }
-                                
-                                logger.info(`Successfully resumed suspended task ${currentTask.id}`);
-                            }
-                            
-                            if (!currentTask.assignedToEmail) {
-                                const { useAuthStore } = await import('@/stores/authStore');
-                                const authStore = useAuthStore();
-                                
-                                if (authStore.currentUser?.email) {
-                                    logger.info(`Auto-assigning task ${currentTask.id} to current user ${authStore.currentUser.email}`);
-                                    const assignedTask = await taskService.assignTaskToCurrentUser(numericProjectId, currentTask.id);
-                                    
-                                    // Update the current task data with the assigned task
-                                    this.currentTaskData = assignedTask;
-                                    
-                                    // Update the task in the available tasks list
-                                    const taskIndex = this.availableTasks.findIndex(task => task.id === assignedTask.id);
-                                    if (taskIndex !== -1) {
-                                        this.availableTasks[taskIndex] = assignedTask;
-                                    }
-                                    
-                                    logger.info(`Successfully auto-assigned task ${currentTask.id} to ${authStore.currentUser.email} - status should now be IN_PROGRESS`);
-                                } else {
-                                    logger.warn('Cannot auto-assign task: no current user email available');
-                                }
-                            } else {
-                                logger.info(`Task ${currentTask.id} is already assigned to ${currentTask.assignedToEmail}`);
-                            }
-                        } catch (assignError) {
-                            logger.warn('Failed to auto-assign task to current user:', assignError);
-                            // Don't fail the load process if assignment fails
                         }
                         
                         const taskIndex = this.availableTasks.findIndex(task => task.id === this.currentTaskData?.id);
@@ -485,6 +434,9 @@ export const useWorkspaceStore = defineStore("workspace", {
 
                 // Save annotation to backend
                 const savedAnnotation = await annotationService.createAnnotation(parseInt(this.currentProjectId!), createDto);
+                
+                // Save working time when annotation is created (lazy update)
+                await this._autoSaveWorkingTime();
 
                 // Update the annotation in the store with the saved data (including ID)
                 // First try to find by clientId
@@ -557,6 +509,9 @@ export const useWorkspaceStore = defineStore("workspace", {
 
                 // Update annotation on backend
                 const updatedAnnotation = await annotationService.updateAnnotation(parseInt(this.currentProjectId!), annotationId, updatePayload);
+                
+                // Save working time when annotation is updated (lazy update)
+                await this._autoSaveWorkingTime();
 
                 // Update the annotation in the store with the response from backend
                 this.annotations[index] = updatedAnnotation;
@@ -593,6 +548,9 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 // Delete annotation on backend
                 await annotationService.deleteAnnotation(parseInt(this.currentProjectId!), annotationId);
+                
+                // Save working time when annotation is deleted (lazy update)
+                await this._autoSaveWorkingTime();
 
                 logger.info(`Successfully deleted annotation with ID: ${annotationId}`);
 
@@ -632,44 +590,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                 logger.info("[Store] Label Scheme cleared.");
             }
         },
-
-        /**
-         * Switches to a different label scheme by ID
-         * @param schemeId The ID of the label scheme to switch to
-         */
-        async switchLabelScheme(schemeId: number) {
-            try {
-                // Find the scheme in available schemes
-                const scheme = this.availableLabelSchemes.find(s => s.labelSchemeId === schemeId);
-                if (!scheme) {
-                    logger.error(`Label scheme with ID ${schemeId} not found in available schemes`);
-                    return;
-                }
-
-                // If the scheme doesn't have labels loaded, fetch them
-                if (!scheme.labels && this.currentProjectId) {
-                    const numericProjectId = parseInt(this.currentProjectId);
-                    try {
-                        const labelsResponse = await labelService.getLabelsForScheme(numericProjectId, schemeId);
-                        scheme.labels = labelsResponse.data;
-                        logger.info(`Loaded ${labelsResponse.data.length} labels for scheme: ${scheme.name}`);
-                    } catch (labelsError) {
-                        logger.error("Failed to fetch labels for scheme:", labelsError);
-                        // Continue anyway, set scheme without labels
-                    }
-                }
-
-                // Clear current label selection when switching schemes
-                this.setCurrentLabelId(null);
-                
-                // Set the new scheme
-                this.setCurrentLabelScheme(scheme);
-                logger.info(`Switched to label scheme: ${scheme.name}`);
-            } catch (error) {
-                logger.error("Failed to switch label scheme:", error);
-            }
-        },
-
+        
         /**
          * Sets the current task ID.
          * @param taskId The ID of the current task.
@@ -685,7 +606,6 @@ export const useWorkspaceStore = defineStore("workspace", {
 
         startTimer() {
             this._clearInterval();
-            this._clearAutoSaveInterval();
 
             // Store the saved working time for this session
             this.lastSavedWorkingTime = this.currentTaskData?.workingTimeMs || 0;
@@ -710,18 +630,12 @@ export const useWorkspaceStore = defineStore("workspace", {
             this.timerIntervalId = window.setInterval(() => {
                 this._updateElapsedTimeDisplay();
             }, 1000);
-
-            // Auto-save working time every 30 seconds
-            this.timeAutoSaveIntervalId = window.setInterval(() => {
-                this._autoSaveWorkingTime();
-            }, 30000); // 30 seconds
         },
 
         pauseTimer() {
             if (this.timerInstance.isRunning) {
                 this.timerInstance.pause();
                 this._clearInterval();
-                this._clearAutoSaveInterval();
                 this._updateElapsedTimeDisplay();
                 
                 // Save current working time when pausing
@@ -736,7 +650,6 @@ export const useWorkspaceStore = defineStore("workspace", {
             this.timerInstance.stop();
             this.timerInstance.reset();
             this._clearInterval();
-            this._clearAutoSaveInterval();
             this.lastSavedWorkingTime = 0;
             this.elapsedTimeDisplay = "00:00:00";
         },
@@ -746,7 +659,6 @@ export const useWorkspaceStore = defineStore("workspace", {
             this._autoSaveWorkingTime();
             
             this._clearInterval();
-            this._clearAutoSaveInterval();
 
             // Pause the timer instead of stopping it completely
             // so time is preserved when user returns to the same task
@@ -800,18 +712,12 @@ export const useWorkspaceStore = defineStore("workspace", {
             this.elapsedTimeDisplay = this.timerInstance.getFormattedElapsedTime(totalWorkingTime);
         },
 
-        _clearAutoSaveInterval() {
-            if (this.timeAutoSaveIntervalId) {
-                clearInterval(this.timeAutoSaveIntervalId);
-                this.timeAutoSaveIntervalId = null;
-            }
-        },
 
         _shouldTrackTime(): boolean {
             // Only track time for active, non-completed tasks
             return !!(this.currentTaskData && 
-                     !this.currentTaskData.completedAt && 
-                     !this.currentTaskData.archivedAt);
+                !this.currentTaskData.completedAt && 
+                !this.currentTaskData.archivedAt);
         },
 
         async _autoSaveWorkingTime() {
@@ -950,7 +856,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                 return false;
             }
             
-            // Completed and archived tasks cannot be opened (suspended tasks can be resumed)
+            // Completed and archived tasks cannot be opened
             if (task.status && [TaskStatus.COMPLETED, TaskStatus.ARCHIVED].includes(task.status)) {
                 return false;
             }
@@ -1023,45 +929,7 @@ export const useWorkspaceStore = defineStore("workspace", {
         },
 
         /**
-         * Complete the current task (annotation workflow)
-         */
-        async completeCurrentTask(): Promise<boolean> {
-            if (!this.currentTaskData || !this.currentProjectId) {
-                logger.error('Cannot complete task: no current task or project');
-                return false;
-            }
-
-            try {
-                const numericProjectId = parseInt(this.currentProjectId);
-                
-                // Check if user has manager permissions for completion stage tasks
-                const { usePermissions } = await import('@/composables/usePermissions');
-                const { canUpdateProject } = usePermissions();
-                const isManager = canUpdateProject.value;
-                
-                // Use the shared working time preservation logic
-                const updatedTask = await this._saveWorkingTimeAndChangeStatus(
-                    () => taskStatusService.completeTask(numericProjectId, this.currentTaskData!, isManager),
-                    'completion'
-                );
-                
-                // Update the task in the available tasks list
-                const taskIndex = this.availableTasks.findIndex(task => task.id === updatedTask.id);
-                if (taskIndex !== -1) {
-                    this.availableTasks[taskIndex] = updatedTask;
-                }
-
-                logger.info(`Successfully completed task ${this.currentTaskData.id}`);
-                return true;
-            } catch (error) {
-                logger.error('Failed to complete task:', error);
-                this.error = error instanceof Error ? error.message : 'Failed to complete task';
-                return false;
-            }
-        },
-
-        /**
-         * Complete current task and automatically move to next workflow stage
+         * Complete current task and automatically move to next workflow stage using pipeline system
          */
         async completeAndMoveToNextTask(): Promise<boolean> {
             if (!this.currentTaskData || !this.currentProjectId) {
@@ -1072,15 +940,16 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
-                // Check if user has manager permissions for completion stage tasks
-                const { usePermissions } = await import('@/composables/usePermissions');
-                const { canUpdateProject } = usePermissions();
-                const isManager = canUpdateProject.value;
+                logger.info('Completing task using pipeline system', { taskId: this.currentTaskData.id });
                 
-                // Use the smart task status service (same as other complete methods now)
-                const updatedTask = await taskStatusService.completeTask(numericProjectId, this.currentTaskData, isManager);
+                const result = await taskService.completeTaskPipeline(numericProjectId, this.currentTaskData.id);
                 
-                // Update the current task data
+                if (!result.isSuccess) {
+                    throw new Error(result.errorMessage || 'Task completion failed');
+                }
+                
+                // Refresh current task data
+                const updatedTask = await taskService.getTaskById(numericProjectId, this.currentTaskData.id);
                 this.currentTaskData = updatedTask;
                 
                 // Update the task in the available tasks list
@@ -1089,54 +958,11 @@ export const useWorkspaceStore = defineStore("workspace", {
                     this.availableTasks[taskIndex] = updatedTask;
                 }
 
-                logger.info(`Successfully completed and moved task ${this.currentTaskData.id} to next stage`);
+                logger.info(`Successfully completed task ${this.currentTaskData.id} via pipeline`, { details: result.details });
                 return true;
             } catch (error) {
-                logger.error('Failed to complete and move task:', error);
-                this.error = error instanceof Error ? error.message : 'Failed to complete and move task';
-                return false;
-            }
-        },
-
-        /**
-         * Mark a completed task as uncomplete
-         */
-        async uncompleteCurrentTask(): Promise<boolean> {
-            if (!this.currentTaskData || !this.currentProjectId) {
-                logger.error('Cannot uncomplete task: no current task or project');
-                return false;
-            }
-
-            try {
-                const numericProjectId = parseInt(this.currentProjectId);
-                
-                // Check if user has manager permissions for completion stage tasks
-                const { usePermissions } = await import('@/composables/usePermissions');
-                const { canUpdateProject } = usePermissions();
-                const isManager = canUpdateProject.value;
-                
-                // Use the smart task status service
-                const updatedTask = await taskStatusService.uncompleteTask(numericProjectId, this.currentTaskData, isManager);
-                
-                // Resume timer since task is back to active state
-                if (!updatedTask.completedAt && !updatedTask.suspendedAt && !updatedTask.deferredAt) {
-                    this.startTimer();
-                }
-                
-                // Update the current task data
-                this.currentTaskData = updatedTask;
-                
-                // Update the task in the available tasks list
-                const taskIndex = this.availableTasks.findIndex(task => task.id === updatedTask.id);
-                if (taskIndex !== -1) {
-                    this.availableTasks[taskIndex] = updatedTask;
-                }
-
-                logger.info(`Successfully uncompleted task ${this.currentTaskData.id}`);
-                return true;
-            } catch (error) {
-                logger.error('Failed to uncomplete task:', error);
-                this.error = error instanceof Error ? error.message : 'Failed to uncomplete task';
+                logger.error('Failed to complete task via pipeline:', error);
+                this.error = error instanceof Error ? error.message : 'Failed to complete task';
                 return false;
             }
         },
@@ -1152,15 +978,12 @@ export const useWorkspaceStore = defineStore("workspace", {
 
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
-                
-                // Check if user has manager permissions for completion stage tasks
-                const { usePermissions } = await import('@/composables/usePermissions');
-                const { canUpdateProject } = usePermissions();
-                const isManager = canUpdateProject.value;
-                
+
                 // Use the shared working time preservation logic
                 const suspendedTask = await this._saveWorkingTimeAndChangeStatus(
-                    () => taskStatusService.suspendTask(numericProjectId, this.currentTaskData!, isManager),
+                    () => taskService.changeTaskStatus(
+                        numericProjectId, this.currentTaskData!.id, { targetStatus: TaskStatus.SUSPENDED }
+                    ),
                     'suspension'
                 );
                 
@@ -1191,14 +1014,11 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
-                // Check if user has manager permissions for completion stage tasks
-                const { usePermissions } = await import('@/composables/usePermissions');
-                const { canUpdateProject } = usePermissions();
-                const isManager = canUpdateProject.value;
-                
                 // Use the shared working time preservation logic
                 const deferredTask = await this._saveWorkingTimeAndChangeStatus(
-                    () => taskStatusService.deferTask(numericProjectId, this.currentTaskData!, isManager),
+                    () => taskService.changeTaskStatus(
+                        numericProjectId, this.currentTaskData!.id, { targetStatus: TaskStatus.DEFERRED }
+                    ),
                     'deferring'
                 );
                 
@@ -1229,19 +1049,29 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
-                // Use the specialized return for rework endpoint
-                const returnedTask = await taskStatusService.returnTaskForRework(numericProjectId, this.currentTaskData, reason);
+                logger.info('Returning task for rework using veto pipeline', { taskId: this.currentTaskData.id, reason });
                 
-                // Update the current task data
-                this.currentTaskData = returnedTask;
+                // Use the veto pipeline to handle all operations atomically
+                const pipelineResult = await taskService.vetoTaskPipeline(numericProjectId, this.currentTaskData.id, {
+                    reason: reason || 'Task returned for rework'
+                });
                 
-                // Update the task in the available tasks list
-                const taskIndex = this.availableTasks.findIndex(task => task.id === returnedTask.id);
-                if (taskIndex !== -1) {
-                    this.availableTasks[taskIndex] = returnedTask;
+                if (!pipelineResult.isSuccess) {
+                    throw new Error(pipelineResult.errorMessage || 'Veto pipeline failed');
+                }
+                
+                // Refresh current task data with the result from the pipeline
+                if (pipelineResult.updatedTask) {
+                    this.currentTaskData = pipelineResult.updatedTask;
+                    
+                    // Update the task in the available tasks list
+                    const taskIndex = this.availableTasks.findIndex(task => task.id === pipelineResult.updatedTask!.id);
+                    if (taskIndex !== -1) {
+                        this.availableTasks[taskIndex] = pipelineResult.updatedTask;
+                    }
                 }
 
-                logger.info(`Successfully returned task ${this.currentTaskData.id} for rework`, { reason });
+                logger.info(`Successfully returned task ${this.currentTaskData?.id} for rework`, { reason });
                 return true;
             } catch (error) {
                 logger.error('Failed to return task for rework:', error);
