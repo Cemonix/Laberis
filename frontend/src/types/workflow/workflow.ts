@@ -31,7 +31,6 @@ export interface CreateWorkflowWithStagesRequest {
     description?: string;
     labelSchemeId: number;
     stages: CreateWorkflowStageWithAssignmentsRequest[];
-    createDefaultStages?: boolean;
     includeReviewStage?: boolean;
 }
 
