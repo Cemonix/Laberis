@@ -67,7 +67,7 @@ public class TaskVetoPipeline : ITaskVetoPipeline
             // Only IN_PROGRESS tasks can be vetoed
             if (task.Status != TaskStatus.IN_PROGRESS)
             {
-                _logger.LogWarning("Task {TaskId} has status {Status}, cannot be vetoed", taskId, task.Status);
+                _logger.LogInformation("Task {TaskId} has status {Status}, cannot be vetoed", taskId, task.Status);
                 return false;
             }
 
@@ -118,6 +118,12 @@ public class TaskVetoPipeline : ITaskVetoPipeline
                 return PipelineResult.Failure("Annotation tasks cannot be vetoed");
             }
 
+            // Check task status first for more specific error messages
+            if (task.Status == TaskStatus.VETOED)
+            {
+                return PipelineResult.Failure("Task has already been vetoed");
+            }
+            
             // Validate remaining permissions
             if (!await CanExecuteAsync(taskId, userId, cancellationToken))
             {
