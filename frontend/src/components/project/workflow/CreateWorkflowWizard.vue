@@ -892,7 +892,7 @@ const handleSubmit = async () => {
             stageOrder: 1,
             stageType: WorkflowStageType.ANNOTATION,
             isInitialStage: true,
-            isFinalStage: !form.includeRevision,
+            isFinalStage: false, // Annotation stage is never final - completion stage is always final
             inputDataSourceId: form.annotationInputDataSourceId as number,
             assignedProjectMemberIds: form.annotationMembers
         });
@@ -928,7 +928,6 @@ const handleSubmit = async () => {
             description: form.description || undefined,
             labelSchemeId: form.labelSchemeId as number,
             stages,
-            createDefaultStages: false,
             includeReviewStage: form.includeRevision
         };
 
