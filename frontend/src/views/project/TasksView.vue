@@ -197,7 +197,7 @@ import TaskAssignModal from '@/components/project/task/TaskAssignModal.vue';
 import TaskPriorityModal from '@/components/project/task/TaskPriorityModal.vue';
 import TaskSelectionColumn from '@/components/project/task/TaskSelectionColumn.vue';
 import TaskBulkOperationsToolbar from '@/components/project/task/TaskBulkOperationsToolbar.vue';
-import type {Task, TaskTableRow} from '@/types/task';
+import type {TaskTableRow} from '@/types/task';
 import {TaskStatus} from '@/types/task';
 import type {TableColumn, TableRowAction} from '@/types/common';
 import {useErrorHandler} from '@/composables/useErrorHandler';
@@ -206,7 +206,6 @@ import {useAssetPreview} from '@/composables/useAssetPreview';
 import {PERMISSIONS} from '@/types/permissions';
 import {useProjectStore} from '@/stores/projectStore';
 import {taskService, workflowStageService, assetService} from '@/services/api/projects';
-import {taskStatusService} from '@/services/taskStatusService';
 import {useTaskSelection} from '@/composables/useTaskSelection';
 import {taskBulkOperations} from '@/services/taskBulkOperations';
 import {LastStageManager} from '@/core/storage';
@@ -297,30 +296,6 @@ const isTaskClickable = (task: TaskTableRow): boolean => {
     return true;
 };
 
-// Helper to convert TaskTableRow to minimal Task for status service
-const createTaskFromRow = (taskRow: TaskTableRow): Task => {
-    return {
-        id: taskRow.id,
-        priority: taskRow.priority,
-        dueDate: taskRow.dueDate,
-        completedAt: taskRow.completedAt,
-        archivedAt: undefined, // Not available in TaskTableRow
-        suspendedAt: undefined, // Not available in TaskTableRow
-        deferredAt: undefined, // Not available in TaskTableRow
-        vetoedAt: undefined, // Not available in TaskTableRow
-        changesRequiredAt: undefined, // Not available in TaskTableRow
-        workingTimeMs: 0, // Not available in TaskTableRow
-        createdAt: taskRow.createdAt,
-        updatedAt: taskRow.createdAt, // Fallback to createdAt
-        assetId: taskRow.assetId,
-        projectId: projectId.value,
-        workflowId: workflowId.value,
-        currentWorkflowStageId: stageId.value,
-        assignedToEmail: taskRow.assignedTo,
-        lastWorkedOnByEmail: undefined, // Not available in TaskTableRow
-        status: taskRow.status
-    };
-};
 
 // Table configuration
 const tableColumns: TableColumn[] = [
@@ -478,8 +453,6 @@ const loadTasks = async () => {
     }
 };
 
-// Mock functions removed - using real API data only
-
 const handleTableAction = (actionKey: string) => {
     logger.debug('Table action triggered', { actionKey });
     switch (actionKey) {
@@ -528,48 +501,59 @@ const handleToggleTask = (taskId: number) => {
     selection.toggleTask(taskId);
 };
 
-const handleTaskClick = (task: TaskTableRow, _index: number) => {
+const handleTaskClick = async (task: TaskTableRow, _index: number) => {
     // Early return if task is not clickable (prevents error messages for disabled rows)
     if (!isTaskClickable(task)) {
         logger.debug('Attempted to click non-clickable task', { taskId: task.id, status: task.status });
         return;
     }
-    
-    // Handle completed tasks in preview mode
-    if (task.status === TaskStatus.COMPLETED) {
-        logger.info('Opening completed task in preview mode', { taskId: task.id, assetId: task.assetId, assetName: task.assetName });
-        
-        // For completed tasks, navigate to workspace with preview mode
-        // The asset has moved to the next data source, so we track by asset ID
-        router.push({
-            name: 'AnnotationWorkspace',
-            params: {
-                projectId: projectId.value.toString(),
-                assetId: task.assetId.toString()
-            },
-            query: {
-                mode: 'preview',
-                taskId: task.id.toString()
-            }
-        });
-        return;
-    }
-    
-    // Handle regular (editable) tasks
-    logger.info('Navigating to annotation workspace', { taskId: task.id, assetId: task.assetId, assetName: task.assetName });
-    
-    // Navigate to annotation workspace using projectId and the task's assetId
-    // The workspace will load the asset and any existing annotations
-    router.push({
+
+    let route = {
         name: 'AnnotationWorkspace',
         params: {
             projectId: projectId.value.toString(),
             assetId: task.assetId.toString()
         },
         query: {
-            taskId: task.id.toString() // Pass taskId as query parameter for context
+            taskId: task.id.toString(),
+            mode: undefined as string | undefined
         }
-    });
+    };
+
+    // Handle completed tasks in preview mode (no assignment or status change needed)
+    if (task.status === TaskStatus.COMPLETED) {
+        logger.info('Opening completed task in preview mode', { taskId: task.id, assetId: task.assetId, assetName: task.assetName });
+
+        route.query.mode = 'preview';
+        router.push(route);
+        return;
+    }
+
+    // Only change status to IN_PROGRESS for tasks that are ready for work or suspended
+    // DEFERRED tasks can only be changed by managers, so exclude them here
+    const shouldChangeToInProgress = [
+        TaskStatus.READY_FOR_ANNOTATION,
+        TaskStatus.READY_FOR_REVIEW, 
+        TaskStatus.READY_FOR_COMPLETION,
+        TaskStatus.SUSPENDED
+    ].includes(task.status) || (task.status === TaskStatus.DEFERRED && canManageTasks.value);
+
+    try {
+        logger.info('Opening task for work', { taskId: task.id, assetName: task.assetName, currentStatus: task.status, willChangeStatus: shouldChangeToInProgress });
+        
+        // Change status to IN_PROGRESS only if appropriate
+        if (shouldChangeToInProgress) {
+            await taskService.changeTaskStatus(projectId.value, task.id, {targetStatus: TaskStatus.IN_PROGRESS});
+        }
+        
+        await taskService.assignTaskToCurrentUser(projectId.value, task.id);
+        
+        logger.info('Navigating to annotation workspace', { taskId: task.id, assetId: task.assetId, assetName: task.assetName });
+        router.push(route);
+    } catch (error) {
+        logger.error('Failed to assign task or navigate', { taskId: task.id, error });
+        handleError(error, 'Failed to open task');
+    }
 };
 
 // Task status management functions
@@ -577,8 +561,9 @@ const handleSuspendTask = async (task: TaskTableRow) => {
     try {
         logger.info('Suspending task', { taskId: task.id, assetName: task.assetName });
         
-        const taskData = createTaskFromRow(task);
-        await taskStatusService.suspendTask(projectId.value, taskData, canManageTasks.value);
+        await taskService.changeTaskStatus(projectId.value, task.id, {
+            targetStatus: TaskStatus.SUSPENDED
+        });
         
         // Refresh the task list to show updated status
         await loadTasks();
@@ -594,8 +579,9 @@ const handleUnsuspendTask = async (task: TaskTableRow) => {
     try {
         logger.info('Unsuspending task', { taskId: task.id, assetName: task.assetName });
         
-        const taskData = createTaskFromRow(task);
-        await taskStatusService.resumeTask(projectId.value, taskData, canManageTasks.value);
+        await taskService.changeTaskStatus(projectId.value, task.id, {
+            targetStatus: TaskStatus.IN_PROGRESS
+        });
         
         // Refresh the task list to show updated status
         await loadTasks();
@@ -611,8 +597,9 @@ const handleDeferTask = async (task: TaskTableRow) => {
     try {
         logger.info('Deferring task', { taskId: task.id, assetName: task.assetName });
         
-        const taskData = createTaskFromRow(task);
-        await taskStatusService.deferTask(projectId.value, taskData, canManageTasks.value);
+        await taskService.changeTaskStatus(projectId.value, task.id, {
+            targetStatus: TaskStatus.DEFERRED
+        });
         
         // Refresh the task list to show updated status
         await loadTasks();
@@ -628,8 +615,9 @@ const handleUndeferTask = async (task: TaskTableRow) => {
     try {
         logger.info('Undeferring task', { taskId: task.id, assetName: task.assetName });
         
-        const taskData = createTaskFromRow(task);
-        await taskStatusService.undeferTask(projectId.value, taskData, canManageTasks.value);
+        await taskService.changeTaskStatus(projectId.value, task.id, {
+            targetStatus: TaskStatus.IN_PROGRESS
+        });
         
         // Refresh the task list to show updated status
         await loadTasks();
@@ -645,8 +633,9 @@ const handleUncompleteTask = async (task: TaskTableRow) => {
     try {
         logger.info('Uncompleting task', { taskId: task.id, assetName: task.assetName });
         
-        const taskData = createTaskFromRow(task);
-        await taskStatusService.uncompleteTask(projectId.value, taskData, canManageTasks.value);
+        await taskService.changeTaskStatus(projectId.value, task.id, {
+            targetStatus: TaskStatus.IN_PROGRESS
+        });
         
         // Refresh the task list to show updated status
         await loadTasks();
@@ -659,27 +648,45 @@ const handleUncompleteTask = async (task: TaskTableRow) => {
 };
 
 const handleReturnTaskForRework = async (task: TaskTableRow, reason?: string) => {
-    // Only reviewers and managers can return tasks for rework
     if (!canReviewTasks.value && !canManageTasks.value) {
         logger.warn('User does not have permission to return tasks for rework');
         return;
     }
 
     try {
-        logger.info('Returning task for rework', { taskId: task.id, assetName: task.assetName, reason });
+        logger.info('Returning task for rework using pipeline system', { taskId: task.id, assetName: task.assetName, reason });
         
-        // Convert TaskTableRow to Task object for the service
-        const taskData: Task = createTaskFromRow(task);
+        const result = await taskService.vetoTaskPipeline(projectId.value, task.id, {
+            reason: reason || 'Task returned for rework'
+        });
         
-        await taskStatusService.returnTaskForRework(projectId.value, taskData, reason);
+        if (!result.isSuccess) {
+            throw new Error(result.errorMessage || 'Task veto failed');
+        }
         
-        // Refresh the task list to show updated status
         await loadTasks();
-        
-        logger.info('Task returned for rework successfully', { taskId: task.id });
+        logger.info('Task returned for rework successfully via pipeline', { taskId: task.id, details: result.details });
     } catch (error) {
-        logger.error('Failed to return task for rework', { taskId: task.id, error });
+        logger.error('Failed to return task for rework via pipeline', { taskId: task.id, error });
         handleError(error, 'Failed to return task for rework');
+    }
+};
+
+const handleCompleteTask = async (task: TaskTableRow) => {
+    try {
+        logger.info('Completing task using pipeline system', { taskId: task.id, assetName: task.assetName });
+        
+        const result = await taskService.completeTaskPipeline(projectId.value, task.id);
+        
+        if (!result.isSuccess) {
+            throw new Error(result.errorMessage || 'Task completion failed');
+        }
+        
+        await loadTasks();
+        logger.info('Task completed successfully via pipeline', { taskId: task.id, details: result.details });
+    } catch (error) {
+        logger.error('Failed to complete task via pipeline', { taskId: task.id, error });
+        handleError(error, 'Failed to complete task');
     }
 };
 
@@ -692,8 +699,9 @@ const handleArchiveTask = async (task: TaskTableRow) => {
     try {
         logger.info('Archiving task', { taskId: task.id, assetName: task.assetName });
         
-        const taskData = createTaskFromRow(task);
-        await taskStatusService.archiveTask(projectId.value, taskData, canManageTasks.value);
+        await taskService.changeTaskStatus(projectId.value, task.id, {
+            targetStatus: TaskStatus.ARCHIVED
+        });
         
         // Refresh the task list to show updated status
         await loadTasks();
@@ -865,6 +873,9 @@ const handleStatusAction = async (actionKey: string, task: TaskTableRow) => {
                 break;
             case 'undefer':
                 await handleUndeferTask(task);
+                break;
+            case 'complete':
+                await handleCompleteTask(task);
                 break;
             case 'uncomplete':
                 await handleUncompleteTask(task);
