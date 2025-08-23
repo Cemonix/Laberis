@@ -49,7 +49,7 @@ export interface Task {
     assetId: number;
     projectId: number;
     workflowId: number;
-    currentWorkflowStageId: number;
+    workflowStageId: number;
     assignedToEmail?: string;
     lastWorkedOnByEmail?: string;
     
@@ -78,14 +78,14 @@ export interface CreateTaskRequest {
     dueDate?: string;
     assetId: number;
     workflowId: number;
-    currentWorkflowStageId: number;
+    workflowStageId: number;
     assignedToUserId?: string;
 }
 
 export interface UpdateTaskRequest {
     priority?: number;
     dueDate?: string;
-    currentWorkflowStageId?: number;
+    workflowStageId?: number;
     assignedToUserId?: string;
     assignedToEmail?: string | null;
     status?: TaskStatus;
@@ -112,13 +112,28 @@ export interface TaskTableRow {
     stage: string;
 }
 
-// For unified status change requests
+// For status change requests
 export interface ChangeTaskStatusDto {
     targetStatus: TaskStatus;
-    moveAsset?: boolean;
 }
 
 // For returning tasks for rework
 export interface ReturnTaskForReworkDto {
     reason?: string;
+}
+
+// For pipeline operations
+export interface CompleteTaskDto {
+    notes?: string;
+}
+
+export interface VetoTaskDto {
+    reason: string;
+}
+
+export interface PipelineResultDto {
+    isSuccess: boolean;
+    errorMessage?: string;
+    updatedTask?: Task;
+    details?: string;
 }
