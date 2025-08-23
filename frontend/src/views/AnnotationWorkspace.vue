@@ -253,7 +253,7 @@ const handleCompletionModalConfirm = async () => {
             params: {
                 projectId: props.projectId,
                 workflowId: currentTask.workflowId.toString(),
-                stageId: currentTask.currentWorkflowStageId.toString()
+                stageId: currentTask.workflowStageId.toString()
             }
         });
     }
@@ -275,7 +275,7 @@ const handleBackToTasks = async () => {
             params: {
                 projectId: props.projectId,
                 workflowId: task.workflowId.toString(),
-                stageId: task.currentWorkflowStageId.toString()
+                stageId: task.workflowStageId.toString()
             }
         });
     } else {
