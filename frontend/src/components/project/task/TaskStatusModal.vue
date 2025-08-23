@@ -50,6 +50,17 @@
                         </Button>
                         
                         <Button
+                            v-if="canComplete"
+                            variant="primary"
+                            @click="handleAction('complete')"
+                            :disabled="actionInProgress"
+                            class="status-action-button"
+                        >
+                            <font-awesome-icon :icon="faCheck" />
+                            Complete Task
+                        </Button>
+                        
+                        <Button
                             v-if="canUncomplete"
                             variant="secondary"
                             @click="handleAction('uncomplete')"
@@ -105,6 +116,7 @@ import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {
     faArchive,
     faArrowLeft,
+    faCheck,
     faForward,
     faPause,
     faTimes,
@@ -161,6 +173,20 @@ const canDefer = computed(() => {
     ].includes(props.task.status);
 });
 
+const canComplete = computed(() => {
+    if (!props.task) return false;
+    
+    // Can complete tasks that are in progress or ready for work
+    const completableStatuses = [
+        TaskStatus.IN_PROGRESS,
+        TaskStatus.READY_FOR_ANNOTATION,
+        TaskStatus.READY_FOR_REVIEW,
+        TaskStatus.READY_FOR_COMPLETION
+    ];
+    
+    return completableStatuses.includes(props.task.status);
+});
+
 const canUncomplete = computed(() => {
     if (!props.task) return false;
     
@@ -197,7 +223,7 @@ const canArchive = computed(() => {
 });
 
 const hasAvailableActions = computed(() => {
-    return canSuspend.value || canDefer.value || canUncomplete.value || canReturnForRework.value || canArchive.value;
+    return canSuspend.value || canDefer.value || canComplete.value || canUncomplete.value || canReturnForRework.value || canArchive.value;
 });
 
 const handleAction = async (actionKey: string) => {
