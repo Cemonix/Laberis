@@ -43,7 +43,7 @@ public class TaskStatusUpdateStep : ITaskStatusUpdateStep
         TaskStatus targetStatus,
         CancellationToken cancellationToken = default)
     {
-        if (context == null) throw new ArgumentNullException(nameof(context));
+        ArgumentNullException.ThrowIfNull(context);
 
         _logger.LogInformation("Updating task {TaskId} status from {CurrentStatus} to {TargetStatus}",
             context.Task.TaskId, context.Task.Status, targetStatus);
@@ -62,13 +62,21 @@ public class TaskStatusUpdateStep : ITaskStatusUpdateStep
             _logger.LogInformation("Successfully updated task {TaskId} status to {TargetStatus}",
                 context.Task.TaskId, targetStatus);
 
-            // Create new context with updated task
-            return new PipelineContext(
+            // Create new context with updated task, preserving target stage
+            var newContext = new PipelineContext(
                 updatedTask,
                 context.Asset,
                 context.CurrentStage,
                 context.UserId,
                 context.Reason);
+            
+            // Preserve target stage if it was set
+            if (context.TargetStage != null)
+            {
+                newContext = newContext.WithTargetStage(context.TargetStage);
+            }
+            
+            return newContext;
         }
         catch (Exception ex)
         {
@@ -80,8 +88,8 @@ public class TaskStatusUpdateStep : ITaskStatusUpdateStep
 
     public async Task<bool> RollbackAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
-        if (context == null) throw new ArgumentNullException(nameof(context));
-        
+        ArgumentNullException.ThrowIfNull(context);
+
         if (_originalStatus == null)
         {
             _logger.LogWarning("No original status stored for rollback of task {TaskId}", context.Task.TaskId);
