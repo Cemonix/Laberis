@@ -24,6 +24,7 @@ public class TaskConfiguration : IEntityTypeConfiguration<Task>
         entity.Property(t => t.VetoedAt).HasColumnName("vetoed_at").IsRequired(false);
         entity.Property(t => t.ChangesRequiredAt).HasColumnName("changes_required_at").IsRequired(false);
         entity.Property(t => t.WorkingTimeMs).HasColumnName("working_time_ms").IsRequired().HasDefaultValue(0);
+        entity.Property(t => t.Status).HasColumnName("status").IsRequired().HasDefaultValue(Models.Domain.Enums.TaskStatus.NOT_STARTED);
 
         entity.Property(t => t.CreatedAt)
             .HasColumnName("created_at")
