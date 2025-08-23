@@ -50,6 +50,7 @@ public class LaberisDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.HasPostgresEnum<IssueType>("public", "issue_type_enum");
         modelBuilder.HasPostgresEnum<AnnotationType>("public", "annotation_type_enum");
         modelBuilder.HasPostgresEnum<AssetStatus>("public", "asset_status_enum");
+        modelBuilder.HasPostgresEnum<server.Models.Domain.Enums.TaskStatus>("public", "task_status_enum");
 
         // Apply configurations
         modelBuilder.ApplyConfiguration(new Configurations.ProjectConfiguration());
