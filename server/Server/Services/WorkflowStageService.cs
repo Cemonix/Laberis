@@ -347,8 +347,7 @@ public class WorkflowStageService : IWorkflowStageService
 
     public async Task<(int? initialStageId, List<WorkflowStageDto> createdStages)> CreateWorkflowStagesPipelineAsync(
         int workflowId, 
-        int projectId, 
-        bool createDefaultStages, 
+        int projectId,
         bool includeReviewStage)
     {
         var stageOrder = 1;
@@ -356,12 +355,6 @@ public class WorkflowStageService : IWorkflowStageService
         var createdStages = new List<WorkflowStageDto>();
 
         _logger.LogInformation("Creating default workflow stages pipeline for workflow {WorkflowId}, project {ProjectId}", workflowId, projectId);
-
-        if (!createDefaultStages)
-        {
-            _logger.LogWarning("Default stages creation disabled for workflow {WorkflowId}", workflowId);
-            return (null, createdStages);
-        }
 
         // Get or ensure required data sources exist
         var dataSources = await _dataSourceService.EnsureRequiredDataSourcesExistAsync(projectId, includeReviewStage);
@@ -393,7 +386,7 @@ public class WorkflowStageService : IWorkflowStageService
             StageType = WorkflowStageType.ANNOTATION,
             StageOrder = stageOrder++,
             IsInitialStage = true,
-            IsFinalStage = !includeReviewStage, // If no review stage, this is final
+            IsFinalStage = false, // Annotation stage is never final - completion stage is always final
             InputDataSourceId = dataSources.AnnotationDataSource.Id,
             TargetDataSourceId = includeReviewStage ? dataSources.ReviewDataSource?.Id : dataSources.CompletionDataSource?.Id
         };
