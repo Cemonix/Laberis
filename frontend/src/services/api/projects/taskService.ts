@@ -8,7 +8,9 @@ import type {
     TasksQueryParams,
     GetTasksResponse,
     ChangeTaskStatusDto,
-    ReturnTaskForReworkDto
+    CompleteTaskDto,
+    VetoTaskDto,
+    PipelineResultDto
 } from '@/types/task';
 import { TaskStatus } from '@/types/task';
 import { workflowStageService } from './workflowStageService';
@@ -96,7 +98,7 @@ class TaskService extends BaseProjectService {
             assetId: dto.assetId,
             projectId: dto.projectId,
             workflowId: dto.workflowId,
-            currentWorkflowStageId: dto.currentWorkflowStageId,
+            workflowStageId: dto.workflowStageId,
             assignedToEmail: dto.assignedToEmail,
             lastWorkedOnByEmail: dto.lastWorkedOnByEmail,
             status: status
@@ -406,10 +408,10 @@ class TaskService extends BaseProjectService {
 
 
     /**
-     * Change task status using the unified endpoint with optional asset movement
+     * Change task status using the simplified endpoint
      */
     async changeTaskStatus(projectId: number, taskId: number, requestDto: ChangeTaskStatusDto): Promise<Task> {
-        this.logger.info(`Changing task ${taskId} status to ${requestDto.targetStatus} in project ${projectId}`, { moveAsset: requestDto.moveAsset });
+        this.logger.info(`Changing task ${taskId} status to ${requestDto.targetStatus} in project ${projectId}`);
 
         const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/status', { taskId });
         const dto = await this.put<ChangeTaskStatusDto, any>(url, requestDto);
@@ -421,38 +423,39 @@ class TaskService extends BaseProjectService {
     }
 
     /**
-     * Complete a task and move asset to next workflow stage (dedicated endpoint with automatic asset movement)
+     * Transfer an asset to a different data source
      */
-    async completeAndMoveTask(projectId: number, taskId: number): Promise<Task> {
-        this.logger.info(`Completing and moving task ${taskId} in project ${projectId}`);
+    async transferAsset(projectId: number, assetId: number, targetDataSourceId: number): Promise<void> {
+        this.logger.info(`Transferring asset ${assetId} to data source ${targetDataSourceId} in project ${projectId}`);
 
-        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/complete-and-move', { taskId });
-        const dto = await this.put<undefined, any>(url, undefined);
+        const url = this.buildProjectResourceUrl(projectId, 'assets/{assetId}/transfer', { assetId });
+        const transferDto = { targetDataSourceId };
         
-        const task: Task = this.transformTaskDto(dto);
+        await this.post<typeof transferDto, any>(url, transferDto);
 
-        this.logger.info(`Successfully completed and moved task ${taskId}`);
-        return task;
+        this.logger.info(`Successfully transferred asset ${assetId} to data source ${targetDataSourceId}`);
     }
 
     /**
-     * Return a task for rework (available to reviewers and managers)
+     * Create a new task for an asset in a specific workflow stage
      */
-    async returnTaskForRework(projectId: number, taskId: number, reason?: string): Promise<Task> {
-        this.logger.info(`Returning task ${taskId} for rework in project ${projectId}`, { reason });
+    async createTaskForAsset(projectId: number, assetId: number, workflowId: number, stageId: number, priority: number = 5): Promise<Task> {
+        this.logger.info(`Creating task for asset ${assetId} in stage ${stageId}, project ${projectId}`);
 
-        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/return-for-rework', { taskId });
-        const requestDto: ReturnTaskForReworkDto = reason ? { reason } : {};
-        const dto = await this.post<ReturnTaskForReworkDto, any>(url, requestDto);
+        const url = this.buildProjectUrl(projectId, 'tasks');
+        const createTaskDto = {
+            priority,
+            assetId,
+            workflowId,
+            workflowStageId: stageId
+        };
         
+        const dto = await this.post<typeof createTaskDto, any>(url, createTaskDto);
         const task: Task = this.transformTaskDto(dto);
 
-        this.logger.info(`Returned task ${taskId} for rework successfully`);
+        this.logger.info(`Created task ${task.id} for asset ${assetId} successfully`);
         return task;
     }
-
-
-
 
     /**
      * Update working time for a task
@@ -485,6 +488,60 @@ class TaskService extends BaseProjectService {
             // Don't throw error - this is a background operation during page unload
             return false;
         }
+    }
+
+    /**
+     * Complete a task using the pipeline system
+     * This triggers the complete workflow progression including asset transfer and next stage task creation
+     */
+    async completeTaskPipeline(projectId: number, taskId: number, dto: CompleteTaskDto = {}): Promise<PipelineResultDto> {
+        this.logger.info(`Completing task ${taskId} using pipeline in project ${projectId}`, dto);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/complete', { taskId });
+        const result = await this.post<CompleteTaskDto, PipelineResultDto>(url, dto);
+
+        this.logger.info(`Task completion pipeline result for task ${taskId}:`, result);
+        return result;
+    }
+
+    /**
+     * Veto a task using the pipeline system
+     * This triggers the veto workflow progression including asset transfer back to annotation and task updates
+     */
+    async vetoTaskPipeline(projectId: number, taskId: number, dto: VetoTaskDto): Promise<PipelineResultDto> {
+        this.logger.info(`Vetoing task ${taskId} using pipeline in project ${projectId}`, dto);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/veto', { taskId });
+        const result = await this.post<VetoTaskDto, PipelineResultDto>(url, dto);
+
+        this.logger.info(`Task veto pipeline result for task ${taskId}:`, result);
+        return result;
+    }
+
+    /**
+     * Check if the current user can complete the specified task
+     */
+    async canCompleteTask(projectId: number, taskId: number): Promise<boolean> {
+        this.logger.debug(`Checking completion permissions for task ${taskId} in project ${projectId}`);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/can-complete', { taskId });
+        const canComplete = await this.get<boolean>(url);
+
+        this.logger.debug(`Can complete task ${taskId}: ${canComplete}`);
+        return canComplete;
+    }
+
+    /**
+     * Check if the current user can veto the specified task
+     */
+    async canVetoTask(projectId: number, taskId: number): Promise<boolean> {
+        this.logger.debug(`Checking veto permissions for task ${taskId} in project ${projectId}`);
+
+        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}/can-veto', { taskId });
+        const canVeto = await this.get<boolean>(url);
+
+        this.logger.debug(`Can veto task ${taskId}: ${canVeto}`);
+        return canVeto;
     }
 }
 
