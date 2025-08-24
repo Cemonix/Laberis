@@ -142,7 +142,7 @@ Professional annotation interface with advanced tools, zoom controls, label mana
 
 2. **Start infrastructure services**
    ```bash
-   docker-compose -f docker-compose.dev.yaml up -d
+   docker compose -f docker-compose.dev.yaml up -d
    ```
    This starts PostgreSQL and MinIO containers for development.
 
@@ -198,13 +198,13 @@ cp .env.example .env.prod          # Application (API, Auth, etc.)
 # IMPORTANT: Keep MinIO credentials synchronized between files
 
 # Start all services
-docker-compose -f docker-compose.prod.yaml up -d
+docker compose -f docker-compose.prod.yaml up -d
 
 # View logs
-docker-compose -f docker-compose.prod.yaml logs -f
+docker compose -f docker-compose.prod.yaml logs -f
 
 # Stop services
-docker-compose -f docker-compose.prod.yaml down
+docker compose -f docker-compose.prod.yaml down
 ```
 
 **Production Services:**
