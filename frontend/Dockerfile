@@ -16,43 +16,38 @@ ENV VITE_APP_VERSION=$VITE_APP_VERSION
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production=false
+RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Build the application
+# Run type check first, then build the application
 RUN npm run build
 
-# Use nginx for serving static files
-FROM nginx:alpine AS production
+# Use nginx-unprivileged for serving static files (runs as non-root by default)
+FROM nginxinc/nginx-unprivileged:alpine AS production
+
+# Switch to root temporarily to clean and copy files
+USER root
+
+# Clean the html directory and copy built application
+RUN rm -rf /usr/share/nginx/html/*
+COPY --from=build-env /app/dist /usr/share/nginx/html/
+
+# Fix ownership for nginx user
+RUN chown -R nginx:nginx /usr/share/nginx/html
+
+# Switch back to nginx user
+USER nginx
+
 WORKDIR /usr/share/nginx/html
-
-# Remove default nginx static assets
-RUN rm -rf ./*
-
-# Copy built application from build stage
-COPY --from=build-env /app/dist .
 
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Create a non-root user
-RUN addgroup -g 1001 -S laberis && \
-    adduser -S laberis -u 1001 -G laberis
-
-# Change ownership of nginx directories
-RUN chown -R laberis:laberis /var/cache/nginx /var/run /var/log/nginx /usr/share/nginx/html
-
-# Switch to non-root user
-USER laberis
-
-# Expose port
-EXPOSE 80
+# Expose port (nginx-unprivileged uses 8080)
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
-
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
