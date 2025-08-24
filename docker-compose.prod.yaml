@@ -1,0 +1,101 @@
+services:
+  ####################
+  # PostgreSQL Database
+  ####################
+  postgres:
+    image: postgres:16-alpine
+    container_name: laberis_postgres_db
+    env_file:
+      - .env.db.prod
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - laberis_network
+
+  ####################
+  # MinIO Object Storage
+  ####################
+  minio:
+    image: minio/minio:latest
+    container_name: laberis_minio
+    env_file:
+      - .env.db.prod
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000" # API
+      - "9001:9001" # Console UI
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - laberis_network
+
+  ####################
+  # Backend API
+  ####################
+  backend:
+    container_name: laberis_backend
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    env_file:
+      - .env.prod
+    environment:
+      # Docker-specific overrides for service discovery
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__PostgresConnection=Host=postgres;Port=5432;Database=$${POSTGRES_DB};Username=$${POSTGRES_USER};Password=$${POSTGRES_PASSWORD}
+      - MinIO__Endpoint=minio:9000
+      - WebApp__ClientUrl=http://localhost:3000
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - laberis_network
+
+  ####################
+  # Frontend Web App
+  ####################
+  frontend:
+    container_name: laberis_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:5000/api
+        - VITE_APP_NAME=Laberis
+        - VITE_APP_VERSION=0.1.0
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - laberis_network
+
+networks:
+  laberis_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  minio_data:
+    driver: local
