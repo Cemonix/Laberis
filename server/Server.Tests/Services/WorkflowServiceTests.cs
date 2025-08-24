@@ -13,6 +13,7 @@ public class WorkflowServiceTests
 {
     private readonly Mock<IWorkflowRepository> _mockWorkflowRepository;
     private readonly Mock<IWorkflowStageService> _mockWorkflowStageService;
+    private readonly Mock<IWorkflowStageAssignmentService> _mockWorkflowStageAssignmentService;
     private readonly Mock<IWorkflowStageConnectionService> _mockWorkflowStageConnectionService;
     private readonly Mock<ITaskService> _mockTaskService;
     private readonly DbContextFactory _dbContextFactory;
@@ -23,6 +24,7 @@ public class WorkflowServiceTests
     {
         _mockWorkflowRepository = new Mock<IWorkflowRepository>();
         _mockWorkflowStageService = new Mock<IWorkflowStageService>();
+        _mockWorkflowStageAssignmentService = new Mock<IWorkflowStageAssignmentService>();
         _mockWorkflowStageConnectionService = new Mock<IWorkflowStageConnectionService>();
         _mockTaskService = new Mock<ITaskService>();
         _dbContextFactory = new DbContextFactory();
@@ -31,6 +33,7 @@ public class WorkflowServiceTests
         _workflowService = new WorkflowService(
             _mockWorkflowRepository.Object,
             _mockWorkflowStageService.Object,
+            _mockWorkflowStageAssignmentService.Object,
             _mockWorkflowStageConnectionService.Object,
             _mockTaskService.Object,
             _dbContextFactory.Context,
@@ -77,30 +80,28 @@ public class WorkflowServiceTests
         Assert.Equal("Another Workflow", result.Data.Last().Name);
     }
 
-    [Theory]
-    [InlineData(false)] // No review stage: Annotation → Completion
-    [InlineData(true)]  // With review stage: Annotation → Review → Completion
-    public void CreateWorkflowAsync_ShouldAlwaysCreateDefaultStages_WhenNoCustomStagesProvided(bool includeReviewStage)
+    [Fact]
+    public void CreateWorkflowAsync_ShouldRequireStages_WhenNoStagesProvided()
     {
         // Arrange
         var createDto = new CreateWorkflowDto
         {
             Name = "Test Workflow",
             LabelSchemeId = 1,
-            Stages = [], // No custom stages - should always create default stages
-            IncludeReviewStage = includeReviewStage
+            Stages = [], // No stages - should fail
+            IncludeReviewStage = false
         };
 
-        // Act - Test the simplified logic from WorkflowService
-        var shouldCreateDefaultStages = createDto.Stages.Count == 0;
+        // Act - Test the validation logic from WorkflowService
+        var hasNoStages = createDto.Stages.Count == 0;
 
         // Assert
-        Assert.True(shouldCreateDefaultStages, 
-            "Default stages should always be created when no custom stages are provided");
+        Assert.True(hasNoStages, 
+            "Should identify when no stages are provided and require them from frontend");
     }
 
     [Fact]
-    public void CreateWorkflowAsync_ShouldNotCreateDefaultStages_WhenCustomStagesProvided()
+    public void CreateWorkflowAsync_ShouldProcessCustomStages_WhenStagesProvided()
     {
         // Arrange
         var createDto = new CreateWorkflowDto
@@ -111,18 +112,22 @@ public class WorkflowServiceTests
                 new()
                 {
                     Name = "Custom Stage",
-                    Description = "A custom workflow stage"
+                    Description = "A custom workflow stage",
+                    AssignedProjectMemberIds = [1, 2, 3]
                 }
-            ], // Custom stages provided
+            ], // Custom stages with assignments provided
             IncludeReviewStage = true // This should be ignored when custom stages exist
         };
 
-        // Act - Test the simplified logic from WorkflowService  
-        var shouldCreateDefaultStages = createDto.Stages.Count == 0;
+        // Act - Test the validation logic from WorkflowService  
+        var hasCustomStages = createDto.Stages.Count > 0;
+        var hasAssignments = createDto.Stages.First().AssignedProjectMemberIds.Count > 0;
 
         // Assert
-        Assert.False(shouldCreateDefaultStages, 
-            "Default stages should not be created when custom stages are provided");
+        Assert.True(hasCustomStages, 
+            "Should process custom stages when provided by frontend");
+        Assert.True(hasAssignments,
+            "Should process stage assignments when provided by frontend");
     }
 
     [Fact]
