@@ -190,11 +190,34 @@ In development mode, you can enable automatic admin login by:
 For production deployment, use the production compose file:
 
 ```bash
-# Production deployment (coming soon)
+# Copy and configure environment files
+cp .env.db.example .env.db.prod    # Infrastructure (Database, MinIO)
+cp .env.example .env.prod          # Application (API, Auth, etc.)
+
+# Edit both files with your production values
+# IMPORTANT: Keep MinIO credentials synchronized between files
+
+# Start all services
 docker-compose -f docker-compose.prod.yaml up -d
+
+# View logs
+docker-compose -f docker-compose.prod.yaml logs -f
+
+# Stop services
+docker-compose -f docker-compose.prod.yaml down
 ```
 
-This will include containerized frontend and backend services along with the databases.
+**Production Services:**
+- **Frontend**: http://localhost:3000 (Nginx + Vue.js)
+- **Backend API**: http://localhost:5000 (ASP.NET Core)
+- **PostgreSQL**: localhost:5432
+- **MinIO Console**: http://localhost:9001
+
+**Security Notes:**
+- Change all default passwords in `.env.prod`
+- Use strong JWT secrets in production
+- Consider using reverse proxy (nginx/caddy) for HTTPS
+- Restrict database ports in production environments
 
 ### Manual Setup (Without Docker)
 
