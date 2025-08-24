@@ -11,8 +11,22 @@ using TaskStatus = server.Models.Domain.Enums.TaskStatus;
 namespace server.Core.Workflow.Steps;
 
 /// <summary>
+/// Rollback state data for TaskManagementStep operations.
+/// </summary>
+public class TaskManagementRollbackData
+{
+    public TaskOperation LastOperation { get; set; } = TaskOperation.None;
+    public int? CreatedTaskId { get; set; }
+    public int? UpdatedTaskId { get; set; }
+    public TaskStatus? OriginalStatus { get; set; }
+
+    public enum TaskOperation { None, Created, Updated }
+}
+
+/// <summary>
 /// Pipeline step responsible for managing task creation and updates during workflow operations.
 /// Implements atomic task management with proper rollback capability for pipeline consistency.
+/// Thread-safe by storing rollback state in PipelineContext instead of instance fields.
 /// </summary>
 public class TaskManagementStep : ITaskManagementStep
 {
@@ -20,11 +34,6 @@ public class TaskManagementStep : ITaskManagementStep
     private readonly IWorkflowStageRepository _workflowStageRepository;
     private readonly IWorkflowStageResolver _workflowStageResolver;
     private readonly ILogger<ITaskManagementStep> _logger;
-    
-    // Store task operation info for rollback purposes
-    private enum TaskOperation { None, Created, Updated }
-    private TaskOperation _lastOperation = TaskOperation.None;
-    private int? _createdTaskId;
 
     public TaskManagementStep(
         ITaskRepository taskRepository,
@@ -86,8 +95,14 @@ public class TaskManagementStep : ITaskManagementStep
 
                 await _taskRepository.AddAsync(newTask);
                 await _taskRepository.SaveChangesAsync();
-                _lastOperation = TaskOperation.Created;
-                _createdTaskId = newTask.TaskId;
+                
+                // Store rollback data in context
+                var rollbackData = new TaskManagementRollbackData
+                {
+                    LastOperation = TaskManagementRollbackData.TaskOperation.Created,
+                    CreatedTaskId = newTask.TaskId
+                };
+                context.SetStepContext(StepName, rollbackData);
 
                 _logger.LogInformation("Created new task {TaskId} for asset {AssetId} in stage {StageId}",
                     newTask.TaskId, context.Asset.AssetId, context.TargetStage.WorkflowStageId);
@@ -95,9 +110,18 @@ public class TaskManagementStep : ITaskManagementStep
             else
             {
                 // Update existing task to appropriate ready status based on target stage type
+                var originalStatus = existingTask.Status;
                 var readyStatus = GetReadyStatusForStageType(context.TargetStage.StageType);
                 await _taskRepository.UpdateTaskStatusAsync(existingTask, readyStatus, context.UserId);
-                _lastOperation = TaskOperation.Updated;
+                
+                // Store rollback data in context
+                var rollbackData = new TaskManagementRollbackData
+                {
+                    LastOperation = TaskManagementRollbackData.TaskOperation.Updated,
+                    UpdatedTaskId = existingTask.TaskId,
+                    OriginalStatus = originalStatus
+                };
+                context.SetStepContext(StepName, rollbackData);
 
                 _logger.LogInformation("Updated existing task {TaskId} to {Status} status for asset {AssetId}",
                     existingTask.TaskId, readyStatus, context.Asset.AssetId);
@@ -156,8 +180,14 @@ public class TaskManagementStep : ITaskManagementStep
 
                 await _taskRepository.AddAsync(newTask);
                 await _taskRepository.SaveChangesAsync();
-                _lastOperation = TaskOperation.Created;
-                _createdTaskId = newTask.TaskId;
+                
+                // Store rollback data in context
+                var rollbackData = new TaskManagementRollbackData
+                {
+                    LastOperation = TaskManagementRollbackData.TaskOperation.Created,
+                    CreatedTaskId = newTask.TaskId
+                };
+                context.SetStepContext(StepName, rollbackData);
 
                 _logger.LogInformation("Created new annotation task {TaskId} with CHANGES_REQUIRED status for asset {AssetId} (imported asset scenario)",
                     newTask.TaskId, context.Asset.AssetId);
@@ -230,10 +260,17 @@ public class TaskManagementStep : ITaskManagementStep
 
         try
         {
-            if (_lastOperation == TaskOperation.Created && _createdTaskId.HasValue)
+            var rollbackData = context.GetStepContext<TaskManagementRollbackData>(StepName);
+            if (rollbackData == null)
+            {
+                _logger.LogInformation("No rollback operations needed for task management - no step context found");
+                return true;
+            }
+
+            if (rollbackData.LastOperation == TaskManagementRollbackData.TaskOperation.Created && rollbackData.CreatedTaskId.HasValue)
             {
                 // Delete the task that was created
-                var taskToDelete = await _taskRepository.GetByIdAsync(_createdTaskId.Value);
+                var taskToDelete = await _taskRepository.GetByIdAsync(rollbackData.CreatedTaskId.Value);
                 if (taskToDelete != null)
                 {
                     _taskRepository.Remove(taskToDelete);
@@ -242,27 +279,37 @@ public class TaskManagementStep : ITaskManagementStep
                 
                     if (!deleteResult)
                     {
-                        _logger.LogError("Failed to delete created task {TaskId} during rollback", _createdTaskId.Value);
+                        _logger.LogError("Failed to delete created task {TaskId} during rollback", rollbackData.CreatedTaskId.Value);
                         return false;
                     }
 
-                    _logger.LogInformation("Successfully deleted created task {TaskId} during rollback", _createdTaskId.Value);
+                    _logger.LogInformation("Successfully deleted created task {TaskId} during rollback", rollbackData.CreatedTaskId.Value);
                     return true;
                 }
                 else
                 {
-                    _logger.LogWarning("Task {TaskId} not found for rollback deletion", _createdTaskId.Value);
+                    _logger.LogWarning("Task {TaskId} not found for rollback deletion", rollbackData.CreatedTaskId.Value);
                     return false;
                 }
             }
-            else if (_lastOperation == TaskOperation.Updated && context.TargetStage != null)
+            else if (rollbackData.LastOperation == TaskManagementRollbackData.TaskOperation.Updated && 
+                     rollbackData.UpdatedTaskId.HasValue && 
+                     rollbackData.OriginalStatus.HasValue)
             {
-                // For updated tasks, we could try to restore the previous status
-                // However, this is complex without storing the original status
-                // For now, we'll log the limitation and return true
-                _logger.LogWarning("Cannot fully rollback task status update for asset {AssetId} - original status not stored",
-                    context.Asset.AssetId);
-                return true;
+                // Restore the original task status
+                var taskToRevert = await _taskRepository.GetByIdAsync(rollbackData.UpdatedTaskId.Value);
+                if (taskToRevert != null)
+                {
+                    await _taskRepository.UpdateTaskStatusAsync(taskToRevert, rollbackData.OriginalStatus.Value, context.UserId);
+                    _logger.LogInformation("Successfully reverted task {TaskId} status to {OriginalStatus} during rollback", 
+                        rollbackData.UpdatedTaskId.Value, rollbackData.OriginalStatus.Value);
+                    return true;
+                }
+                else
+                {
+                    _logger.LogWarning("Task {TaskId} not found for status rollback", rollbackData.UpdatedTaskId.Value);
+                    return false;
+                }
             }
 
             _logger.LogInformation("No rollback operations needed for task management");
