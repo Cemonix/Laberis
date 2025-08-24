@@ -1,5 +1,6 @@
 using server.Models.Domain;
 using server.Models.DTOs.Workflow;
+using server.Models.DTOs.WorkflowStage;
 using server.Models.Common;
 using server.Repositories.Interfaces;
 using server.Services.Interfaces;
@@ -11,6 +12,7 @@ public class WorkflowService : IWorkflowService
 {
     private readonly IWorkflowRepository _workflowRepository;
     private readonly IWorkflowStageService _workflowStageService;
+    private readonly IWorkflowStageAssignmentService _workflowStageAssignmentService;
     private readonly IWorkflowStageConnectionService _workflowStageConnectionService;
     private readonly ITaskService _taskService;
     private readonly LaberisDbContext _context;
@@ -19,6 +21,7 @@ public class WorkflowService : IWorkflowService
     public WorkflowService(
         IWorkflowRepository workflowRepository,
         IWorkflowStageService workflowStageService,
+        IWorkflowStageAssignmentService workflowStageAssignmentService,
         IWorkflowStageConnectionService workflowStageConnectionService,
         ITaskService taskService,
         LaberisDbContext context,
@@ -26,6 +29,7 @@ public class WorkflowService : IWorkflowService
     {
         _workflowRepository = workflowRepository ?? throw new ArgumentNullException(nameof(workflowRepository));
         _workflowStageService = workflowStageService ?? throw new ArgumentNullException(nameof(workflowStageService));
+        _workflowStageAssignmentService = workflowStageAssignmentService ?? throw new ArgumentNullException(nameof(workflowStageAssignmentService));
         _workflowStageConnectionService = workflowStageConnectionService ?? throw new ArgumentNullException(nameof(workflowStageConnectionService));
         _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
         _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -101,11 +105,43 @@ public class WorkflowService : IWorkflowService
 
             _logger.LogInformation("Successfully created workflow with ID: {WorkflowId}", workflow.WorkflowId);
 
-            // Create workflow stages pipeline using the dedicated service
-            var pipelineResult = await _workflowStageService.CreateWorkflowStagesPipelineAsync(
-                workflow.WorkflowId, projectId, createDto.IncludeReviewStage);
-            var initialStageId = pipelineResult.initialStageId;
-            var createdStages = pipelineResult.createdStages;
+            // Validate that stages are provided by frontend
+            if (createDto.Stages.Count == 0)
+            {
+                throw new InvalidOperationException("Workflow stages must be provided by the frontend. No stages were specified.");
+            }
+
+            // Create workflow stages from frontend specification
+            var createdStages = new List<WorkflowStageDto>();
+            foreach (var stageDto in createDto.Stages.OrderBy(s => s.StageOrder))
+            {
+                // Convert CreateWorkflowStageWithAssignmentsDto to CreateWorkflowStageDto
+                var createStageDto = new CreateWorkflowStageDto
+                {
+                    Name = stageDto.Name,
+                    Description = stageDto.Description,
+                    StageOrder = stageDto.StageOrder,
+                    StageType = stageDto.StageType ?? throw new InvalidOperationException($"StageType is required for stage '{stageDto.Name}'"),
+                    IsInitialStage = stageDto.IsInitialStage,
+                    IsFinalStage = stageDto.IsFinalStage,
+                    InputDataSourceId = stageDto.InputDataSourceId,
+                    TargetDataSourceId = stageDto.TargetDataSourceId
+                };
+
+                // Create the stage
+                var createdStage = await _workflowStageService.CreateWorkflowStageAsync(workflow.WorkflowId, createStageDto);
+                createdStages.Add(createdStage);
+
+                // Create assignments for the stage if any are specified
+                if (stageDto.AssignedProjectMemberIds.Count > 0)
+                {
+                    await _workflowStageAssignmentService.CreateMultipleAssignmentsAsync(
+                        createdStage.Id, stageDto.AssignedProjectMemberIds);
+                    
+                    _logger.LogInformation("Created {AssignmentCount} assignments for stage {StageId} ({StageName})",
+                        stageDto.AssignedProjectMemberIds.Count, createdStage.Id, createdStage.Name);
+                }
+            }
 
             // Create stage connections for proper workflow progression using the dedicated service
             if (createdStages.Count > 1)
