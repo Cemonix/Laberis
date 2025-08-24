@@ -7,11 +7,11 @@ COPY *.sln ./
 COPY Server/server.csproj Server/
 COPY Server.Tests/Server.Tests.csproj Server.Tests/
 
-# Restore dependencies
-RUN dotnet restore
-
 # Copy everything else
 COPY . ./
+
+# Restore dependencies
+RUN dotnet restore
 
 # Build and publish the application
 RUN dotnet publish Server/server.csproj -c Release -o out --no-restore

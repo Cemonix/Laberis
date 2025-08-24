@@ -53,14 +53,7 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env.prod
-    environment:
-      # Docker-specific overrides for service discovery
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__PostgresConnection=Host=postgres;Port=5432;Database=$${POSTGRES_DB};Username=$${POSTGRES_USER};Password=$${POSTGRES_PASSWORD}
-      - MinIO__Endpoint=minio:9000
-      - WebApp__ClientUrl=http://localhost:3000
-    ports:
-      - "5000:5000"
+      - .env.db.prod
     depends_on:
       postgres:
         condition: service_healthy
@@ -79,11 +72,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_BASE_URL=http://localhost:5000/api
+        - VITE_API_BASE_URL=/api
         - VITE_APP_NAME=Laberis
         - VITE_APP_VERSION=0.1.0
     ports:
-      - "3000:80"
+      - "80:8080"
     depends_on:
       - backend
     restart: unless-stopped
