@@ -19,7 +19,6 @@ public record class CreateWorkflowDto
 
     /// <summary>
     /// Workflow stages to create along with the workflow.
-    /// If empty, default stages (annotation and completion) will be created automatically.
     /// </summary>
     public ICollection<CreateWorkflowStageWithAssignmentsDto> Stages { get; init; } = [];
 
