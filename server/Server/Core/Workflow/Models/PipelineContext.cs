@@ -61,14 +61,37 @@ public class PipelineContext
     public WorkflowStage? TargetStage { get; private set; }
 
     /// <summary>
+    /// Step execution context for tracking rollback state per step.
+    /// Key: Step name, Value: Step-specific rollback data
+    /// </summary>
+    public Dictionary<string, object> StepContext { get; private set; } = new();
+
+    /// <summary>
     /// Creates a new context with the target stage set.
     /// </summary>
     public PipelineContext WithTargetStage(WorkflowStage targetStage)
     {
         var newContext = new PipelineContext(Task, Asset, CurrentStage, UserId, Reason)
         {
-            TargetStage = targetStage ?? throw new ArgumentNullException(nameof(targetStage))
+            TargetStage = targetStage ?? throw new ArgumentNullException(nameof(targetStage)),
+            StepContext = new Dictionary<string, object>(StepContext)
         };
         return newContext;
+    }
+
+    /// <summary>
+    /// Sets step-specific context data for rollback purposes.
+    /// </summary>
+    public void SetStepContext<T>(string stepName, T data) where T : class
+    {
+        StepContext[stepName] = data;
+    }
+
+    /// <summary>
+    /// Gets step-specific context data for rollback purposes.
+    /// </summary>
+    public T? GetStepContext<T>(string stepName) where T : class
+    {
+        return StepContext.TryGetValue(stepName, out var data) ? data as T : null;
     }
 }
