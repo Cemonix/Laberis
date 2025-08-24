@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "type-check": "vue-tsc --noEmit",
+    "type-check": "echo '🔍 Running TypeScript check...' && vue-tsc --noEmit --pretty --project tsconfig.app.json",
+    "type-check:verbose": "echo '🔍 Running verbose TypeScript check...' && vue-tsc --noEmit --pretty --listFiles --project tsconfig.app.json",
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "test": "vitest",
