@@ -15,18 +15,14 @@
 
 - [Project Overview](#project-overview)
 - [Key Features](#key-features)
-- [Architecture](#architecture)
 - [Application Showcase](#application-showcase)
 - [Getting Started](#getting-started)
-- [Installation](#installation)
+- [Installation](#installation-options)
 - [Configuration](#configuration)
-- [Running the Application](#running-the-application)
-- [Development](#development)
-- [Testing](#testing)
+- [Quality Assurance](#quality-assurance)
 - [API Documentation](#api-documentation)
-- [Contributing](#contributing)
 - [License](#license)
-- [Support](#support)
+- [Support & Contact](#support--contact)
 
 ---
 
@@ -334,7 +330,7 @@ MINIO_ROOT_PASSWORD=laberis_minio_pass
 
 ---
 
-## Testing & Quality Assurance
+## Quality Assurance
 
 Laberis maintains high code quality with comprehensive testing and automated CI/CD processes.
 
