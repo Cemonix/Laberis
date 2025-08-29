@@ -209,6 +209,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IDashboardAnalyticsService, DashboardAnalyticsService>();
         services.AddScoped<IDashboardConfigurationService, DashboardConfigurationService>();
+        services.AddScoped<IExportService, ExportService>();
 
         return services;
     }
