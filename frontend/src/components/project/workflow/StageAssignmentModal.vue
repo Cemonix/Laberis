@@ -108,13 +108,13 @@ import {computed, onMounted, ref} from 'vue';
 import Button from '@/components/common/Button.vue';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {faPlus, faTrash, faTimes, faInfoCircle} from '@fortawesome/free-solid-svg-icons';
-import type {WorkflowStagePipeline, WorkflowStageAssignment} from '@/types/workflow';
-import type {ProjectMember} from '@/types/projectMember';
-import {ProjectRole} from '@/types/project';
-import {projectMemberService, workflowStageAssignmentService} from '@/services/api/projects';
+import type {WorkflowStagePipeline, WorkflowStageAssignment} from '@/services/project/workflow/workflowStage.types';
+import type {ProjectMember} from '@/services/project/projectMember.types';
+import {ProjectRole} from '@/services/project/project.types';
+import {projectMemberService, workflowStageAssignmentService} from '@/services/project';
 import {useErrorHandler} from '@/composables/useErrorHandler';
-import {AppLogger} from '@/utils/logger';
-import {filterMembersByStageType, getRoleDescriptionForStageType} from '@/core/validation/workflowRoleValidation';
+import {AppLogger} from '@/core/logger/logger';
+import {filterMembersByStageType, getRoleDescriptionForStageType} from '@/core/workflow';
 
 interface Props {
     stage: WorkflowStagePipeline;

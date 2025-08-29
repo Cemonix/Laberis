@@ -34,6 +34,8 @@ const layout = computed(() => {
     return DefaultLayout;
 });
 
+// TODO: Move these loading message helpers to core
+
 // Loading message helpers
 const getAuthLoadingTitle = () => {
     if (authStore.retryingAuth) {

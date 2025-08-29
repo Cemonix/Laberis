@@ -2,8 +2,8 @@ import type { App, DirectiveBinding } from 'vue';
 import { watch } from 'vue';
 import { usePermissionStore } from '@/stores/permissionStore';
 import { useProjectStore } from '@/stores/projectStore';
-import { AppLogger } from '@/utils/logger';
-import type { PermissionDirectiveBinding } from '@/types/permissions';
+import { AppLogger } from '@/core/logger/logger';
+import type { PermissionDirectiveBinding } from '@/services/auth/permissions.types';
 
 const logger = AppLogger.createServiceLogger('vPermission');
 

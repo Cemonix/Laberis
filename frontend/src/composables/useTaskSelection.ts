@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue';
-import type { TaskSelectionManager, SelectionState } from '@/types/task';
-import type { TaskTableRow } from '@/types/task';
-import { AppLogger } from '@/utils/logger';
+import type { TaskSelectionManager, SelectionState } from '@/services/project/task/taskSelection.types';
+import type { TaskTableRow } from '@/services/project/task/task.types';
+import { AppLogger } from '@/core/logger/logger';
 
 /**
  * Composable for managing task selection state across multiple pages

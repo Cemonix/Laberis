@@ -9,7 +9,7 @@
 import {computed} from 'vue';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {faArchive, faCheckCircle, faHourglass, faPause, faPlay, faForward, faPen, faEye, faFlag, faBan, faExclamationTriangle} from '@fortawesome/free-solid-svg-icons';
-import type {TaskStatus} from '@/types/task';
+import type {TaskStatus} from '@/services/project/task/task.types';
 
 interface Props {
     status: TaskStatus;

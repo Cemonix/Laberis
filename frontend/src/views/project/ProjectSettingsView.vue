@@ -24,7 +24,7 @@ import {computed} from 'vue';
 import {useRoute} from 'vue-router';
 import MembersSection from '@/components/project/settings/MembersSection.vue';
 import {usePermissions} from '@/composables/usePermissions';
-import {PERMISSIONS} from '@/types/permissions';
+import {PERMISSIONS} from '@/services/auth/permissions.types';
 
 const route = useRoute();
 const { hasProjectPermission } = usePermissions();

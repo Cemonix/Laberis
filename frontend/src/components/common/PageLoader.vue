@@ -34,9 +34,16 @@
 </template>
 
 <script setup lang="ts">
-import type { PageLoaderProps } from '@/types/components/pageLoader';
+export interface Props {
+    title?: string;
+    subtitle?: string;
+    message?: string;
+    showProgress?: boolean;
+    progress?: number;
+    transparent?: boolean;
+}
 
-withDefaults(defineProps<PageLoaderProps>(), {
+withDefaults(defineProps<Props>(), {
     title: 'Loading...',
     subtitle: '',
     message: '',

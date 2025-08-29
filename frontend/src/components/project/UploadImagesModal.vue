@@ -163,13 +163,13 @@
 import {computed, ref} from 'vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import Button from '@/components/common/Button.vue';
-import type {DataSource} from '@/types/dataSource/dataSource';
-import {NoFilesProvidedError, UploadError} from '@/types/asset';
-import {ApiResponseError, NetworkError, ServerError} from '@/types/common/errors';
-import {AppLogger} from '@/utils/logger';
+import type {DataSource} from '@/services/project/dataSource/dataSource.types';
+import {NoFilesProvidedError, UploadError} from '@/services/project/asset';
+import {ApiResponseError, NetworkError, ServerError} from '@/core/errors/errors';
+import {AppLogger} from '@/core/logger/logger';
 import {useAlert} from '@/composables/useAlert';
 import {useToast} from '@/composables/useToast';
-import {assetService} from '@/services/api/projects';
+import {assetService} from '@/services/project';
 
 const logger = AppLogger.createComponentLogger('UploadImagesModal');
 

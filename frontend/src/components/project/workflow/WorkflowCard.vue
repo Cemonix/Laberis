@@ -57,9 +57,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { type Workflow, type WorkflowStage } from '@/types/workflow';
-import { type ProjectRole } from '@/types/project/project';
-import { WorkflowNavigationHelper } from '@/core/navigation';
+import { type Workflow } from '@/services/project/workflow/workflow.types';
+import { type WorkflowStage } from '@/services/project/workflow/workflowStage.types';
+import { type ProjectRole } from '@/services/project/project.types';
+import { WorkflowNavigationHelper } from '@/core/workflow';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faDiagramProject } from '@fortawesome/free-solid-svg-icons';
 

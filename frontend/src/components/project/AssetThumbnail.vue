@@ -58,12 +58,12 @@
 </template>
 
 <script setup lang="ts">
-import {computed, ref} from 'vue';
-import {useRoute} from 'vue-router';
-import type {Asset} from '@/types/asset/asset';
+import { computed, ref } from 'vue';
+import { useRoute } from 'vue-router';
+import type { Asset } from '@/core/asset/asset.types';
 import Card from '@/components/common/Card.vue';
 import Button from '@/components/common/Button.vue';
-import {AppLogger} from '@/utils/logger';
+import { AppLogger } from '@/core/logger/logger';
 
 const logger = AppLogger.createComponentLogger('AssetThumbnail');
 

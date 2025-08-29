@@ -157,7 +157,7 @@ import {
     faSortUp
 } from '@fortawesome/free-solid-svg-icons';
 import Button from '@/components/common/Button.vue';
-import type {TableAction, TableColumn, TablePagination, TableRowAction} from '@/types/common';
+import type {TableAction, TableColumn, TablePagination, TableRowAction} from '@/core/table/table.types';
 
 interface Props {
     data: T[];

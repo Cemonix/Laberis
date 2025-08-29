@@ -44,7 +44,7 @@
 import {ref, computed, watch} from "vue";
 import Form from "@/components/common/Form.vue";
 import Button from "@/components/common/Button.vue";
-import type {FormPayloadLabelScheme, LabelScheme} from "@/types/label/labelScheme";
+import type {FormPayloadLabelScheme, LabelScheme} from "@/services/project/labelScheme/label.types";
 import {useAlert} from "@/composables/useAlert";
 
 const props = defineProps<{

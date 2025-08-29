@@ -194,7 +194,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import * as d3 from "d3";
-import type { UserPerformanceDto } from "@/types/dashboard/dashboard";
+import type { UserPerformanceDto } from "@/services/project/dashboard/dashboard.types";
 
 interface Props {
     data?: UserPerformanceDto[];

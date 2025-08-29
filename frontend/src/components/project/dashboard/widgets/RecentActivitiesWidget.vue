@@ -64,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import type { RecentActivityDto } from "@/types/dashboard/dashboard";
+import type { RecentActivityDto } from "@/services/project/dashboard/dashboard.types";
 
 interface Props {
     data?: RecentActivityDto[];

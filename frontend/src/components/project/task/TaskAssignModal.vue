@@ -67,13 +67,13 @@
 import { ref, computed, watch } from 'vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import Button from '@/components/common/Button.vue';
-import type { TaskTableRow } from '@/types/task';
-import type { ProjectMember } from '@/types/projectMember/projectMember';
+import type { TaskTableRow } from '@/services/project/task/task.types';
+import type { ProjectMember } from '@/services/project/projectMember.types';
 import { useProjectStore } from '@/stores/projectStore';
 import { useAuthStore } from '@/stores/authStore';
-import { taskService } from '@/services/api/projects';
-import { AppLogger } from '@/utils/logger';
-import type { ProjectRole } from '@/types/project/project';
+import { taskService } from '@/services/project';
+import { AppLogger } from '@/core/logger/logger';
+import type { ProjectRole } from '@/services/project/project.types';
 
 interface Props {
     show: boolean;

@@ -93,11 +93,11 @@ import {computed, onMounted, reactive, ref} from 'vue';
 import Button from '@/components/common/Button.vue';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {faTimes} from '@fortawesome/free-solid-svg-icons';
-import type {WorkflowStagePipeline, UpdateWorkflowStageRequest} from '@/types/workflow';
-import {formatStageType} from '@/types/workflow';
-import {workflowStageService} from '@/services/api/projects';
+import type {WorkflowStagePipeline, UpdateWorkflowStageRequest} from '@/services/project/workflow/workflowStage.types';
+import {formatStageType} from '@/services/project/workflow/workflowStage.types';
+import {workflowStageService} from '@/services/project';
 import {useErrorHandler} from '@/composables/useErrorHandler';
-import {AppLogger} from '@/utils/logger';
+import {AppLogger} from '@/core/logger/logger';
 
 interface Props {
     stage: WorkflowStagePipeline;

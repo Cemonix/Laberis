@@ -124,8 +124,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import Button from '@/components/common/Button.vue';
 import TaskStatusBadge from '@/components/project/task/TaskStatusBadge.vue';
-import type {TaskTableRow} from '@/types/task';
-import {TaskStatus} from '@/types/task';
+import type {TaskTableRow} from '@/services/project/task/task.types';
+import {TaskStatus} from '@/services/project/task/task.types';
 
 interface Props {
     show: boolean;

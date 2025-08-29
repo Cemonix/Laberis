@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import { useWorkspaceStore } from "../workspaceStore";
-import { ToolName } from "@/types/workspace/tools";
-import type { ImageDimensions } from "@/types/image/imageDimensions";
-import type { Point } from "@/types/common/point";
-import type { Annotation } from "@/types/workspace/annotation";
-import { AnnotationType } from "@/types/workspace/annotation";
-import type { LabelScheme } from "@/types/label/labelScheme";
-import { AssetStatus } from "@/types/asset/asset";
+import { ToolName, type Tool } from "@/core/workspace/tools.types";
+import type { ImageDimensions } from "@/core/asset/asset.types";
+import type { Point } from "@/core/geometry/geometry.types";
+import type { Annotation } from "@/core/workspace/annotation.types";
+import { AnnotationType } from "@/core/workspace/annotation.types";
+import type { LabelScheme } from "@/services/project/labelScheme/label.types";
+import { AssetStatus } from '@/core/asset/asset.types';
 
 // Mock the services from projects
-vi.mock("@/services/api/projects", () => ({
+vi.mock("@/services/projects", () => ({
     annotationService: {
         getAnnotationsForAsset: vi.fn(),
         createAnnotation: vi.fn(),
@@ -41,7 +41,7 @@ import {
     annotationService,
     assetService, 
     labelSchemeService 
-} from "@/services/api/projects";
+} from "@/services/project";
 
 // Mock the timer utility
 vi.mock("@/utils/timer", () => ({
@@ -164,7 +164,7 @@ describe("Workspace Store", () => {
         it("should have default available tools", () => {
             expect(workspaceStore.availableTools).toHaveLength(6);
             expect(
-                workspaceStore.availableTools.map((tool) => tool.id)
+                workspaceStore.availableTools.map((tool: Tool) => tool.id)
             ).toEqual([
                 ToolName.CURSOR,
                 ToolName.POINT,
@@ -293,7 +293,7 @@ describe("Workspace Store", () => {
             });
 
             // Mock task service
-            const { taskService } = await import("@/services/api/projects");
+            const { taskService } = await import("@/services/project");
             vi.mocked(taskService.getTasksForAsset).mockResolvedValue([]);
 
             await workspaceStore.loadAsset("1", "1");
@@ -301,7 +301,7 @@ describe("Workspace Store", () => {
             expect(workspaceStore.currentProjectId).toBe("1");
             expect(workspaceStore.currentAssetId).toBe("1");
             expect(workspaceStore.currentImageUrl).toBe("https://picsum.photos/800/600?random=123");
-            expect(workspaceStore.imageNaturalDimensions).toBeNull();
+            expect(workspaceStore.imageNaturalDimensions).toEqual({ width: 800, height: 600 });
             expect(workspaceStore.annotations).toEqual([mockAnnotation]);
             expect(workspaceStore.currentLabelId).toBeNull();
             expect(workspaceStore.activeTool).toBe(ToolName.CURSOR);

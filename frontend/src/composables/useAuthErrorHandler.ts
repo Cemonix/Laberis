@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/stores/authStore';
 import { useRouter } from 'vue-router';
-import { AppLogger } from '@/utils/logger';
+import { AppLogger } from '@/core/logger/logger';
 
 const logger = AppLogger.createServiceLogger('AuthErrorHandler');
 

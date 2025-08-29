@@ -77,7 +77,7 @@
 import {computed} from 'vue';
 import Button from '@/components/common/Button.vue';
 import WorkflowStageCard from './WorkflowStageCard.vue';
-import type {WorkflowStagePipeline} from '@/types/workflow';
+import type {WorkflowStagePipeline} from '@/services/project/workflow/workflowStage.types';
 
 interface Props {
     workflowId: number;

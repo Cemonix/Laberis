@@ -1,13 +1,13 @@
 import { ref, computed } from 'vue';
-import type { Asset } from '@/types/asset';
-import type { Annotation } from '@/types/workspace/annotation';
-import type { TaskTableRow } from '@/types/task';
-import { assetService, annotationService } from '@/services/api/projects';
-import { AppLogger } from '@/utils/logger';
+import type { Annotation } from '@/core/workspace/annotation.types';
+import type { TaskTableRow } from '@/services/project/task/task.types';
+import { assetService, annotationService } from '@/services/project';
+import { AppLogger } from '@/core/logger/logger';
 import { 
     AnnotationTypeGuards, 
     AnnotationHelpers,
-} from '@/types/workspace/annotationHelpers';
+} from '@/core/workspace/annotationHelpers.types';
+import type { Asset } from '@/core/asset/asset.types';
 
 const logger = AppLogger.createComponentLogger('useAssetPreview');
 

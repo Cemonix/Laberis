@@ -1,17 +1,12 @@
 import { defineStore } from "pinia";
-import type {
-    AuthTokens,
-    LoginDto,
-    RegisterDto,
-    UserDto,
-} from "@/types/auth/auth";
+
 import { authService } from "@/services/auth/authService";
 import { env } from "@/config/env";
-import { RoleEnum } from "@/types/auth/role";
-import { AppLogger } from "@/utils/logger";
-import { LastProjectManager } from "@/core/storage";
+import { AppLogger } from "@/core/logger/logger";
+import { LastProjectManager } from "@/core/persistence";
 import { usePermissionStore } from "./permissionStore";
-import { isUnauthorizedError } from "@/types/common/errors";
+import { isUnauthorizedError } from "@/core/errors/errors";
+import type { AuthTokens, LoginDto, RegisterDto, RoleEnum, UserDto } from "@/services/auth/auth.types";
 
 const logger = AppLogger.createStoreLogger('AuthStore');
 

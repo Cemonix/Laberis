@@ -1,5 +1,5 @@
-import type { Environment } from "@/types/environment";
-import { LogLevel, type LogConfig } from "@/types/logging";
+import type { Environment } from "./config.types";
+import { LogLevel, type LogConfig } from "@/core/logger/logger.types";
 
 function validateEnv(environment: Environment): void {
     const required = [

@@ -91,12 +91,12 @@ import {computed, onMounted, ref} from "vue";
 import {useRoute, useRouter} from "vue-router";
 import {useAuthStore} from "@/stores/authStore";
 import {useToast} from "@/composables/useToast";
-import {projectInvitationService} from "@/services/api";
-import {projectService} from "@/services/api/projects";
+import {invitationService} from "@/services/invitation";
+import {projectService} from "@/services/project";
 import Button from "@/components/common/Button.vue";
-import type {ProjectInvitationDto} from "@/types/projectInvitation";
-import type {Project} from "@/types/project/project";
-import {AppLogger} from "@/utils/logger";
+import type {ProjectInvitationDto} from "@/services/invitation/invitation.types";
+import type {Project} from "@/services/project/project.types";
+import {AppLogger} from "@/core/logger/logger";
 
 const logger = AppLogger.createComponentLogger('InviteAcceptView');
 
@@ -133,7 +133,7 @@ const validateInvitationToken = async (token: string): Promise<void> => {
     errorMessage.value = "";
     
     try {
-        const invitation = await projectInvitationService.validateInvitationToken(token);
+        const invitation = await invitationService.validateInvitationToken(token);
         invitationData.value = invitation;
         
         // Fetch project details to get the project name
@@ -167,7 +167,7 @@ const handleAcceptInvitation = async (): Promise<void> => {
     errorMessage.value = "";
     
     try {
-        await projectInvitationService.acceptInvitation(inviteToken.value);
+        await invitationService.acceptInvitation(inviteToken.value);
         isAccepted.value = true;
         showSuccess("Invitation Accepted", "You have successfully joined the project!");
     } catch (error) {

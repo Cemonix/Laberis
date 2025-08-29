@@ -99,10 +99,12 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import { ToolName } from '@/types/workspace/tools';
+import { ToolName } from '@/core/workspace/tools.types';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import Button from '@/components/common/Button.vue';
-import { AppLogger } from '@/utils/logger';
+import { AppLogger } from '@/core/logger/logger';
+import type { Label } from '@/services/project/labelScheme/label.types';
+import type { Annotation } from '@/core/workspace/annotation.types';
 
 const logger = AppLogger.createComponentLogger('WorkspaceSidebar');
 
@@ -128,7 +130,7 @@ const filteredLabels = computed(() => {
     }
     
     const query = labelSearchQuery.value.toLowerCase().trim();
-    return availableLabels.value.filter(label => 
+    return availableLabels.value.filter((label: Label) => 
         label.name.toLowerCase().includes(query) ||
         (label.description && label.description.toLowerCase().includes(query))
     );
@@ -155,10 +157,10 @@ const selectLabel = (labelId: number) => {
 
 // Helper functions
 const getLabelUsageCount = (labelId: number): number => {
-    return annotations.value.filter(annotation => annotation.labelId === labelId).length;
+    return annotations.value.filter((annotation: Annotation) => annotation.labelId === labelId).length;
 };
 
-const getLabelTooltip = (label: any, index: number): string => {
+const getLabelTooltip = (label: Label, index: number): string => {
     const usageCount = getLabelUsageCount(label.labelId);
     const shortcut = index < 9 ? ` (Press ${index + 1})` : '';
     const usage = usageCount > 0 ? ` • ${usageCount} annotations` : '';

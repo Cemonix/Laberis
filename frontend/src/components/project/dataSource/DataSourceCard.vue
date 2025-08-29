@@ -55,7 +55,7 @@
 import {computed, ref} from "vue";
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {faEye, faUpload, faDownload, faDatabase} from '@fortawesome/free-solid-svg-icons';
-import type {DataSource} from "@/types/dataSource/dataSource";
+import type {DataSource} from "@/services/project/dataSource/dataSource.types";
 import Card from "@/components/common/Card.vue";
 import Button from "@/components/common/Button.vue";
 import UploadImagesModal from "@/components/project/UploadImagesModal.vue";
