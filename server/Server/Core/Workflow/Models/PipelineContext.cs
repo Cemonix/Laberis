@@ -71,6 +71,7 @@ public class PipelineContext
     /// </summary>
     public PipelineContext WithTargetStage(WorkflowStage targetStage)
     {
+        // Create a new context to keep the original context unchanged - immutability due to threading
         var newContext = new PipelineContext(Task, Asset, CurrentStage, UserId, Reason)
         {
             TargetStage = targetStage ?? throw new ArgumentNullException(nameof(targetStage)),
