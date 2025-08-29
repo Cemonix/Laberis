@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { dashboardService } from "@/services/api/projects/dashboardService";
+import { dashboardService } from "@/services/project";
 import type { 
     DashboardState, 
     DashboardLayoutDto,
@@ -7,9 +7,9 @@ import type {
     WidgetInstanceDto,
     WidgetDataRequestDto,
     WidgetDataDto
-} from "@/types/dashboard/dashboard";
+} from "@/services/project/dashboard/dashboard.types";
 import { useErrorHandler } from "@/composables/useErrorHandler";
-import { AppLogger } from "@/utils/logger";
+import { AppLogger } from "@/core/logger/logger";
 import { useProjectStore } from "@/stores/projectStore";
 
 const logger = AppLogger.createServiceLogger("DashboardStore");

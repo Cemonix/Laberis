@@ -52,12 +52,13 @@ import {useRoute, useRouter} from 'vue-router';
 import WorkflowPipelineViewer from '@/components/project/workflow/WorkflowPipelineViewer.vue';
 import StageAssignmentModal from '@/components/project/workflow/StageAssignmentModal.vue';
 import StageEditModal from '@/components/project/workflow/StageEditModal.vue';
-import type {WorkflowStagePipeline, WorkflowStage, WorkflowStageConnection} from '@/types/workflow';
-import {workflowStageService} from '@/services/api/projects';
+import type {WorkflowStagePipeline, WorkflowStageConnection} from '@/services/project/workflow/workflowStage.types';
+import type {WorkflowStage} from '@/services/project/workflow/workflowStage.types';
+import {workflowStageService} from '@/services/project';
 import {useErrorHandler} from '@/composables/useErrorHandler';
 import {usePermissions} from '@/composables/usePermissions';
-import {PERMISSIONS} from '@/types/permissions';
-import {AppLogger} from '@/utils/logger';
+import {PERMISSIONS} from '@/services/auth/permissions.types';
+import {AppLogger} from '@/core/logger/logger';
 
 const logger = AppLogger.createComponentLogger('WorkflowPipelineView');
 const route = useRoute();
@@ -107,7 +108,7 @@ const loadPipelineData = async () => {
         );
         
         workflowName.value = workflowWithStages.name;
-        
+
         // Transform WorkflowStage[] to WorkflowStagePipeline[]
         pipelineStages.value = workflowWithStages.stages.map((stage: WorkflowStage) => ({
             id: stage.id,

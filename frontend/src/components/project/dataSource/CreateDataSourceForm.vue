@@ -33,9 +33,9 @@
 import { ref, onMounted } from 'vue';
 import Form from '@/components/common/Form.vue';
 import Button from '@/components/common/Button.vue';
-import { DataSourceType, type CreateDataSourceRequest } from '@/types/dataSource';
+import { DataSourceType, type CreateDataSourceRequest } from '@/services/project/dataSource/dataSource.types';
 import { useToast } from '@/composables/useToast';
-import { dataSourceService } from '@/services/api/projects';
+import { dataSourceService } from '@/services/project';
 
 const { showWarning, showError, showApiError } = useToast();
 

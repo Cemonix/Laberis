@@ -7,9 +7,10 @@ import './styles/underline-animation.css'
 import App from './App.vue'
 import router from './router'
 
-import {setupInterceptors} from '@/services/api/apiClient'
+import {setupInterceptors} from '@/services/apiClient'
 import {useAuthStore} from '@/stores/authStore'
-import {logger, piniaLogger, AppLogger} from '@/utils/logger'
+import {usePermissionStore} from '@/stores/permissionStore'
+import {logger, piniaLogger, AppLogger} from '@/core/logger/logger'
 import {useErrorHandler} from '@/composables/useErrorHandler'
 import {registerPermissionDirective} from '@/directives/vPermission';
 import {clickOutside} from '@/directives/clickOutside';
@@ -44,7 +45,8 @@ async function initializeApp() {
     app.directive('click-outside', clickOutside);
 
     const authStore = useAuthStore();
-    setupInterceptors(authStore);
+    const permissionStore = usePermissionStore();
+    setupInterceptors(authStore, permissionStore);
     
     // Auth will be initialized lazily by the router when needed
     // This prevents unnecessary token refresh attempts on public pages

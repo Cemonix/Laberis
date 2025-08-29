@@ -72,7 +72,7 @@ import {useAuthStore} from "@/stores/authStore";
 import {useToast} from "@/composables/useToast";
 import Button from "@/components/common/Button.vue";
 import Form from "@/components/common/Form.vue";
-import {AppLogger} from "@/utils/logger";
+import {AppLogger} from "@/core/logger/logger";
 
 const logger = AppLogger.createComponentLogger('LoginView');
 

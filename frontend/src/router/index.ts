@@ -6,7 +6,8 @@ import WorkspaceLayout from '@/layouts/WorkspaceLayout.vue';
 import DataExplorerLayout from '@/layouts/DataExplorerLayout.vue';
 import { useAuthStore } from '@/stores/authStore';
 import { usePermissionStore } from '@/stores/permissionStore';
-import { AppLogger } from '@/utils/logger';
+import { AppLogger } from '@/core/logger/logger';
+import { PUBLIC_ROUTE_NAMES, AUTH_ROUTE_NAMES } from './routes';
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -171,9 +172,6 @@ const router = createRouter({
     routes,
 });
 
-const publicRoutes = ['Login', 'Register', 'Home', 'InviteAccept', 'EmailVerification'];
-const authRoutes = ['Login', 'Register'];
-
 const logger = AppLogger.createServiceLogger('Router');
 
 // Navigation guards
@@ -181,8 +179,8 @@ router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
     const permissionStore = usePermissionStore();
     
-    const isPublicRoute = publicRoutes.includes(to.name as string);
-    const isAuthRoute = authRoutes.includes(to.name as string);
+    const isPublicRoute = PUBLIC_ROUTE_NAMES.includes(to.name as typeof PUBLIC_ROUTE_NAMES[number]);
+    const isAuthRoute = AUTH_ROUTE_NAMES.includes(to.name as typeof AUTH_ROUTE_NAMES[number]);
     
     // Initialize auth only when:
     // 1. Accessing a protected route, OR

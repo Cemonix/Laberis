@@ -118,7 +118,7 @@ import Button from "@/components/common/Button.vue";
 import { useDashboardStore } from "@/stores/dashboardStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useErrorHandler } from "@/composables/useErrorHandler";
-import { AppLogger } from "@/utils/logger";
+import { AppLogger } from "@/core/logger/logger";
 
 // Props (from router)
 interface Props {

@@ -69,9 +69,9 @@ import Button from '@/components/common/Button.vue';
 import TaskPriorityCell from './TaskPriorityCell.vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faExclamationTriangle, faArrowUp, faMinus } from '@fortawesome/free-solid-svg-icons';
-import type { TaskTableRow } from '@/types/task';
-import { taskService } from '@/services/api/projects';
-import { AppLogger } from '@/utils/logger';
+import type { TaskTableRow } from '@/services/project/task/task.types';
+import { taskService } from '@/services/project';
+import { AppLogger } from '@/core/logger/logger';
 
 interface Props {
     show: boolean;

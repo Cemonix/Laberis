@@ -1,0 +1,1 @@
+export { isPermissionChangingEndpoint, getPermissionChangeDescription } from './permissionEndpoints';

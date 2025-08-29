@@ -152,9 +152,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import type { Annotation } from '@/types/workspace/annotation';
-import { AnnotationType } from '@/types/workspace/annotation';
-import type { Label } from '@/types/label/label';
+import type { Annotation } from '@/core/workspace/annotation.types';
+import { AnnotationType } from '@/core/workspace/annotation.types';
+import type { Label } from '@/services/project/labelScheme/label.types';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { 
     faEye, 
@@ -169,7 +169,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import Button from '@/components/common/Button.vue';
-import {AppLogger} from "@/utils/logger";
+import {AppLogger} from "@/core/logger/logger";
 
 const logger = AppLogger.createComponentLogger('AnnotationCanvas');
 

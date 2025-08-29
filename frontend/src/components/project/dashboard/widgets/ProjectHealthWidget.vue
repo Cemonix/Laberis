@@ -151,7 +151,7 @@ import {
     faExclamationTriangle 
 } from "@fortawesome/free-solid-svg-icons";
 import * as d3 from "d3";
-import type { ProjectHealthDto } from "@/types/dashboard/dashboard";
+import type { ProjectHealthDto } from "@/services/project/dashboard/dashboard.types";
 
 interface Props {
     data?: ProjectHealthDto;

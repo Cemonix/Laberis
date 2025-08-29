@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
 import {computed} from "vue";
-import type {Project} from "@/types/project/project";
+import type {Project} from "@/services/project/project.types";
 import Card from "@/components/common/Card.vue";
 
 const props = defineProps<{

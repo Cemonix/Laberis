@@ -459,15 +459,15 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import type {StepperStep} from '@/components/common/Stepper.vue';
 import Stepper from '@/components/common/Stepper.vue';
-import type {CreateWorkflowWithStagesRequest, Workflow} from '@/types/workflow';
-import {WorkflowStageType} from '@/types/workflow';
-import type {ProjectMember} from '@/types/projectMember';
-import type {DataSource} from '@/types/dataSource';
-import type {LabelScheme} from '@/types/label/labelScheme';
-import {projectMemberService, dataSourceService, labelSchemeService, workflowService} from '@/services/api/projects';
-import {AppLogger} from '@/utils/logger';
+import type {CreateWorkflowWithStagesRequest, Workflow} from '@/services/project/workflow/workflow.types';
+import {WorkflowStageType} from '@/services/project/workflow/workflowStage.types';
+import type {ProjectMember} from '@/services/project/projectMember.types';
+import type {DataSource} from '@/services/project/dataSource/dataSource.types';
+import type {LabelScheme} from '@/services/project/labelScheme/label.types';
+import {projectMemberService, dataSourceService, labelSchemeService, workflowService} from '@/services/project';
+import {AppLogger} from '@/core/logger/logger';
 import {useToast} from '@/composables/useToast';
-import {filterMembersByStageType, getRoleDescriptionForStageType} from '@/core/validation/workflowRoleValidation';
+import {filterMembersByStageType, getRoleDescriptionForStageType} from '@/core/workflow';
 
 const logger = AppLogger.createComponentLogger('CreateWorkflowWizard');
 const { showApiError } = useToast();

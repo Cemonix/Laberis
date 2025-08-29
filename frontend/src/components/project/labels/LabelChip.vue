@@ -6,7 +6,7 @@
 
 <script setup lang="ts">
 import {computed} from 'vue';
-import type {Label} from '@/types/label/label';
+import type {Label} from '@/services/project/labelScheme/label.types';
 
 const props = defineProps<{
     label: Label;

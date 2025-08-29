@@ -72,7 +72,7 @@
 <script setup lang="ts">
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faCog, faRefresh, faTimes, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
-import type { WidgetInstanceDto } from "@/types/dashboard/dashboard";
+import type { WidgetInstanceDto } from "@/services/project/dashboard/dashboard.types";
 import Button from "@/components/common/Button.vue";
 
 interface Props {

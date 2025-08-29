@@ -74,7 +74,7 @@ import 'gridstack/dist/gridstack.min.css';
 import WidgetContainer from "./WidgetContainer.vue";
 import AddWidgetModal from "./AddWidgetModal.vue";
 import WidgetSettingsModal from "./WidgetSettingsModal.vue";
-import type { WidgetInstanceDto, WidgetDefinitionDto } from "@/types/dashboard/dashboard";
+import type { WidgetInstanceDto, WidgetDefinitionDto } from "@/services/project/dashboard/dashboard.types";
 
 // Widget Components (same as before)
 import ProjectHealthWidget from "./widgets/ProjectHealthWidget.vue";

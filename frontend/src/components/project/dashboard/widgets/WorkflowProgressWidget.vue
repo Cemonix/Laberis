@@ -129,7 +129,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import * as d3 from "d3";
-import type { WorkflowProgressDto } from "@/types/dashboard/dashboard";
+import type { WorkflowProgressDto } from "@/services/project/dashboard/dashboard.types";
 
 interface Props {
     data?: WorkflowProgressDto[];

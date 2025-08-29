@@ -28,7 +28,7 @@
 import {ref} from 'vue';
 import Form from '@/components/common/Form.vue';
 import Button from '@/components/common/Button.vue';
-import {ProjectType} from '@/types/project/project';
+import {ProjectType} from '@/services/project/project.types';
 import {useToast} from '@/composables/useToast';
 
 const { showWarning } = useToast();

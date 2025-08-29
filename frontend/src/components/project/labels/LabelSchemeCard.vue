@@ -68,18 +68,16 @@
 
 <script setup lang="ts">
 import {onMounted, ref} from 'vue';
-import type {LabelScheme} from '@/types/label/labelScheme';
-import type {Label} from '@/types/label/label';
-import type {CreateLabelRequest} from '@/types/label/requests';
-import {labelService} from '@/services/api/projects/labelService';
+import type {LabelScheme, Label, CreateLabelRequest} from '@/services/project/labelScheme/label.types';
+import {labelService} from '@/services/project';
 import {useToast} from '@/composables/useToast';
 import LabelChip from './LabelChip.vue';
 import CreateLabelForm from './CreateLabelForm.vue';
 import Button from '@/components/common/Button.vue';
 import Card from '@/components/common/Card.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
-import {AppLogger} from '@/utils/logger';
-import {PERMISSIONS} from '@/types/permissions';
+import {AppLogger} from '@/core/logger/logger';
+import {PERMISSIONS} from '@/services/auth/permissions.types';
 
 const logger = AppLogger.createComponentLogger('LabelSchemeCard');
 

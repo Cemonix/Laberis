@@ -49,7 +49,7 @@
 import { ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
-import { AppLogger } from "@/utils/logger";
+import { AppLogger } from "@/core/logger/logger";
 
 const logger = AppLogger.createComponentLogger('EmailVerificationView');
 

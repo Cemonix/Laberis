@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import type { LabelSchemeDeletionImpact } from '@/types/label/labelScheme';
+import type { LabelSchemeDeletionImpact } from '@/services/project/labelScheme/label.types';
 import Button from '@/components/common/Button.vue';
 
 defineProps<{

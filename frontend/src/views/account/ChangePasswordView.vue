@@ -103,8 +103,8 @@ import Card from '@/components/common/Card.vue';
 import Form from '@/components/common/Form.vue';
 import Button from '@/components/common/Button.vue';
 import { authService } from '@/services/auth/authService';
-import type { ChangePasswordDto } from '@/types/auth/auth';
-import { AppLogger } from '@/utils/logger';
+import type { ChangePasswordDto } from '@/services/auth/auth.types';
+import { AppLogger } from '@/core/logger/logger';
 
 const logger = AppLogger.createComponentLogger('ChangePasswordView');
 

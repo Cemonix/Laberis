@@ -48,14 +48,14 @@ import ProjectCard from '@/components/project/ProjectCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateProjectForm from '@/components/project/CreateProjectForm.vue';
 import Button from '@/components/common/Button.vue';
-import type {Project} from '@/types/project/project';
-import {ProjectType} from '@/types/project/project';
-import {projectService} from '@/services/api/projects';
-import type {CreateProjectRequest} from '@/types/project/requests';
+import type {Project} from '@/services/project/project.types';
+import {ProjectType} from '@/services/project/project.types';
+import {projectService} from '@/services/project';
+import type {CreateProjectRequest} from '@/services/project/project.types';
 import {useToast} from '@/composables/useToast';
 import {usePermissions} from '@/composables/usePermissions';
-import { PERMISSIONS } from '@/types/permissions';
-import {AppLogger} from '@/utils/logger';
+import { PERMISSIONS } from '@/services/auth/permissions.types';
+import {AppLogger} from '@/core/logger/logger';
 
 const logger = AppLogger.createComponentLogger('ProjectView');
 

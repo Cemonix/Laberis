@@ -25,19 +25,28 @@
 <script setup lang="ts">
 import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from "vue";
 import {useWorkspaceStore} from '@/stores/workspaceStore';
-import type {Point} from "@/types/common/point";
-import {ToolName} from "@/types/workspace/tools";
-import {AnnotationManager} from "@/core/annotationWorkspace/annotationManager";
-import {StoreError, ToolError} from "@/types/common/errors";
+import type {Point} from "@/core/geometry/geometry.types";
+import {ToolName} from "@/core/workspace/tools.types";
+import {
+    AnnotationManager,
+    findAnnotationAtPoint,
+    updateAnnotationPointLocally,
+    calculateCanvasDimensions,
+    calculateCenterAndFitView,
+    mouseToImageCoordinates,
+    calculateZoomFromWheel,
+    calculateZoomViewOffset,
+    calculateCanvasCursorStyle,
+    renderAnnotation,
+    type AnnotationRenderContext,
+    getAnnotationDisplayColor,
+    separateAnnotationsBySelection
+} from "@/core/workspace";
+import {StoreError, ToolError} from "@/core/errors/errors";
 import AlertModal from "../common/modal/AlertModal.vue";
 import {useAlert} from "@/composables/useAlert";
-import {AppLogger} from "@/utils/logger";
-import {findAnnotationAtPoint} from '@/core/annotationWorkspace/hitDetection';
-import {updateAnnotationPointLocally} from '@/core/annotationWorkspace/coordinateTransforms';
-import {calculateCanvasDimensions, calculateCenterAndFitView, mouseToImageCoordinates, calculateZoomFromWheel, calculateZoomViewOffset} from '@/core/annotationWorkspace/viewport';
-import {calculateCanvasCursorStyle} from '@/core/annotationWorkspace/cursors';
-import {renderAnnotation, type AnnotationRenderContext} from '@/core/annotationWorkspace/annotationRenderer';
-import {getAnnotationDisplayColor, separateAnnotationsBySelection} from '@/core/annotationWorkspace/annotationDisplayUtils';
+import {AppLogger} from "@/core/logger/logger";
+import type { Annotation } from "@/core/workspace/annotation.types";
 
 const logger = AppLogger.createComponentLogger('AnnotationCanvas');
 
@@ -275,7 +284,7 @@ const drawSavedAnnotations = (context: CanvasRenderingContext2D) => {
 
 // Function to save annotation changes to backend
 const saveAnnotationChanges = async (annotationId: number) => {
-    const annotation = annotationsToRender.value?.find(a => a.annotationId === annotationId);
+    const annotation = annotationsToRender.value?.find((a: Annotation) => a.annotationId === annotationId);
     if (!annotation || !annotation.coordinates) return;
 
     try {
@@ -373,7 +382,7 @@ const handleMouseMove = (event: MouseEvent) => {
     if (activeTool.value === ToolName.CURSOR) {
         if (isDraggingHandle.value && selectedAnnotationId.value !== null) {
             // Handle dragging - update annotation coordinates locally only
-            const annotation = annotationsToRender.value?.find(a => a.annotationId === selectedAnnotationId.value);
+            const annotation = annotationsToRender.value?.find((a: Annotation) => a.annotationId === selectedAnnotationId.value);
             if (annotation) {
                 const imageDims = workspaceStore.getCurrentAsset && workspaceStore.getCurrentAsset.width && workspaceStore.getCurrentAsset.height
                     ? { width: workspaceStore.getCurrentAsset.width, height: workspaceStore.getCurrentAsset.height }

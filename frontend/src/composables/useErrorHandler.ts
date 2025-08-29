@@ -1,6 +1,6 @@
 import { useToast } from '@/composables/useToast';
 import { useAlert } from '@/composables/useAlert';
-import { AppLogger } from '@/utils/logger';
+import { AppLogger } from '@/core/logger/logger';
 import {
     AppError,
     NetworkError,
@@ -8,7 +8,7 @@ import {
     ValidationError,
     ToolError,
     UserVisibleError
-} from '@/types/common/errors';
+} from '@/core/errors/errors';
 import { useAuthErrorHandler } from './useAuthErrorHandler';
 
 const logger = AppLogger.createServiceLogger('ErrorHandler');

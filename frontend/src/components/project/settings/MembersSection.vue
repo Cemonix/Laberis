@@ -167,15 +167,15 @@ import {computed, onMounted, reactive, ref} from 'vue';
 import Card from '@/components/common/Card.vue';
 import Button from '@/components/common/Button.vue';
 import Form from '@/components/common/Form.vue';
-import {projectMemberService} from '@/services/api/projects';
+import {projectMemberService} from '@/services/project';
 import {useToast} from '@/composables/useToast';
 import {useConfirm} from '@/composables/useConfirm';
 import {useErrorHandler} from '@/composables/useErrorHandler';
 import {useAuthStore} from '@/stores/authStore';
-import {AppLogger} from '@/utils/logger';
-import type {InviteMemberRequest, ProjectMember} from '@/types/projectMember';
-import {ProjectRole} from '@/types/project';
-import {PERMISSIONS} from '@/types/permissions';
+import {AppLogger} from '@/core/logger/logger';
+import type {InviteMemberRequest, ProjectMember} from '@/services/project/projectMember.types';
+import {ProjectRole} from '@/services/project/project.types';
+import {PERMISSIONS} from '@/services/auth/permissions.types';
 
 const logger = AppLogger.createComponentLogger('MembersSection');
 

@@ -79,11 +79,11 @@
 <script setup lang="ts">
 import {onMounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
-import type {Project} from '@/types/project/project';
-import {projectService} from '@/services/api/projects';
+import type {Project} from '@/services/project/project.types';
+import {projectService} from '@/services/project';
 import {useAlert} from '@/composables/useAlert';
-import {AppLogger} from '@/utils/logger';
-import {PERMISSIONS} from '@/types/permissions';
+import {AppLogger} from '@/core/logger/logger';
+import {PERMISSIONS} from '@/services/auth/permissions.types';
 
 const logger = AppLogger.createComponentLogger('ProjectDetailView');
 

@@ -1,4 +1,4 @@
-import { BaseService } from "../api/base";
+import { BaseService } from "../base/baseService";
 import type { 
     LoginDto, 
     RegisterDto, 
@@ -9,7 +9,7 @@ import type {
     AuthTokens,
     ChangePasswordDto,
     ChangePasswordResponse
-} from "@/types/auth/auth";
+} from "@/services/auth/auth.types";
 
 /**
  * Service class for authentication operations.

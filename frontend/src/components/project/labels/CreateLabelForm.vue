@@ -86,8 +86,8 @@ import {computed, ref} from 'vue';
 import Form from '@/components/common/Form.vue';
 import Button from '@/components/common/Button.vue';
 import LabelChip from './LabelChip.vue';
-import type {CreateLabelRequest} from '@/types/label/requests';
-import {generateRandomColor, isValidHexColor} from '@/utils/colors';
+import type {CreateLabelRequest} from '@/services/project/labelScheme/label.types';
+import {generateRandomColor, isValidHexColor} from '@/core/theming';
 
 const props = defineProps<{
     disabled?: boolean;

@@ -1,8 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import { useAuthStore } from "../authStore";
-import type { AuthTokens, UserDto, LoginDto } from "@/types/auth/auth.ts"
-import { RoleEnum } from "@/types/auth/role";
 
 vi.mock("@/services/auth/authService", () => ({
     authService: {
@@ -14,6 +12,7 @@ vi.mock("@/services/auth/authService", () => ({
 }));
 
 import { authService } from "@/services/auth/authService.ts";
+import { RoleEnum, type AuthTokens, type LoginDto, type UserDto } from "@/services/auth/auth.types";
 
 describe("Auth Store", () => {
     let authStore: ReturnType<typeof useAuthStore>;

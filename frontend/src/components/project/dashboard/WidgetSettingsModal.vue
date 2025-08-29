@@ -144,7 +144,7 @@ import type {
     WidgetInstanceDto,
     WidgetDefinitionDto,
     WidgetSettingDto,
-} from "@/types/dashboard/dashboard";
+} from "@/services/project/dashboard/dashboard.types";
 
 interface Props {
     widget: WidgetInstanceDto;

@@ -86,12 +86,12 @@ import CreateLabelSchemeForm from '@/components/project/labels/CreateLabelScheme
 import DeletionImpactDialog from '@/components/project/labels/DeletionImpactDialog.vue';
 import FloatingActionButton from '@/components/common/FloatingActionButton.vue';
 import Button from '@/components/common/Button.vue';
-import type {FormPayloadLabelScheme, LabelScheme, LabelSchemeDeletionImpact} from '@/types/label/labelScheme';
-import {labelSchemeService, labelService} from '@/services/api/projects';
+import type {FormPayloadLabelScheme, LabelScheme, LabelSchemeDeletionImpact} from '@/services/project/labelScheme/label.types';
+import {labelSchemeService, labelService} from '@/services/project';
 import {useAlert} from '@/composables/useAlert';
 import {useToast} from '@/composables/useToast';
-import {AppLogger} from '@/utils/logger';
-import {PERMISSIONS} from '@/types/permissions';
+import {AppLogger} from '@/core/logger/logger';
+import {PERMISSIONS} from '@/services/auth/permissions.types';
 
 const logger = AppLogger.createComponentLogger('LabelSchemesView');
 

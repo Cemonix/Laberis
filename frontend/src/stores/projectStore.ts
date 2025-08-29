@@ -1,15 +1,15 @@
 import { defineStore } from "pinia";
-import { projectService, projectMemberService } from "@/services/api/projects";
-import type { Project } from "@/types/project/project";
-import type { ProjectMember } from "@/types/projectMember/projectMember";
-import type { Label } from "@/types/label/label";
-import type { ProjectRole } from "@/types/project/project";
+import { projectService, projectMemberService } from "@/services/project";
+import type { Project } from "@/services/project/project.types";
+import type { ProjectMember } from "@/services/project/projectMember.types";
+import type { Label } from "@/services/project/labelScheme/label.types";
+import type { ProjectRole } from "@/services/project/project.types";
 import { useErrorHandler } from "@/composables/useErrorHandler";
-import { AppLogger } from "@/utils/logger";
-import { LastProjectManager, LastStageManager } from "@/core/storage";
-import type { LastStageData } from "@/types/storage";
+import { AppLogger } from "@/core/logger/logger";
+import { LastProjectManager, LastStageManager } from "@/core/persistence";
 import { useAuthStore } from "@/stores/authStore";
-import type { ProjectState } from "@/types/stores/projectStore";
+import type { ProjectState } from "./projectStore.types";
+import type { LastStageData } from "@/core/persistence/lastProject.types";
 
 const logger = AppLogger.createServiceLogger("ProjectStore");
 

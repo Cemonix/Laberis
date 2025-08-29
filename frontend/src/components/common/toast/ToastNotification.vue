@@ -55,7 +55,7 @@ import {
     faInfoCircle,
     faTimes
 } from '@fortawesome/free-solid-svg-icons';
-import type {Toast} from '@/types/toast';
+import type {Toast} from '@/composables/useToast';
 
 const props = defineProps<{
     toast: Toast;

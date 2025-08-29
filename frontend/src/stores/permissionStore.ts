@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
-import { configurationService } from "@/services/api/configuration";
-import type { UserPermissionContext } from "@/types/permissions";
-import { AppLogger } from "@/utils/logger";
+import { permissionService } from "@/services/auth";
+import type { UserPermissionContext } from "@/services/auth/permissions.types";
+import { AppLogger } from "@/core/logger/logger";
 
 const logger = AppLogger.createStoreLogger('PermissionStore');
 
@@ -129,7 +129,7 @@ export const usePermissionStore = defineStore("permissions", {
             
             try {
                 logger.info("Loading user permission context");
-                this.userContext = await configurationService.getUserPermissionContext();
+                this.userContext = await permissionService.getUserPermissionContext();
                 this.isInitialized = true;
                 
                 const permissionCount = this.userContext.permissions.length;
@@ -151,7 +151,7 @@ export const usePermissionStore = defineStore("permissions", {
         async getPagePermissions(page: string, projectId?: number): Promise<string[]> {
             try {
                 logger.debug(`Getting page permissions for: ${page}${projectId ? ` (project: ${projectId})` : ''}`);
-                return await configurationService.getPagePermissions(page, projectId);
+                return await permissionService.getPagePermissions(page, projectId);
             } catch (error) {
                 logger.error(`Failed to get page permissions for ${page}`, error);
                 return [];
@@ -181,7 +181,7 @@ export const usePermissionStore = defineStore("permissions", {
          */
         async reloadConfiguration(): Promise<void> {
             try {
-                await configurationService.reloadPermissionConfiguration();
+                await permissionService.reloadPermissionConfiguration();
                 // Refresh user permissions after configuration reload
                 await this.refreshPermissions();
                 logger.info("Permission configuration reloaded successfully");

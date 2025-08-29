@@ -33,8 +33,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import type { TaskTableRow } from '@/types/task';
-import { TaskStatus } from '@/types/task';
+import type { TaskTableRow } from '@/services/project/task/task.types';
+import { TaskStatus } from '@/services/project/task/task.types';
 
 interface Props {
     /** Show header checkbox (for table header) */

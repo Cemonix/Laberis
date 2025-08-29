@@ -1,6 +1,6 @@
 import { useToast } from '@/composables/useToast';
 import { useRouter } from 'vue-router';
-import { AppLogger } from '@/utils/logger';
+import { AppLogger } from '@/core/logger/logger';
 
 const logger = AppLogger.createServiceLogger('PermissionErrorHandler');
 

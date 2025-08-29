@@ -145,7 +145,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import ModalWindow from "@/components/common/modal/ModalWindow.vue";
 import Button from "@/components/common/Button.vue";
-import type { WidgetDefinitionDto } from "@/types/dashboard/dashboard";
+import type { WidgetDefinitionDto } from "@/services/project/dashboard/dashboard.types";
 
 interface Props {
     widgetDefinitions: WidgetDefinitionDto[];

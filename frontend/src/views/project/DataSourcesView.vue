@@ -57,12 +57,12 @@ import DataSourceCard from '@/components/project/dataSource/DataSourceCard.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import CreateDataSourceForm from '@/components/project/dataSource/CreateDataSourceForm.vue';
 import FloatingActionButton from '@/components/common/FloatingActionButton.vue';
-import {type CreateDataSourceRequest, type DataSource} from '@/types/dataSource';
-import {dataSourceService} from '@/services/api/projects';
+import {type CreateDataSourceRequest, type DataSource} from '@/services/project/dataSource/dataSource.types';
+import {dataSourceService} from '@/services/project';
 import {useAlert} from '@/composables/useAlert';
-import {AppLogger} from '@/utils/logger';
+import {AppLogger} from '@/core/logger/logger';
 import {usePermissions} from '@/composables/usePermissions';
-import {PERMISSIONS} from '@/types/permissions';
+import {PERMISSIONS} from '@/services/auth/permissions.types';
 
 const logger = AppLogger.createComponentLogger('DataSourcesView');
 const route = useRoute();

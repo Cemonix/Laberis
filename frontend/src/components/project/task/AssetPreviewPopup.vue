@@ -103,7 +103,7 @@
 <script setup lang="ts">
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faRefresh, faExclamationTriangle, faShapes } from '@fortawesome/free-solid-svg-icons';
-import type { TaskTableRow } from '@/types/task';
+import type { TaskTableRow } from '@/services/project/task/task.types';
 import { useAssetPreview } from '@/composables/useAssetPreview';
 
 interface Props {

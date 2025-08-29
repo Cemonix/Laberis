@@ -116,7 +116,7 @@ import {
     faSpinner
 } from '@fortawesome/free-solid-svg-icons';
 import Button from '@/components/common/Button.vue';
-import type { ProjectMember } from '@/types/projectMember/projectMember';
+import type { ProjectMember } from '@/services/project/projectMember.types';
 
 interface Props {
     /** Number of selected tasks */

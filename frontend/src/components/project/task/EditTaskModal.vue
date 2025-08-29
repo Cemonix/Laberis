@@ -115,13 +115,13 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import Button from '@/components/common/Button.vue';
 import TaskStatusBadge from './TaskStatusBadge.vue';
-import type { TaskTableRow, UpdateTaskRequest } from '@/types/task';
-import { TaskStatus } from '@/types/task';
-import type { ProjectMember } from '@/types/projectMember';
-import { taskService } from '@/services/api/projects';
+import type { TaskTableRow, UpdateTaskRequest } from '@/services/project/task/task.types';
+import { TaskStatus } from '@/services/project/task/task.types';
+import type { ProjectMember } from '@/services/project/projectMember.types';
+import { taskService } from '@/services/project';
 import { useProjectStore } from '@/stores/projectStore';
 import { useErrorHandler } from '@/composables/useErrorHandler';
-import { AppLogger } from '@/utils/logger';
+import { AppLogger } from '@/core/logger/logger';
 
 interface Props {
     show: boolean;

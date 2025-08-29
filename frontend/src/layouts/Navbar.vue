@@ -32,7 +32,7 @@ import { computed } from 'vue';
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { AppLogger } from "@/utils/logger";
+import { AppLogger } from "@/core/logger/logger";
 
 const logger = AppLogger.createComponentLogger('Navbar');
 

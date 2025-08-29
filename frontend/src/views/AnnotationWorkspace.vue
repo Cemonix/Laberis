@@ -141,7 +141,7 @@ import ModalWindow from "@/components/common/modal/ModalWindow.vue";
 import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
 import {faPause, faForward, faUndo} from "@fortawesome/free-solid-svg-icons";
 import {usePermissions} from "@/composables/usePermissions";
-import {PERMISSIONS} from "@/types/permissions";
+import {PERMISSIONS} from "@/services/auth/permissions.types";
 
 const props = defineProps({
     projectId: {

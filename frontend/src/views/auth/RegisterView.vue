@@ -122,11 +122,11 @@ import {computed, onMounted, ref} from "vue";
 import {useRouter} from "vue-router";
 import {useAuthStore} from "@/stores/authStore";
 import {useToast} from "@/composables/useToast";
-import {projectInvitationService} from "@/services/api";
+import {invitationService} from "@/services/invitation";
 import Button from "@/components/common/Button.vue";
 import Form from "@/components/common/Form.vue";
-import type {ProjectInvitationDto} from "@/types/projectInvitation";
-import {AppLogger} from "@/utils/logger";
+import type {ProjectInvitationDto} from "@/services/invitation/invitation.types";
+import {AppLogger} from "@/core/logger/logger";
 
 const logger = AppLogger.createComponentLogger('RegisterView');
 
@@ -176,7 +176,7 @@ const validateInvitationToken = async (token: string): Promise<void> => {
     isValidatingToken.value = true;
     
     try {
-        const invitation = await projectInvitationService.validateInvitationToken(token);
+        const invitation = await invitationService.validateInvitationToken(token);
         invitationData.value = invitation;
         
         // Pre-fill email if invitation exists

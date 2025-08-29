@@ -72,8 +72,8 @@ import {
     faUsers
 } from '@fortawesome/free-solid-svg-icons';
 import Button from '@/components/common/Button.vue';
-import type {WorkflowStagePipeline} from '@/types/workflow';
-import {formatStageType, WorkflowStageType} from '@/types/workflow';
+import type {WorkflowStagePipeline} from '@/services/project/workflow/workflowStage.types';
+import {formatStageType, WorkflowStageType} from '@/services/project/workflow/workflowStage.types';
 
 interface Props {
     stage: WorkflowStagePipeline;

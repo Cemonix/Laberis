@@ -90,7 +90,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import * as d3 from "d3";
-import type { TaskStatisticsDto } from "@/types/dashboard/dashboard";
+import type { TaskStatisticsDto } from "@/services/project/dashboard/dashboard.types";
 
 interface Props {
     data?: TaskStatisticsDto;

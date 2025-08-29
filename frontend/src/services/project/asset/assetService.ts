@@ -1,0 +1,212 @@
+import { BaseProjectService } from '../baseProjectService';
+import { buildQueryParams } from '@/services/base/requests';
+import type { AssetListParams } from '@/services/project/asset';
+import type { UploadResult, BulkUploadResult } from '@/services/project/asset';
+import { NoFilesProvidedError } from '@/services/project/asset';
+import apiClient from '../../apiClient';
+import { transformApiError, isValidApiResponse, isValidPaginatedResponse } from '@/services/interceptors';
+import type { PaginatedResponse } from '@/services/base/paginatedResponse';
+import type { Asset } from '@/core/asset/asset.types';
+
+/**
+ * Service class for managing assets within projects.
+ * Note: Upload methods use apiClient directly due to FormData requirements.
+ */
+class AssetService extends BaseProjectService {
+    constructor() {
+        super('AssetService');
+    }
+
+    /**
+     * Uploads a single image file to a project's data source
+     */
+    async uploadAsset(
+        projectId: number, 
+        dataSourceId: number, 
+        file: File, 
+        metadata?: string
+    ): Promise<UploadResult> {
+        this.logger.info(`Uploading single asset to project ${projectId}, data source ${dataSourceId}`, {
+            filename: file.name,
+            size: file.size,
+            type: file.type
+        });
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('dataSourceId', dataSourceId.toString());
+            if (metadata) {
+                formData.append('metadata', metadata);
+            }
+
+            const url = this.buildProjectUrl(projectId, 'assets/upload');
+            const response = await apiClient.post<UploadResult>(
+                url,
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                }
+            );
+
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to upload asset - Invalid response format');
+            }
+
+            this.logger.info(`Successfully uploaded asset: ${file.name}`, response.data);
+            return response.data;
+        } catch (error) {
+            throw transformApiError(error, `Failed to upload asset: ${file.name}`);
+        }
+    }
+
+    /**
+     * Uploads multiple image files to a project's data source
+     */
+    async uploadAssets(
+        projectId: number, 
+        dataSourceId: number, 
+        files: File[], 
+        metadata?: string,
+        onProgress?: (progress: number) => void
+    ): Promise<BulkUploadResult> {
+        // Validate that files are provided
+        if (!files || files.length === 0) {
+            this.logger.error('Bulk upload attempted with no files');
+            throw new NoFilesProvidedError();
+        }
+
+        this.logger.info(`Uploading ${files.length} assets to project ${projectId}, data source ${dataSourceId}`, {
+            filenames: files.map(f => f.name),
+            totalSize: files.reduce((sum, f) => sum + f.size, 0)
+        });
+
+        try {
+            const formData = new FormData();
+            
+            files.forEach(file => {
+                formData.append('files', file);
+            });
+            
+            formData.append('dataSourceId', dataSourceId.toString());
+            if (metadata) {
+                formData.append('metadata', metadata);
+            }
+
+            const url = this.buildProjectUrl(projectId, 'assets/upload/bulk');
+            const response = await apiClient.post<BulkUploadResult>(
+                url,
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                    onUploadProgress: (progressEvent) => {
+                        if (onProgress && progressEvent.total) {
+                            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                            onProgress(progress);
+                        }
+                    },
+                }
+            );
+
+            if (!isValidApiResponse(response)) {
+                throw transformApiError(new Error('Invalid response data'), 
+                    'Failed to upload assets - Invalid response format');
+            }
+
+            this.logger.info(`Successfully uploaded ${response.data.successfulUploads} of ${files.length} assets`, response.data);
+            return response.data;
+        } catch (error) {
+            if (error instanceof NoFilesProvidedError) {
+                throw error;
+            }
+            throw transformApiError(error, 'Failed to upload assets');
+        }
+    }
+
+    /**
+     * Gets assets for a specific project with optional filtering and pagination
+     */
+    async getAssets(
+        projectId: number,
+        options: AssetListParams = {}
+    ): Promise<PaginatedResponse<Asset>> {
+        this.logger.info(`Fetching assets for project ${projectId}`, options);
+
+        try {
+            const queryParams = buildQueryParams(options);
+            const url = this.buildProjectUrl(projectId, `assets?${queryParams.toString()}`);
+            
+            const response = await apiClient.get<PaginatedResponse<Asset>>(url);
+
+            if (!isValidPaginatedResponse(response)) {
+                throw transformApiError(new Error('Invalid paginated response structure'), 
+                    'Failed to fetch assets - Invalid response format');
+            }
+
+            this.logger.info(`Fetched ${response.data.data.length} assets for project ${projectId}`, response.data);
+            return response.data;
+        } catch (error) {
+            throw transformApiError(error, 'Failed to fetch assets');
+        }
+    }
+
+    /**
+     * Gets a specific asset by ID
+     */
+    async getAssetById(projectId: number, assetId: number): Promise<Asset> {
+        this.logger.info(`Fetching asset ${assetId} for project ${projectId}`);
+
+        const url = this.buildProjectUrl(projectId, `assets/${assetId}`);
+        const response = await this.get<Asset>(url);
+
+        this.logger.info(`Fetched asset ${assetId} for project ${projectId}`, response);
+        return response;
+    }
+
+    /**
+     * Get the count of available assets for a project
+     */
+    async getAvailableAssetsCount(projectId: number): Promise<number> {
+        this.logger.info(`Checking available assets for project ${projectId}`);
+
+        try {
+            const url = this.buildProjectUrl(projectId, `assets/available-assets-count`);
+            const data = await this.get<{ count: number }>(url);
+
+            this.logger.info(`Project ${projectId} has ${data.count} assets available`);
+
+            return data.count;
+        } catch (error) {
+            this.logger.warn('Failed to check assets availability:', error);
+            return 0;
+        }
+    }
+
+    /**
+     * Gets the count of available assets for a data source in a project
+     */
+    async getAvailableAssetsCountForDataSource(projectId: number, dataSourceId: number): Promise<number> {
+        this.logger.info(`Checking available assets for project ${projectId} in data source ${dataSourceId}`);
+
+        try {
+            const url = this.buildProjectUrl(projectId, `assets/available-assets-for-data-source-count?dataSourceId=${dataSourceId}`);
+            const data = await this.get<{ count: number }>(url);
+
+            const count = data.count;
+
+            this.logger.info(`Project ${projectId} has ${count} assets available in data source ${dataSourceId}`);
+
+            return count;
+        } catch (error) {
+            this.logger.warn('Failed to check assets availability:', error);
+            return 0;
+        }
+    }
+}
+
+export const assetService = new AssetService();
