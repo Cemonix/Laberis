@@ -16,6 +16,16 @@
             </div>
             <div class="view-actions">
                 <Button 
+                    v-if="stageType === 'COMPLETION'"
+                    variant="secondary"
+                    @click="handleExportCoco"
+                    :disabled="isLoading"
+                    class="export-button"
+                >
+                    <font-awesome-icon :icon="faDownload" />
+                    Export COCO
+                </Button>
+                <Button 
                     v-if="stageType !== 'ANNOTATION'"
                     variant="secondary" 
                     @click="showVetoedTasks = !showVetoedTasks"
@@ -178,6 +188,7 @@ import {useRoute, useRouter} from 'vue-router';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {
     faBolt,
+    faDownload,
     faEdit,
     faRefresh,
     faUserCog,
@@ -205,17 +216,19 @@ import { usePermissions } from '@/composables/usePermissions';
 import { useAssetPreview } from '@/composables/useAssetPreview';
 import { PERMISSIONS } from '@/services/auth/permissions.types';
 import { useProjectStore } from '@/stores/projectStore';
-import { taskService, workflowStageService, assetService } from '@/services/project';
+import { taskService, workflowStageService, assetService, exportService } from '@/services/project';
 import { useTaskSelection } from '@/composables/useTaskSelection';
 import { taskBulkOperations } from '@/services/project';
 import { LastStageManager } from '@/core/persistence';
 import { AppLogger } from '@/core/logger/logger';
+import { useToast } from '@/composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
 const { handleError } = useErrorHandler();
 const projectStore = useProjectStore();
 const { hasProjectPermission } = usePermissions();
+const { showToast } = useToast();
 const logger = AppLogger.createComponentLogger('TasksView');
 
 // Selection management
@@ -897,6 +910,40 @@ const handleStatusAction = async (actionKey: string, task: TaskTableRow) => {
         // Error handling is done in individual functions
         // Modal stays open to allow retry
         logger.debug('Status action failed, keeping modal open for retry');
+    }
+};
+
+// Export functions
+const handleExportCoco = async () => {
+    if (!currentStage.value || stageType.value !== 'COMPLETION') {
+        logger.warn('Export attempted from non-completion stage', { stageType: stageType.value });
+        return;
+    }
+
+    try {
+        logger.info('Starting COCO export', { 
+            projectId: projectId.value, 
+            workflowStageId: stageId.value,
+            stageName: stageName.value 
+        });
+
+        showToast('Export', 'Preparing export...', 'info');
+
+        // Use the downloadCocoExport method which handles the download automatically
+        await exportService.downloadCocoExport(
+            projectId.value,
+            stageId.value,
+            true, // includeGroundTruth
+            false // includePredictions
+        );
+
+        showToast('Export', 'Export completed successfully!', 'success');
+
+        logger.info('COCO export completed successfully');
+    } catch (error) {
+        logger.error('Failed to export COCO data', error);
+        handleError(error, 'Failed to export annotations');
+        showToast('Export Error', 'Export failed. Please try again.', 'error');
     }
 };
 
