@@ -4,6 +4,7 @@ export { annotationService } from './annotationService';
 export { assetService } from './asset';
 export { dashboardService } from './dashboard';
 export { dataSourceService } from './dataSource';
+export { exportService } from './export';
 export { labelService, labelSchemeService } from './labelScheme';
 export { taskService, taskBulkOperations } from './task';
 export {
