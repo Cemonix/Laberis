@@ -80,14 +80,15 @@ public class TaskManagementStep : ITaskManagementStep
 
             if (existingTask == null)
             {
-                // Create a new task
+                // Create a new task with appropriate ready status
+                var readyStatus = GetReadyStatusForStageType(context.TargetStage.StageType);
                 var newTask = new LaberisTask
                 {
                     AssetId = context.Asset.AssetId,
                     WorkflowStageId = context.TargetStage.WorkflowStageId,
                     ProjectId = context.Asset.ProjectId,
                     WorkflowId = context.TargetStage.WorkflowId,
-                    Status = TaskStatus.NOT_STARTED,
+                    Status = readyStatus,
                     AssignedToUserId = null, // Will be assigned later based on workflow stage assignments
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -104,8 +105,8 @@ public class TaskManagementStep : ITaskManagementStep
                 };
                 context.SetStepContext(StepName, rollbackData);
 
-                _logger.LogInformation("Created new task {TaskId} for asset {AssetId} in stage {StageId}",
-                    newTask.TaskId, context.Asset.AssetId, context.TargetStage.WorkflowStageId);
+                _logger.LogInformation("Created new task {TaskId} with {Status} status for asset {AssetId} in stage {StageId}",
+                    newTask.TaskId, readyStatus, context.Asset.AssetId, context.TargetStage.WorkflowStageId);
             }
             else
             {
