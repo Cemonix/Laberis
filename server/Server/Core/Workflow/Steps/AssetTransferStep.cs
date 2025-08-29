@@ -43,20 +43,20 @@ public class AssetTransferStep : IAssetTransferStep
         PipelineContext context,
         CancellationToken cancellationToken = default)
     {
-        if (context == null) throw new ArgumentNullException(nameof(context));
-        
+        ArgumentNullException.ThrowIfNull(context);
+
         if (context.TargetStage == null)
         {
             throw new InvalidOperationException("Target stage is required for asset transfer");
         }
 
-        if (context.TargetStage.TargetDataSourceId == null)
+        if (context.CurrentStage.TargetDataSourceId == null)
         {
             throw new InvalidOperationException("Target data source is required for asset transfer");
         }
 
         _logger.LogInformation("Transferring asset {AssetId} from data source {FromDataSource} to {ToDataSource}",
-            context.Asset.AssetId, context.Asset.DataSourceId, context.TargetStage.TargetDataSourceId.Value);
+            context.Asset.AssetId, context.Asset.DataSourceId, context.CurrentStage.TargetDataSourceId.Value);
 
         // Store original data source ID for potential rollback
         _originalDataSourceId = context.Asset.DataSourceId;
@@ -65,23 +65,23 @@ public class AssetTransferStep : IAssetTransferStep
         {
             var transferResult = await _assetService.TransferAssetToDataSourceAsync(
                 context.Asset.AssetId,
-                context.TargetStage.TargetDataSourceId.Value);
+                context.CurrentStage.TargetDataSourceId.Value);
 
             if (!transferResult)
             {
                 throw new InvalidOperationException(
-                    $"Failed to transfer asset {context.Asset.AssetId} to data source {context.TargetStage.TargetDataSourceId.Value}");
+                    $"Failed to transfer asset {context.Asset.AssetId} to data source {context.CurrentStage.TargetDataSourceId.Value}");
             }
 
             _logger.LogInformation("Successfully transferred asset {AssetId} to data source {DataSourceId}",
-                context.Asset.AssetId, context.TargetStage.TargetDataSourceId.Value);
+                context.Asset.AssetId, context.CurrentStage.TargetDataSourceId.Value);
 
             return context;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to transfer asset {AssetId} to data source {DataSourceId}",
-                context.Asset.AssetId, context.TargetStage.TargetDataSourceId.Value);
+                context.Asset.AssetId, context.CurrentStage.TargetDataSourceId.Value);
             throw;
         }
     }
