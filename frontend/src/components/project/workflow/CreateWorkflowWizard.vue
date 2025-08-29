@@ -894,6 +894,9 @@ const handleSubmit = async () => {
             isInitialStage: true,
             isFinalStage: false, // Annotation stage is never final - completion stage is always final
             inputDataSourceId: form.annotationInputDataSourceId as number,
+            targetDataSourceId: form.includeRevision 
+                ? (form.revisionInputDataSourceId as number || undefined)
+                : (form.completionInputDataSourceId as number || undefined),
             assignedProjectMemberIds: form.annotationMembers
         });
 
@@ -907,6 +910,7 @@ const handleSubmit = async () => {
                 isInitialStage: false,
                 isFinalStage: false,
                 inputDataSourceId: form.revisionInputDataSourceId as number || undefined,
+                targetDataSourceId: form.completionInputDataSourceId as number || undefined,
                 assignedProjectMemberIds: form.revisionMembers
             });
         }
@@ -920,6 +924,7 @@ const handleSubmit = async () => {
             isInitialStage: false,
             isFinalStage: true,
             inputDataSourceId: form.completionInputDataSourceId as number || undefined,
+            targetDataSourceId: undefined, // Final stage has no target
             assignedProjectMemberIds: form.completionMembers
         });
 
