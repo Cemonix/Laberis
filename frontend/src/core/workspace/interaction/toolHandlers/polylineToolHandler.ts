@@ -164,6 +164,7 @@ export class PolylineToolHandler implements ToolHandler {
             coordinates: polylineCoordinates,
             assetId: Number(store.currentAssetId),
             taskId: Number(store.currentTaskId),
+            isGroundTruth: true
         };
 
         store.addAnnotation(newAnnotation);

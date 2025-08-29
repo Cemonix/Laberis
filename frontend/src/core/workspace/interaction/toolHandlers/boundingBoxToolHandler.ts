@@ -105,6 +105,7 @@ export class BoundingBoxToolHandler implements ToolHandler {
             coordinates: boundingBoxCoordinates,
             assetId: Number(store.currentAssetId),
             taskId: Number(store.currentTaskId),
+            isGroundTruth: true
         };
 
         store.addAnnotation(newAnnotation);
