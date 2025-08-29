@@ -53,6 +53,7 @@ export class PointToolHandler implements ToolHandler {
             coordinates: pointCoordinates,
             assetId: Number(store.currentAssetId),
             taskId: Number(store.currentTaskId),
+            isGroundTruth: true
         };
 
         store.addAnnotation(newAnnotation);

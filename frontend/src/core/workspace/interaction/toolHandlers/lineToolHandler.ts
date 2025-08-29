@@ -96,6 +96,7 @@ export class LineToolHandler implements ToolHandler {
             coordinates: lineCoordinates,
             assetId: Number(store.currentAssetId),
             taskId: Number(store.currentTaskId),
+            isGroundTruth: true
         };
 
         store.addAnnotation(newAnnotation);
