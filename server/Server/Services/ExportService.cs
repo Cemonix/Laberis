@@ -51,7 +51,7 @@ public class ExportService : IExportService
                 (t.Status == Models.Domain.Enums.TaskStatus.COMPLETED || t.Status == Models.Domain.Enums.TaskStatus.READY_FOR_COMPLETION))
             .Include(t => t.Asset)
             .Include(t => t.Annotations
-                .Where(a => a.DeletedAt == null && (includeGroundTruth && a.IsGroundTruth || includePredictions && a.IsPrediction)))
+                .Where(a => a.DeletedAt == null && ((includeGroundTruth && a.IsGroundTruth) || (includePredictions && a.IsPrediction))))
                 .ThenInclude(a => a.Label)
                 .ThenInclude(l => l.LabelScheme)
             .ToListAsync();
@@ -122,7 +122,12 @@ public class ExportService : IExportService
         var annotationId = 1L;
         foreach (var task in completedTasks.Where(t => t.Annotations.Count != 0))
         {
-            foreach (var annotation in task.Annotations)
+            foreach (var annotation in task.Annotations
+                .Where(
+                    a => a.DeletedAt == null &&
+                    ((includeGroundTruth && a.IsGroundTruth) || (includePredictions && a.IsPrediction))
+                )
+            )
             {
                 var cocoAnnotation = new CocoAnnotationDto
                 {

@@ -102,7 +102,17 @@ public class ExportServiceTests
         Assert.True(firstAnnotation.ImageId > 0);
         Assert.True(firstAnnotation.CategoryId > 0);
         Assert.NotNull(firstAnnotation.Attributes);
-        Assert.True((bool)firstAnnotation.Attributes["is_ground_truth"]);
+        
+        // Handle JsonElement casting for attributes
+        var isGroundTruthValue = firstAnnotation.Attributes["is_ground_truth"];
+        if (isGroundTruthValue is JsonElement jsonElement)
+        {
+            Assert.True(jsonElement.GetBoolean());
+        }
+        else
+        {
+            Assert.True((bool)isGroundTruthValue);
+        }
 
         // Verify category data
         var firstCategory = cocoData.Categories.First();
@@ -136,7 +146,14 @@ public class ExportServiceTests
 
         // Verify prediction annotation exists
         var predictionAnnotations = cocoData.Annotations
-            .Where(a => a.Attributes != null && a.Attributes.ContainsKey("is_prediction") && (bool)a.Attributes["is_prediction"])
+            .Where(a => a.Attributes != null && a.Attributes.ContainsKey("is_prediction"))
+            .Where(a => 
+            {
+                var isPredValue = a.Attributes!["is_prediction"];
+                if (isPredValue is JsonElement jsonElement)
+                    return jsonElement.GetBoolean();
+                return (bool)isPredValue;
+            })
             .ToList();
         Assert.Single(predictionAnnotations);
     }
@@ -167,7 +184,14 @@ public class ExportServiceTests
 
         // Verify no prediction annotations
         var predictionAnnotations = cocoData.Annotations
-            .Where(a => a.Attributes != null && a.Attributes.ContainsKey("is_prediction") && (bool)a.Attributes["is_prediction"])
+            .Where(a => a.Attributes != null && a.Attributes.ContainsKey("is_prediction"))
+            .Where(a => 
+            {
+                var isPredValue = a.Attributes!["is_prediction"];
+                if (isPredValue is JsonElement jsonElement)
+                    return jsonElement.GetBoolean();
+                return (bool)isPredValue;
+            })
             .ToList();
         Assert.Empty(predictionAnnotations);
     }
@@ -330,7 +354,8 @@ public class ExportServiceTests
             ProjectId = project.ProjectId,
             WorkflowId = workflow.WorkflowId,
             WorkflowStageId = workflowStage.WorkflowStageId,
-            Status = server.Models.Domain.Enums.TaskStatus.READY_FOR_COMPLETION,
+            Status = server.Models.Domain.Enums.TaskStatus.COMPLETED,
+            CompletedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
