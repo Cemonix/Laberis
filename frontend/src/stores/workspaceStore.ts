@@ -474,7 +474,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                     labelId: annotation.labelId,
                     isPrediction: annotation.isPrediction || false,
                     confidenceScore: annotation.confidenceScore,
-                    isGroundTruth: annotation.isGroundTruth || false,
+                    isGroundTruth: annotation.isGroundTruth,
                     version: annotation.version || 1,
                     notes: annotation.notes,
                     annotatorEmail: annotation.annotatorEmail,

@@ -75,7 +75,6 @@ export const useProjectStore = defineStore("project", {
                 // Load related data in parallel
                 await Promise.all([
                     this.loadTeamMembers(projectId),
-                    this.loadProjectLabels(projectId),
                 ]);
             } catch (error) {
                 logger.error(`Failed to load project ${projectId}`, error);
@@ -99,23 +98,6 @@ export const useProjectStore = defineStore("project", {
                 handleError(error, "Failed to load team members");
             } finally {
                 this.membersLoading = false;
-            }
-        },
-
-        async loadProjectLabels(projectId: number): Promise<void> {
-            const { handleError } = useErrorHandler();
-
-            this.labelsLoading = true;
-            try {
-                // TODO: This would need a proper API endpoint for project labels
-                // For now, we'll skip this functionality until the API is available
-                this.projectLabels = [];
-                logger.info(`Labels functionality not yet implemented for project ${projectId}`);
-            } catch (error) {
-                logger.error(`Failed to load labels for project ${projectId}`, error);
-                handleError(error, "Failed to load project labels");
-            } finally {
-                this.labelsLoading = false;
             }
         },
 
@@ -210,12 +192,6 @@ export const useProjectStore = defineStore("project", {
         async refreshTeamMembers(): Promise<void> {
             if (this.currentProjectId) {
                 await this.loadTeamMembers(this.currentProjectId);
-            }
-        },
-
-        async refreshProjectLabels(): Promise<void> {
-            if (this.currentProjectId) {
-                await this.loadProjectLabels(this.currentProjectId);
             }
         },
 
