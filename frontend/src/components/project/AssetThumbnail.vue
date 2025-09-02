@@ -84,7 +84,7 @@ const workspaceUrl = computed(() => {
 const showPreview = ref(false);
 
 const hasAnnotations = computed(() => {
-    // This would be determined by actual annotation data
+    // TODO: This would be determined by actual annotation data
     // For now, we'll consider assets with 'annotated' or 'review' statuses to have annotations
     const annotatedStatuses = ['annotated', 'pending_review', 'review_in_progress', 'review_accepted'];
     return props.asset && annotatedStatuses.includes(props.asset.status.toLowerCase());
