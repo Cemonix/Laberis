@@ -35,11 +35,6 @@
                     <font-awesome-icon :icon="faUpload" class="button-icon" />
                     Upload
                 </Button>
-                <!-- TODO: Implement data export functionality (CSV, JSON, annotations) -->
-                <Button variant="secondary" class="action-button export-button" disabled>
-                    <font-awesome-icon :icon="faDownload" class="button-icon" />
-                    Export
-                </Button>
             </div>
         </template>
 
@@ -54,7 +49,7 @@
 <script setup lang="ts">
 import {computed, ref} from "vue";
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
-import {faEye, faUpload, faDownload, faDatabase} from '@fortawesome/free-solid-svg-icons';
+import {faEye, faUpload, faDatabase} from '@fortawesome/free-solid-svg-icons';
 import type {DataSource} from "@/services/project/dataSource/dataSource.types";
 import Card from "@/components/common/Card.vue";
 import Button from "@/components/common/Button.vue";
@@ -197,13 +192,15 @@ const handleUploadComplete = (count: number) => {
 
 .card-actions {
     display: flex;
+    flex-direction: row;
     gap: 0.75rem;
-    flex-wrap: wrap;
 }
 
 .action-button {
     display: flex;
     align-items: center;
+    max-width: 100px;
+    max-height: 45px;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
@@ -214,17 +211,6 @@ const handleUploadComplete = (count: number) => {
 
 .button-icon {
     font-size: 0.875rem;
-}
-
-.export-button {
-    background-color: var(--color-purple-100);
-    color: var(--color-purple-700);
-    border-color: var(--color-purple-200);
-}
-
-.export-button:hover {
-    background-color: var(--color-purple-200);
-    transform: translateY(-1px);
 }
 
 @media (max-width: 768px) {
