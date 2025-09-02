@@ -1135,6 +1135,26 @@ export const useWorkspaceStore = defineStore("workspace", {
             return result.navigation;
         },
 
+        /**
+         * Assign a task to the current user and set its status to IN_PROGRESS
+         * This is used when auto-transitioning to the next task after completion
+         */
+        async assignAndStartNextTask(projectId: number, taskId: number): Promise<void> {
+            try {
+                // First assign the task to current user
+                await taskService.assignTaskToCurrentUser(projectId, taskId);
+                
+                // Then change status to IN_PROGRESS if not already
+                await taskService.changeTaskStatus(projectId, taskId, {
+                    targetStatus: TaskStatus.IN_PROGRESS
+                });
+                
+                logger.info(`Successfully assigned and started task ${taskId} for project ${projectId}`);
+            } catch (error) {
+                logger.error(`Failed to assign and start task ${taskId}:`, error);
+                throw error;
+            }
+        },
 
     },
 });

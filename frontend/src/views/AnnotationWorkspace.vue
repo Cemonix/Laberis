@@ -50,21 +50,19 @@
                             <small>This task is completed</small>
                         </div>
                         
-                        <!-- Veto button (available for both completed and active tasks in review/completion stages) -->
-                        <Button 
-                            v-if="canVetoTask"
-                            @click="handleVetoTask"
-                            :disabled="!currentTask"
-                            variant="danger"
-                            class="task-action-btn veto-btn"
-                            title="Return task for rework"
-                        >
-                            <font-awesome-icon :icon="faUndo" />
-                            Veto
-                        </Button>
-                        
                         <!-- Active task actions -->
                         <template v-if="!isTaskCompleted">
+                            <Button 
+                                v-if="canVetoTask"
+                                @click="handleVetoTask"
+                                :disabled="!currentTask"
+                                variant="danger"
+                                class="task-action-btn veto-btn"
+                                title="Return task for rework"
+                            >
+                                <font-awesome-icon :icon="faUndo" />
+                                Veto
+                            </Button>
                             <Button 
                                 @click="handleSuspendTask"
                                 :disabled="!currentTask"
@@ -142,6 +140,7 @@ import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
 import {faPause, faForward, faUndo} from "@fortawesome/free-solid-svg-icons";
 import {usePermissions} from "@/composables/usePermissions";
 import {PERMISSIONS} from "@/services/auth/permissions.types";
+import {useToast} from "@/composables/useToast";
 
 const props = defineProps({
     projectId: {
@@ -158,6 +157,7 @@ const workspaceStore = useWorkspaceStore();
 const route = useRoute();
 const router = useRouter();
 const { hasPermissionInProject } = usePermissions();
+const { showToast } = useToast();
 
 const isLoading = computed(() => workspaceStore.getLoadingState);
 const error = computed(() => workspaceStore.getError);
@@ -190,6 +190,42 @@ const retryLoading = async () => {
     await workspaceStore.loadAsset(props.projectId, props.assetId, taskId);
 };
 
+/**
+ * Auto-assign a task to current user and load it in the workspace
+ */
+const assignAndLoadTask = async (taskInfo: { projectId: string; assetId: string; taskId: string }, context: string = 'navigation') => {
+    const taskId = parseInt(taskInfo.taskId, 10);
+    const projectIdNum = parseInt(taskInfo.projectId, 10);
+    
+    try {
+        await workspaceStore.assignAndStartNextTask(projectIdNum, taskId);
+    } catch (error) {
+        console.error(`Failed to assign task during ${context}:`, error);
+        
+        showToast(
+            'Task Assignment Failed', 
+            `Failed to auto-assign the next task. You may not have permission to work on this task. Please go back to Tasks view and manually select a task.`,
+            'error',
+            { duration: 10000 } // Show for 10 seconds since this is critical
+        );
+    }
+    
+    // Load the task in workspace
+    await workspaceStore.loadAsset(taskInfo.projectId, taskInfo.assetId, taskInfo.taskId);
+    
+    // Update URL without triggering route change
+    await router.replace({
+        name: 'AnnotationWorkspace',
+        params: {
+            projectId: taskInfo.projectId,
+            assetId: taskInfo.assetId
+        },
+        query: {
+            taskId: taskInfo.taskId
+        }
+    });
+};
+
 const handlePreviousTask = async () => {
     // Save current working time before navigating to another task
     await workspaceStore.saveWorkingTimeBeforeUnload();
@@ -197,20 +233,7 @@ const handlePreviousTask = async () => {
     const navigationInfo = await workspaceStore.navigateToPreviousTask();
     
     if (navigationInfo) {
-        // Directly load the new asset instead of using router.push to avoid same-route issues
-        await workspaceStore.loadAsset(navigationInfo.projectId, navigationInfo.assetId, navigationInfo.taskId);
-        
-        // Update the URL without triggering a route change
-        await router.replace({
-            name: 'AnnotationWorkspace',
-            params: {
-                projectId: navigationInfo.projectId,
-                assetId: navigationInfo.assetId
-            },
-            query: {
-                taskId: navigationInfo.taskId
-            }
-        });
+        await assignAndLoadTask(navigationInfo, 'previous navigation');
     }
 };
 
@@ -222,20 +245,7 @@ const handleNextTask = async () => {
     
     const navigationInfo = await workspaceStore.navigateToNextTask();
     if (navigationInfo) {
-        // Directly load the new asset instead of using router.push to avoid same-route issues
-        await workspaceStore.loadAsset(navigationInfo.projectId, navigationInfo.assetId, navigationInfo.taskId);
-        
-        // Update the URL without triggering a route change
-        await router.replace({
-            name: 'AnnotationWorkspace',
-            params: {
-                projectId: navigationInfo.projectId,
-                assetId: navigationInfo.assetId
-            },
-            query: {
-                taskId: navigationInfo.taskId
-            }
-        });
+        await assignAndLoadTask(navigationInfo, 'next navigation');
     } else {
         // At last task - show completion modal
         showCompletionModal.value = true;
@@ -300,20 +310,7 @@ const handleCompleteTaskAndNext = async () => {
         // Try to get next available task automatically
         const nextTaskInfo = await workspaceStore.getNextAvailableTask();
         if (nextTaskInfo) {
-            // Load the next task seamlessly without leaving the workspace
-            await workspaceStore.loadAsset(nextTaskInfo.projectId, nextTaskInfo.assetId, nextTaskInfo.taskId);
-            
-            // Update URL without triggering route change
-            await router.replace({
-                name: 'AnnotationWorkspace',
-                params: {
-                    projectId: nextTaskInfo.projectId,
-                    assetId: nextTaskInfo.assetId
-                },
-                query: {
-                    taskId: nextTaskInfo.taskId
-                }
-            });
+            await assignAndLoadTask(nextTaskInfo, 'task completion');
         } else {
             // No more tasks available - show completion modal or go back to tasks view
             showCompletionModal.value = true;
@@ -332,17 +329,7 @@ const handleSuspendTask = async () => {
             // Move to next task after suspending
             const nextTaskInfo = await workspaceStore.getNextAvailableTask();
             if (nextTaskInfo) {
-                await workspaceStore.loadAsset(nextTaskInfo.projectId, nextTaskInfo.assetId, nextTaskInfo.taskId);
-                await router.replace({
-                    name: 'AnnotationWorkspace',
-                    params: {
-                        projectId: nextTaskInfo.projectId,
-                        assetId: nextTaskInfo.assetId
-                    },
-                    query: {
-                        taskId: nextTaskInfo.taskId
-                    }
-                });
+                await assignAndLoadTask(nextTaskInfo, 'suspend');
             } else {
                 showCompletionModal.value = true;
             }
@@ -361,17 +348,7 @@ const handleDeferTask = async () => {
             // Move to next task after deferring
             const nextTaskInfo = await workspaceStore.getNextAvailableTask();
             if (nextTaskInfo) {
-                await workspaceStore.loadAsset(nextTaskInfo.projectId, nextTaskInfo.assetId, nextTaskInfo.taskId);
-                await router.replace({
-                    name: 'AnnotationWorkspace',
-                    params: {
-                        projectId: nextTaskInfo.projectId,
-                        assetId: nextTaskInfo.assetId
-                    },
-                    query: {
-                        taskId: nextTaskInfo.taskId
-                    }
-                });
+                await assignAndLoadTask(nextTaskInfo, 'defer');
             } else {
                 showCompletionModal.value = true;
             }
@@ -393,17 +370,7 @@ const handleVetoTask = async () => {
             // Move to next task after veto
             const nextTaskInfo = await workspaceStore.getNextAvailableTask();
             if (nextTaskInfo) {
-                await workspaceStore.loadAsset(nextTaskInfo.projectId, nextTaskInfo.assetId, nextTaskInfo.taskId);
-                await router.replace({
-                    name: 'AnnotationWorkspace',
-                    params: {
-                        projectId: nextTaskInfo.projectId,
-                        assetId: nextTaskInfo.assetId
-                    },
-                    query: {
-                        taskId: nextTaskInfo.taskId
-                    }
-                });
+                await assignAndLoadTask(nextTaskInfo, 'veto');
             } else {
                 showCompletionModal.value = true;
             }
