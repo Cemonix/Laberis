@@ -183,7 +183,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, ref} from 'vue';
+import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 import {
@@ -1035,6 +1035,22 @@ const loadStageInfo = async () => {
         // Don't fail the entire component if stage info fails to load
     }
 };
+
+watch(
+    () => route.fullPath,
+    () => {
+        // Hide preview popup when navigating away
+        if (showPreviewPopup.value) {
+            hidePreview();
+        }
+    }
+);
+
+onUnmounted(() => {
+    if (showPreviewPopup.value) {
+        hidePreview();
+    }
+});
 
 onMounted(async () => {
     // Load project data first (includes team members for permissions)
