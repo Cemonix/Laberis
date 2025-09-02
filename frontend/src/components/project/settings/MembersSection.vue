@@ -1,35 +1,64 @@
 <template>
-    <Card class="members-section">
-        <template #header>
-            <h2>Manage Members & Invitations</h2>
-        </template>
+    <div class="members-section">
+        <div class="section-header">
+            <h2>Project Members</h2>
+            <p>View and manage current project team members and their roles.</p>
+        </div>
 
-        <!-- Invitation Form - Only available to users who can invite members -->
-        <div v-permission="{ permission: PERMISSIONS.PROJECT_MEMBER.INVITE }" class="invite-form-section">
-            <h3>Invite New Member</h3>
-            <Form @submit="handleSendInvite" class="invite-form">
-                <div class="form-group">
-                    <label for="invite-email">Email Address</label>
-                    <input
-                        id="invite-email"
-                        v-model="inviteForm.email"
-                        type="email"
-                        placeholder="Enter email address"
-                        required
-                        :disabled="isInviting"
-                    />
-                    <div v-if="inviteErrors.email" class="field-error">{{ inviteErrors.email }}</div>
+        <!-- Current Members Section -->
+        <div class="members-list-section">
+            <div class="list-header">
+                <div class="list-title">
+                    <h3>Team Members</h3>
+                    <span class="member-count">{{ filteredMembers.length }} members</span>
                 </div>
-
-                <div class="form-group">
-                    <label for="invite-role">Role</label>
-                    <select
-                        id="invite-role"
-                        v-model="inviteForm.role"
-                        required
-                        :disabled="isInviting"
-                    >
-                        <option value="">Select a role</option>
+                <div class="member-controls">
+                    <div class="search-filter">
+                        <input
+                            v-model="memberSearch"
+                            type="text"
+                            placeholder="Search members..."
+                            class="search-input"
+                        />
+                        <select v-model="roleFilter" class="role-filter">
+                            <option value="">All Roles</option>
+                            <option 
+                                v-for="role in availableRoles" 
+                                :key="role.value" 
+                                :value="role.value"
+                            >
+                                {{ role.label }}
+                            </option>
+                        </select>
+                    </div>
+                    <div v-if="filteredMembers.length > 1" class="bulk-actions">
+                        <Button
+                            variant="secondary"
+                            size="small"
+                            @click="toggleBulkMode"
+                        >
+                            {{ isBulkMode ? 'Cancel Bulk' : 'Bulk Actions' }}
+                        </Button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bulk Actions Bar -->
+            <div v-if="isBulkMode" class="bulk-action-bar">
+                <div class="bulk-selection">
+                    <label class="select-all">
+                        <input
+                            type="checkbox"
+                            :checked="isAllSelected"
+                            :indeterminate="isSomeSelected"
+                            @change="handleSelectAll"
+                        />
+                        <span>Select All ({{ selectedMembers.size }} selected)</span>
+                    </label>
+                </div>
+                <div v-if="selectedMembers.size > 0" class="bulk-operations">
+                    <select v-model="bulkRole" class="bulk-role-select">
+                        <option value="">Change Role To...</option>
                         <option 
                             v-for="role in availableRoles" 
                             :key="role.value" 
@@ -38,37 +67,50 @@
                             {{ role.label }}
                         </option>
                     </select>
-                    <div class="field-help">{{ getRoleDescription(inviteForm.role) }}</div>
-                    <div v-if="inviteErrors.role" class="field-error">{{ inviteErrors.role }}</div>
-                </div>
-
-                <div class="form-actions">
                     <Button
-                        type="submit"
                         variant="primary"
-                        :disabled="isInviting || !isInviteFormValid"
+                        size="small"
+                        @click="handleBulkRoleUpdate"
+                        :disabled="!bulkRole || isUpdatingRole"
                     >
-                        {{ isInviting ? 'Sending...' : 'Send Invitation' }}
+                        Apply Role
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="small"
+                        @click="handleBulkRemove"
+                        :disabled="isRemoving"
+                        class="bulk-remove-btn"
+                    >
+                        Remove Selected
                     </Button>
                 </div>
-            </Form>
-        </div>
-
-        <!-- Current Members Section -->
-        <div class="members-list-section">
-            <h3>Current Members ({{ currentMembers.length }})</h3>
+            </div>
+            
             <div v-if="isLoadingMembers" class="loading-state">
                 Loading members...
             </div>
             <div v-else-if="currentMembers.length === 0" class="empty-state">
                 No members found.
             </div>
+            <div v-else-if="filteredMembers.length === 0" class="empty-state">
+                No members match your search criteria.
+            </div>
             <div v-else class="members-list">
                 <div 
-                    v-for="member in currentMembers" 
+                    v-for="member in filteredMembers" 
                     :key="member.id"
                     class="member-item"
+                    :class="{ 'bulk-mode': isBulkMode }"
                 >
+                    <div v-if="isBulkMode" class="member-checkbox">
+                        <input
+                            type="checkbox"
+                            :checked="selectedMembers.has(member.id)"
+                            @change="handleMemberSelect(member.id, ($event.target as HTMLInputElement).checked)"
+                            :disabled="member.email === currentUserEmail"
+                        />
+                    </div>
                     <div class="member-info">
                         <div class="member-details">
                             <span class="member-name">{{ member.userName || member.email }}</span>
@@ -80,6 +122,12 @@
                             </span>
                             <span class="member-joined">
                                 Joined {{ formatDate(member.joinedAt || member.createdAt) }}
+                            </span>
+                            <span v-if="(member as any).lastActivityAt" class="member-activity">
+                                Active {{ formatRelativeTime((member as any).lastActivityAt) }}
+                            </span>
+                            <span v-else class="member-activity inactive">
+                                No recent activity
                             </span>
                         </div>
                     </div>
@@ -113,67 +161,21 @@
                 </div>
             </div>
         </div>
-
-        <!-- Pending Invitations Section -->
-        <div class="invitations-list-section">
-            <h3>Pending Invitations ({{ pendingInvitations.length }})</h3>
-            <div v-if="isLoadingInvitations" class="loading-state">
-                Loading invitations...
-            </div>
-            <div v-else-if="pendingInvitations.length === 0" class="empty-state">
-                No pending invitations.
-            </div>
-            <div v-else class="invitations-list">
-                <div 
-                    v-for="invitation in pendingInvitations" 
-                    :key="invitation.id"
-                    class="invitation-item"
-                >
-                    <div class="invitation-info">
-                        <div class="invitation-details">
-                            <span class="invitation-email">{{ invitation.email }}</span>
-                            <span class="invitation-role" :class="`role-${invitation.role.toLowerCase()}`">
-                                {{ getRoleLabel(invitation.role) }}
-                            </span>
-                        </div>
-                        <div class="invitation-meta">
-                            <span class="invitation-sent">
-                                Invited {{ formatDate(invitation.invitedAt) }}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="invitation-actions">
-                        <Button
-                            v-permission="{ permission: PERMISSIONS.PROJECT_MEMBER.REMOVE }"
-                            variant="secondary"
-                            size="small"
-                            @click="handleRevokeInvitation(invitation)"
-                            :disabled="isRevoking"
-                            class="revoke-btn"
-                        >
-                            Revoke
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </Card>
+    </div>
 </template>
 
 <script setup lang="ts">
 // TODO: REFACTOR THIS FILE
 
-import {computed, onMounted, reactive, ref} from 'vue';
-import Card from '@/components/common/Card.vue';
+import {computed, onMounted, ref} from 'vue';
 import Button from '@/components/common/Button.vue';
-import Form from '@/components/common/Form.vue';
 import {projectMemberService} from '@/services/project';
 import {useToast} from '@/composables/useToast';
 import {useConfirm} from '@/composables/useConfirm';
 import {useErrorHandler} from '@/composables/useErrorHandler';
 import {useAuthStore} from '@/stores/authStore';
 import {AppLogger} from '@/core/logger/logger';
-import type {InviteMemberRequest, ProjectMember} from '@/services/project/projectMember.types';
+import type {ProjectMember} from '@/services/project/projectMember.types';
 import {ProjectRole} from '@/services/project/project.types';
 import {PERMISSIONS} from '@/services/auth/permissions.types';
 
@@ -185,31 +187,25 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const { showCreateSuccess, showDeleteSuccess } = useToast();
+const { showToast } = useToast();
 const { showConfirm } = useConfirm();
 const { handleError } = useErrorHandler();
 const authStore = useAuthStore();
 
 // State
 const currentMembers = ref<ProjectMember[]>([]);
-const pendingInvitations = ref<ProjectMember[]>([]);
 const isLoadingMembers = ref(false);
-const isLoadingInvitations = ref(false);
-const isInviting = ref(false);
 const isRemoving = ref(false);
-const isRevoking = ref(false);
 const isUpdatingRole = ref(false);
 
-// Form state
-const inviteForm = reactive({
-    email: '',
-    role: '' as ProjectRole | ''
-});
+// Search and filtering state
+const memberSearch = ref('');
+const roleFilter = ref<ProjectRole | ''>('');
 
-const inviteErrors = reactive({
-    email: '',
-    role: ''
-});
+// Bulk operations state
+const isBulkMode = ref(false);
+const selectedMembers = ref(new Set<number>());
+const bulkRole = ref<ProjectRole | ''>('');
 
 // Available roles for selection
 const availableRoles = [
@@ -222,11 +218,34 @@ const availableRoles = [
 // Computed
 const currentUserEmail = computed(() => authStore.user?.email);
 
-const isInviteFormValid = computed(() => {
-    return inviteForm.email.trim() && 
-        inviteForm.role && 
-        !inviteErrors.email && 
-        !inviteErrors.role;
+const filteredMembers = computed(() => {
+    let filtered = currentMembers.value;
+    
+    // Filter by search term
+    if (memberSearch.value.trim()) {
+        const searchLower = memberSearch.value.toLowerCase();
+        filtered = filtered.filter(member => 
+            (member.userName?.toLowerCase().includes(searchLower)) ||
+            (member.email?.toLowerCase().includes(searchLower))
+        );
+    }
+    
+    // Filter by role
+    if (roleFilter.value) {
+        filtered = filtered.filter(member => member.role === roleFilter.value);
+    }
+    
+    return filtered;
+});
+
+const isAllSelected = computed(() => {
+    const selectableMembers = filteredMembers.value.filter(m => m.email !== currentUserEmail.value);
+    return selectableMembers.length > 0 && selectableMembers.every(m => selectedMembers.value.has(m.id));
+});
+
+const isSomeSelected = computed(() => {
+    const selectableMembers = filteredMembers.value.filter(m => m.email !== currentUserEmail.value);
+    return selectableMembers.some(m => selectedMembers.value.has(m.id)) && !isAllSelected.value;
 });
 
 // Methods
@@ -235,90 +254,17 @@ const loadMembers = async () => {
     try {
         const members = await projectMemberService.getProjectMembers(props.projectId);
         
-        // Separate current members from pending invitations
+        // Only show current members (those who have joined)
         currentMembers.value = members.filter(m => m.joinedAt);
-        pendingInvitations.value = members.filter(m => !m.joinedAt);
         
-        logger.info(`Loaded ${currentMembers.value.length} members and ${pendingInvitations.value.length} pending invitations`);
+        logger.info(`Loaded ${currentMembers.value.length} members`);
     } catch (error) {
         handleError(error, 'Failed to load project members');
     } finally {
         isLoadingMembers.value = false;
-        isLoadingInvitations.value = false;
     }
 };
 
-const validateInviteForm = (): boolean => {
-    inviteErrors.email = '';
-    inviteErrors.role = '';
-    
-    if (!inviteForm.email.trim()) {
-        inviteErrors.email = 'Email address is required';
-        return false;
-    }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(inviteForm.email.trim())) {
-        inviteErrors.email = 'Please enter a valid email address';
-        return false;
-    }
-    
-    if (!inviteForm.role) {
-        inviteErrors.role = 'Please select a role';
-        return false;
-    }
-    
-    // Check if user is already invited or a member
-    const email = inviteForm.email.trim().toLowerCase();
-    const isAlreadyMember = currentMembers.value.some(m => 
-        m.email?.toLowerCase() === email
-    );
-    const isAlreadyInvited = pendingInvitations.value.some(m => 
-        m.email?.toLowerCase() === email
-    );
-    
-    if (isAlreadyMember) {
-        inviteErrors.email = 'This user is already a member of the project';
-        return false;
-    }
-    
-    if (isAlreadyInvited) {
-        inviteErrors.email = 'This user has already been invited';
-        return false;
-    }
-    
-    return true;
-};
-
-const handleSendInvite = async () => {
-    if (!validateInviteForm()) {
-        return;
-    }
-    
-    isInviting.value = true;
-    try {
-        const inviteData: InviteMemberRequest = {
-            email: inviteForm.email.trim(),
-            role: inviteForm.role as ProjectRole
-        };
-        
-        await projectMemberService.inviteMember(props.projectId, inviteData);
-        // TODO: Update the pendingInvitations state with the new invitation (Backend is not returning the full member object)
-        // For example:
-        // pendingInvitations.value.push(newInvitation);
-        
-        // Reset form
-        inviteForm.email = '';
-        inviteForm.role = '';
-        
-        logger.info(`Sent invitation to ${inviteData.email} with role ${inviteData.role}`);
-        showCreateSuccess('Invitation', `Invitation sent to ${inviteData.email}`);
-    } catch (error) {
-        handleError(error, 'Members Section');
-    } finally {
-        isInviting.value = false;
-    }
-};
 
 const handleUpdateRole = async (member: ProjectMember) => {
     const confirmed = await showConfirm(
@@ -336,7 +282,7 @@ const handleUpdateRole = async (member: ProjectMember) => {
     try {
         await projectMemberService.updateMemberRole(props.projectId, member.email, member.role);
         logger.info(`Updated role for ${member.email} to ${member.role}`);
-        showCreateSuccess('Role Updated', `${member.userName || member.email}'s role has been updated`);
+        showToast('Success', `${member.userName || member.email}'s role has been updated`, 'success');
     } catch (error) {
         handleError(error, 'Failed to update member role');
         // Reload to revert changes
@@ -360,7 +306,7 @@ const handleRemoveMember = async (member: ProjectMember) => {
         currentMembers.value = currentMembers.value.filter(m => m.id !== member.id);
         
         logger.info(`Removed member ${member.email} from project ${props.projectId}`);
-        showDeleteSuccess('Member', member.userName || member.email || 'User');
+        showToast('Success', `${member.userName || member.email || 'User'} removed from project`, 'success');
     } catch (error) {
         handleError(error, 'Failed to remove member');
     } finally {
@@ -368,45 +314,12 @@ const handleRemoveMember = async (member: ProjectMember) => {
     }
 };
 
-const handleRevokeInvitation = async (invitation: ProjectMember) => {
-    const confirmed = await showConfirm(
-        'Revoke Invitation', 
-        `Are you sure you want to revoke the invitation for ${invitation.email}?`
-    );
-    
-    if (!confirmed) return;
-    
-    isRevoking.value = true;
-    try {
-        await projectMemberService.removeMember(props.projectId, invitation.email);
-        pendingInvitations.value = pendingInvitations.value.filter(i => i.id !== invitation.id);
-        
-        logger.info(`Revoked invitation for ${invitation.email}`);
-        showDeleteSuccess('Invitation', invitation.email || 'Invitation');
-    } catch (error) {
-        handleError(error, 'Failed to revoke invitation');
-    } finally {
-        isRevoking.value = false;
-    }
-};
 
 const getRoleLabel = (role: ProjectRole): string => {
     const roleObj = availableRoles.find(r => r.value === role);
     return roleObj ? roleObj.label : role;
 };
 
-const getRoleDescription = (role: ProjectRole | ''): string => {
-    if (!role) return '';
-    
-    const descriptions = {
-        [ProjectRole.MANAGER]: 'Full access to project settings and data',
-        [ProjectRole.ANNOTATOR]: 'Can create and edit annotations',
-        [ProjectRole.REVIEWER]: 'Can review and approve annotations',
-        [ProjectRole.VIEWER]: 'Read-only access to project data'
-    };
-    
-    return descriptions[role] || '';
-};
 
 const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -417,6 +330,137 @@ const formatDate = (dateString: string): string => {
     });
 };
 
+const formatRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    
+    return formatDate(dateString);
+};
+
+const toggleBulkMode = () => {
+    isBulkMode.value = !isBulkMode.value;
+    if (!isBulkMode.value) {
+        selectedMembers.value.clear();
+        bulkRole.value = '';
+    }
+};
+
+const handleMemberSelect = (memberId: number, checked: boolean) => {
+    if (checked) {
+        selectedMembers.value.add(memberId);
+    } else {
+        selectedMembers.value.delete(memberId);
+    }
+};
+
+const handleSelectAll = () => {
+    const selectableMembers = filteredMembers.value.filter(m => m.email !== currentUserEmail.value);
+    
+    if (isAllSelected.value) {
+        // Deselect all
+        selectableMembers.forEach(member => selectedMembers.value.delete(member.id));
+    } else {
+        // Select all
+        selectableMembers.forEach(member => selectedMembers.value.add(member.id));
+    }
+};
+
+const handleBulkRoleUpdate = async () => {
+    if (!bulkRole.value || selectedMembers.value.size === 0) return;
+    
+    const memberCount = selectedMembers.value.size;
+    const confirmed = await showConfirm(
+        'Update Roles', 
+        `Are you sure you want to change the role of ${memberCount} member${memberCount > 1 ? 's' : ''} to ${getRoleLabel(bulkRole.value)}?`
+    );
+    
+    if (!confirmed) return;
+    
+    isUpdatingRole.value = true;
+    let successCount = 0;
+    let failureCount = 0;
+    
+    try {
+        for (const memberId of selectedMembers.value) {
+            const member = currentMembers.value.find(m => m.id === memberId);
+            if (member) {
+                try {
+                    await projectMemberService.updateMemberRole(props.projectId, member.email, bulkRole.value as ProjectRole);
+                    member.role = bulkRole.value as ProjectRole;
+                    successCount++;
+                } catch (error) {
+                    logger.error(`Failed to update role for ${member.email}:`, error);
+                    failureCount++;
+                }
+            }
+        }
+        
+        if (successCount > 0) {
+            showToast('Success', `Successfully updated ${successCount} member role${successCount > 1 ? 's' : ''}`, 'success');
+        }
+        
+        if (failureCount > 0) {
+            handleError(new Error(`Failed to update ${failureCount} member${failureCount > 1 ? 's' : ''}`), 'Bulk Role Update');
+        }
+    } finally {
+        isUpdatingRole.value = false;
+        selectedMembers.value.clear();
+        bulkRole.value = '';
+    }
+};
+
+const handleBulkRemove = async () => {
+    if (selectedMembers.value.size === 0) return;
+    
+    const memberCount = selectedMembers.value.size;
+    const confirmed = await showConfirm(
+        'Remove Members', 
+        `Are you sure you want to remove ${memberCount} member${memberCount > 1 ? 's' : ''} from this project? This action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+    
+    isRemoving.value = true;
+    let successCount = 0;
+    let failureCount = 0;
+    
+    try {
+        for (const memberId of selectedMembers.value) {
+            const member = currentMembers.value.find(m => m.id === memberId);
+            if (member) {
+                try {
+                    await projectMemberService.removeMember(props.projectId, member.email);
+                    successCount++;
+                } catch (error) {
+                    logger.error(`Failed to remove ${member.email}:`, error);
+                    failureCount++;
+                }
+            }
+        }
+        
+        // Reload members to reflect changes
+        await loadMembers();
+        
+        if (successCount > 0) {
+            showToast('Success', `Successfully removed ${successCount} member${successCount > 1 ? 's' : ''}`, 'success');
+        }
+        
+        if (failureCount > 0) {
+            handleError(new Error(`Failed to remove ${failureCount} member${failureCount > 1 ? 's' : ''}`), 'Bulk Remove');
+        }
+    } finally {
+        isRemoving.value = false;
+        selectedMembers.value.clear();
+        toggleBulkMode();
+    }
+};
+
 // Lifecycle
 onMounted(() => {
     loadMembers();
@@ -425,22 +469,218 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .members-section {
-    max-width: 900px;
+    padding: 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
-.invite-form-section,
-.members-list-section,
-.invitations-list-section {
+.section-header {
     margin-bottom: 2rem;
     
-    &:last-child {
-        margin-bottom: 0;
+    h2 {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: var(--color-gray-900);
+        margin-bottom: 0.5rem;
     }
+    
+    p {
+        color: var(--color-gray-600);
+        line-height: 1.5;
+        font-size: 1.1rem;
+    }
+}
+
+.members-list-section {
+    background-color: var(--color-white);
+    border-radius: 8px;
+    border: 1px solid var(--color-gray-200);
+    overflow: hidden;
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    background-color: var(--color-gray-50);
+    border-bottom: 1px solid var(--color-gray-200);
+    
+    @media (max-width: 768px) {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+}
+
+.list-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
     
     h3 {
         font-size: 1.25rem;
-        margin-bottom: 1rem;
+        font-weight: 600;
         color: var(--color-gray-800);
+        margin: 0;
+    }
+    
+    .member-count {
+        background-color: var(--color-primary);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+}
+
+.member-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    
+    @media (max-width: 768px) {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .search-filter {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        
+        @media (max-width: 768px) {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
+}
+
+.search-input,
+.role-filter {
+    padding: 0.5rem;
+    border: 1px solid var(--color-gray-400);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    background-color: var(--color-white);
+    
+    &:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
+}
+
+.search-input {
+    min-width: 200px;
+    
+    @media (max-width: 768px) {
+        min-width: 100%;
+    }
+}
+
+.role-filter {
+    min-width: 120px;
+    
+    @media (max-width: 768px) {
+        min-width: 100%;
+    }
+}
+
+.bulk-actions {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    
+    button {
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        
+        &:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        margin-left: 0;
+        justify-content: flex-end;
+    }
+}
+
+.bulk-action-bar {
+    background-color: var(--color-primary-light);
+    border: 1px solid var(--color-primary);
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    
+    @media (max-width: 768px) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+.bulk-selection {
+    .select-all {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        font-weight: 500;
+        
+        input[type="checkbox"] {
+            margin: 0;
+        }
+    }
+}
+
+.bulk-operations {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    
+    @media (max-width: 768px) {
+        justify-content: flex-end;
+    }
+}
+
+.bulk-role-select {
+    min-width: 150px;
+    padding: 0.5rem;
+    border: 1px solid var(--color-gray-400);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    background-color: var(--color-white);
+}
+
+.bulk-remove-btn {
+    background-color: var(--color-error);
+    border-color: var(--color-error);
+    color: var(--color-white);
+    
+    &:hover:not(:disabled) {
+        background-color: var(--color-error-dark);
+        border-color: var(--color-error-dark);
+    }
+}
+
+.member-item.bulk-mode {
+    .member-checkbox {
+        display: flex;
+        align-items: center;
+        margin-right: 1rem;
+        
+        input[type="checkbox"] {
+            margin: 0;
+        }
     }
 }
 
@@ -474,56 +714,51 @@ onMounted(() => {
 
 .loading-state,
 .empty-state {
-    padding: 1.5rem;
+    padding: 3rem 1.5rem;
     text-align: center;
     color: var(--color-gray-600);
     font-style: italic;
-    background-color: var(--color-gray-50);
-    border-radius: 4px;
 }
 
-.members-list,
-.invitations-list {
+.members-list {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
 }
 
-.member-item,
-.invitation-item {
+.member-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 1.5rem;
     background-color: var(--color-white);
-    border: 1px solid var(--color-gray-400);
-    border-radius: 4px;
-    transition: box-shadow 0.2s ease-in-out;
+    border-bottom: 1px solid var(--color-gray-200);
+    transition: background-color 0.2s ease;
     
     &:hover {
-        box-shadow: 0 1px 3px rgba(var(--color-black), 0.05);
+        background-color: var(--color-gray-25);
+    }
+    
+    &:last-child {
+        border-bottom: none;
     }
 }
 
-.member-info,
-.invitation-info {
+.member-info {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
 }
 
-.member-details,
-.invitation-details {
+.member-details {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
 }
 
-.member-name,
-.invitation-email {
+.member-name {
     font-weight: 500;
-    color: var(--color-gray-800);
+    color: var(--color-gray-900);
     font-size: 1rem;
 }
 
@@ -532,53 +767,61 @@ onMounted(() => {
     color: var(--color-gray-600);
 }
 
-.member-meta,
-.invitation-meta {
+.member-meta {
     display: flex;
     gap: 1rem;
     align-items: center;
+    flex-wrap: wrap;
 }
 
-.member-role,
-.invitation-role {
-    padding: 0.25rem 0.5rem;
-    border-radius: 2px;
-    font-size: 0.875rem;
-    font-weight: 500;
+.member-role {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     
     &.role-manager {
-        background-color: var(--color-error);
-        color: var(--color-error);
+        background-color: var(--color-red-100);
+        color: var(--color-red-800);
     }
     
     &.role-annotator {
-        background-color: var(--color-primary);
-        color: var(--color-primary);
+        background-color: var(--color-blue-100);
+        color: var(--color-blue-800);
     }
     
     &.role-reviewer {
-        background-color: var(--color-warning);
-        color: var(--color-warning);
+        background-color: var(--color-yellow-100);
+        color: var(--color-yellow-800);
     }
     
     &.role-viewer {
-        background-color: var(--color-secondary);
-        color: var(--color-secondary);
+        background-color: var(--color-gray-100);
+        color: var(--color-gray-800);
     }
 }
 
-.member-joined,
-.invitation-sent {
+.member-joined {
     font-size: 0.875rem;
     color: var(--color-gray-600);
 }
 
-.member-actions,
-.invitation-actions {
+.member-activity {
+    font-size: 0.875rem;
+    color: var(--color-success);
+    font-weight: 500;
+    
+    &.inactive {
+        color: var(--color-gray-500);
+        font-weight: normal;
+    }
+}
+
+.member-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.75rem;
     align-items: center;
 }
 
@@ -603,8 +846,7 @@ onMounted(() => {
     }
 }
 
-.remove-btn,
-.revoke-btn {
+.remove-btn {
     background-color: var(--color-error);
     border-color: var(--color-error);
     color: var(--color-white);
@@ -622,15 +864,13 @@ onMounted(() => {
 
 // Responsive adjustments
 @media (max-width: 768px) {
-    .member-item,
-    .invitation-item {
+    .member-item {
         flex-direction: column;
         align-items: stretch;
         gap: 1rem;
     }
     
-    .member-actions,
-    .invitation-actions {
+    .member-actions {
         justify-content: flex-end;
     }
 }
