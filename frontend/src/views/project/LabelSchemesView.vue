@@ -97,7 +97,7 @@ const logger = AppLogger.createComponentLogger('LabelSchemesView');
 
 const route = useRoute();
 const { showAlert } = useAlert();
-const { showCreateSuccess, showWarning, showError } = useToast();
+const { showToast, showWarning, showError } = useToast();
 
 const labelSchemes = ref<LabelScheme[]>([]);
 const isModalOpen = ref(false);
@@ -185,7 +185,7 @@ const handleCreateScheme = async (formData: FormPayloadLabelScheme) => {
         await fetchLabelSchemes();
         
         closeModal();
-        showCreateSuccess('Label Scheme');
+        showToast('Label Scheme Created', `Label Scheme "${formData.name}" has been created successfully.`);
     } catch (error) {
         showError('Error', 'Failed to create label scheme. Please try again.');
         logger.error('Failed to create label scheme:', error);
@@ -214,7 +214,7 @@ const handleUpdateScheme = async (formData: FormPayloadLabelScheme) => {
         
         await fetchLabelSchemes();
         closeModal();
-        showCreateSuccess('Label Scheme Updated');
+        showToast('Label Scheme Updated', `Label Scheme "${formData.name}" has been updated successfully.`);
     } catch (error) {
         showError('Error', 'Failed to update label scheme. Please try again.');
         logger.error('Failed to update label scheme:', error);
@@ -251,7 +251,7 @@ const confirmDelete = async () => {
         await labelSchemeService.softDeleteLabelScheme(projectId, schemeToDelete.value.labelSchemeId);
         await fetchLabelSchemes();
         closeDeleteModal();
-        showCreateSuccess('Label Scheme Deleted');
+        showToast('Label Scheme Deleted', `Label Scheme "${schemeToDelete.value.name}" has been deleted successfully.`);
     } catch (error) {
         showError('Error', 'Failed to delete label scheme. Please try again.');
         logger.error('Failed to delete label scheme:', error);
@@ -267,7 +267,7 @@ const handleReactivateScheme = async (scheme: LabelScheme) => {
         isLoading.value = true;
         await labelSchemeService.reactivateLabelScheme(projectId, scheme.labelSchemeId);
         await fetchLabelSchemes();
-        showCreateSuccess('Label Scheme Reactivated');
+        showToast('Label Scheme Reactivated', `Label Scheme "${scheme.name}" has been reactivated successfully.`);
     } catch (error) {
         showError('Error', 'Failed to reactivate label scheme. Please try again.');
         logger.error('Failed to reactivate label scheme:', error);
