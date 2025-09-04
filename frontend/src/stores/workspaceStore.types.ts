@@ -1,5 +1,4 @@
 import type { ImageDimensions } from "@/core/asset/asset.types";
-import type { Timer } from "@/core/timing";
 import type { Point } from "@/core/geometry/geometry.types";
 import type { Tool, ToolName } from "@/core/workspace/tools.types";
 import type { Annotation } from '@/core/workspace/annotation.types';
@@ -22,7 +21,6 @@ export interface WorkspaceState {
     canvasDisplayDimensions: ImageDimensions | null;
     
     // Timer-related properties
-    timerInstance: Timer;
     elapsedTimeDisplay: string;
     timerIntervalId: number | null;
     lastSavedWorkingTime: number;
@@ -76,7 +74,6 @@ export interface WorkspaceTaskState {
  * Timer-related state in the workspace store
  */
 export interface WorkspaceTimerState {
-    timerInstance: Timer;
     elapsedTimeDisplay: string;
     timerIntervalId: number | null;
     lastSavedWorkingTime: number;

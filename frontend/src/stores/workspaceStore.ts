@@ -2,12 +2,12 @@ import { defineStore } from "pinia";
 import { faArrowPointer, faDotCircle, faMinus, faWaveSquare, faSquare, faDrawPolygon } from '@fortawesome/free-solid-svg-icons';
 import type { ImageDimensions } from "@/core/asset/asset.types";
 import type { WorkspaceState } from "./workspaceStore.types";
-import { Timer } from "@/core/timing";
 import type { Point } from "@/core/geometry/geometry.types";
 import { ToolName, type Tool } from "@/core/workspace/tools.types";
 import type { Annotation, CreateAnnotationDto } from '@/core/workspace/annotation.types';
 import type { LabelScheme, Label } from '@/services/project/labelScheme/label.types';
 import { AssetManager, TaskManager, TaskNavigationManager } from '@/core/workspace';
+import { TimeTracker } from '@/core/timeTracking';
 import { 
     annotationService,
     labelSchemeService,
@@ -30,6 +30,7 @@ const ZOOM_SENSITIVITY = 0.005;
 
 // Core managers
 const assetManager = new AssetManager();
+const timeTracker = new TimeTracker();
 
 // TODO: Refactor the store
 
@@ -41,7 +42,6 @@ export const useWorkspaceStore = defineStore("workspace", {
         currentImageUrl: null,
         imageNaturalDimensions: null,
         canvasDisplayDimensions: null,
-        timerInstance: new Timer(),
         elapsedTimeDisplay: "00:00:00",
         timerIntervalId: null,
         lastSavedWorkingTime: 0,
@@ -241,17 +241,7 @@ export const useWorkspaceStore = defineStore("workspace", {
                 }
             };
 
-            const timerService = {
-                getElapsedTime: () => this.timerInstance.getElapsedTime(),
-                isRunning: () => this.timerInstance.isRunning,
-                start: () => this.timerInstance.start(),
-                stop: () => this.timerInstance.stop(),
-                pause: () => this.timerInstance.pause(),
-                resume: () => this.timerInstance.start(), // Timer uses start() for resume
-                reset: () => this.timerInstance.reset()
-            };
-
-            return new TaskManager(taskService, permissionsService, timerService);
+            return new TaskManager(taskService, permissionsService, timeTracker);
         },
 
         taskNavigationManager(): TaskNavigationManager {
@@ -484,8 +474,6 @@ export const useWorkspaceStore = defineStore("workspace", {
                 // Save annotation to backend
                 const savedAnnotation = await annotationService.createAnnotation(parseInt(this.currentProjectId!), createDto);
                 
-                // Save working time when annotation is created (lazy update)
-                await this._autoSaveWorkingTime();
 
                 // Update the annotation in the store with the saved data (including ID)
                 // First try to find by clientId
@@ -559,8 +547,6 @@ export const useWorkspaceStore = defineStore("workspace", {
                 // Update annotation on backend
                 const updatedAnnotation = await annotationService.updateAnnotation(parseInt(this.currentProjectId!), annotationId, updatePayload);
                 
-                // Save working time when annotation is updated (lazy update)
-                await this._autoSaveWorkingTime();
 
                 // Update the annotation in the store with the response from backend
                 this.annotations[index] = updatedAnnotation;
@@ -598,8 +584,6 @@ export const useWorkspaceStore = defineStore("workspace", {
                 // Delete annotation on backend
                 await annotationService.deleteAnnotation(parseInt(this.currentProjectId!), annotationId);
                 
-                // Save working time when annotation is deleted (lazy update)
-                await this._autoSaveWorkingTime();
 
                 logger.info(`Successfully deleted annotation with ID: ${annotationId}`);
 
@@ -659,61 +643,62 @@ export const useWorkspaceStore = defineStore("workspace", {
             // Store the saved working time for this session
             this.lastSavedWorkingTime = this.currentTaskData?.workingTimeMs || 0;
             
-            
             // For completed/archived tasks, only display the saved time - don't run the timer
             if (!this._shouldTrackTime()) {
-                this.timerInstance.reset();
                 // Don't start the timer - just display the saved time
                 this._updateElapsedTimeDisplay();
                 logger.info('Task is completed/archived - displaying saved working time only');
                 return;
             }
             
-            // For active tasks, start the timer fresh for this session
-            this.timerInstance.reset();
-            this.timerInstance.start();
+            // For active tasks, use the persistent time tracker
+            if (this.currentTaskData) {
+                timeTracker.startTracking(
+                    this.currentTaskData.id,
+                    this.currentTaskData.workingTimeMs || 0,
+                    async (taskId: number, totalTimeMs: number) => {
+                        // Sync callback - save to server
+                        if (this.currentProjectId) {
+                            try {
+                                await taskService.updateWorkingTime(
+                                    parseInt(this.currentProjectId),
+                                    taskId,
+                                    totalTimeMs
+                                );
+                                // Update local state
+                                if (this.currentTaskData && this.currentTaskData.id === taskId) {
+                                    this.currentTaskData.workingTimeMs = totalTimeMs;
+                                }
+                            } catch (error) {
+                                logger.warn('Failed to sync working time:', error);
+                                throw error; // Let the time tracker handle the failure
+                            }
+                        }
+                    }
+                );
 
-            this._updateElapsedTimeDisplay();
-
-            // Update display every second
-            this.timerIntervalId = window.setInterval(() => {
-                this._updateElapsedTimeDisplay();
-            }, 1000);
-        },
-
-        pauseTimer() {
-            if (this.timerInstance.isRunning) {
-                this.timerInstance.pause();
-                this._clearInterval();
-                this._updateElapsedTimeDisplay();
-                
-                // Save current working time when pausing
-                this._autoSaveWorkingTime();
+                // Update display every second
+                this.timerIntervalId = window.setInterval(() => {
+                    this._updateElapsedTimeDisplay();
+                }, 1000);
             }
         },
 
-        stopAndResetTimer() {
-            // Save working time before stopping
-            this._autoSaveWorkingTime();
-            
-            this.timerInstance.stop();
-            this.timerInstance.reset();
+        pauseTimer() {
             this._clearInterval();
+        },
+
+        stopAndResetTimer() {
+            this._clearInterval();
+            timeTracker.stopTracking();
             this.lastSavedWorkingTime = 0;
             this.elapsedTimeDisplay = "00:00:00";
         },
         
         cleanupTimer() {
-            // Save current working time before cleanup
-            this._autoSaveWorkingTime();
-            
             this._clearInterval();
-
-            // Pause the timer instead of stopping it completely
-            // so time is preserved when user returns to the same task
-            if (this.timerInstance.isRunning) {
-                this.timerInstance.pause();
-            }
+            // Stop the persistent time tracker (which will save state to localStorage)
+            timeTracker.stopTracking();
         },
 
         setViewOffset(offset: Point) {
@@ -749,16 +734,14 @@ export const useWorkspaceStore = defineStore("workspace", {
         _updateElapsedTimeDisplay() {
             // For completed/archived tasks, only show the saved working time
             if (!this._shouldTrackTime()) {
-                this.elapsedTimeDisplay = this.timerInstance.getFormattedElapsedTime(this.lastSavedWorkingTime);
+                this.elapsedTimeDisplay = timeTracker.getFormattedElapsedTime(this.lastSavedWorkingTime);
                 return;
             }
             
-            // For active tasks, calculate total working time (saved time + current session time)
-            const currentSessionTime = this.timerInstance.getElapsedTime();
-            const totalWorkingTime = this.lastSavedWorkingTime + currentSessionTime;
-            
-            // Format the total time
-            this.elapsedTimeDisplay = this.timerInstance.getFormattedElapsedTime(totalWorkingTime);
+            // For active tasks, use the time tracker
+            if (this.currentTaskData) {
+                this.elapsedTimeDisplay = timeTracker.getFormattedElapsedTime();
+            }
         },
 
 
@@ -769,41 +752,6 @@ export const useWorkspaceStore = defineStore("workspace", {
                 !this.currentTaskData.archivedAt);
         },
 
-        async _autoSaveWorkingTime() {
-            if (!this.currentTaskData || !this.currentProjectId || !this._shouldTrackTime()) {
-                return;
-            }
-
-            try {
-                const currentElapsedTime = this.timerInstance.getElapsedTime();
-                const totalWorkingTime = this.lastSavedWorkingTime + currentElapsedTime;
-
-                // Only save if there's been a meaningful change (at least 1 second)
-                if (totalWorkingTime > this.currentTaskData.workingTimeMs + 1000) {
-                    logger.info(`Auto-saving working time for task ${this.currentTaskData.id}: ${totalWorkingTime}ms`);
-                    
-                    const updatedTask = await taskService.updateWorkingTime(
-                        parseInt(this.currentProjectId), 
-                        this.currentTaskData.id, 
-                        totalWorkingTime
-                    );
-
-                    if (updatedTask) {
-                        // Update the current task data with the new working time
-                        this.currentTaskData.workingTimeMs = totalWorkingTime;
-                        
-                        // Update in the available tasks list as well
-                        const taskIndex = this.availableTasks.findIndex((task: Task) => task.id === this.currentTaskData?.id);
-                        if (taskIndex !== -1) {
-                            this.availableTasks[taskIndex].workingTimeMs = totalWorkingTime;
-                        }
-                    }
-                }
-            } catch (error) {
-                logger.warn('Failed to auto-save working time:', error);
-                // Don't throw error - this is a background operation
-            }
-        },
 
         /**
          * Save working time before page unload using the task service
@@ -814,28 +762,8 @@ export const useWorkspaceStore = defineStore("workspace", {
             }
 
             try {
-                const currentElapsedTime = this.timerInstance.getElapsedTime();
-                const totalWorkingTime = this.lastSavedWorkingTime + currentElapsedTime;
-
-                // Only save if there's been a meaningful change (at least 1 second)
-                if (totalWorkingTime > this.currentTaskData.workingTimeMs + 1000) {
-                    const success = await taskService.saveWorkingTimeBeforeUnload(
-                        parseInt(this.currentProjectId),
-                        this.currentTaskData.id,
-                        totalWorkingTime
-                    );
-
-                    if (success) {
-                        // Update the current task data with the new working time
-                        this.currentTaskData.workingTimeMs = totalWorkingTime;
-                        
-                        // Update in the available tasks list as well
-                        const taskIndex = this.availableTasks.findIndex((task: Task) => task.id === this.currentTaskData?.id);
-                        if (taskIndex !== -1) {
-                            this.availableTasks[taskIndex].workingTimeMs = totalWorkingTime;
-                        }
-                    }
-                }
+                // Use the persistent time tracker's save method which is more reliable
+                await timeTracker.saveForUnload();
             } catch (error) {
                 logger.warn('Failed to save working time before unload:', error);
                 // Don't throw error - this is a background operation during page unload
@@ -851,12 +779,9 @@ export const useWorkspaceStore = defineStore("workspace", {
             statusChangeOperation: () => Promise<T>,
             operationName: string
         ): Promise<T> {
-            // Calculate the final working time before the status change
-            const currentElapsedTime = this.timerInstance.getElapsedTime();
-            const finalWorkingTime = this.lastSavedWorkingTime + currentElapsedTime;
+            // Get current working time from persistent tracker
+            const finalWorkingTime = timeTracker.getCurrentTime();
             
-            // Save working time before the status change
-            await this._autoSaveWorkingTime();
             
             // Perform the status change operation
             const updatedTask = await statusChangeOperation();
@@ -1154,6 +1079,14 @@ export const useWorkspaceStore = defineStore("workspace", {
                 logger.error(`Failed to assign and start task ${taskId}:`, error);
                 throw error;
             }
+        },
+
+        /**
+         * Clean up the store and persistent time tracker
+         */
+        destroy() {
+            this.cleanupTimer();
+            timeTracker.destroy();
         },
 
     },
