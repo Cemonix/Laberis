@@ -385,21 +385,56 @@ const handleVetoTask = async () => {
 const handleBeforeUnload = async () => {
     // Save working time before the page is unloaded
     await workspaceStore.saveWorkingTimeBeforeUnload();
+    
+    // For debugging - you can remove this in production
+    console.log('Saving working time before page unload');
+};
+
+// Handler for pagehide event (more reliable on mobile)
+const handlePageHide = async () => {
+    await workspaceStore.saveWorkingTimeBeforeUnload();
+    console.log('Saving working time on page hide');
+};
+
+// Handler for visibility change
+const handleVisibilityChange = () => {
+    if (document.hidden) {
+        // Page became hidden - this is handled by the PersistentTimeTracker
+        console.log('Page became hidden');
+    } else {
+        // Page became visible
+        console.log('Page became visible');
+    }
 };
 
 onMounted(async () => {
     const taskId = route.query.taskId as string | undefined;
     await workspaceStore.loadAsset(props.projectId, props.assetId, taskId);
     
-    // Add beforeunload event listener to save working time on page refresh/close
+    // Add multiple event listeners for better reliability
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Also handle focus/blur events
+    window.addEventListener('blur', () => {
+        // Window lost focus - time tracker will handle this
+        console.log('Window lost focus');
+    });
+    
+    window.addEventListener('focus', () => {
+        // Window gained focus - time tracker will handle this  
+        console.log('Window gained focus');
+    });
 });
 
 onUnmounted(() => {
     workspaceStore.cleanupTimer();
     
-    // Remove beforeunload event listener
+    // Remove all event listeners
     window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.removeEventListener('pagehide', handlePageHide);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
 
