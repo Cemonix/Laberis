@@ -41,7 +41,8 @@
                         type="file"
                         :multiple="uploadType === 'files'"
                         :webkitdirectory="uploadType === 'folder'"
-                        accept="image/*"
+                        :directory="uploadType === 'folder'"
+                        :accept="uploadType === 'files' ? 'image/*' : undefined"
                         @change="handleFileSelection"
                         class="hidden-input"
                     >
@@ -55,7 +56,7 @@
                                 Drag and drop images here, or click to select files
                             </span>
                             <span v-else>
-                                Click to select a folder containing images
+                                Drag and drop a folder here, or click to select folder
                             </span>
                         </p>
                         <p class="dropzone-subtext">
@@ -117,7 +118,11 @@
                     ></div>
                 </div>
                 <p class="progress-text">
-                    Uploading {{ currentFileIndex }} of {{ selectedFiles.length }} files...
+                    Uploading {{ selectedFiles.length }} files...
+                    <br>
+                    <small v-if="selectedFiles.length > 15 || getTotalFileSize() > 25000000">
+                        Large upload detected - processing in batches
+                    </small>
                 </p>
             </div>
 
@@ -259,6 +264,8 @@ const handleFileSelection = (event: Event) => {
         const files = Array.from(target.files);
         const imageFiles = files.filter(file => file.type.startsWith('image/'));
         
+        logger.info(`File selection detected: ${files.length} total files, ${imageFiles.length} image files, upload type: ${uploadType.value}`);
+        
         // Use helper function to add files with duplicate checking
         addFilesToSelection(imageFiles);
         
@@ -273,6 +280,15 @@ const handleFileSelection = (event: Event) => {
             showWarning(title, message);
             logger.warn(`Filtered out ${nonImageCount} non-image files`);
         }
+        
+        // Show success message for folder uploads
+        if (uploadType.value === 'folder' && imageFiles.length > 0) {
+            showSuccess('Folder Selected', `Selected ${imageFiles.length} images from the folder.`);
+        }
+    } else if (uploadType.value === 'folder') {
+        // User likely cancelled the folder selection or didn't confirm it properly
+        logger.warn('Folder selection cancelled or no files detected');
+        showWarning('Folder Selection', 'No folder selected. Make sure to select a folder and confirm the selection in the file dialog.');
     }
     // Clear the input value so the same file can be selected again
     // and to prevent cancelled selections from affecting future selections
@@ -294,6 +310,8 @@ const handleDrop = (event: DragEvent) => {
         const files = Array.from(event.dataTransfer.files);
         const imageFiles = files.filter(file => file.type.startsWith('image/'));
         
+        logger.info(`Drop detected: ${files.length} total files, ${imageFiles.length} image files, upload type: ${uploadType.value}`);
+        
         // Use helper function to add files with duplicate checking
         addFilesToSelection(imageFiles);
         
@@ -307,6 +325,11 @@ const handleDrop = (event: DragEvent) => {
             
             showWarning(title, message);
             logger.warn(`Filtered out ${nonImageCount} non-image files`);
+        }
+        
+        // Show success message for folder uploads
+        if (uploadType.value === 'folder' && imageFiles.length > 0) {
+            showSuccess('Files Dropped', `Added ${imageFiles.length} images from the dropped folder/files.`);
         }
     }
 };
@@ -334,6 +357,10 @@ const formatFileSize = (bytes: number): string => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+const getTotalFileSize = (): number => {
+    return selectedFiles.value.reduce((total, file) => total + file.size, 0);
 };
 
 const handleUploadError = (error: unknown) => {
