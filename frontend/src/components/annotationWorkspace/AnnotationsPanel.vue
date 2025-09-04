@@ -251,7 +251,6 @@ const closeLabelEditModal = () => {
 const confirmLabelChange = async () => {
     if (!editingAnnotation.value || !selectedNewLabelId.value) return;
     
-    // FIX: Not working 
     await handleLabelChange(editingAnnotation.value, selectedNewLabelId.value.toString());
     closeLabelEditModal();
 };
