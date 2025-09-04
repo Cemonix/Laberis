@@ -238,7 +238,7 @@ const selection = useTaskSelection();
 const {
     showPreviewPopup, previewAsset, previewPopupStyle, previewImageLoaded,
     showPreview, hidePreview, handlePreviewImageLoad, handlePreviewImageError,
-    preloadVisibleAssets
+    preloadVisibleAssets, clearAnnotationsCache
 } = useAssetPreview();
 
 const projectId = ref<number>(parseInt(route.params.projectId as string));
@@ -949,6 +949,8 @@ const handleExportCoco = async () => {
 
 // Navigation and utility functions
 const handleRefresh = () => {
+    // Clear annotations cache to ensure fresh annotation data
+    clearAnnotationsCache();
     loadTasks();
 };
 
@@ -1038,10 +1040,17 @@ const loadStageInfo = async () => {
 
 watch(
     () => route.fullPath,
-    () => {
+    (newPath, oldPath) => {
         // Hide preview popup when navigating away
         if (showPreviewPopup.value) {
             hidePreview();
+        }
+        
+        // Clear annotations cache when returning from annotation workspace
+        // This ensures fresh annotation data is loaded when previewing assets
+        if (oldPath && oldPath.includes('/workspace/') && newPath.includes('/tasks/')) {
+            logger.info('Returning from annotation workspace, clearing annotations cache');
+            clearAnnotationsCache();
         }
     }
 );
@@ -1053,6 +1062,9 @@ onUnmounted(() => {
 });
 
 onMounted(async () => {
+    // Clear annotations cache on mount to ensure fresh data
+    clearAnnotationsCache();
+    
     // Load project data first (includes team members for permissions)
     try {
         await projectStore.setCurrentProject(projectId.value);
