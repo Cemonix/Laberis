@@ -19,6 +19,7 @@ public class AssetService : IAssetService
     private readonly IStorageService _storageService;
     private readonly IWorkflowStageRepository _workflowStageRepository;
     private readonly IDomainEventService _domainEventService;
+    private readonly ITaskService _taskService;
     private readonly ILogger<AssetService> _logger;
 
     public AssetService(
@@ -28,6 +29,7 @@ public class AssetService : IAssetService
         IStorageService storageService,
         IWorkflowStageRepository workflowStageRepository,
         IDomainEventService domainEventService,
+        ITaskService taskService,
         ILogger<AssetService> logger)
     {
         _assetRepository = assetRepository ?? throw new ArgumentNullException(nameof(assetRepository));
@@ -36,6 +38,7 @@ public class AssetService : IAssetService
         _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
         _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
         _domainEventService = domainEventService ?? throw new ArgumentNullException(nameof(domainEventService));
+        _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -365,6 +368,18 @@ public class AssetService : IAssetService
 
             _logger.LogInformation("Successfully uploaded asset with ID: {AssetId} for file '{FileName}'", asset.AssetId, uploadDto.File.FileName);
 
+            // Trigger automatic task creation for workflow stages that use this data source
+            try
+            {
+                await TriggerAutomaticTaskCreationAsync(projectId, uploadDto.DataSourceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to trigger automatic task creation after asset upload to data source {DataSourceId} in project {ProjectId}",
+                    uploadDto.DataSourceId, projectId);
+                // Don't fail the upload because of task creation issues
+            }
+
             return new UploadResultDto
             {
                 Asset = MapToDto(asset),
@@ -440,6 +455,21 @@ public class AssetService : IAssetService
         }
 
         _logger.LogInformation("Bulk upload completed for project {ProjectId}: {Summary}", projectId, summary);
+
+        // Trigger automatic task creation for workflow stages that use this data source
+        if (successCount > 0)
+        {
+            try
+            {
+                await TriggerAutomaticTaskCreationAsync(projectId, bulkUploadDto.DataSourceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to trigger automatic task creation after asset upload to data source {DataSourceId} in project {ProjectId}",
+                    bulkUploadDto.DataSourceId, projectId);
+                // Don't fail the upload because of task creation issues
+            }
+        }
 
         return new BulkUploadResultDto
         {
@@ -669,5 +699,56 @@ public class AssetService : IAssetService
             return false;
         }
     }
+    #endregion
+
+    #region Private Helper Methods
+
+    /// <summary>
+    /// Triggers automatic task creation for workflow stages that use the specified data source as input
+    /// </summary>
+    /// <param name="projectId">The project ID</param>
+    /// <param name="dataSourceId">The data source ID that received new assets</param>
+    private async System.Threading.Tasks.Task TriggerAutomaticTaskCreationAsync(int projectId, int dataSourceId)
+    {
+        _logger.LogInformation("Checking for workflow stages that use data source {DataSourceId} as input in project {ProjectId}", 
+            dataSourceId, projectId);
+
+        // Find all workflow stages in this project that use this data source as input
+        var workflowStages = await _workflowStageRepository.GetAllAsync(
+            ws => ws.Workflow.ProjectId == projectId && ws.InputDataSourceId == dataSourceId
+        );
+
+        if (!workflowStages.Any())
+        {
+            _logger.LogInformation("No workflow stages found that use data source {DataSourceId} as input in project {ProjectId}", 
+                dataSourceId, projectId);
+            return;
+        }
+
+        _logger.LogInformation("Found {StageCount} workflow stages using data source {DataSourceId} as input", 
+            workflowStages.Count(), dataSourceId);
+
+        foreach (var stage in workflowStages)
+        {
+            try
+            {
+                _logger.LogInformation("Creating tasks for workflow stage {StageId} ({StageName}) in workflow {WorkflowId}", 
+                    stage.WorkflowStageId, stage.Name, stage.WorkflowId);
+
+                var tasksCreated = await _taskService.CreateTasksForWorkflowStageAsync(
+                    projectId, stage.WorkflowId, stage.WorkflowStageId);
+
+                _logger.LogInformation("Created {TasksCreated} tasks for workflow stage {StageId} ({StageName})", 
+                    tasksCreated, stage.WorkflowStageId, stage.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create tasks for workflow stage {StageId} ({StageName}) in workflow {WorkflowId}", 
+                    stage.WorkflowStageId, stage.Name, stage.WorkflowId);
+                // Continue with other stages even if one fails
+            }
+        }
+    }
+
     #endregion
 }
