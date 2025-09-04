@@ -1,6 +1,6 @@
 import type { Task, TaskStatus } from '@/services/project/task/task.types';
 import type { TaskResult, TaskService, PermissionsService } from './taskManager.types';
-import type { TimerService } from '@/core/timing';
+import type { TimerService } from '@/core/timeTracking';
 import { AppLogger } from '@/core/logger/logger';
 
 /**
