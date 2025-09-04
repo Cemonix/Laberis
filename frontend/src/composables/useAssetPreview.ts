@@ -290,6 +290,28 @@ export function useAssetPreview() {
         });
     };
 
+    // Cache invalidation functions
+    const clearAnnotationsCache = (assetId?: number) => {
+        if (assetId) {
+            // Clear specific asset annotations
+            assetAnnotations.value.delete(assetId);
+            loadingAnnotations.value.delete(assetId);
+            logger.debug(`Cleared annotations cache for asset ${assetId}`);
+        } else {
+            // Clear all annotations cache
+            assetAnnotations.value.clear();
+            loadingAnnotations.value.clear();
+            logger.debug('Cleared all annotations cache');
+        }
+    };
+
+    const refreshAnnotations = async (projectId: number, assetId: number) => {
+        // Force refresh annotations for specific asset
+        clearAnnotationsCache(assetId);
+        await loadAnnotations(projectId, assetId);
+        logger.debug(`Force refreshed annotations for asset ${assetId}`);
+    };
+
     // Utility functions
     const formatFileSize = (bytes?: number): string => {
         if (!bytes) return 'Unknown size';
@@ -340,6 +362,8 @@ export function useAssetPreview() {
         handlePreviewImageLoad,
         handlePreviewImageError,
         preloadVisibleAssets,
+        clearAnnotationsCache,
+        refreshAnnotations,
         formatFileSize
     };
 }
