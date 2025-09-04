@@ -13,6 +13,8 @@ import type { Asset } from '@/core/asset/asset.types';
  * Note: Upload methods use apiClient directly due to FormData requirements.
  */
 class AssetService extends BaseProjectService {
+    private static readonly MAX_CHUNK_SIZE = 25 * 1024 * 1024; // 25MB
+
     constructor() {
         super('AssetService');
     }
@@ -79,11 +81,115 @@ class AssetService extends BaseProjectService {
             throw new NoFilesProvidedError();
         }
 
+        const totalSize = files.reduce((sum, f) => sum + f.size, 0);
         this.logger.info(`Uploading ${files.length} assets to project ${projectId}, data source ${dataSourceId}`, {
             filenames: files.map(f => f.name),
-            totalSize: files.reduce((sum, f) => sum + f.size, 0)
+            totalSize
         });
 
+        // Check if we need to use chunked upload (25MB limit with some buffer)
+        const needsChunking = totalSize > AssetService.MAX_CHUNK_SIZE || files.length > 15;
+
+        if (needsChunking) {
+            return this.uploadAssetsInChunks(projectId, dataSourceId, files, metadata, onProgress);
+        }
+
+        // Use direct upload for smaller batches
+        return this.uploadAssetsBatch(projectId, dataSourceId, files, metadata, onProgress);
+    }
+
+    /**
+     * Uploads assets in chunks to avoid request size limits
+     */
+    private async uploadAssetsInChunks(
+        projectId: number, 
+        dataSourceId: number, 
+        files: File[], 
+        metadata?: string,
+        onProgress?: (progress: number) => void
+    ): Promise<BulkUploadResult> {
+        const chunks: File[][] = [];
+        let currentChunk: File[] = [];
+        let currentChunkSize = 0;
+
+        // Split files into chunks based on size
+        for (const file of files) {
+            // If adding this file would exceed the chunk size, start a new chunk
+            if (currentChunkSize + file.size > AssetService.MAX_CHUNK_SIZE && currentChunk.length > 0) {
+                chunks.push(currentChunk);
+                currentChunk = [file];
+                currentChunkSize = file.size;
+            } else {
+                currentChunk.push(file);
+                currentChunkSize += file.size;
+            }
+        }
+
+        // Add the last chunk if it has files
+        if (currentChunk.length > 0) {
+            chunks.push(currentChunk);
+        }
+
+        this.logger.info(`Splitting upload into ${chunks.length} chunks`, {
+            chunkSizes: chunks.map(chunk => chunk.reduce((sum, f) => sum + f.size, 0))
+        });
+
+        // Upload chunks sequentially
+        const results: BulkUploadResult[] = [];
+        let totalProcessed = 0;
+
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const chunkResult = await this.uploadAssetsBatch(
+                projectId,
+                dataSourceId,
+                chunk,
+                metadata,
+                (chunkProgress) => {
+                    // Calculate overall progress
+                    const baseProgress = (totalProcessed / files.length) * 100;
+                    const chunkProgressContribution = (chunk.length / files.length) * (chunkProgress / 100) * 100;
+                    const overallProgress = Math.round(baseProgress + chunkProgressContribution);
+                    onProgress?.(Math.min(overallProgress, 100));
+                }
+            );
+
+            results.push(chunkResult);
+            totalProcessed += chunk.length;
+
+            this.logger.info(`Completed chunk ${i + 1}/${chunks.length}`, {
+                chunkFiles: chunk.length,
+                chunkSuccesses: chunkResult.successfulUploads,
+                chunkFailures: chunkResult.failedUploads
+            });
+        }
+
+        // Combine results
+        const successfulUploads = results.reduce((sum, r) => sum + r.successfulUploads, 0);
+        const failedUploads = results.reduce((sum, r) => sum + r.failedUploads, 0);
+        const combinedResult: BulkUploadResult = {
+            totalFiles: files.length,
+            successfulUploads,
+            failedUploads,
+            results: results.flatMap(r => r.results),
+            allSuccessful: results.every(r => r.allSuccessful),
+            summary: `${successfulUploads} of ${files.length} files uploaded successfully${failedUploads > 0 ? ` (${failedUploads} failed)` : ''}`
+        };
+
+        this.logger.info(`Chunked upload completed: ${combinedResult.successfulUploads} successes, ${combinedResult.failedUploads} failures`);
+        return combinedResult;
+    }
+
+    /**
+     * Uploads a batch of assets (internal method)
+     */
+    private async uploadAssetsBatch(
+        projectId: number, 
+        dataSourceId: number, 
+        files: File[], 
+        metadata?: string,
+        onProgress?: (progress: number) => void
+    ): Promise<BulkUploadResult> {
         try {
             const formData = new FormData();
             
@@ -118,7 +224,6 @@ class AssetService extends BaseProjectService {
                     'Failed to upload assets - Invalid response format');
             }
 
-            this.logger.info(`Successfully uploaded ${response.data.successfulUploads} of ${files.length} assets`, response.data);
             return response.data;
         } catch (error) {
             if (error instanceof NoFilesProvidedError) {
