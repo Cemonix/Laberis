@@ -1,8 +1,8 @@
 import { BaseProjectService } from '../baseProjectService';
 import { buildQueryParams } from '@/services/base/requests';
-import type { AssetListParams } from '@/services/project/asset';
-import type { UploadResult, BulkUploadResult } from '@/services/project/asset';
-import { NoFilesProvidedError } from '@/services/project/asset';
+import type { AssetListParams } from './requests';
+import type { UploadResult, BulkUploadResult } from './upload.types';
+import { NoFilesProvidedError } from './uploadErrors';
 import apiClient from '../../apiClient';
 import { transformApiError, isValidApiResponse, isValidPaginatedResponse } from '@/services/interceptors';
 import type { PaginatedResponse } from '@/services/base/paginatedResponse';
