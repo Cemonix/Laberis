@@ -1,5 +1,4 @@
 using server.Core;
-using server.Models.Domain;
 using server.Models.DTOs.Task;
 using server.Models.Domain.Enums;
 using server.Models.Common;
@@ -20,7 +19,6 @@ public class TaskService : ITaskService
     private readonly IAssetRepository _assetRepository;
     private readonly ITaskEventService _taskEventService;
     private readonly ITaskStatusValidator _taskStatusValidator;
-    private readonly IAssetService _assetService;
     private readonly IWorkflowStageRepository _workflowStageRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IProjectMembershipService _projectMembershipService;
@@ -31,7 +29,6 @@ public class TaskService : ITaskService
         IAssetRepository assetRepository,
         ITaskEventService taskEventService,
         ITaskStatusValidator taskStatusValidator,
-        IAssetService assetService,
         IWorkflowStageRepository workflowStageRepository,
         UserManager<ApplicationUser> userManager,
         IProjectMembershipService projectMembershipService,
@@ -41,7 +38,6 @@ public class TaskService : ITaskService
         _assetRepository = assetRepository ?? throw new ArgumentNullException(nameof(assetRepository));
         _taskEventService = taskEventService ?? throw new ArgumentNullException(nameof(taskEventService));
         _taskStatusValidator = taskStatusValidator ?? throw new ArgumentNullException(nameof(taskStatusValidator));
-        _assetService = assetService ?? throw new ArgumentNullException(nameof(assetService));
         _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         _projectMembershipService = projectMembershipService ?? throw new ArgumentNullException(nameof(projectMembershipService));
@@ -448,13 +444,20 @@ public class TaskService : ITaskService
     /// <param name="assigningUserId">The user performing the assignment</param>
     /// <param name="targetUserId">The user being assigned the task (null for unassignment)</param>
     /// <exception cref="UnauthorizedAccessException">Thrown when the assignment is not permitted</exception>
-    private async System.Threading.Tasks.Task ValidateTaskAssignmentPermissionAsync(int projectId, string assigningUserId, string? targetUserId)
+    private async Task ValidateTaskAssignmentPermissionAsync(int projectId, string assigningUserId, string? targetUserId)
     {
         var assigningUserMembership = await _projectMembershipService.GetProjectMembershipAsync(assigningUserId, projectId);
         if (assigningUserMembership == null)
         {
             _logger.LogWarning("Assigning user {AssigningUserId} is not a member of project {ProjectId}", assigningUserId, projectId);
             throw new UnauthorizedAccessException("User is not a member of this project");
+        }
+
+        // Allow self-assignment for all roles
+        if (assigningUserId == targetUserId && !string.IsNullOrEmpty(targetUserId))
+        {
+            _logger.LogDebug("User {UserId} is assigning task to themselves", assigningUserId);
+            return;
         }
 
         // MANAGER role can assign tasks to anyone or unassign tasks
