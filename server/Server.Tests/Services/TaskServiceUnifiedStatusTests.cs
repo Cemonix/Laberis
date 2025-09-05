@@ -18,7 +18,6 @@ public class TaskServiceUnifiedStatusTests
     private readonly Mock<IAssetRepository> _mockAssetRepository;
     private readonly Mock<ITaskEventService> _mockTaskEventService;
     private readonly Mock<ITaskStatusValidator> _mockTaskStatusValidator;
-    private readonly Mock<IAssetService> _mockAssetService;
     private readonly Mock<IWorkflowStageRepository> _mockWorkflowStageRepository;
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly Mock<IProjectMembershipService> _mockProjectMembershipService;
@@ -31,7 +30,6 @@ public class TaskServiceUnifiedStatusTests
         _mockAssetRepository = new Mock<IAssetRepository>();
         _mockTaskEventService = new Mock<ITaskEventService>();
         _mockTaskStatusValidator = new Mock<ITaskStatusValidator>();
-        _mockAssetService = new Mock<IAssetService>();
         _mockWorkflowStageRepository = new Mock<IWorkflowStageRepository>();
         _mockUserManager = MockUserManager();
         _mockProjectMembershipService = new Mock<IProjectMembershipService>();
@@ -43,7 +41,6 @@ public class TaskServiceUnifiedStatusTests
             _mockAssetRepository.Object,
             _mockTaskEventService.Object,
             _mockTaskStatusValidator.Object,
-            _mockAssetService.Object,
             _mockWorkflowStageRepository.Object,
             _mockUserManager.Object,
             _mockProjectMembershipService.Object,
