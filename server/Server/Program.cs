@@ -5,6 +5,7 @@ using server.Data;
 using server.Configs;
 using server.Extensions;
 using server.Models.Internal;
+using server.Services;
 using server.Services.EventHandlers;
 using System.Text.Json;
 
@@ -75,6 +76,9 @@ public class Program
 
         // Register pipeline services and workflow orchestration
         builder.Services.AddPipelineServices();
+
+        // Register background services
+        builder.Services.AddHostedService<ExpiredLockCleanupService>();
 
         // Add framework services
         builder.Services.AddControllers()
