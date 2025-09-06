@@ -415,17 +415,6 @@ onMounted(async () => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('pagehide', handlePageHide);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Also handle focus/blur events
-    window.addEventListener('blur', () => {
-        // Window lost focus - time tracker will handle this
-        console.log('Window lost focus');
-    });
-    
-    window.addEventListener('focus', () => {
-        // Window gained focus - time tracker will handle this  
-        console.log('Window gained focus');
-    });
 });
 
 onUnmounted(() => {
