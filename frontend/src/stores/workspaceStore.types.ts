@@ -8,6 +8,17 @@ import type { Task } from '@/services/project/task/task.types';
 import type { WorkflowStageType } from '@/services/project/workflow/workflowStage.types';
 
 /**
+ * Simple navigation context from server
+ */
+export interface TaskNavigationContext {
+    hasNext: boolean;
+    hasPrevious: boolean;
+    currentPosition: number;
+    totalTasks: number;
+    message?: string | null;
+}
+
+/**
  * Current flat workspace store state interface (legacy structure)
  * This matches the actual current implementation in workspaceStore.ts
  */
@@ -43,8 +54,11 @@ export interface WorkspaceState {
     currentTaskId: number | null;
     currentTaskData: Task | null;
     currentWorkflowStageType: WorkflowStageType | null;
-    availableTasks: Task[];
+    availableTasks: Task[]; // Legacy - will be removed
     initialTaskId: number | null;
+    
+    // Simple navigation context
+    navigationContext: TaskNavigationContext | null;
 }
 
 /**
