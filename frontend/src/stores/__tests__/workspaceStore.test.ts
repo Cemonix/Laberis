@@ -9,8 +9,8 @@ import { AnnotationType } from "@/core/workspace/annotation.types";
 import type { LabelScheme } from "@/services/project/labelScheme/label.types";
 import { AssetStatus } from '@/core/asset/asset.types';
 
-// Mock the services from projects
-vi.mock("@/services/projects", () => ({
+// Mock the services from project
+vi.mock("@/services/project", () => ({
     annotationService: {
         getAnnotationsForAsset: vi.fn(),
         createAnnotation: vi.fn(),
@@ -40,7 +40,8 @@ vi.mock("@/services/projects", () => ({
 import { 
     annotationService,
     assetService, 
-    labelSchemeService 
+    labelSchemeService,
+    taskService
 } from "@/services/project";
 
 // Mock the TimeTracker
@@ -286,7 +287,6 @@ describe("Workspace Store", () => {
             });
 
             // Mock task service
-            const { taskService } = await import("@/services/project");
             vi.mocked(taskService.getTasksForAsset).mockResolvedValue([]);
 
             await workspaceStore.loadAsset("1", "1");
@@ -351,7 +351,7 @@ describe("Workspace Store", () => {
                 labelId: mockAnnotation.labelId,
                 isPrediction: false,
                 confidenceScore: undefined,
-                isGroundTruth: false,
+                isGroundTruth: undefined,
                 version: 1,
                 notes: undefined,
                 annotatorEmail: undefined,
