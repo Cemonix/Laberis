@@ -174,7 +174,8 @@ public class TaskService : ITaskService
             DueDate = createDto.DueDate,
             Metadata = createDto.Metadata,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            RowVersion = []
         };
 
         await _taskRepository.AddAsync(task);

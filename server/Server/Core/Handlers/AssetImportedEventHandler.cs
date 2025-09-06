@@ -78,7 +78,8 @@ public class AssetImportedEventHandler : IDomainEventHandler<AssetImportedEvent>
                 WorkflowId = stage.WorkflowId,
                 WorkflowStageId = stage.WorkflowStageId,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                RowVersion = []
             };
 
             await _taskRepository.AddAsync(task);

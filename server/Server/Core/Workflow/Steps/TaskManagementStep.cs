@@ -91,7 +91,8 @@ public class TaskManagementStep : ITaskManagementStep
                     Status = readyStatus,
                     AssignedToUserId = null, // Will be assigned later based on workflow stage assignments
                     CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    UpdatedAt = DateTime.UtcNow,
+                    RowVersion = []
                 };
 
                 await _taskRepository.AddAsync(newTask);
@@ -176,7 +177,8 @@ public class TaskManagementStep : ITaskManagementStep
                     Status = TaskStatus.CHANGES_REQUIRED,
                     AssignedToUserId = null, // Will be assigned later based on workflow stage assignments
                     CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    UpdatedAt = DateTime.UtcNow,
+                    RowVersion = []
                 };
 
                 await _taskRepository.AddAsync(newTask);
