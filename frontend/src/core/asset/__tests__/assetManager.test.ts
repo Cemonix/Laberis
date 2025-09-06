@@ -3,7 +3,7 @@ import { AssetManager } from "../assetManager";
 import { type Asset, AssetStatus } from '@/core/asset/asset.types';
 
 // Mock the services
-vi.mock("@/services/projects", () => ({
+vi.mock("@/services/project", () => ({
     assetService: {
         getAssetById: vi.fn(),
     },

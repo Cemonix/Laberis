@@ -1,7 +1,10 @@
 import type { Task } from '@/services/project/task/task.types';
 import type { NavigationResult, NavigationInfo } from './taskNavigationManager.types';
-import type { PermissionsService } from './taskManager.types';
 import { AppLogger } from '@/core/logger/logger';
+
+interface PermissionsService {
+    canUpdateProject(): Promise<boolean>;
+}
 
 /**
  * Core business logic for task navigation operations.

@@ -211,7 +211,7 @@ export class TimeTracker implements TimerService {
     }
 
     /**
-     * Start timer (simplified interface for TaskManager compatibility)
+     * Start timer
      */
     start(): void {
         if (this.currentSession) {
