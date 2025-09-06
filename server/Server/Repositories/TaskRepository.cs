@@ -27,6 +27,7 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
             .Include(t => t.WorkflowStage)
             .Include(t => t.AssignedToUser)
             .Include(t => t.LastWorkedOnByUser)
+            .Include(t => t.LockedByUser)
             .FirstOrDefaultAsync(t => t.TaskId == (int)id);
     }
 
@@ -36,7 +37,8 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
         return query
             .Include(t => t.WorkflowStage)
             .Include(t => t.AssignedToUser)
-            .Include(t => t.LastWorkedOnByUser);
+            .Include(t => t.LastWorkedOnByUser)
+            .Include(t => t.LockedByUser);
     }
 
     protected override IQueryable<LaberisTask> ApplyFilter(IQueryable<LaberisTask> query, string? filterOn, string? filterQuery)
@@ -205,5 +207,34 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
         Update(task);
         await SaveChangesAsync();
         return task;
+    }
+
+    public async Task<List<LaberisTask>> GetNavigableTasksAsync(string userId, int projectId, int? workflowStageId = null)
+    {
+        var now = DateTime.UtcNow;
+        
+        var query = _dbSet
+            .Where(t => t.ProjectId == projectId)
+            // Include tasks assigned to user OR unassigned tasks (available for assignment)
+            .Where(t => t.AssignedToUserId == userId || t.AssignedToUserId == null)
+            .Where(t => t.Status != Models.Domain.Enums.TaskStatus.COMPLETED && 
+                t.Status != Models.Domain.Enums.TaskStatus.ARCHIVED && 
+                t.Status != Models.Domain.Enums.TaskStatus.VETOED)
+            // Exclude tasks locked by other users (but include tasks locked by this user or unlocked tasks)
+            .Where(t => t.LockedByUserId == null || 
+                       t.LockedByUserId == userId || 
+                       t.LockExpiresAt == null || 
+                       t.LockExpiresAt <= now);
+
+        if (workflowStageId.HasValue)
+        {
+            query = query.Where(t => t.WorkflowStageId == workflowStageId.Value);
+        }
+
+        return await query
+            .OrderByDescending(t => t.Priority)
+            .ThenByDescending(t => t.CreatedAt)
+            .ThenBy(t => t.TaskId)
+            .ToListAsync();
     }
 }

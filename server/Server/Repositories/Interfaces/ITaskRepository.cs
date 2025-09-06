@@ -31,4 +31,15 @@ public interface ITaskRepository : IGenericRepository<LaberisTask>
     /// <param name="userId">The ID of the user making the change.</param>
     /// <returns>The updated task.</returns>
     Task<LaberisTask> UpdateTaskStatusAsync(LaberisTask task, Models.Domain.Enums.TaskStatus newStatus, string userId);
+
+    /// <summary>
+    /// Gets navigable tasks for a user in a project, ordered by creation date and task ID.
+    /// Includes tasks assigned to the user and unassigned tasks (available for assignment).
+    /// Excludes completed, archived, and vetoed tasks.
+    /// </summary>
+    /// <param name="userId">The ID of the user.</param>
+    /// <param name="projectId">The ID of the project.</param>
+    /// <param name="workflowStageId">Optional workflow stage ID to filter by.</param>
+    /// <returns>List of navigable tasks ordered by CreatedAt then TaskId.</returns>
+    Task<List<LaberisTask>> GetNavigableTasksAsync(string userId, int projectId, int? workflowStageId = null);
 }
