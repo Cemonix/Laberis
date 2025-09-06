@@ -41,6 +41,13 @@
                     {{ showDeferredTasks ? 'Hide Deferred' : 'Show Deferred' }}
                 </Button>
                 <Button 
+                    variant="secondary" 
+                    @click="showCompletedTasks = !showCompletedTasks"
+                    class="toggle-completed-button"
+                >
+                    {{ showCompletedTasks ? 'Hide Completed' : 'Show Completed' }}
+                </Button>
+                <Button 
                     variant="primary" 
                     @click="handleRefresh"
                     :disabled="isLoading"
@@ -266,6 +273,7 @@ const showPriorityModal = ref<boolean>(false);
 const selectedTask = ref<TaskTableRow | null>(null);
 const showVetoedTasks = ref<boolean>(false);
 const showDeferredTasks = ref<boolean>(false);
+const showCompletedTasks = ref<boolean>(false); // Hide completed tasks by default
 
 // Bulk operations state
 const isBulkOperationInProgress = ref<boolean>(false);
@@ -301,7 +309,12 @@ const isTaskClickable = (task: TaskTableRow): boolean => {
         return false;
     }
     
-    // Only archived tasks cannot be opened (completed tasks can be viewed in preview mode)
+    // COMPLETED tasks are view-only and cannot be clicked
+    if (task.status === TaskStatus.COMPLETED) {
+        return false;
+    }
+    
+    // ARCHIVED tasks cannot be opened
     if (task.status === TaskStatus.ARCHIVED) {
         return false;
     }
@@ -381,6 +394,11 @@ const taskTableData = computed((): (TaskTableRow & { isClickable: boolean })[] =
     // Filter deferred tasks
     if (!showDeferredTasks.value) {
         filteredTasks = filteredTasks.filter(task => task.status !== TaskStatus.DEFERRED);
+    }
+    
+    // Filter completed tasks
+    if (!showCompletedTasks.value) {
+        filteredTasks = filteredTasks.filter(task => task.status !== TaskStatus.COMPLETED);
     }
     
     // Add clickability information to each task
@@ -532,15 +550,6 @@ const handleTaskClick = async (task: TaskTableRow, _index: number) => {
             mode: undefined as string | undefined
         }
     };
-
-    // Handle completed tasks in preview mode (no assignment or status change needed)
-    if (task.status === TaskStatus.COMPLETED) {
-        logger.info('Opening completed task in preview mode', { taskId: task.id, assetId: task.assetId, assetName: task.assetName });
-
-        route.query.mode = 'preview';
-        router.push(route);
-        return;
-    }
 
     // Only change status to IN_PROGRESS for tasks that are ready for work or suspended
     // DEFERRED tasks can only be changed by managers, so exclude them here
