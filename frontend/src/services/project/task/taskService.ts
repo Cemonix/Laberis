@@ -4,6 +4,7 @@ import type {
     GetTasksResponse,
 } from './taskService.types';
 import { TaskStatus, type ChangeTaskStatusDto, type CompleteTaskDto, type CreateTaskRequest, type PipelineResultDto, type Task, type TaskTableRow, type TaskWithDetails, type UpdateTaskRequest, type VetoTaskDto } from './task.types';
+import type { TaskNavigationResponse } from './taskNavigation.types';
 import { workflowStageService } from '../workflow/workflowStageService';
 import { assetService } from '../asset/assetService';
 
@@ -169,10 +170,10 @@ class TaskService extends BaseProjectService {
     /**
      * Get current user's tasks
      */
-    async getMyTasks(params: TasksQueryParams = {}): Promise<GetTasksResponse> {
+    async getMyTasks(projectId: number, params: TasksQueryParams = {}): Promise<GetTasksResponse> {
         this.logger.info('Fetching current user tasks', params);
 
-        const url = this.getBaseUrl('tasks/my-tasks');
+        const url = this.buildProjectUrl(projectId, 'tasks/my-tasks');
         const paginatedResponse = await this.getPaginated<any>(url, params);
         
         const tasks: Task[] = paginatedResponse.data.map((dto: any) => this.transformTaskDto(dto));
@@ -186,6 +187,21 @@ class TaskService extends BaseProjectService {
             pageSize: paginatedResponse.pageSize,
             totalPages: paginatedResponse.totalPages
         };
+    }
+
+    /**
+     * Get current user's assigned tasks for a specific workflow stage
+     */
+    async getMyTasksForStage(projectId: number, stageId: number, params: TasksQueryParams = {}): Promise<GetTasksResponse> {
+        this.logger.info(`Fetching current user tasks for workflow stage ${stageId}`, params);
+        
+        const stageParams = {
+            ...params,
+            filterOn: 'current_workflow_stage_id',
+            filterQuery: stageId.toString()
+        };
+        
+        return this.getMyTasks(projectId, stageParams);
     }
 
     /**
@@ -533,6 +549,59 @@ class TaskService extends BaseProjectService {
 
         this.logger.debug(`Can veto task ${taskId}: ${canVeto}`);
         return canVeto;
+    }
+
+    // ==================== Navigation API ====================
+
+    /**
+     * Get the next available task for the current user
+     */
+    async getNextTask(projectId: number, currentTaskId: number, workflowStageId?: number): Promise<TaskNavigationResponse> {
+        this.logger.info(`Getting next task for current user from task ${currentTaskId} in project ${projectId}`, { workflowStageId });
+
+        const url = this.buildProjectUrl(projectId, 'tasks/navigation/next');
+        const params = new URLSearchParams({
+            currentTaskId: currentTaskId.toString(),
+            ...(workflowStageId && { workflowStageId: workflowStageId.toString() })
+        });
+
+        const response = await this.get<TaskNavigationResponse>(`${url}?${params}`);
+        this.logger.info(`Next task result: taskId=${response.taskId}, hasNext=${response.hasNext}`);
+        return response;
+    }
+
+    /**
+     * Get the previous available task for the current user
+     */
+    async getPreviousTask(projectId: number, currentTaskId: number, workflowStageId?: number): Promise<TaskNavigationResponse> {
+        this.logger.info(`Getting previous task for current user from task ${currentTaskId} in project ${projectId}`, { workflowStageId });
+
+        const url = this.buildProjectUrl(projectId, 'tasks/navigation/previous');
+        const params = new URLSearchParams({
+            currentTaskId: currentTaskId.toString(),
+            ...(workflowStageId && { workflowStageId: workflowStageId.toString() })
+        });
+
+        const response = await this.get<TaskNavigationResponse>(`${url}?${params}`);
+        this.logger.info(`Previous task result: taskId=${response.taskId}, hasPrevious=${response.hasPrevious}`);
+        return response;
+    }
+
+    /**
+     * Get navigation context for the current task
+     */
+    async getNavigationContext(projectId: number, currentTaskId: number, workflowStageId?: number): Promise<TaskNavigationResponse> {
+        this.logger.info(`Getting navigation context for task ${currentTaskId} in project ${projectId}`, { workflowStageId });
+
+        const url = this.buildProjectUrl(projectId, 'tasks/navigation/context');
+        const params = new URLSearchParams({
+            currentTaskId: currentTaskId.toString(),
+            ...(workflowStageId && { workflowStageId: workflowStageId.toString() })
+        });
+
+        const response = await this.get<TaskNavigationResponse>(`${url}?${params}`);
+        this.logger.info(`Navigation context: position=${response.currentPosition}/${response.totalTasks}, hasNext=${response.hasNext}, hasPrevious=${response.hasPrevious}`);
+        return response;
     }
 }
 

@@ -4,7 +4,7 @@ import type { LabelResponse, CreateLabelRequest, UpdateLabelRequest } from '../l
 import type { PaginatedResponse } from '@/services/base/paginatedResponse';
 
 // Mock the API client
-vi.mock('../apiClient', () => ({
+vi.mock('../../../apiClient', () => ({
     default: {
         get: vi.fn(),
         post: vi.fn(),
