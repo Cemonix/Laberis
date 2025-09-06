@@ -161,18 +161,18 @@ public class TaskManagementStepTests
         // Mock finding the first annotation stage
         var annotationStage = CreateTestWorkflowStage(1, WorkflowStageType.ANNOTATION, 1);
         _mockWorkflowStageResolver.Setup(x => x.GetFirstAnnotationStageAsync(currentStage.WorkflowId, default))
-                                   .ReturnsAsync(annotationStage);
+            .ReturnsAsync(annotationStage);
 
         // Mock finding the annotation task
         var annotationTask = CreateTestTask(3, TaskStatus.COMPLETED);
         annotationTask.WorkflowStageId = annotationStage.WorkflowStageId;
         _mockTaskRepository.Setup(x => x.FindByAssetAndStageAsync(asset.AssetId, annotationStage.WorkflowStageId))
-                          .ReturnsAsync(annotationTask);
+            .ReturnsAsync(annotationTask);
 
         // Mock updating the task status
         var updatedTask = CreateTestTask(3, TaskStatus.CHANGES_REQUIRED);
         _mockTaskRepository.Setup(x => x.UpdateTaskStatusAsync(annotationTask, TaskStatus.CHANGES_REQUIRED, "reviewer123"))
-                          .ReturnsAsync(updatedTask);
+            .ReturnsAsync(updatedTask);
 
         var step = CreateStep();
 
@@ -195,8 +195,8 @@ public class TaskManagementStepTests
         var currentStage = CreateTestWorkflowStage(2, WorkflowStageType.REVISION, 2);
         var context = new PipelineContext(task, asset, currentStage, "reviewer123");
 
-        _mockWorkflowStageResolver.Setup(x => x.GetFirstAnnotationStageAsync(currentStage.WorkflowId, default))
-                                   .ReturnsAsync((WorkflowStage?)null);
+        _mockWorkflowStageResolver.Setup(x => x.GetFirstAnnotationStageAsync(currentStage.WorkflowId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((WorkflowStage)null!);
 
         var step = CreateStep();
 
@@ -549,7 +549,8 @@ public class TaskManagementStepTests
             Status = status,
             AssignedToUserId = "user123",
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            RowVersion = []
         };
     }
 

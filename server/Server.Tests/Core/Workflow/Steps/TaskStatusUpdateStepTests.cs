@@ -225,7 +225,8 @@ public class TaskStatusUpdateStepTests
             Status = status,
             AssignedToUserId = "user123",
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            RowVersion = []
         };
     }
 

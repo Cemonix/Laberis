@@ -300,7 +300,8 @@ public class TaskVetoPipelineTests
             Status = status,
             AssignedToUserId = assignedUserId,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            RowVersion = []
         };
     }
 
