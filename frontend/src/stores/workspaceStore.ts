@@ -1,12 +1,12 @@
 import { defineStore } from "pinia";
 import { faArrowPointer, faDotCircle, faMinus, faWaveSquare, faSquare, faDrawPolygon } from '@fortawesome/free-solid-svg-icons';
 import type { ImageDimensions } from "@/core/asset/asset.types";
-import type { WorkspaceState } from "./workspaceStore.types";
+import type { WorkspaceState, TaskNavigationContext } from "./workspaceStore.types";
 import type { Point } from "@/core/geometry/geometry.types";
 import { ToolName, type Tool } from "@/core/workspace/tools.types";
 import type { Annotation, CreateAnnotationDto } from '@/core/workspace/annotation.types';
 import type { LabelScheme, Label } from '@/services/project/labelScheme/label.types';
-import { AssetManager, TaskManager, TaskNavigationManager } from '@/core/workspace';
+import { AssetManager } from '@/core/workspace';
 import { TimeTracker } from '@/core/timeTracking';
 import { 
     annotationService,
@@ -65,6 +65,7 @@ export const useWorkspaceStore = defineStore("workspace", {
         currentWorkflowStageType: null as WorkflowStageType | null,
         availableTasks: [] as Task[],
         initialTaskId: null as number | null, // Store the initial task ID from URL query
+        navigationContext: null as TaskNavigationContext | null,
         isLoading: false,
         error: null,
     }),
@@ -131,31 +132,16 @@ export const useWorkspaceStore = defineStore("workspace", {
             }
             return state.availableTasks.findIndex((task: Task) => task.id === state.currentTaskData?.id);
         },
-        getTaskNavigationInfo(state): { current: number; total: number } {
-            // Filter out tasks that cannot be opened for navigation
-            // Note: Deferred tasks permission checking is handled in the navigation buttons themselves
-            const accessibleTasks = state.availableTasks.filter((task: Task) => {
-                // Vetoed tasks cannot be opened (they are view-only)
-                if (task.status === TaskStatus.VETOED) {
-                    return false;
-                }
-                
-                // Completed and archived tasks cannot be opened for editing
-                if (task.status && [TaskStatus.COMPLETED, TaskStatus.ARCHIVED].includes(task.status)) {
-                    return false;
-                }
-                
-                return true;
-            });
-
-            const currentIndex = state.currentTaskData && accessibleTasks.length > 0
-                ? accessibleTasks.findIndex((task: Task) => task.id === state.currentTaskData?.id)
-                : -1;
+        getTaskNavigationInfo(): { current: number; total: number } {
+            // Simple navigation info from server context
+            if (this.navigationContext) {
+                return {
+                    current: this.navigationContext.currentPosition,
+                    total: this.navigationContext.totalTasks
+                };
+            }
             
-            return {
-                current: currentIndex >= 0 ? currentIndex + 1 : 0,
-                total: accessibleTasks.length
-            };
+            return { current: 0, total: 0 };
         },
         isTaskCompleted(state): boolean {
             if (!state.currentTaskData) return false;
@@ -172,15 +158,11 @@ export const useWorkspaceStore = defineStore("workspace", {
             // Annotation editing is disabled when task is completed (preview mode)
             return this.isTaskCompleted;
         },
-        canNavigateToPrevious(state): boolean {
-            if (!state.currentTaskData || state.availableTasks.length === 0) return false;
-            const currentIndex = state.availableTasks.findIndex((task: Task) => task.id === state.currentTaskData?.id);
-            return currentIndex > 0;
+        canNavigateToPrevious(): boolean {
+            return this.navigationContext?.hasPrevious ?? false;
         },
-        canNavigateToNext(state): boolean {
-            if (!state.currentTaskData || state.availableTasks.length === 0) return false;
-            const currentIndex = state.availableTasks.findIndex((task: Task) => task.id === state.currentTaskData?.id);
-            return currentIndex < state.availableTasks.length - 1;
+        canNavigateToNext(): boolean {
+            return this.navigationContext?.hasNext ?? false;
         },
         canCompleteCurrentTask(state): boolean {
             if (!state.currentTaskData || !state.currentAssetData) {
@@ -226,40 +208,6 @@ export const useWorkspaceStore = defineStore("workspace", {
             return false;
         },
 
-        // Task management core instances with access to store state
-        taskManager(): TaskManager {
-            const permissionsService = {
-                canUpdateProject: async () => {
-                    // Import permission check dynamically to avoid circular dependencies
-                    try {
-                        const { usePermissions } = await import('@/composables/usePermissions');
-                        const { canUpdateProject } = usePermissions();
-                        return canUpdateProject.value;
-                    } catch {
-                        return false;
-                    }
-                }
-            };
-
-            return new TaskManager(taskService, permissionsService, timeTracker);
-        },
-
-        taskNavigationManager(): TaskNavigationManager {
-            const permissionsService = {
-                canUpdateProject: async () => {
-                    // Import permission check dynamically to avoid circular dependencies
-                    try {
-                        const { usePermissions } = await import('@/composables/usePermissions');
-                        const { canUpdateProject } = usePermissions();
-                        return canUpdateProject.value;
-                    } catch {
-                        return false;
-                    }
-                }
-            };
-
-            return new TaskNavigationManager(permissionsService);
-        }
     },
 
     actions: {
@@ -338,11 +286,41 @@ export const useWorkspaceStore = defineStore("workspace", {
                     }
 
                     if (currentTask && workflowStageId) {
-                        // Load all tasks for this workflow stage to enable navigation
-                        const stageTasks = await taskService.getTasksForStage(numericProjectId, workflowStageId);
-                        this.availableTasks = stageTasks.tasks;
+                        // Load user's assigned tasks for this workflow stage to enable proper navigation
+                        const assignedTasks = await taskService.getMyTasksForStage(numericProjectId, workflowStageId);
+                        let tasksForNavigation = assignedTasks.tasks;
+                        
+                        // If current task is not in the assigned tasks list (e.g., completed task viewed in preview mode),
+                        // add it to the list so the UI shows correct context, but navigation will still skip completed tasks
+                        const currentTaskInList = tasksForNavigation.find(task => task.id === currentTask.id);
+                        if (!currentTaskInList) {
+                            tasksForNavigation = [...tasksForNavigation, currentTask];
+                            logger.info(`Added current task ${currentTask.id} to navigation context (likely viewing completed task in preview mode)`);
+                        }
+                        
+                        this.availableTasks = tasksForNavigation;
                         this.currentTaskData = currentTask;
                         this.currentTaskId = currentTask.id;
+
+                        // Load navigation context from server
+                        try {
+                            const navigationContext = await taskService.getNavigationContext(
+                                numericProjectId, 
+                                currentTask.id,
+                                currentTask.workflowStageId
+                            );
+                            this.navigationContext = {
+                                hasNext: navigationContext.hasNext,
+                                hasPrevious: navigationContext.hasPrevious,
+                                currentPosition: navigationContext.currentPosition,
+                                totalTasks: navigationContext.totalTasks,
+                                message: navigationContext.message
+                            };
+                            logger.info(`Loaded navigation context: ${navigationContext.currentPosition}/${navigationContext.totalTasks}, hasNext=${navigationContext.hasNext}, hasPrevious=${navigationContext.hasPrevious}`);
+                        } catch (navigationError) {
+                            logger.warn('Failed to load navigation context:', navigationError);
+                            this.navigationContext = null;
+                        }
 
                         // Fetch current workflow stage type for completion logic
                         try {
@@ -816,56 +794,92 @@ export const useWorkspaceStore = defineStore("workspace", {
          * Check if a task can be opened by the current user
          */
         async canOpenTask(task: Task): Promise<boolean> {
-            // Use TaskManager to check if the task can be opened
-            return await this.taskManager.canOpenTask(task);
+            // Simple check - most tasks can be opened, except archived
+            return task.status !== TaskStatus.ARCHIVED;
         },
 
         /**
          * Navigate to the previous task in the current workflow stage
          */
         async navigateToPreviousTask(): Promise<{ projectId: string; assetId: string; taskId: string } | null> {
-            if (!this.currentTaskData || this.availableTasks.length === 0) {
-                logger.warn('Cannot navigate to previous task: no current task or available tasks');
+            if (!this.currentTaskData || !this.currentProjectId) {
+                logger.warn('Cannot navigate to previous task: no current task or project');
                 return null;
             }
 
-            // Use TaskNavigationManager to find previous task
-            const result = await this.taskNavigationManager.navigateToPrevious(
-                this.currentTaskData,
-                this.availableTasks,
-                this.currentProjectId!
-            );
+            try {
+                const navigation = await taskService.getPreviousTask(
+                    parseInt(this.currentProjectId), 
+                    this.currentTaskData.id,
+                    this.currentTaskData.workflowStageId
+                );
 
-            if (!result.success) {
-                logger.error('Failed to navigate to previous task:', result.error);
+                if (navigation.taskId && navigation.assetId) {
+                    logger.info('Successfully navigated to previous task:', navigation);
+                    // Update navigation context
+                    this.navigationContext = {
+                        hasNext: navigation.hasNext,
+                        hasPrevious: navigation.hasPrevious,
+                        currentPosition: navigation.currentPosition,
+                        totalTasks: navigation.totalTasks,
+                        message: navigation.message
+                    };
+                    
+                    return {
+                        projectId: this.currentProjectId,
+                        assetId: navigation.assetId.toString(),
+                        taskId: navigation.taskId.toString()
+                    };
+                }
+
+                logger.info('No previous task available');
+                return null;
+            } catch (error) {
+                logger.error('Failed to navigate to previous task:', error);
                 return null;
             }
-
-            return result.navigation;
         },
 
         /**
          * Navigate to the next task in the current workflow stage
          */
         async navigateToNextTask(): Promise<{ projectId: string; assetId: string; taskId: string } | null> {
-            if (!this.currentTaskData || this.availableTasks.length === 0) {
-                logger.warn('Cannot navigate to next task: no current task or available tasks');
+            if (!this.currentTaskData || !this.currentProjectId) {
+                logger.warn('Cannot navigate to next task: no current task or project');
                 return null;
             }
 
-            // Use TaskNavigationManager to find next task
-            const result = await this.taskNavigationManager.navigateToNext(
-                this.currentTaskData,
-                this.availableTasks,
-                this.currentProjectId!
-            );
+            try {
+                const navigation = await taskService.getNextTask(
+                    parseInt(this.currentProjectId), 
+                    this.currentTaskData.id,
+                    this.currentTaskData.workflowStageId
+                );
 
-            if (!result.success) {
-                logger.error('Failed to navigate to next task:', result.error);
+                if (navigation.taskId && navigation.assetId) {
+                    logger.info('Successfully navigated to next task:', navigation);
+                    // Update navigation context
+                    this.navigationContext = {
+                        hasNext: navigation.hasNext,
+                        hasPrevious: navigation.hasPrevious,
+                        currentPosition: navigation.currentPosition,
+                        totalTasks: navigation.totalTasks,
+                        message: navigation.message
+                    };
+                    
+                    return {
+                        projectId: this.currentProjectId,
+                        assetId: navigation.assetId.toString(),
+                        taskId: navigation.taskId.toString()
+                    };
+                }
+
+                logger.info('No next task available');
+                return null;
+            } catch (error) {
+                logger.error('Failed to navigate to next task:', error);
                 return null;
             }
-
-            return result.navigation;
         },
 
         /**
@@ -880,28 +894,28 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
-                // Use TaskManager to complete the task
-                const result = await this.taskManager.completeTask(numericProjectId, this.currentTaskData.id);
+                // Use TaskService pipeline to complete the task
+                const result = await taskService.completeTaskPipeline(numericProjectId, this.currentTaskData.id);
                 
-                if (!result.success) {
-                    this.error = result.error || 'Failed to complete task';
+                if (!result.isSuccess) {
+                    this.error = result.errorMessage || 'Failed to complete task';
                     return false;
                 }
                 
                 // Update current task data
-                if (result.task) {
-                    this.currentTaskData = result.task;
+                if (result.updatedTask) {
+                    this.currentTaskData = result.updatedTask;
                     
                     // Update the task in the available tasks list
-                    const taskIndex = this.availableTasks.findIndex((task: Task) => task.id === result.task!.id);
+                    const taskIndex = this.availableTasks.findIndex((task: Task) => task.id === result.updatedTask!.id);
                     if (taskIndex !== -1) {
-                        this.availableTasks[taskIndex] = result.task;
+                        this.availableTasks[taskIndex] = result.updatedTask;
                     }
                 }
 
                 return true;
             } catch (error) {
-                logger.error('Failed to complete task via TaskManager:', error);
+                logger.error('Failed to complete task:', error);
                 this.error = error instanceof Error ? error.message : 'Failed to complete task';
                 return false;
             }
@@ -919,32 +933,33 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
 
-                // Use TaskManager to suspend the task with working time preservation
-                const result = await this.taskManager.suspendTask(
+                // Update working time before suspending
+                await taskService.updateWorkingTime(numericProjectId, this.currentTaskData.id, this.lastSavedWorkingTime);
+                
+                // Use TaskService to suspend the task
+                const result = await taskService.changeTaskStatus(
                     numericProjectId, 
                     this.currentTaskData.id, 
-                    this.lastSavedWorkingTime
+                    { targetStatus: TaskStatus.SUSPENDED }
                 );
                 
-                if (!result.success) {
-                    this.error = result.error || 'Failed to suspend task';
+                if (!result) {
+                    this.error = 'Failed to suspend task';
                     return false;
                 }
                 
                 // Update current task data
-                if (result.task) {
-                    this.currentTaskData = result.task;
-                    
-                    // Update the task in the available tasks list
-                    const taskIndex = this.availableTasks.findIndex((task: Task) => task.id === result.task!.id);
-                    if (taskIndex !== -1) {
-                        this.availableTasks[taskIndex] = result.task;
-                    }
+                this.currentTaskData = result;
+                
+                // Update the task in the available tasks list
+                const taskIndex = this.availableTasks.findIndex((task: Task) => task.id === result.id);
+                if (taskIndex !== -1) {
+                    this.availableTasks[taskIndex] = result;
                 }
                 
                 return true;
             } catch (error) {
-                logger.error('Failed to suspend task via TaskManager:', error);
+                logger.error('Failed to suspend task:', error);
                 this.error = error instanceof Error ? error.message : 'Failed to suspend task';
                 return false;
             }
@@ -962,32 +977,33 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
-                // Use TaskManager to defer the task with working time preservation
-                const result = await this.taskManager.deferTask(
+                // Update working time before deferring
+                await taskService.updateWorkingTime(numericProjectId, this.currentTaskData.id, this.lastSavedWorkingTime);
+                
+                // Use TaskService to defer the task
+                const result = await taskService.changeTaskStatus(
                     numericProjectId, 
                     this.currentTaskData.id, 
-                    this.lastSavedWorkingTime
+                    { targetStatus: TaskStatus.DEFERRED }
                 );
                 
-                if (!result.success) {
-                    this.error = result.error || 'Failed to defer task';
+                if (!result) {
+                    this.error = 'Failed to defer task';
                     return false;
                 }
                 
                 // Update current task data
-                if (result.task) {
-                    this.currentTaskData = result.task;
-                    
-                    // Update the task in the available tasks list
-                    const taskIndex = this.availableTasks.findIndex((task: Task) => task.id === result.task!.id);
-                    if (taskIndex !== -1) {
-                        this.availableTasks[taskIndex] = result.task;
-                    }
+                this.currentTaskData = result;
+                
+                // Update the task in the available tasks list
+                const taskIndex = this.availableTasks.findIndex((task: Task) => task.id === result.id);
+                if (taskIndex !== -1) {
+                    this.availableTasks[taskIndex] = result;
                 }
                 
                 return true;
             } catch (error) {
-                logger.error('Failed to defer task via TaskManager:', error);
+                logger.error('Failed to defer task:', error);
                 this.error = error instanceof Error ? error.message : 'Failed to defer task';
                 return false;
             }
@@ -1005,32 +1021,32 @@ export const useWorkspaceStore = defineStore("workspace", {
             try {
                 const numericProjectId = parseInt(this.currentProjectId);
                 
-                // Use TaskManager to veto the task
-                const result = await this.taskManager.vetoTask(
+                // Use TaskService pipeline to veto the task
+                const result = await taskService.vetoTaskPipeline(
                     numericProjectId, 
                     this.currentTaskData.id, 
-                    reason
+                    { reason: reason || 'Task returned for rework' }
                 );
                 
-                if (!result.success) {
-                    this.error = result.error || 'Failed to return task for rework';
+                if (!result.isSuccess) {
+                    this.error = result.errorMessage || 'Failed to return task for rework';
                     return false;
                 }
                 
                 // Update current task data
-                if (result.task) {
-                    this.currentTaskData = result.task;
+                if (result.updatedTask) {
+                    this.currentTaskData = result.updatedTask;
                     
                     // Update the task in the available tasks list
-                    const taskIndex = this.availableTasks.findIndex((task: Task) => task.id === result.task!.id);
+                    const taskIndex = this.availableTasks.findIndex((task: Task) => task.id === result.updatedTask!.id);
                     if (taskIndex !== -1) {
-                        this.availableTasks[taskIndex] = result.task;
+                        this.availableTasks[taskIndex] = result.updatedTask;
                     }
                 }
 
                 return true;
             } catch (error) {
-                logger.error('Failed to return task for rework via TaskManager:', error);
+                logger.error('Failed to return task for rework:', error);
                 this.error = error instanceof Error ? error.message : 'Failed to return task for rework';
                 return false;
             }
@@ -1040,24 +1056,8 @@ export const useWorkspaceStore = defineStore("workspace", {
          * Get the next available task for seamless transitions
          */
         async getNextAvailableTask(): Promise<{ projectId: string; assetId: string; taskId: string } | null> {
-            if (!this.currentTaskData || this.availableTasks.length === 0) {
-                logger.warn('Cannot get next task: no current task or available tasks');
-                return null;
-            }
-
-            // Use TaskNavigationManager to find next available task
-            const result = await this.taskNavigationManager.getNextAvailableTask(
-                this.currentTaskData,
-                this.availableTasks,
-                this.currentProjectId!
-            );
-
-            if (!result.success) {
-                logger.error('Failed to get next available task:', result.error);
-                return null;
-            }
-
-            return result.navigation;
+            // Simply delegate to navigateToNextTask - they do the same thing
+            return this.navigateToNextTask();
         },
 
         /**
