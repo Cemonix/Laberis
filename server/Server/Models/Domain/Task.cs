@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace server.Models.Domain;
 
 public class Task
@@ -25,6 +27,15 @@ public class Task
     public int WorkflowStageId { get; set; }
     public string? AssignedToUserId { get; set; }
     public string? LastWorkedOnByUserId { get; set; }
+    
+    // Task Locking Fields
+    public string? LockedByUserId { get; set; }
+    public DateTime? LockedAt { get; set; }
+    public DateTime? LockExpiresAt { get; set; }
+
+    // Concurrency Token
+    [Timestamp]
+    public required byte[] RowVersion { get; set; }
 
     // Navigation Properties
     public virtual Asset Asset { get; set; } = null!;
@@ -33,6 +44,7 @@ public class Task
     public virtual WorkflowStage WorkflowStage { get; set; } = null!;
     public virtual ApplicationUser? AssignedToUser { get; set; }
     public virtual ApplicationUser? LastWorkedOnByUser { get; set; }
+    public virtual ApplicationUser? LockedByUser { get; set; }
 
     public virtual ICollection<Annotation> Annotations { get; set; } = [];
     public virtual ICollection<TaskEvent> TaskEvents { get; set; } = [];
