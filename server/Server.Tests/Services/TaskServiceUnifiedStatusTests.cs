@@ -396,6 +396,7 @@ public class TaskServiceUnifiedStatusTests
             WorkflowStageId = 1,
             CreatedAt = DateTime.UtcNow.AddDays(-1),
             UpdatedAt = DateTime.UtcNow.AddHours(-1),
+            RowVersion = [],
             WorkflowStage = new WorkflowStage
             {
                 WorkflowStageId = 1,

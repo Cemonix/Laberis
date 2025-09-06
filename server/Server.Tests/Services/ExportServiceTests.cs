@@ -346,7 +346,8 @@ public class ExportServiceTests
             Status = server.Models.Domain.Enums.TaskStatus.COMPLETED,
             CompletedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            RowVersion = []
         };
         var task2 = new LaberisTask
         {
@@ -357,7 +358,8 @@ public class ExportServiceTests
             Status = server.Models.Domain.Enums.TaskStatus.COMPLETED,
             CompletedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            RowVersion = []
         };
         context.Tasks.AddRange(task1, task2);
         await context.SaveChangesAsync();

@@ -191,6 +191,7 @@ public class TaskStatusValidatorTests
             WorkflowStageId = 1,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
+            RowVersion = [],
             WorkflowStage = new WorkflowStage
             {
                 WorkflowStageId = 1,

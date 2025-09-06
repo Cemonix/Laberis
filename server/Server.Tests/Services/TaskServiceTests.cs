@@ -62,7 +62,8 @@ namespace Server.Tests.Services
                 WorkflowStageId = 1,
                 AssignedToUserId = "user123",
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                RowVersion = []
             };
 
             _mockTaskRepository.Setup(r => r.GetByIdAsync(taskId))

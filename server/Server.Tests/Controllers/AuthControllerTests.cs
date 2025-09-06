@@ -22,6 +22,7 @@ namespace Server.Tests.Controllers
         private readonly Mock<IAuthService> _mockAuthService;
         private readonly Mock<ILogger<AuthController>> _mockLogger;
         private readonly Mock<IWebHostEnvironment> _mockEnvironment;
+        private readonly Mock<ITaskLockingService> _mockTaskLocking;
         private readonly AuthController _controller;
 
         public AuthControllerTests()
@@ -29,8 +30,9 @@ namespace Server.Tests.Controllers
             _mockAuthService = new Mock<IAuthService>();
             _mockLogger = new Mock<ILogger<AuthController>>();
             _mockEnvironment = new Mock<IWebHostEnvironment>();
-            _controller = new AuthController(_mockAuthService.Object, _mockLogger.Object, _mockEnvironment.Object);
-            
+            _mockTaskLocking = new Mock<ITaskLockingService>();
+            _controller = new AuthController(_mockAuthService.Object, _mockTaskLocking.Object, _mockLogger.Object, _mockEnvironment.Object);
+
             // Setup HttpContext with mocked Response and Cookies
             var mockHttpContext = new Mock<HttpContext>();
             var mockResponse = new Mock<HttpResponse>();
@@ -52,7 +54,7 @@ namespace Server.Tests.Controllers
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthController(null!, _mockLogger.Object, _mockEnvironment.Object));
+                new AuthController(null!, _mockTaskLocking.Object, _mockLogger.Object, _mockEnvironment.Object));
         }
 
         [Fact]
@@ -60,7 +62,7 @@ namespace Server.Tests.Controllers
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthController(_mockAuthService.Object, null!, _mockEnvironment.Object));
+                new AuthController(_mockAuthService.Object, _mockTaskLocking.Object, null!, _mockEnvironment.Object));
         }
 
         [Fact]
@@ -68,7 +70,7 @@ namespace Server.Tests.Controllers
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new AuthController(_mockAuthService.Object, _mockLogger.Object, null!));
+                new AuthController(_mockAuthService.Object, _mockTaskLocking.Object, _mockLogger.Object, null!));
         }
 
         #endregion
