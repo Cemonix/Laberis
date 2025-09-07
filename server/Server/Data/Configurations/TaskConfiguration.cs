@@ -43,11 +43,6 @@ public class TaskConfiguration : IEntityTypeConfiguration<Task>
         entity.Property(t => t.WorkflowStageId).HasColumnName("workflow_stage_id");
         entity.Property(t => t.AssignedToUserId).HasColumnName("assigned_to_user_id").IsRequired(false);
         entity.Property(t => t.LastWorkedOnByUserId).HasColumnName("last_worked_on_by_user_id").IsRequired(false);
-        
-        // Task Locking Configuration
-        entity.Property(t => t.LockedByUserId).HasColumnName("locked_by_user_id").IsRequired(false);
-        entity.Property(t => t.LockedAt).HasColumnName("locked_at").IsRequired(false);
-        entity.Property(t => t.LockExpiresAt).HasColumnName("lock_expires_at").IsRequired(false);
 
         // Row version for optimistic concurrency
         entity.Property(t => t.RowVersion)
@@ -89,10 +84,6 @@ public class TaskConfiguration : IEntityTypeConfiguration<Task>
             .HasForeignKey(t => t.LastWorkedOnByUserId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        entity.HasOne(t => t.LockedByUser)
-            .WithMany()
-            .HasForeignKey(t => t.LockedByUserId)
-            .OnDelete(DeleteBehavior.SetNull);
 
         // One-to-Many from Task to its child entities
         entity.HasMany(t => t.Annotations)

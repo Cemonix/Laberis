@@ -27,7 +27,6 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
             .Include(t => t.WorkflowStage)
             .Include(t => t.AssignedToUser)
             .Include(t => t.LastWorkedOnByUser)
-            .Include(t => t.LockedByUser)
             .FirstOrDefaultAsync(t => t.TaskId == (int)id);
     }
 
@@ -37,8 +36,7 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
         return query
             .Include(t => t.WorkflowStage)
             .Include(t => t.AssignedToUser)
-            .Include(t => t.LastWorkedOnByUser)
-            .Include(t => t.LockedByUser);
+            .Include(t => t.LastWorkedOnByUser);
     }
 
     protected override IQueryable<LaberisTask> ApplyFilter(IQueryable<LaberisTask> query, string? filterOn, string? filterQuery)
@@ -100,7 +98,7 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
                 }
                 break;
             case "is_completed":
-                var isCompleted = trimmedFilterQuery.ToLowerInvariant() == "true";
+                var isCompleted = trimmedFilterQuery.Equals("true", StringComparison.InvariantCultureIgnoreCase);
                 if (isCompleted)
                 {
                     query = query.Where(t => t.CompletedAt != null);
@@ -110,8 +108,18 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
                     query = query.Where(t => t.CompletedAt == null);
                 }
                 break;
+            case "asset_id":
+                if (int.TryParse(trimmedFilterQuery, out var assetId))
+                {
+                    query = query.Where(t => t.AssetId == assetId);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to parse asset ID: {TrimmedFilterQuery}", trimmedFilterQuery);
+                }
+                break;
             case "is_archived":
-                var isArchived = trimmedFilterQuery.ToLowerInvariant() == "true";
+                var isArchived = trimmedFilterQuery.Equals("true", StringComparison.InvariantCultureIgnoreCase);
                 if (isArchived)
                 {
                     query = query.Where(t => t.ArchivedAt != null);
@@ -211,20 +219,13 @@ public class TaskRepository : GenericRepository<LaberisTask>, ITaskRepository
 
     public async Task<List<LaberisTask>> GetNavigableTasksAsync(string userId, int projectId, int? workflowStageId = null)
     {
-        var now = DateTime.UtcNow;
-        
         var query = _dbSet
             .Where(t => t.ProjectId == projectId)
             // Include tasks assigned to user OR unassigned tasks (available for assignment)
             .Where(t => t.AssignedToUserId == userId || t.AssignedToUserId == null)
             .Where(t => t.Status != Models.Domain.Enums.TaskStatus.COMPLETED && 
                 t.Status != Models.Domain.Enums.TaskStatus.ARCHIVED && 
-                t.Status != Models.Domain.Enums.TaskStatus.VETOED)
-            // Exclude tasks locked by other users (but include tasks locked by this user or unlocked tasks)
-            .Where(t => t.LockedByUserId == null || 
-                       t.LockedByUserId == userId || 
-                       t.LockExpiresAt == null || 
-                       t.LockExpiresAt <= now);
+                t.Status != Models.Domain.Enums.TaskStatus.VETOED);
 
         if (workflowStageId.HasValue)
         {

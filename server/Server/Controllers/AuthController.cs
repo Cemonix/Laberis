@@ -15,14 +15,12 @@ namespace server.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authManager;
-    private readonly ITaskLockingService _taskLockingService;
     private readonly ILogger<AuthController> _logger;
     private readonly IWebHostEnvironment _environment;
 
-    public AuthController(IAuthService authManager, ITaskLockingService taskLockingService, ILogger<AuthController> logger, IWebHostEnvironment environment)
+    public AuthController(IAuthService authManager, ILogger<AuthController> logger, IWebHostEnvironment environment)
     {
         _authManager = authManager ?? throw new ArgumentNullException(nameof(authManager));
-        _taskLockingService = taskLockingService ?? throw new ArgumentNullException(nameof(taskLockingService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _environment = environment ?? throw new ArgumentNullException(nameof(environment));
     }
@@ -149,8 +147,7 @@ public class AuthController : ControllerBase
             return Unauthorized();
         }
 
-        // Release all task locks held by the user
-        await _taskLockingService.ReleaseAllUserLocksAsync(userId);
+        // Note: No need to release task locks as we now use assignment-based system
 
         await _authManager.RevokeRefreshTokenAsync(userId);
         

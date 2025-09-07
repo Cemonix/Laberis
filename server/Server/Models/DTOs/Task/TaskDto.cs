@@ -24,7 +24,7 @@ public record class TaskDto
     public string? AssignedToEmail { get; init; }
     public string? LastWorkedOnByEmail { get; init; }
     
-    // Lock status fields for UI feedback
-    public bool IsLocked { get; set; }
-    public bool IsLockedByCurrentUser { get; set; }
+    // Assignment status fields for UI feedback
+    public bool IsAssigned { get; set; }
+    public bool IsAssignedToCurrentUser { get; set; }
 }

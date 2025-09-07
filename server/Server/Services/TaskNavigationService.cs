@@ -1,6 +1,7 @@
 using server.Models.DTOs.Task;
 using server.Services.Interfaces;
 using server.Repositories.Interfaces;
+using System.Linq.Expressions;
 
 namespace server.Services;
 
@@ -10,13 +11,11 @@ namespace server.Services;
 public class TaskNavigationService : ITaskNavigationService
 {
     private readonly ITaskRepository _taskRepository;
-    private readonly ITaskLockingService _taskLockingService;
     private readonly ILogger<TaskNavigationService> _logger;
 
-    public TaskNavigationService(ITaskRepository taskRepository, ITaskLockingService taskLockingService, ILogger<TaskNavigationService> logger)
+    public TaskNavigationService(ITaskRepository taskRepository, ILogger<TaskNavigationService> logger)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
-        _taskLockingService = taskLockingService ?? throw new ArgumentNullException(nameof(taskLockingService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -54,42 +53,69 @@ public class TaskNavigationService : ITaskNavigationService
         // Calculate if the next task has a task after it
         var nextTaskHasNext = hasNext && (nextIndex < navigableTasks.Count - 1);
 
+        // Auto-assign next task if it's unassigned
+        if (hasNext && nextTask != null && nextTask.AssignedToUserId == null)
+        {
+            _logger.LogInformation("Auto-assigning next task {NextTaskId} to user {UserId}", nextTask.TaskId, userId);
+            
+            try
+            {
+                nextTask.AssignedToUserId = userId;
+                _taskRepository.Update(nextTask);
+                await _taskRepository.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to auto-assign task {TaskId} to user {UserId} - task may have been assigned to another user", 
+                    nextTask.TaskId, userId);
+                
+                // Re-fetch navigable tasks and try to find next available task
+                var updatedNavigableTasks = await _taskRepository.GetNavigableTasksAsync(userId, currentTask.ProjectId, workflowStageId);
+                var nextAvailableTask = updatedNavigableTasks.FirstOrDefault(t => 
+                    updatedNavigableTasks.IndexOf(t) > currentIndex && 
+                    (t.AssignedToUserId == userId || t.AssignedToUserId == null));
+                
+                if (nextAvailableTask != null && nextAvailableTask.AssignedToUserId == null)
+                {
+                    try
+                    {
+                        nextAvailableTask.AssignedToUserId = userId;
+                        _taskRepository.Update(nextAvailableTask);
+                        await _taskRepository.SaveChangesAsync();
+                        nextTask = nextAvailableTask;
+                        _logger.LogInformation("Successfully auto-assigned alternative task {TaskId} to user {UserId}", 
+                            nextAvailableTask.TaskId, userId);
+                    }
+                    catch
+                    {
+                        _logger.LogWarning("No more tasks available for assignment to user {UserId}", userId);
+                        return new TaskNavigationDto
+                        {
+                            CurrentPosition = currentIndex + 1,
+                            TotalTasks = navigableTasks.Count,
+                            HasNext = false,
+                            HasPrevious = currentIndex > 0,
+                            Message = "No more tasks available for assignment"
+                        };
+                    }
+                }
+                else
+                {
+                    nextTask = nextAvailableTask;
+                }
+            }
+        }
+
         var result = new TaskNavigationDto
         {
             TaskId = nextTask?.TaskId,
             AssetId = nextTask?.AssetId,
-            HasNext = nextTaskHasNext, // Use calculated value for the returned task
-            HasPrevious = nextIndex > 0, // Use nextIndex instead of currentIndex
+            HasNext = nextTaskHasNext,
+            HasPrevious = nextIndex > 0,
             CurrentPosition = currentIndex + 1,
             TotalTasks = navigableTasks.Count,
             Message = hasNext ? null : "No more tasks available"
         };
-
-        // Release lock on current task and attempt to lock the next task if one is found
-        if (hasNext && nextTask != null)
-        {
-            _logger.LogInformation("Releasing lock for current task {CurrentTaskId} and attempting to lock next task {NextTaskId} for user {UserId}", 
-                currentTaskId, nextTask.TaskId, userId);
-            
-            // Release current task lock
-            await _taskLockingService.ReleaseLockAsync(currentTaskId, userId);
-            
-            // Acquire lock for next task - this must succeed for navigation to be allowed
-            var lockAcquired = await _taskLockingService.TryLockTaskAsync(nextTask.TaskId, userId);
-            
-            if (!lockAcquired)
-            {
-                _logger.LogWarning("Failed to acquire lock for task {TaskId} for user {UserId} - navigation denied", nextTask.TaskId, userId);
-                return new TaskNavigationDto
-                {
-                    CurrentPosition = currentIndex + 1,
-                    TotalTasks = navigableTasks.Count,
-                    HasNext = false,
-                    HasPrevious = currentIndex > 0,
-                    Message = "Cannot navigate to next task - it is currently locked by another user"
-                };
-            }
-        }
 
         _logger.LogInformation("Next task navigation result: TaskId={TaskId}, HasNext={HasNext}, Position={Position}/{Total}", 
             result.TaskId, result.HasNext, result.CurrentPosition, result.TotalTasks);
@@ -131,42 +157,69 @@ public class TaskNavigationService : ITaskNavigationService
         // Calculate if the previous task has a task before it
         var previousTaskHasPrevious = previousIndex > 0;
 
+        // Auto-assign previous task if it's unassigned
+        if (hasPrevious && previousTask != null && previousTask.AssignedToUserId == null)
+        {
+            _logger.LogInformation("Auto-assigning previous task {PreviousTaskId} to user {UserId}", previousTask.TaskId, userId);
+            
+            try
+            {
+                previousTask.AssignedToUserId = userId;
+                _taskRepository.Update(previousTask);
+                await _taskRepository.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to auto-assign task {TaskId} to user {UserId} - task may have been assigned to another user", 
+                    previousTask.TaskId, userId);
+                
+                // Re-fetch navigable tasks and try to find previous available task
+                var updatedNavigableTasks = await _taskRepository.GetNavigableTasksAsync(userId, currentTask.ProjectId, workflowStageId);
+                var prevAvailableTask = updatedNavigableTasks.LastOrDefault(t => 
+                    updatedNavigableTasks.IndexOf(t) < currentIndex && 
+                    (t.AssignedToUserId == userId || t.AssignedToUserId == null));
+                
+                if (prevAvailableTask != null && prevAvailableTask.AssignedToUserId == null)
+                {
+                    try
+                    {
+                        prevAvailableTask.AssignedToUserId = userId;
+                        _taskRepository.Update(prevAvailableTask);
+                        await _taskRepository.SaveChangesAsync();
+                        previousTask = prevAvailableTask;
+                        _logger.LogInformation("Successfully auto-assigned alternative previous task {TaskId} to user {UserId}", 
+                            prevAvailableTask.TaskId, userId);
+                    }
+                    catch
+                    {
+                        _logger.LogWarning("No more previous tasks available for assignment to user {UserId}", userId);
+                        return new TaskNavigationDto
+                        {
+                            CurrentPosition = currentIndex + 1,
+                            TotalTasks = navigableTasks.Count,
+                            HasNext = currentIndex < navigableTasks.Count - 1,
+                            HasPrevious = false,
+                            Message = "No previous tasks available for assignment"
+                        };
+                    }
+                }
+                else
+                {
+                    previousTask = prevAvailableTask;
+                }
+            }
+        }
+
         var result = new TaskNavigationDto
         {
             TaskId = previousTask?.TaskId,
             AssetId = previousTask?.AssetId,
-            HasNext = previousIndex < navigableTasks.Count - 1, // Use previousIndex instead of currentIndex
-            HasPrevious = previousTaskHasPrevious, // Use calculated value for the returned task
+            HasNext = previousIndex < navigableTasks.Count - 1,
+            HasPrevious = previousTaskHasPrevious,
             CurrentPosition = currentIndex + 1,
             TotalTasks = navigableTasks.Count,
             Message = hasPrevious ? null : "No previous tasks available"
         };
-
-        // Release lock on current task and attempt to lock the previous task if one is found
-        if (hasPrevious && previousTask != null)
-        {
-            _logger.LogInformation("Releasing lock for current task {CurrentTaskId} and attempting to lock previous task {PreviousTaskId} for user {UserId}", 
-                currentTaskId, previousTask.TaskId, userId);
-            
-            // Release current task lock
-            await _taskLockingService.ReleaseLockAsync(currentTaskId, userId);
-            
-            // Acquire lock for previous task - this must succeed for navigation to be allowed
-            var lockAcquired = await _taskLockingService.TryLockTaskAsync(previousTask.TaskId, userId);
-            
-            if (!lockAcquired)
-            {
-                _logger.LogWarning("Failed to acquire lock for task {TaskId} for user {UserId} - navigation denied", previousTask.TaskId, userId);
-                return new TaskNavigationDto
-                {
-                    CurrentPosition = currentIndex + 1,
-                    TotalTasks = navigableTasks.Count,
-                    HasNext = currentIndex < navigableTasks.Count - 1,
-                    HasPrevious = false,
-                    Message = "Cannot navigate to previous task - it is currently locked by another user"
-                };
-            }
-        }
 
         _logger.LogInformation("Previous task navigation result: TaskId={TaskId}, HasPrevious={HasPrevious}, Position={Position}/{Total}", 
             result.TaskId, result.HasPrevious, result.CurrentPosition, result.TotalTasks);
@@ -206,6 +259,9 @@ public class TaskNavigationService : ITaskNavigationService
             };
         }
 
+        // Calculate task availability counts
+        var taskCounts = await GetTaskAvailabilityCountsAsync(userId, currentTask.ProjectId, workflowStageId);
+
         var result = new TaskNavigationDto
         {
             TaskId = currentTaskId,
@@ -213,13 +269,84 @@ public class TaskNavigationService : ITaskNavigationService
             HasNext = currentIndex < navigableTasks.Count - 1,
             HasPrevious = currentIndex > 0,
             CurrentPosition = currentIndex + 1,
-            TotalTasks = navigableTasks.Count
+            TotalTasks = navigableTasks.Count,
+            AvailableTasks = taskCounts.AvailableTasks,
+            CompletedTasks = taskCounts.CompletedTasks,
+            AssignedTasks = taskCounts.AssignedTasks
         };
 
-        _logger.LogInformation("Navigation context: Position={Position}/{Total}, HasNext={HasNext}, HasPrevious={HasPrevious}", 
-            result.CurrentPosition, result.TotalTasks, result.HasNext, result.HasPrevious);
+        _logger.LogInformation("Navigation context: Position={Position}/{Total}, HasNext={HasNext}, HasPrevious={HasPrevious}, Available={Available}, Completed={Completed}, Assigned={Assigned}", 
+            result.CurrentPosition, result.TotalTasks, result.HasNext, result.HasPrevious, result.AvailableTasks, result.CompletedTasks, result.AssignedTasks);
 
         return result;
+    }
+    
+    /// <summary>
+    /// Get task availability counts for a project and optional workflow stage
+    /// </summary>
+    /// <param name="userId">The user ID</param>
+    /// <param name="projectId">The project ID</param>
+    /// <param name="workflowStageId">Optional workflow stage ID</param>
+    /// <returns>Task availability counts</returns>
+    private async Task<TaskAvailabilityCounts> GetTaskAvailabilityCountsAsync(string userId, int projectId, int? workflowStageId = null)
+    {
+        // Get all tasks for the project/stage (not just navigable ones)
+        var filter = workflowStageId.HasValue 
+            ? (Expression<Func<Models.Domain.Task, bool>>)(t => t.ProjectId == projectId && t.WorkflowStageId == workflowStageId.Value)
+            : t => t.ProjectId == projectId;
+            
+        var allTasks = await _taskRepository.GetAllAsync(filter, pageSize: int.MaxValue);
+        
+        var availableTasks = 0;
+        var completedTasks = 0; 
+        var assignedTasks = 0;
+
+        foreach (var task in allTasks)
+        {
+            // Skip archived and vetoed tasks from counts
+            if (task.Status == Models.Domain.Enums.TaskStatus.ARCHIVED || 
+                task.Status == Models.Domain.Enums.TaskStatus.VETOED)
+                continue;
+
+            if (task.Status == Models.Domain.Enums.TaskStatus.COMPLETED)
+            {
+                // Count completed tasks by this user
+                if (task.AssignedToUserId == userId || task.LastWorkedOnByUserId == userId)
+                    completedTasks++;
+            }
+            else if (string.IsNullOrEmpty(task.AssignedToUserId))
+            {
+                // Unassigned tasks are available
+                availableTasks++;
+            }
+            else if (task.AssignedToUserId != userId)
+            {
+                // Tasks assigned to other users
+                assignedTasks++;
+            }
+            else
+            {
+                // Tasks assigned to current user are available to them
+                availableTasks++;
+            }
+        }
+
+        return new TaskAvailabilityCounts
+        {
+            AvailableTasks = availableTasks,
+            CompletedTasks = completedTasks,
+            AssignedTasks = assignedTasks
+        };
+    }
+    
+    /// <summary>
+    /// Helper class for task availability counts
+    /// </summary>
+    private class TaskAvailabilityCounts
+    {
+        public int AvailableTasks { get; set; }
+        public int CompletedTasks { get; set; }
+        public int AssignedTasks { get; set; }
     }
 
 }

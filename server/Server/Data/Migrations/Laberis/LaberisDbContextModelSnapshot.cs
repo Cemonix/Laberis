@@ -1026,18 +1026,6 @@ namespace server.Data.Migrations.Laberis
                         .HasColumnType("text")
                         .HasColumnName("last_worked_on_by_user_id");
 
-                    b.Property<DateTime?>("LockExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("lock_expires_at");
-
-                    b.Property<DateTime?>("LockedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("locked_at");
-
-                    b.Property<string>("LockedByUserId")
-                        .HasColumnType("text")
-                        .HasColumnName("locked_by_user_id");
-
                     b.Property<string>("Metadata")
                         .HasColumnType("jsonb")
                         .HasColumnName("metadata");
@@ -1100,8 +1088,6 @@ namespace server.Data.Migrations.Laberis
                     b.HasIndex("AssignedToUserId");
 
                     b.HasIndex("LastWorkedOnByUserId");
-
-                    b.HasIndex("LockedByUserId");
 
                     b.HasIndex("ProjectId");
 
@@ -1659,11 +1645,6 @@ namespace server.Data.Migrations.Laberis
                         .HasForeignKey("LastWorkedOnByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("ApplicationUser", "LockedByUser")
-                        .WithMany()
-                        .HasForeignKey("LockedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("server.Models.Domain.Project", "Project")
                         .WithMany()
                         .HasForeignKey("ProjectId")
@@ -1687,8 +1668,6 @@ namespace server.Data.Migrations.Laberis
                     b.Navigation("AssignedToUser");
 
                     b.Navigation("LastWorkedOnByUser");
-
-                    b.Navigation("LockedByUser");
 
                     b.Navigation("Project");
 
