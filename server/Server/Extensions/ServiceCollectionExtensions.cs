@@ -213,6 +213,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDashboardConfigurationService, DashboardConfigurationService>();
         services.AddScoped<IExportService, ExportService>();
 
+        // Add background services
+        services.AddHostedService<ExpiredLockCleanupService>();
+
         return services;
     }
 
