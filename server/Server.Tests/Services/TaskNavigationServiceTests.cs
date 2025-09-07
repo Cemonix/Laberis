@@ -83,6 +83,12 @@ public class TaskNavigationServiceTests
         _mockTaskRepository.Setup(x => x.GetNavigableTasksAsync(userId, currentTask.ProjectId, workflowStageId))
             .ReturnsAsync(tasks);
 
+        // Set up task locking service to simulate successful lock acquisition
+        _mockTaskLockingService.Setup(x => x.ReleaseLockAsync(currentTaskId, userId))
+            .ReturnsAsync(true);
+        _mockTaskLockingService.Setup(x => x.TryLockTaskAsync(2, userId, It.IsAny<int>())) // Next task ID is 2
+            .ReturnsAsync(true);
+
         // Act
         var result = await _service.GetNextTaskAsync(userId, currentTaskId, workflowStageId);
 
@@ -187,6 +193,12 @@ public class TaskNavigationServiceTests
             .ReturnsAsync(currentTask);
         _mockTaskRepository.Setup(x => x.GetNavigableTasksAsync(userId, currentTask.ProjectId, workflowStageId))
             .ReturnsAsync(tasks);
+
+        // Set up task locking service to simulate successful lock acquisition
+        _mockTaskLockingService.Setup(x => x.ReleaseLockAsync(currentTaskId, userId))
+            .ReturnsAsync(true);
+        _mockTaskLockingService.Setup(x => x.TryLockTaskAsync(1, userId, It.IsAny<int>())) // Previous task ID is 1
+            .ReturnsAsync(true);
 
         // Act
         var result = await _service.GetPreviousTaskAsync(userId, currentTaskId, workflowStageId);
@@ -369,6 +381,12 @@ public class TaskNavigationServiceTests
             .ReturnsAsync(tasksStage10);
         _mockTaskRepository.Setup(x => x.GetNavigableTasksAsync(userId, projectId, workflowStageId20))
             .ReturnsAsync(tasksStage20);
+
+        // Set up task locking service to simulate successful lock acquisition
+        _mockTaskLockingService.Setup(x => x.ReleaseLockAsync(currentTaskId, userId))
+            .ReturnsAsync(true);
+        _mockTaskLockingService.Setup(x => x.TryLockTaskAsync(2, userId, It.IsAny<int>())) // Next task ID is 2
+            .ReturnsAsync(true);
 
         // Act - Get next task from stage 10 only
         var result = await _service.GetNextTaskAsync(userId, currentTaskId, workflowStageId10);

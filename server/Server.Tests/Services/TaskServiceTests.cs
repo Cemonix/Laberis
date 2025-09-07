@@ -19,6 +19,7 @@ namespace Server.Tests.Services
         private readonly Mock<IWorkflowStageRepository> _mockWorkflowStageRepository;
         private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
         private readonly Mock<IProjectMembershipService> _mockProjectMembershipService;
+        private readonly Mock<ITaskLockingService> _mockTaskLockingService;
         private readonly Mock<ILogger<TaskService>> _mockLogger;
         private readonly TaskService _taskService;
 
@@ -32,6 +33,7 @@ namespace Server.Tests.Services
             _mockWorkflowStageRepository = new Mock<IWorkflowStageRepository>();
             _mockUserManager = MockUserManager();
             _mockProjectMembershipService = new Mock<IProjectMembershipService>();
+            _mockTaskLockingService = new Mock<ITaskLockingService>();
             _mockLogger = new Mock<ILogger<TaskService>>();
             
             _taskService = new TaskService(
@@ -42,6 +44,7 @@ namespace Server.Tests.Services
                 _mockWorkflowStageRepository.Object,
                 _mockUserManager.Object,
                 _mockProjectMembershipService.Object,
+                _mockTaskLockingService.Object,
                 _mockLogger.Object
             );
         }
