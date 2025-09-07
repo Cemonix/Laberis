@@ -4,8 +4,8 @@ import { AnnotationType } from '@/core/workspace/annotation.types';
 import type { ToolHandler } from './toolHandler';
 import type { useWorkspaceStore } from '@/stores/workspaceStore';
 import { StoreError, ToolError } from '@/core/errors/errors';
-import { drawBoundingBox } from '@/core/annotations/annotationDrawer';
-import { calculateRenderSizes } from '@/core/annotations/annotationRenderer';
+import { drawBoundingBox } from '@/core/workspace/annotation/annotationDrawer';
+import { calculateRenderSizes } from '@/core/workspace/annotation/annotationRenderer';
 import { clampPointToImageBounds } from '@/core/workspace/geometry/geometry';
 import type { Point } from '@/core/geometry/geometry.types';
 

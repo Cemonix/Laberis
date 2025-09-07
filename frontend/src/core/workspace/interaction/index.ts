@@ -1,4 +1,3 @@
-export { calculateCanvasCursorStyle } from './cursors';
 export { type ToolHandler } from './toolHandlers/toolHandler';
 export { BoundingBoxToolHandler } from './toolHandlers/boundingBoxToolHandler';
 export { LineToolHandler } from './toolHandlers/lineToolHandler';
