@@ -114,6 +114,7 @@
                         :task="row"
                         :project-id="projectId"
                         :all-tasks="tasks"
+                        :is-clickable="row.isClickable"
                         @preview-show="showPreview"
                         @preview-hide="hidePreview"
                     />

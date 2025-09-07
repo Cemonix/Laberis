@@ -348,25 +348,32 @@ class TaskService extends BaseProjectService {
             this.logger.info(`Fetched task ${taskId} successfully`);
             return task;
         } catch (error: any) {
+            // Normalize error fields from transformed ServerError or raw axios error
+            const status = error?.statusCode ?? error?.status ?? error?.response?.status;
+            const data = error?.serverResponse ?? error?.data ?? error?.response?.data;
+
             // Handle 409 Task assigned to another user with redirect to alternative task
-            if (error.status === 409 && error.data?.redirectToTask) {
-                // Create a special error that contains redirect information
-                const redirectError = new Error(error.data.message || 'This task is assigned to another user.');
-                (redirectError as any).redirectToTask = error.data.redirectToTask;
-                (redirectError as any).alternativeTask = error.data.alternativeTask;
-                (redirectError as any).toastMessage = error.data.toastMessage;
+            if (status === 409 && data?.redirectToTask) {
+                const redirectError = new Error(data.message || 'This task is assigned to another user.');
+                (redirectError as any).redirectToTask = data.redirectToTask;
+                (redirectError as any).alternativeTask = data.alternativeTask;
+                (redirectError as any).toastMessage = data.toastMessage;
                 throw redirectError;
             }
-            
+
             // Handle 404 No tasks available with redirect to task view
-            if (error.status === 404 && error.data?.redirectToTaskView) {
-                // Create a special error that contains redirect information
-                const redirectError = new Error(error.data.message || 'No tasks available for annotation.');
+            if (status === 404 && data?.redirectToTaskView) {
+                const redirectError = new Error(data.message || 'No tasks available for annotation.');
                 (redirectError as any).redirectToTaskView = true;
-                (redirectError as any).toastMessage = error.data.toastMessage;
+                (redirectError as any).toastMessage = data.toastMessage;
+                // Pass through explicit signal for "no tasks available"
+                const msg = (data?.error || data?.message || '').toString();
+                const noTasksFromMsg = /no\s*tasks\s*available/i.test(msg);
+                const noTasksFromCount = typeof data?.availableTasks === 'number' && data.availableTasks === 0;
+                (redirectError as any).noTasksAvailable = noTasksFromMsg || noTasksFromCount;
                 throw redirectError;
             }
-            
+
             // Re-throw other errors
             throw error;
         }

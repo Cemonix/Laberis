@@ -235,8 +235,12 @@ export class WorkspaceLoader {
             } else {
                 logger.warn(`No tasks found for asset ${assetId}`);
             }
-        } catch (taskError) {
+        } catch (taskError: any) {
             logger.error("Failed to fetch tasks:", taskError);
+            // Propagate access-redirect signals so the store/view can handle navigation + toast
+            if (taskError?.shouldRedirectToTask || taskError?.shouldRedirectToTaskView) {
+                throw taskError;
+            }
         }
 
         return result;
