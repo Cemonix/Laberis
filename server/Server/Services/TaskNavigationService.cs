@@ -65,17 +65,29 @@ public class TaskNavigationService : ITaskNavigationService
             Message = hasNext ? null : "No more tasks available"
         };
 
-        // Attempt to lock the next task if one is found
+        // Release lock on current task and attempt to lock the next task if one is found
         if (hasNext && nextTask != null)
         {
-            _logger.LogInformation("Attempting to lock next task {TaskId} for user {UserId}", nextTask.TaskId, userId);
+            _logger.LogInformation("Releasing lock for current task {CurrentTaskId} and attempting to lock next task {NextTaskId} for user {UserId}", 
+                currentTaskId, nextTask.TaskId, userId);
+            
+            // Release current task lock
+            await _taskLockingService.ReleaseLockAsync(currentTaskId, userId);
+            
+            // Acquire lock for next task - this must succeed for navigation to be allowed
             var lockAcquired = await _taskLockingService.TryLockTaskAsync(nextTask.TaskId, userId);
             
             if (!lockAcquired)
             {
-                _logger.LogWarning("Failed to acquire lock for task {TaskId} for user {UserId}", nextTask.TaskId, userId);
-                // Note: We still return the navigation result even if locking fails
-                // The client should handle this by checking if the task is locked when they try to work on it
+                _logger.LogWarning("Failed to acquire lock for task {TaskId} for user {UserId} - navigation denied", nextTask.TaskId, userId);
+                return new TaskNavigationDto
+                {
+                    CurrentPosition = currentIndex + 1,
+                    TotalTasks = navigableTasks.Count,
+                    HasNext = false,
+                    HasPrevious = currentIndex > 0,
+                    Message = "Cannot navigate to next task - it is currently locked by another user"
+                };
             }
         }
 
@@ -130,17 +142,29 @@ public class TaskNavigationService : ITaskNavigationService
             Message = hasPrevious ? null : "No previous tasks available"
         };
 
-        // Attempt to lock the previous task if one is found
+        // Release lock on current task and attempt to lock the previous task if one is found
         if (hasPrevious && previousTask != null)
         {
-            _logger.LogInformation("Attempting to lock previous task {TaskId} for user {UserId}", previousTask.TaskId, userId);
+            _logger.LogInformation("Releasing lock for current task {CurrentTaskId} and attempting to lock previous task {PreviousTaskId} for user {UserId}", 
+                currentTaskId, previousTask.TaskId, userId);
+            
+            // Release current task lock
+            await _taskLockingService.ReleaseLockAsync(currentTaskId, userId);
+            
+            // Acquire lock for previous task - this must succeed for navigation to be allowed
             var lockAcquired = await _taskLockingService.TryLockTaskAsync(previousTask.TaskId, userId);
             
             if (!lockAcquired)
             {
-                _logger.LogWarning("Failed to acquire lock for task {TaskId} for user {UserId}", previousTask.TaskId, userId);
-                // Note: We still return the navigation result even if locking fails
-                // The client should handle this by checking if the task is locked when they try to work on it
+                _logger.LogWarning("Failed to acquire lock for task {TaskId} for user {UserId} - navigation denied", previousTask.TaskId, userId);
+                return new TaskNavigationDto
+                {
+                    CurrentPosition = currentIndex + 1,
+                    TotalTasks = navigableTasks.Count,
+                    HasNext = currentIndex < navigableTasks.Count - 1,
+                    HasPrevious = false,
+                    Message = "Cannot navigate to previous task - it is currently locked by another user"
+                };
             }
         }
 
