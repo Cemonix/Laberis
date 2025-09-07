@@ -24,6 +24,10 @@ export type TaskOperationResult<T = Task> = {
 } | {
     success: false;
     error: string;
+    shouldRedirectToTaskView?: boolean;
+    shouldRedirectToTask?: number;
+    alternativeTask?: Task;
+    toastMessage?: string;
 };
 
 /**
@@ -37,6 +41,12 @@ export interface TaskNavigationResult {
     currentPosition: number;
     totalTasks: number;
     message?: string | null;
+    /** Number of available tasks (unlocked and can be worked on) */
+    availableTasks: number;
+    /** Number of completed tasks by the current user */
+    completedTasks: number;
+    /** Number of assigned tasks (being worked on by others) */
+    assignedTasks: number;
 }
 
 /**
@@ -62,6 +72,29 @@ export class TaskManager {
             const task = await taskService.getTaskById(projectId, taskId);
             return { success: true, data: task };
         } catch (error) {
+            // Check if this is a redirect to alternative task error
+            if (error instanceof Error && (error as any).redirectToTask) {
+                logger.info(`Task assigned to another user, should redirect to alternative task ${(error as any).redirectToTask}`);
+                return { 
+                    success: false, 
+                    error: error.message,
+                    shouldRedirectToTask: (error as any).redirectToTask,
+                    alternativeTask: (error as any).alternativeTask,
+                    toastMessage: (error as any).toastMessage
+                };
+            }
+            
+            // Check if this is a redirect to task view error
+            if (error instanceof Error && (error as any).redirectToTaskView) {
+                logger.info(`No tasks available, should redirect to task view with toast`);
+                return { 
+                    success: false, 
+                    error: error.message,
+                    shouldRedirectToTaskView: true,
+                    toastMessage: (error as any).toastMessage
+                };
+            }
+            
             const errorMessage = error instanceof Error ? error.message : 'Failed to load task';
             logger.error(`Failed to load task ${taskId}:`, error);
             return { success: false, error: errorMessage };
@@ -119,7 +152,10 @@ export class TaskManager {
                 hasPrevious: navigationContext.hasPrevious,
                 currentPosition: navigationContext.currentPosition,
                 totalTasks: navigationContext.totalTasks,
-                message: navigationContext.message
+                message: navigationContext.message,
+                availableTasks: navigationContext.availableTasks,
+                completedTasks: navigationContext.completedTasks,
+                assignedTasks: navigationContext.assignedTasks
             };
             
             return { success: true, data: context };
@@ -149,7 +185,10 @@ export class TaskManager {
                 hasPrevious: navigation.hasPrevious,
                 currentPosition: navigation.currentPosition,
                 totalTasks: navigation.totalTasks,
-                message: navigation.message
+                message: navigation.message,
+                availableTasks: navigation.availableTasks,
+                completedTasks: navigation.completedTasks,
+                assignedTasks: navigation.assignedTasks
             };
 
             return { success: true, data: result };
@@ -179,7 +218,10 @@ export class TaskManager {
                 hasPrevious: navigation.hasPrevious,
                 currentPosition: navigation.currentPosition,
                 totalTasks: navigation.totalTasks,
-                message: navigation.message
+                message: navigation.message,
+                availableTasks: navigation.availableTasks,
+                completedTasks: navigation.completedTasks,
+                assignedTasks: navigation.assignedTasks
             };
 
             return { success: true, data: result };

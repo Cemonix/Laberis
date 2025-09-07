@@ -415,7 +415,72 @@ const handleVisibilityChange = () => {
 
 onMounted(async () => {
     const taskId = route.query.taskId as string | undefined;
-    await workspaceStore.loadAsset(props.projectId, props.assetId, taskId);
+    
+    try {
+        await workspaceStore.loadAsset(props.projectId, props.assetId, taskId);
+    } catch (error: any) {
+        // Handle redirect to alternative task
+        if (error?.redirectToTask) {
+            showToast(
+                'Task Reassigned',
+                error.toastMessage || 'This task was assigned to another user. We found you an available task to work on.',
+                'info',
+                { duration: 5000 }
+            );
+            
+            // Redirect to the alternative task
+            const alternativeTaskId = error.redirectToTask;
+            const alternativeTask = error.alternativeTask;
+            
+            // Navigate to the alternative task
+            router.replace({
+                name: 'AnnotationWorkspace',
+                params: {
+                    projectId: props.projectId,
+                    assetId: alternativeTask?.assetId?.toString() || props.assetId
+                },
+                query: {
+                    taskId: alternativeTaskId.toString()
+                }
+            });
+            return;
+        }
+        
+        // Handle task access errors and redirect to task view
+        if (error?.redirectToTaskView) {
+            showToast(
+                'Access Denied',
+                error.toastMessage || 'You cannot access this task.',
+                'error',
+                { duration: 5000 }
+            );
+            
+            // Redirect back to task view
+            const currentTask = workspaceStore.getCurrentTask;
+            if (currentTask) {
+                router.push({
+                    name: 'StageTasks',
+                    params: {
+                        projectId: props.projectId,
+                        workflowId: currentTask.workflowId.toString(),
+                        stageId: currentTask.workflowStageId.toString()
+                    }
+                });
+            } else {
+                // Fallback to project dashboard if no current task context
+                router.push({
+                    name: 'ProjectDashboard',
+                    params: {
+                        projectId: props.projectId
+                    }
+                });
+            }
+            return;
+        }
+        
+        // Handle other errors normally
+        console.error('Failed to load workspace:', error);
+    }
     
     // Add multiple event listeners for better reliability
     window.addEventListener('beforeunload', handleBeforeUnload);

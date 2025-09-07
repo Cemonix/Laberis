@@ -22,6 +22,15 @@ export interface TaskNavigationResponse {
   
   /** Optional message for user feedback */
   message?: string | null;
+  
+  /** Number of available tasks (unlocked and can be worked on) */
+  availableTasks: number;
+  
+  /** Number of completed tasks by the current user */
+  completedTasks: number;
+  
+  /** Number of assigned tasks (being worked on by others) */
+  assignedTasks: number;
 }
 
 /**

@@ -205,6 +205,117 @@ class TaskService extends BaseProjectService {
     }
 
     /**
+     * Get tasks that are either assigned to current user or unassigned (available for pickup)
+     */
+    async getMyTasksOrUnassigned(projectId: number, params: TasksQueryParams = {}): Promise<GetTasksResponse> {
+        this.logger.info('Fetching current user tasks or unassigned tasks', params);
+
+        const url = this.buildProjectUrl(projectId, 'tasks/my-tasks-or-unassigned');
+        const paginatedResponse = await this.getPaginated<any>(url, params);
+        
+        const tasks: Task[] = paginatedResponse.data.map((dto: any) => this.transformTaskDto(dto));
+
+        this.logger.info(`Fetched ${tasks.length} user tasks or unassigned tasks`);
+
+        return {
+            tasks,
+            totalCount: paginatedResponse.totalItems,
+            currentPage: paginatedResponse.currentPage,
+            pageSize: paginatedResponse.pageSize,
+            totalPages: paginatedResponse.totalPages
+        };
+    }
+
+    /**
+     * Get current user's tasks or unassigned tasks for a specific workflow stage
+     */
+    async getMyTasksOrUnassignedForStage(projectId: number, stageId: number, params: TasksQueryParams = {}): Promise<GetTasksResponse> {
+        this.logger.info(`Fetching current user tasks or unassigned tasks for workflow stage ${stageId}`, params);
+        
+        const stageParams = {
+            ...params,
+            filterOn: 'current_workflow_stage_id',
+            filterQuery: stageId.toString()
+        };
+        
+        return this.getMyTasksOrUnassigned(projectId, stageParams);
+    }
+
+    /**
+     * Get enriched current user's tasks or unassigned tasks for a workflow stage with asset names and stage info
+     */
+    async getEnrichedMyTasksOrUnassignedForStage(
+        projectId: number,
+        workflowId: number,
+        stageId: number,
+        params: TasksQueryParams = {}
+    ): Promise<{
+        tasks: TaskTableRow[];
+        stageName: string;
+        stageDescription?: string;
+        totalCount: number;
+        currentPage: number;
+        pageSize: number;
+        totalPages: number;
+    }> {
+        this.logger.info(`Fetching enriched user tasks or unassigned tasks for stage ${stageId} in workflow ${workflowId}, project ${projectId}`, params);
+        
+        // Get tasks for the current user or unassigned for this stage
+        const tasksResponse = await this.getMyTasksOrUnassignedForStage(projectId, stageId, params);
+        
+        // Get stage information
+        let stageName = 'Unknown Stage';
+        let stageDescription = '';
+        
+        try {
+            const stageData = await workflowStageService.getWorkflowStageById(projectId, workflowId, stageId);
+            stageName = stageData.name;
+            stageDescription = stageData.description || '';
+        } catch (error) {
+            this.logger.warn('Failed to fetch stage information:', error);
+        }
+
+        // Enrich tasks with asset names and format for table display
+        const enrichedTasks: TaskTableRow[] = await Promise.all(
+            tasksResponse.tasks.map(async (task) => {
+                let assetName = `Asset ${task.assetId}`;
+                
+                try {
+                    const asset = await assetService.getAssetById(projectId, task.assetId);
+                    assetName = asset.filename || `Asset ${task.assetId}`;
+                } catch (error) {
+                    this.logger.warn(`Failed to fetch asset ${task.assetId}:`, error);
+                }
+
+                return {
+                    id: task.id,
+                    assetId: task.assetId,
+                    assetName,
+                    priority: task.priority,
+                    status: task.status || TaskStatus.NOT_STARTED,
+                    assignedTo: task.assignedToEmail || undefined,
+                    dueDate: task.dueDate,
+                    completedAt: task.completedAt,
+                    createdAt: task.createdAt,
+                    stage: stageName
+                };
+            })
+        );
+
+        this.logger.info(`Fetched ${enrichedTasks.length} enriched user/unassigned tasks for stage ${stageId}`);
+
+        return {
+            tasks: enrichedTasks,
+            stageName,
+            stageDescription,
+            totalCount: tasksResponse.totalCount,
+            currentPage: tasksResponse.currentPage,
+            pageSize: tasksResponse.pageSize,
+            totalPages: tasksResponse.totalPages
+        };
+    }
+
+    /**
      * Get tasks for a specific asset
      */
     async getTasksForAsset(projectId: number, assetId: number): Promise<Task[]> {
@@ -221,19 +332,44 @@ class TaskService extends BaseProjectService {
 
     /**
      * Get a single task by ID
+     * If task is locked by another user, automatically redirects to navigation to find available task
      */
     async getTaskById(projectId: number, taskId: number, autoAssign: boolean = true): Promise<TaskWithDetails> {
         this.logger.info(`Fetching task ${taskId} from project ${projectId}`, { autoAssign });
 
-        const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}', { taskId });
-        const queryParams = autoAssign ? '?autoAssign=true' : '';
-        const fullUrl = url + queryParams;
-        const dto = await this.get<any>(fullUrl);
-        
-        const task: TaskWithDetails = this.transformTaskDto(dto) as TaskWithDetails;
+        try {
+            const url = this.buildProjectResourceUrl(projectId, 'tasks/{taskId}', { taskId });
+            const queryParams = autoAssign ? '?autoAssign=true' : '';
+            const fullUrl = url + queryParams;
+            const dto = await this.get<any>(fullUrl);
+            
+            const task: TaskWithDetails = this.transformTaskDto(dto) as TaskWithDetails;
 
-        this.logger.info(`Fetched task ${taskId} successfully`);
-        return task;
+            this.logger.info(`Fetched task ${taskId} successfully`);
+            return task;
+        } catch (error: any) {
+            // Handle 409 Task assigned to another user with redirect to alternative task
+            if (error.status === 409 && error.data?.redirectToTask) {
+                // Create a special error that contains redirect information
+                const redirectError = new Error(error.data.message || 'This task is assigned to another user.');
+                (redirectError as any).redirectToTask = error.data.redirectToTask;
+                (redirectError as any).alternativeTask = error.data.alternativeTask;
+                (redirectError as any).toastMessage = error.data.toastMessage;
+                throw redirectError;
+            }
+            
+            // Handle 404 No tasks available with redirect to task view
+            if (error.status === 404 && error.data?.redirectToTaskView) {
+                // Create a special error that contains redirect information
+                const redirectError = new Error(error.data.message || 'No tasks available for annotation.');
+                (redirectError as any).redirectToTaskView = true;
+                (redirectError as any).toastMessage = error.data.toastMessage;
+                throw redirectError;
+            }
+            
+            // Re-throw other errors
+            throw error;
+        }
     }
 
     /**
@@ -600,8 +736,19 @@ class TaskService extends BaseProjectService {
         });
 
         const response = await this.get<TaskNavigationResponse>(`${url}?${params}`);
-        this.logger.info(`Navigation context: position=${response.currentPosition}/${response.totalTasks}, hasNext=${response.hasNext}, hasPrevious=${response.hasPrevious}`);
+        this.logger.info(`Navigation context: position=${response.currentPosition}/${response.totalTasks}, hasNext=${response.hasNext}, hasPrevious=${response.hasPrevious}, available=${response.availableTasks}, completed=${response.completedTasks}, assigned=${response.assignedTasks}`);
         return response;
+    }
+
+    /**
+     * Get task availability information for a project or workflow stage
+     * This provides the data needed for task counter displays
+     */
+    async getTaskAvailability(projectId: number, currentTaskId: number, workflowStageId?: number): Promise<TaskNavigationResponse> {
+        this.logger.info(`Getting task availability for project ${projectId}, current task ${currentTaskId}`, { workflowStageId });
+        
+        // Use navigation context to get availability info
+        return await this.getNavigationContext(projectId, currentTaskId, workflowStageId);
     }
 }
 

@@ -223,6 +223,7 @@ import { usePermissions } from '@/composables/usePermissions';
 import { useAssetPreview } from '@/composables/useAssetPreview';
 import { PERMISSIONS } from '@/services/auth/permissions.types';
 import { useProjectStore } from '@/stores/projectStore';
+import { useAuthStore } from '@/stores/authStore';
 import { taskService, workflowStageService, assetService, exportService } from '@/services/project';
 import { useTaskSelection } from '@/composables/useTaskSelection';
 import { taskBulkOperations } from '@/services/project';
@@ -298,6 +299,15 @@ const canReviewTasks = computed(() => {
     return hasProjectPermission(PERMISSIONS.ANNOTATION.REVIEW);
 });
 
+const isUserManager = computed(() => {
+    return canManageTasks.value;
+});
+
+const currentUserEmail = computed(() => {
+    const authStore = useAuthStore();
+    return authStore.user?.email;
+});
+
 const isTaskClickable = (task: TaskTableRow): boolean => {
     // Deferred tasks can only be opened by managers
     if (task.status === TaskStatus.DEFERRED && !canManageTasks.value) {
@@ -316,6 +326,11 @@ const isTaskClickable = (task: TaskTableRow): boolean => {
     
     // ARCHIVED tasks cannot be opened
     if (task.status === TaskStatus.ARCHIVED) {
+        return false;
+    }
+    
+    // Nobody should be able to click on tasks assigned to someone else
+    if (task.assignedTo && task.assignedTo !== currentUserEmail.value) {
         return false;
     }
     
@@ -452,12 +467,20 @@ const loadTasks = async () => {
             pageSize: pageSize.value
         };
 
-        const response = await taskService.getEnrichedTasksForStage(
-            projectId.value,
-            workflowId.value,
-            stageId.value,
-            params
-        );
+        // Managers can see all tasks, but other roles should only see tasks assigned to them or unassigned tasks
+        const response = isUserManager.value 
+            ? await taskService.getEnrichedTasksForStage(
+                projectId.value,
+                workflowId.value,
+                stageId.value,
+                params
+              )
+            : await taskService.getEnrichedMyTasksOrUnassignedForStage(
+                projectId.value,
+                workflowId.value,
+                stageId.value,
+                params
+              );
         
         tasks.value = response.tasks;
         totalItems.value = response.totalCount;
