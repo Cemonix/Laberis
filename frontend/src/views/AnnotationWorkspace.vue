@@ -301,14 +301,20 @@ const handleBackToTasks = async () => {
 
 const handleCompleteTaskAndNext = async () => {
     try {
+        // Save current working time before task completion
+        await workspaceStore.saveWorkingTimeBeforeUnload();
+        
+        // Get next task BEFORE completing the current task (to ensure proper navigation context)
+        const nextTaskInfo = await workspaceStore.navigateToNextTask();
+        
+        // Complete the current task
         const success = await workspaceStore.completeAndMoveToNextTask();
         if (!success) {
             // Error handling is already done in the store
             return;
         }
         
-        // Try to get next available task automatically
-        const nextTaskInfo = await workspaceStore.getNextAvailableTask();
+        // Move to the next task if available
         if (nextTaskInfo) {
             await assignAndLoadTask(nextTaskInfo, 'task completion');
         } else {

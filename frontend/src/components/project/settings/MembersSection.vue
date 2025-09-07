@@ -165,7 +165,6 @@
 </template>
 
 <script setup lang="ts">
-// TODO: REFACTOR THIS FILE
 
 import {computed, onMounted, ref} from 'vue';
 import Button from '@/components/common/Button.vue';

@@ -36,11 +36,11 @@ import {
     mouseToImageCoordinates,
     calculateZoomFromWheel,
     calculateZoomViewOffset,
-    calculateCanvasCursorStyle,
     renderAnnotation,
     type AnnotationRenderContext,
     getAnnotationDisplayColor,
-    separateAnnotationsBySelection
+    separateAnnotationsBySelection,
+    cursorManager
 } from "@/core/workspace";
 import {StoreError, ToolError} from "@/core/errors/errors";
 import AlertModal from "../common/modal/AlertModal.vue";
@@ -87,7 +87,7 @@ const annotationsToRender = computed(() => workspaceStore.getAnnotations);
 const isAnnotationEditingDisabled = computed(() => workspaceStore.isAnnotationEditingDisabled);
 
 const canvasCursorStyle = computed(() => {
-    return calculateCanvasCursorStyle(
+    return cursorManager.calculateCanvasCursorStyle(
         activeTool.value,
         isDraggingHandle.value,
         isPanning.value,
