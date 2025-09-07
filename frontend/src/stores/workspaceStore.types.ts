@@ -54,7 +54,6 @@ export interface WorkspaceState {
     currentTaskId: number | null;
     currentTaskData: Task | null;
     currentWorkflowStageType: WorkflowStageType | null;
-    availableTasks: Task[]; // Legacy - will be removed
     initialTaskId: number | null;
     
     // Simple navigation context
