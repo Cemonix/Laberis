@@ -13,16 +13,14 @@ namespace Server.Tests.Services;
 public class TaskNavigationServiceTests
 {
     private readonly Mock<ITaskRepository> _mockTaskRepository;
-    private readonly Mock<ITaskLockingService> _mockTaskLockingService;
     private readonly Mock<ILogger<TaskNavigationService>> _mockLogger;
     private readonly TaskNavigationService _service;
 
     public TaskNavigationServiceTests()
     {
         _mockTaskRepository = new Mock<ITaskRepository>();
-        _mockTaskLockingService = new Mock<ITaskLockingService>();
         _mockLogger = new Mock<ILogger<TaskNavigationService>>();
-        _service = new TaskNavigationService(_mockTaskRepository.Object, _mockTaskLockingService.Object, _mockLogger.Object);
+        _service = new TaskNavigationService(_mockTaskRepository.Object, _mockLogger.Object);
     }
 
     #region Helper Methods
@@ -83,11 +81,9 @@ public class TaskNavigationServiceTests
         _mockTaskRepository.Setup(x => x.GetNavigableTasksAsync(userId, currentTask.ProjectId, workflowStageId))
             .ReturnsAsync(tasks);
 
-        // Set up task locking service to simulate successful lock acquisition
-        _mockTaskLockingService.Setup(x => x.ReleaseLockAsync(currentTaskId, userId))
-            .ReturnsAsync(true);
-        _mockTaskLockingService.Setup(x => x.TryLockTaskAsync(2, userId, It.IsAny<int>())) // Next task ID is 2
-            .ReturnsAsync(true);
+        // Set up task repository to allow auto-assignment updates
+        _mockTaskRepository.Setup(x => x.Update(It.IsAny<DomainTask>()));
+        _mockTaskRepository.Setup(x => x.SaveChangesAsync()).ReturnsAsync(1);
 
         // Act
         var result = await _service.GetNextTaskAsync(userId, currentTaskId, workflowStageId);
@@ -194,11 +190,9 @@ public class TaskNavigationServiceTests
         _mockTaskRepository.Setup(x => x.GetNavigableTasksAsync(userId, currentTask.ProjectId, workflowStageId))
             .ReturnsAsync(tasks);
 
-        // Set up task locking service to simulate successful lock acquisition
-        _mockTaskLockingService.Setup(x => x.ReleaseLockAsync(currentTaskId, userId))
-            .ReturnsAsync(true);
-        _mockTaskLockingService.Setup(x => x.TryLockTaskAsync(1, userId, It.IsAny<int>())) // Previous task ID is 1
-            .ReturnsAsync(true);
+        // Set up task repository to allow auto-assignment updates
+        _mockTaskRepository.Setup(x => x.Update(It.IsAny<DomainTask>()));
+        _mockTaskRepository.Setup(x => x.SaveChangesAsync()).ReturnsAsync(1);
 
         // Act
         var result = await _service.GetPreviousTaskAsync(userId, currentTaskId, workflowStageId);
@@ -382,11 +376,9 @@ public class TaskNavigationServiceTests
         _mockTaskRepository.Setup(x => x.GetNavigableTasksAsync(userId, projectId, workflowStageId20))
             .ReturnsAsync(tasksStage20);
 
-        // Set up task locking service to simulate successful lock acquisition
-        _mockTaskLockingService.Setup(x => x.ReleaseLockAsync(currentTaskId, userId))
-            .ReturnsAsync(true);
-        _mockTaskLockingService.Setup(x => x.TryLockTaskAsync(2, userId, It.IsAny<int>())) // Next task ID is 2
-            .ReturnsAsync(true);
+        // Set up task repository to allow auto-assignment updates
+        _mockTaskRepository.Setup(x => x.Update(It.IsAny<DomainTask>()));
+        _mockTaskRepository.Setup(x => x.SaveChangesAsync()).ReturnsAsync(1);
 
         // Act - Get next task from stage 10 only
         var result = await _service.GetNextTaskAsync(userId, currentTaskId, workflowStageId10);

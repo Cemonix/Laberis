@@ -21,7 +21,6 @@ public class TaskServiceUnifiedStatusTests
     private readonly Mock<IWorkflowStageRepository> _mockWorkflowStageRepository;
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly Mock<IProjectMembershipService> _mockProjectMembershipService;
-    private readonly Mock<ITaskLockingService> _mockTaskLockingService;
     private readonly Mock<ILogger<TaskService>> _mockLogger;
     private readonly TaskService _taskService;
 
@@ -34,11 +33,7 @@ public class TaskServiceUnifiedStatusTests
         _mockWorkflowStageRepository = new Mock<IWorkflowStageRepository>();
         _mockUserManager = MockUserManager();
         _mockProjectMembershipService = new Mock<IProjectMembershipService>();
-        _mockTaskLockingService = new Mock<ITaskLockingService>();
         _mockLogger = new Mock<ILogger<TaskService>>();
-
-        // Set up default mock behavior for task locking service
-        SetupTaskLockingServiceDefaults();
 
         _taskService = new TaskService(
             _mockTaskRepository.Object,
@@ -48,36 +43,10 @@ public class TaskServiceUnifiedStatusTests
             _mockWorkflowStageRepository.Object,
             _mockUserManager.Object,
             _mockProjectMembershipService.Object,
-            _mockTaskLockingService.Object,
             _mockLogger.Object
         );
     }
 
-    /// <summary>
-    /// Sets up default mock behavior for TaskLockingService to simulate successful lock ownership
-    /// </summary>
-    private void SetupTaskLockingServiceDefaults()
-    {
-        // By default, assume the user owns the lock for any task
-        _mockTaskLockingService
-            .Setup(x => x.IsTaskLockedByUserAsync(It.IsAny<int>(), It.IsAny<string>()))
-            .ReturnsAsync(true);
-
-        // By default, assume tasks are not locked by other users
-        _mockTaskLockingService
-            .Setup(x => x.IsTaskLockedAsync(It.IsAny<int>()))
-            .ReturnsAsync(false);
-
-        // By default, assume lock acquisition succeeds
-        _mockTaskLockingService
-            .Setup(x => x.TryLockTaskAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
-            .ReturnsAsync(true);
-
-        // By default, assume lock release succeeds
-        _mockTaskLockingService
-            .Setup(x => x.ReleaseLockAsync(It.IsAny<int>(), It.IsAny<string>()))
-            .ReturnsAsync(true);
-    }
 
     [Fact]
     public async System.Threading.Tasks.Task ChangeTaskStatusAsync_TaskNotFound_ShouldReturnNull()
@@ -287,6 +256,7 @@ public class TaskServiceUnifiedStatusTests
         const int taskId = 1;
         const string userId = "manager123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.COMPLETION);
+        existingTask.AssignedToUserId = userId; // Assign to the manager for this test
         existingTask.Status = TaskStatus.COMPLETED; // Set status explicitly
         existingTask.CompletedAt = DateTime.UtcNow.AddHours(-1); // Previously completed
 
@@ -425,6 +395,7 @@ public class TaskServiceUnifiedStatusTests
             AssetId = 1,
             Priority = 1,
             WorkflowStageId = 1,
+            AssignedToUserId = "user123", // Assign task to test user to pass assignment validation
             CreatedAt = DateTime.UtcNow.AddDays(-1),
             UpdatedAt = DateTime.UtcNow.AddHours(-1),
             RowVersion = [],
