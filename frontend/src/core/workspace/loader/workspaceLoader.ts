@@ -150,9 +150,33 @@ export class WorkspaceLoader {
                         workflowStageId = currentTask.workflowStageId;
                         logger.info(`Loaded specific task ${initialTaskId} for stage ${workflowStageId}`);
                     } else {
+                        // Check if this is an access restriction error that should redirect to alternative task
+                        if (taskResult.shouldRedirectToTask) {
+                            logger.warn(`Task ${initialTaskId} assigned to another user, should redirect to task ${taskResult.shouldRedirectToTask}`);
+                            throw {
+                                shouldRedirectToTask: taskResult.shouldRedirectToTask,
+                                alternativeTask: taskResult.alternativeTask,
+                                error: taskResult.error,
+                                toastMessage: taskResult.toastMessage
+                            };
+                        }
+                        
+                        // Check if this is an access restriction error that should redirect to task view
+                        if (taskResult.shouldRedirectToTaskView) {
+                            logger.warn(`Task ${initialTaskId} access denied, should redirect to task view`);
+                            throw {
+                                shouldRedirectToTaskView: true,
+                                error: taskResult.error,
+                                toastMessage: taskResult.toastMessage
+                            };
+                        }
                         logger.warn(`Failed to load task ${initialTaskId}, falling back to asset tasks:`, taskResult.error);
                     }
-                } catch (taskByIdError) {
+                } catch (taskByIdError: any) {
+                    // Re-throw access restriction errors
+                    if (taskByIdError?.shouldRedirectToTask || taskByIdError?.shouldRedirectToTaskView) {
+                        throw taskByIdError;
+                    }
                     logger.warn(`Failed to load task ${initialTaskId}, falling back to asset tasks:`, taskByIdError);
                 }
             }

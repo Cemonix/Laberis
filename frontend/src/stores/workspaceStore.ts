@@ -240,20 +240,26 @@ export const useWorkspaceStore = defineStore("workspace", {
             const numericProjectId = parseInt(this.currentProjectId, 10);
             const numericAssetId = parseInt(this.currentAssetId, 10);
 
-            const tasksData = await workspaceLoader.loadTasksForAsset(
-                numericProjectId, 
-                numericAssetId, 
-                this.initialTaskId || undefined
-            );
+            try {
+                const tasksData = await workspaceLoader.loadTasksForAsset(
+                    numericProjectId, 
+                    numericAssetId, 
+                    this.initialTaskId || undefined
+                );
 
-            // Update task state
-            this.currentTaskData = tasksData.currentTask;
-            this.currentTaskId = tasksData.currentTask?.id || null;
-            this.currentWorkflowStageType = tasksData.workflowStageType;
-            this.navigationContext = tasksData.navigationContext;
+                // Update task state
+                this.currentTaskData = tasksData.currentTask;
+                this.currentTaskId = tasksData.currentTask?.id || null;
+                this.currentWorkflowStageType = tasksData.workflowStageType;
+                this.navigationContext = tasksData.navigationContext;
 
-            if (tasksData.currentTask) {
-                logger.info(`Loaded task ${tasksData.currentTask.id}`);
+                if (tasksData.currentTask) {
+                    logger.info(`Loaded task ${tasksData.currentTask.id}`);
+                }
+            } catch (error) {
+                // Check if this is a task access restriction error from workspaceLoader
+                logger.error('Failed to load tasks:', error);
+                throw error; // Re-throw the error so it can be caught by loadAsset
             }
         },
 
@@ -328,10 +334,34 @@ export const useWorkspaceStore = defineStore("workspace", {
                 }
 
                 // Step 3: Load all workspace data in parallel
-                await Promise.allSettled([
+                const results = await Promise.allSettled([
                     this.loadAnnotations(),
                     this.loadTasks()
                 ]);
+
+                // Check if task loading failed due to access restrictions
+                const taskLoadResult = results[1];
+                if (taskLoadResult.status === 'rejected') {
+                    const error = taskLoadResult.reason;
+                    // Check if this is a task access restriction error that should redirect to alternative task
+                    if (error?.shouldRedirectToTask) {
+                        const redirectError = new Error(error.error || 'Task assigned to another user');
+                        (redirectError as any).redirectToTask = error.shouldRedirectToTask;
+                        (redirectError as any).alternativeTask = error.alternativeTask;
+                        (redirectError as any).toastMessage = error.toastMessage || 'This task was assigned to another user. We found you an alternative task.';
+                        throw redirectError;
+                    }
+                    
+                    // Check if this is a task access restriction error that should redirect to task view
+                    if (error?.shouldRedirectToTaskView) {
+                        const redirectError = new Error(error.error || 'Task access denied');
+                        (redirectError as any).redirectToTaskView = true;
+                        (redirectError as any).toastMessage = error.toastMessage || 'You cannot access this task.';
+                        throw redirectError;
+                    }
+                    // For other task loading errors, log but continue
+                    logger.warn('Task loading failed, but continuing with workspace load:', error);
+                }
 
                 // Step 4: Load label scheme (depends on tasks being loaded first)
                 await this.loadLabelScheme();
@@ -341,6 +371,10 @@ export const useWorkspaceStore = defineStore("workspace", {
                 
                 logger.info(`Successfully loaded asset ${assetId} for project ${projectId}`);
             } catch (error) {
+                // Check if this is a redirect error and re-throw it
+                if ((error as any)?.redirectToTaskView || (error as any)?.redirectToTask) {
+                    throw error;
+                }
                 this.handleWorkspaceLoadError(error, assetId);
             }
         },
@@ -771,7 +805,10 @@ export const useWorkspaceStore = defineStore("workspace", {
                     hasPrevious: navigation.hasPrevious,
                     currentPosition: navigation.currentPosition,
                     totalTasks: navigation.totalTasks,
-                    message: navigation.message
+                    message: navigation.message,
+                    availableTasks: navigation.availableTasks,
+                    completedTasks: navigation.completedTasks,
+                    assignedTasks: navigation.assignedTasks
                 };
                 
                 return {
@@ -815,7 +852,10 @@ export const useWorkspaceStore = defineStore("workspace", {
                     hasPrevious: navigation.hasPrevious,
                     currentPosition: navigation.currentPosition,
                     totalTasks: navigation.totalTasks,
-                    message: navigation.message
+                    message: navigation.message,
+                    availableTasks: navigation.availableTasks,
+                    completedTasks: navigation.completedTasks,
+                    assignedTasks: navigation.assignedTasks
                 };
                 
                 return {

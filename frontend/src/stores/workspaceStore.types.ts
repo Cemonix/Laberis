@@ -16,6 +16,12 @@ export interface TaskNavigationContext {
     currentPosition: number;
     totalTasks: number;
     message?: string | null;
+    /** Number of available tasks (unlocked and can be worked on) */
+    availableTasks: number;
+    /** Number of completed tasks by the current user */
+    completedTasks: number;
+    /** Number of assigned tasks (being worked on by others) */
+    assignedTasks: number;
 }
 
 /**
