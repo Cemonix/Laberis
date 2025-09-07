@@ -23,4 +23,8 @@ public record class TaskDto
     public int WorkflowStageId { get; init; }
     public string? AssignedToEmail { get; init; }
     public string? LastWorkedOnByEmail { get; init; }
+    
+    // Lock status fields for UI feedback
+    public bool IsLocked { get; set; }
+    public bool IsLockedByCurrentUser { get; set; }
 }
