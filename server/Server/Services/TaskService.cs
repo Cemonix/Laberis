@@ -231,59 +231,72 @@ public class TaskService : ITaskService
             return null;
         }
 
-        // Validate task assignment before allowing modifications
-        if (!string.IsNullOrEmpty(updatingUserId))
+        // Determine what type of changes are requested
+        var isAssignmentChangeRequested = updateDto.AssignedToEmail != null || updateDto.AssignedToUserId != null;
+        var isNonAssignmentChangeRequested =
+            updateDto.Priority.HasValue ||
+            updateDto.DueDate.HasValue ||
+            updateDto.Status.HasValue ||
+            updateDto.WorkflowStageId.HasValue ||
+            updateDto.Metadata != null ||
+            updateDto.CompletedAt.HasValue ||
+            updateDto.ArchivedAt.HasValue ||
+            updateDto.SuspendedAt.HasValue ||
+            updateDto.DeferredAt.HasValue ||
+            updateDto.WorkingTimeMs.HasValue;
+
+        // Handle assignment changes first (with role-based permission validation)
+        if (isAssignmentChangeRequested)
         {
-            await ValidateTaskAssignmentAsync(taskId, updatingUserId, "UPDATE");
+            string? newAssignedUserId;
+
+            if (updateDto.AssignedToEmail != null)
+            {
+                // Assignment by email
+                if (string.IsNullOrEmpty(updateDto.AssignedToEmail))
+                {
+                    // Empty email means unassign
+                    newAssignedUserId = null;
+                }
+                else
+                {
+                    // Find user by email
+                    var user = await _userManager.FindByEmailAsync(updateDto.AssignedToEmail);
+                    if (user == null)
+                    {
+                        _logger.LogWarning("User not found for assignment email: {Email}", updateDto.AssignedToEmail);
+                        throw new NotFoundException($"User with email '{updateDto.AssignedToEmail}' not found");
+                    }
+                    newAssignedUserId = user.Id;
+                }
+            }
+            else
+            {
+                // Assignment by user ID (legacy)
+                newAssignedUserId = updateDto.AssignedToUserId;
+            }
+
+            // Validate assignment permissions if assignment is changing and updatingUserId is provided
+            if (existingTask.AssignedToUserId != newAssignedUserId && !string.IsNullOrEmpty(updatingUserId))
+            {
+                await ValidateTaskAssignmentPermissionAsync(existingTask.ProjectId, updatingUserId!, newAssignedUserId);
+            }
+
+            // Apply the assignment change
+            existingTask.AssignedToUserId = newAssignedUserId;
+        }
+
+        // For non-assignment updates, ensure user is assigned to the task
+        // (This runs AFTER potential assignment changes so self-assignment is considered)
+        if (isNonAssignmentChangeRequested && !string.IsNullOrEmpty(updatingUserId))
+        {
+            await ValidateTaskAssignmentAsync(taskId, updatingUserId!, "UPDATE");
         }
 
         // Update the task properties
         if (updateDto.Priority.HasValue)
         {
             existingTask.Priority = updateDto.Priority.Value;
-        }
-
-        // Handle assignment - support both userId and email assignment
-        if (updateDto.AssignedToEmail != null)
-        {
-            string? newAssignedUserId;
-
-            // Assignment by email - look up the user ID
-            if (string.IsNullOrEmpty(updateDto.AssignedToEmail))
-            {
-                // Empty email means unassign
-                newAssignedUserId = null;
-            }
-            else
-            {
-                // Find user by email
-                var user = await _userManager.FindByEmailAsync(updateDto.AssignedToEmail);
-                if (user == null)
-                {
-                    _logger.LogWarning("User not found for assignment email: {Email}", updateDto.AssignedToEmail);
-                    throw new NotFoundException($"User with email '{updateDto.AssignedToEmail}' not found");
-                }
-                newAssignedUserId = user.Id;
-            }
-
-            // Validate assignment permissions if assignment is changing and updatingUserId is provided
-            if (existingTask.AssignedToUserId != newAssignedUserId && !string.IsNullOrEmpty(updatingUserId))
-            {
-                await ValidateTaskAssignmentPermissionAsync(existingTask.ProjectId, updatingUserId, newAssignedUserId);
-            }
-
-            existingTask.AssignedToUserId = newAssignedUserId;
-        }
-        else if (updateDto.AssignedToUserId != null && updateDto.AssignedToUserId != existingTask.AssignedToUserId)
-        {
-            // Validate assignment permissions if updatingUserId is provided
-            if (!string.IsNullOrEmpty(updatingUserId))
-            {
-                await ValidateTaskAssignmentPermissionAsync(existingTask.ProjectId, updatingUserId, updateDto.AssignedToUserId);
-            }
-
-            // Assignment by userId (legacy support) - only update if explicitly provided
-            existingTask.AssignedToUserId = updateDto.AssignedToUserId;
         }
 
         if (updateDto.Status.HasValue)
