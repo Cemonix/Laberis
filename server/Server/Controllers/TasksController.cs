@@ -117,20 +117,76 @@ public class TasksController : ControllerBase
     }
 
     /// <summary>
+    /// Gets all tasks assigned to the current user or unassigned tasks with optional filtering, sorting, and pagination.
+    /// </summary>
+    /// <param name="filterOn">The field to filter on (e.g., "priority", "project_id", "current_workflow_stage_id", "is_completed").</param>
+    /// <param name="filterQuery">The value to filter by.</param>
+    /// <param name="sortBy">The field to sort by (e.g., "priority", "due_date", "created_at", "completed_at").</param>
+    /// <param name="isAscending">Whether to sort in ascending order (true) or descending (false).</param>
+    /// <param name="pageNumber">The page number for pagination (1-based).</param>
+    /// <param name="pageSize">The number of items per page.</param>
+    /// <returns>A list of task DTOs.</returns>
+    /// <response code="200">Returns the list of task DTOs.</response>
+    /// <response code="401">If the user is not authenticated.</response>
+    /// <response code="500">If an unexpected error occurs.</response>
+    [HttpGet("my-tasks-or-unassigned")]
+    [ProducesResponseType(typeof(IEnumerable<TaskDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetMyTasksOrUnassigned(
+        [FromQuery] string? filterOn = null,
+        [FromQuery] string? filterQuery = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool isAscending = true,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 25
+    )
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized("User ID claim not found in token.");
+        }
+
+        try
+        {
+            var tasks = await _taskService.GetTasksForUserOrUnassignedAsync(
+                userId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
+            return Ok(tasks);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while fetching tasks for current user or unassigned tasks {UserId}.", userId);
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                "An unexpected error occurred. Please try again later."
+            );
+        }
+    }
+
+    /// <summary>
     /// Gets a specific task by its unique ID, with automatic lock acquisition if autoAssign=true.
+    /// If the task is locked by another user and autoAssign=true, attempts to find and return the next available task.
     /// </summary>
     /// <param name="taskId">The ID of the task.</param>
     /// <param name="autoAssign">Whether to automatically acquire a lock for the task.</param>
-    /// <returns>The requested task.</returns>
+    /// <returns>The requested task or next available task if original is locked.</returns>
     [HttpGet("{taskId:int}")]
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> GetTaskById(int taskId, [FromQuery] bool autoAssign = false)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized("User ID claim not found in token.");
+        }
+
         try
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             TaskDto? task = await _taskService.GetTaskByIdAsync(taskId, userId, autoAssign);
             
             if (task == null)
@@ -138,7 +194,73 @@ public class TasksController : ControllerBase
                 return NotFound($"Task with ID {taskId} not found.");
             }
 
+            // Check if user has permission to access this task
+            // Users can only access tasks that are: 1) assigned to them, 2) unassigned, or 3) if they're a manager
+            var userEmail = User.FindFirstValue(ClaimTypes.Email);
+            var isManager = HasProjectPermission("project:update");
+            
+            var canAccessTask = string.IsNullOrEmpty(task.AssignedToEmail) || // Unassigned task
+                task.AssignedToEmail == userEmail || // Assigned to current user
+                isManager; // User is a manager
+
+            if (!canAccessTask)
+            {
+                _logger.LogWarning("User {UserId} attempted to access task {TaskId} assigned to {AssignedTo}", userId, taskId, task.AssignedToEmail);
+                
+                // Try to find an alternative task for the user
+                try
+                {
+                    var userOrUnassignedTasks = await _taskService.GetTasksForUserOrUnassignedAsync(userId, pageSize: 1);
+                    if (userOrUnassignedTasks.Data.Any())
+                    {
+                        var alternativeTask = userOrUnassignedTasks.Data.First();
+                        _logger.LogInformation("Redirecting user {UserId} from unavailable task {TaskId} to available task {AlternativeTaskId}", 
+                            userId, taskId, alternativeTask.Id);
+                        
+                        return StatusCode(409, new { 
+                            error = "Task assigned to another user", 
+                            message = $"This task is assigned to another user. Redirecting you to an available task.",
+                            redirectToTask = alternativeTask.Id,
+                            alternativeTask = alternativeTask,
+                            toastMessage = "This task was assigned to another user. We've found you an available task to work on."
+                        });
+                    }
+                    else
+                    {
+                        // No alternative tasks available
+                        return StatusCode(404, new { 
+                            error = "No tasks available", 
+                            message = "This task is assigned to another user and no other tasks are available.",
+                            redirectToTaskView = true,
+                            toastMessage = "This task is assigned to another user. No other tasks are currently available for you to work on."
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error while finding alternative task for user {UserId}", userId);
+                    return StatusCode(404, new { 
+                        error = "Task not available", 
+                        message = "This task is assigned to another user. You can only access tasks assigned to you or unassigned tasks.",
+                        redirectToTaskView = true,
+                        toastMessage = "This task is assigned to another user. You cannot access it."
+                    });
+                }
+            }
+
             return Ok(task);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("No tasks available"))
+        {
+            // No available tasks left for annotation - redirect user back to task view
+            _logger.LogWarning("No available tasks for user {UserId}", userId);
+            return StatusCode(404, new { 
+                error = "No tasks available", 
+                message = "All tasks are either completed or being worked on by other users.",
+                availableTasks = 0,
+                redirectToTaskView = true,
+                toastMessage = "No tasks available for annotation right now. All tasks are either completed or being worked on by other users."
+            });
         }
         catch (Exception ex)
         {
@@ -148,6 +270,16 @@ public class TasksController : ControllerBase
                 "An unexpected error occurred. Please try again later."
             );
         }
+    }
+
+    /// <summary>
+    /// Helper method to check if user has a specific project permission
+    /// </summary>
+    private bool HasProjectPermission(string permission)
+    {
+        // This is a simplified check - in a real implementation, you'd check against the project's permissions
+        // For now, we'll use the UPDATE permission as a proxy for MANAGER role
+        return User.IsInRole("MANAGER") || User.HasClaim("permission", permission);
     }
 
     /// <summary>
@@ -215,7 +347,7 @@ public class TasksController : ControllerBase
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning(ex, "Unauthorized task update attempt by user {UpdatingUserId} for task {TaskId}.", updatingUserId, taskId);
-            return Forbid(ex.Message);
+            return StatusCode(403, ex.Message);
         }
         catch (Exception ex)
         {
@@ -231,10 +363,12 @@ public class TasksController : ControllerBase
     /// <param name="userId">The ID of the user to assign the task to.</param>
     /// <returns>The updated task.</returns>
     /// <response code="200">Returns the updated task.</response>
+    /// <response code="400">If the task is already assigned or cannot be assigned.</response>
     /// <response code="404">If the task is not found.</response>
     /// <response code="500">If an internal server error occurs.</response>
     [HttpPost("{taskId:int}/assign/{userId}")]
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -261,7 +395,12 @@ public class TasksController : ControllerBase
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning(ex, "Unauthorized task assignment attempt by user {AssigningUserId} for task {TaskId} to user {UserId}.", assigningUserId, taskId, userId);
-            return Forbid(ex.Message);
+            return StatusCode(403, ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid task assignment attempt by user {AssigningUserId} for task {TaskId} to user {UserId}.", assigningUserId, taskId, userId);
+            return BadRequest(ex.Message);
         }
         catch (Exception ex)
         {
@@ -276,11 +415,13 @@ public class TasksController : ControllerBase
     /// <param name="taskId">The ID of the task to assign to current user.</param>
     /// <returns>The updated task.</returns>
     /// <response code="200">Returns the updated task.</response>
+    /// <response code="400">If the task is already assigned or cannot be assigned.</response>
     /// <response code="401">If the user is not authenticated.</response>
     /// <response code="404">If the task is not found.</response>
     /// <response code="500">If an internal server error occurs.</response>
     [HttpPost("{taskId:int}/assign-to-me")]
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -306,7 +447,12 @@ public class TasksController : ControllerBase
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning(ex, "Unauthorized self-assignment attempt by user {UserId} for task {TaskId}.", userId, taskId);
-            return Forbid(ex.Message);
+            return StatusCode(403, ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid self-assignment attempt by user {UserId} for task {TaskId}.", userId, taskId);
+            return BadRequest(ex.Message);
         }
         catch (Exception ex)
         {

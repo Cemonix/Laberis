@@ -39,4 +39,19 @@ public class TaskNavigationDto
     /// Optional message for user feedback
     /// </summary>
     public string? Message { get; set; }
+    
+    /// <summary>
+    /// Number of available tasks (unassigned and can be worked on)
+    /// </summary>
+    public int AvailableTasks { get; set; }
+    
+    /// <summary>
+    /// Number of completed tasks by the current user
+    /// </summary>
+    public int CompletedTasks { get; set; }
+    
+    /// <summary>
+    /// Number of assigned tasks (being worked on by others)
+    /// </summary>
+    public int AssignedTasks { get; set; }
 }

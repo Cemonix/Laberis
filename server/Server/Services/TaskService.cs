@@ -22,7 +22,6 @@ public class TaskService : ITaskService
     private readonly IWorkflowStageRepository _workflowStageRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IProjectMembershipService _projectMembershipService;
-    private readonly ITaskLockingService _taskLockingService;
     private readonly ILogger<TaskService> _logger;
 
     public TaskService(
@@ -33,7 +32,6 @@ public class TaskService : ITaskService
         IWorkflowStageRepository workflowStageRepository,
         UserManager<ApplicationUser> userManager,
         IProjectMembershipService projectMembershipService,
-        ITaskLockingService taskLockingService,
         ILogger<TaskService> logger)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
@@ -43,7 +41,6 @@ public class TaskService : ITaskService
         _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         _projectMembershipService = projectMembershipService ?? throw new ArgumentNullException(nameof(projectMembershipService));
-        _taskLockingService = taskLockingService ?? throw new ArgumentNullException(nameof(taskLockingService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -111,9 +108,9 @@ public class TaskService : ITaskService
         };
     }
 
-    public async Task<TaskDto?> GetTaskByIdAsync(int taskId, string? userId = null, bool acquireLock = false)
+    public async Task<TaskDto?> GetTaskByIdAsync(int taskId, string? userId = null, bool autoAssign = false)
     {
-        _logger.LogInformation("Fetching task with ID: {TaskId} for user: {UserId}, acquireLock: {AcquireLock}", taskId, userId, acquireLock);
+        _logger.LogInformation("Fetching task with ID: {TaskId} for user: {UserId}, autoAssign: {AutoAssign}", taskId, userId, autoAssign);
 
         var task = await _taskRepository.GetByIdAsync(taskId);
 
@@ -123,33 +120,39 @@ public class TaskService : ITaskService
             return null;
         }
 
-        // Automatically acquire lock if user is provided and acquireLock is true
-        if (!string.IsNullOrEmpty(userId) && acquireLock)
+        // Auto-assign task if it's unassigned and autoAssign is true
+        if (!string.IsNullOrEmpty(userId) && task.AssignedToUserId == null && autoAssign)
         {
-            _logger.LogInformation("Attempting to acquire lock for task {TaskId} for user {UserId}", taskId, userId);
-            var lockAcquired = await _taskLockingService.TryLockTaskAsync(taskId, userId);
+            _logger.LogInformation("Auto-assigning task {TaskId} to user {UserId}", taskId, userId);
             
-            if (!lockAcquired)
+            try
             {
-                _logger.LogWarning("Failed to acquire lock for task {TaskId} for user {UserId} - task is locked by another user", taskId, userId);
-                // Return the task but indicate it's locked by another user
-                var lockedTaskDto = MapToDto(task);
-                lockedTaskDto.IsLockedByCurrentUser = false;
-                lockedTaskDto.IsLocked = true;
-                return lockedTaskDto;
+                task.AssignedToUserId = userId;
+                _taskRepository.Update(task);
+                await _taskRepository.SaveChangesAsync();
+                _logger.LogInformation("Successfully auto-assigned task {TaskId} to user {UserId}", taskId, userId);
             }
-            
-            _logger.LogInformation("Successfully acquired lock for task {TaskId} for user {UserId}", taskId, userId);
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to auto-assign task {TaskId} to user {UserId} - task may have been assigned to another user", 
+                    taskId, userId);
+                // Re-fetch the task to get updated assignment
+                task = await _taskRepository.GetByIdAsync(taskId);
+                if (task == null)
+                {
+                    return null;
+                }
+            }
         }
 
         _logger.LogInformation("Successfully fetched task with ID: {TaskId}", taskId);
         var taskDto = MapToDto(task);
         
-        // Set lock status if user is provided
+        // Set assignment status if user is provided
         if (!string.IsNullOrEmpty(userId))
         {
-            taskDto.IsLockedByCurrentUser = await _taskLockingService.IsTaskLockedByUserAsync(taskId, userId);
-            taskDto.IsLocked = await _taskLockingService.IsTaskLockedAsync(taskId);
+            taskDto.IsAssignedToCurrentUser = task.AssignedToUserId == userId;
+            taskDto.IsAssigned = !string.IsNullOrEmpty(task.AssignedToUserId);
         }
         
         return taskDto;
@@ -228,10 +231,10 @@ public class TaskService : ITaskService
             return null;
         }
 
-        // Validate lock ownership before allowing modifications
+        // Validate task assignment before allowing modifications
         if (!string.IsNullOrEmpty(updatingUserId))
         {
-            await ValidateTaskLockOwnershipAsync(taskId, updatingUserId, "UPDATE");
+            await ValidateTaskAssignmentAsync(taskId, updatingUserId, "UPDATE");
         }
 
         // Update the task properties
@@ -327,7 +330,14 @@ public class TaskService : ITaskService
             await ValidateTaskAssignmentPermissionAsync(existingTask.ProjectId, assigningUserId, userId);
         }
 
-        // Prevent assignment of deferred tasks
+        // Prevent assignment of already assigned tasks (unless reassigning to the same user)
+        if (!string.IsNullOrEmpty(existingTask.AssignedToUserId) && existingTask.AssignedToUserId != userId)
+        {
+            _logger.LogWarning("Attempted to assign task {TaskId} that is already assigned to user {CurrentAssignee}.", taskId, existingTask.AssignedToUserId);
+            throw new InvalidOperationException($"Task {taskId} is already assigned to another user. Unassign first or use task update instead.");
+        }
+
+        // Prevent assignment of deferred tasks or completed tasks
         if (existingTask.Status == TaskStatus.DEFERRED)
         {
             _logger.LogWarning("Attempted to assign deferred task {TaskId}. Deferred tasks cannot be assigned.", taskId);
@@ -424,8 +434,22 @@ public class TaskService : ITaskService
             return null;
         }
 
-        // Validate lock ownership before allowing status changes
-        await ValidateTaskLockOwnershipAsync(taskId, userId, "CHANGE STATUS");
+        // Auto-assign unassigned tasks to the current user before status change
+        if (string.IsNullOrEmpty(existingTask.AssignedToUserId))
+        {
+            _logger.LogInformation("Task {TaskId} is unassigned, auto-assigning to user {UserId}", taskId, userId);
+            await AssignTaskAsync(taskId, userId, userId);
+            // Refresh the task after assignment
+            existingTask = await _taskRepository.GetByIdAsync(taskId);
+            if (existingTask == null)
+            {
+                _logger.LogError("Task {TaskId} not found after assignment", taskId);
+                return null;
+            }
+        }
+
+        // Validate task assignment before allowing status changes
+        await ValidateTaskAssignmentAsync(taskId, userId, "CHANGE STATUS");
 
         var currentStatus = existingTask.Status;
 
@@ -457,6 +481,38 @@ public class TaskService : ITaskService
             taskId, currentStatus, targetStatus);
 
         return MapToDto(existingTask);
+    }
+
+    public async Task<PaginatedResponse<TaskDto>> GetTasksForUserOrUnassignedAsync(
+        string userId,
+        string? filterOn = null, string? filterQuery = null, string? sortBy = null,
+        bool isAscending = true, int pageNumber = 1, int pageSize = 25)
+    {
+        _logger.LogInformation("Fetching tasks assigned to user {UserId} or unassigned tasks", userId);
+
+        var (tasks, totalCount) = await _taskRepository.GetAllWithCountAsync(
+            filter: t => t.AssignedToUserId == userId || t.AssignedToUserId == null,
+            filterOn: filterOn,
+            filterQuery: filterQuery,
+            sortBy: sortBy ?? "created_at",
+            isAscending: isAscending,
+            pageNumber: pageNumber,
+            pageSize: pageSize
+        );
+
+        _logger.LogInformation("Fetched {Count} tasks assigned to user {UserId} or unassigned", tasks.Count(), userId);
+
+        var taskDtos = tasks.Select(MapToDto).ToArray();
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<TaskDto>
+        {
+            Data = taskDtos,
+            PageSize = pageSize,
+            CurrentPage = pageNumber,
+            TotalPages = totalPages,
+            TotalItems = totalCount
+        };
     }
 
     #region Private Methods
@@ -560,41 +616,47 @@ public class TaskService : ITaskService
         };
     }
     /// <summary>
-    /// Validates that the user owns the lock for the task before allowing modifications
+    /// Validates that the user is assigned to the task before allowing modifications
     /// </summary>
-    /// <param name="taskId">The task ID to validate lock for</param>
+    /// <param name="taskId">The task ID to validate assignment for</param>
     /// <param name="userId">The user attempting the modification</param>
     /// <param name="operation">The operation being attempted (for logging)</param>
-    /// <returns>True if user owns the lock, false otherwise</returns>
-    /// <exception cref="UnauthorizedAccessException">Thrown when user doesn't own the lock</exception>
-    private async Task<bool> ValidateTaskLockOwnershipAsync(int taskId, string userId, string operation)
+    /// <returns>True if user is assigned to the task, false otherwise</returns>
+    /// <exception cref="UnauthorizedAccessException">Thrown when user is not assigned to the task</exception>
+    private async Task<bool> ValidateTaskAssignmentAsync(int taskId, string userId, string operation)
     {
         if (string.IsNullOrEmpty(userId))
         {
-            _logger.LogWarning("Cannot validate lock ownership for task {TaskId} - no user ID provided", taskId);
+            _logger.LogWarning("Cannot validate task assignment for task {TaskId} - no user ID provided", taskId);
             return false;
         }
 
-        var isLockedByUser = await _taskLockingService.IsTaskLockedByUserAsync(taskId, userId);
-        
-        if (!isLockedByUser)
+        var task = await _taskRepository.GetByIdAsync(taskId);
+        if (task == null)
         {
-            var isLocked = await _taskLockingService.IsTaskLockedAsync(taskId);
-            if (isLocked)
+            _logger.LogWarning("Task {TaskId} not found for {Operation} validation", taskId, operation);
+            return false;
+        }
+
+        var isAssignedToUser = task.AssignedToUserId == userId;
+        
+        if (!isAssignedToUser)
+        {
+            if (!string.IsNullOrEmpty(task.AssignedToUserId))
             {
-                _logger.LogWarning("User {UserId} attempted {Operation} on task {TaskId} but task is locked by another user", 
+                _logger.LogWarning("User {UserId} attempted {Operation} on task {TaskId} but task is assigned to another user", 
                     userId, operation, taskId);
-                throw new UnauthorizedAccessException($"Cannot {operation.ToLower()} task {taskId} - it is currently locked by another user.");
+                throw new UnauthorizedAccessException($"Cannot {operation.ToLower()} task {taskId} - it is currently assigned to another user.");
             }
             else
             {
-                _logger.LogWarning("User {UserId} attempted {Operation} on task {TaskId} but doesn't own a lock", 
+                _logger.LogWarning("User {UserId} attempted {Operation} on task {TaskId} but task is not assigned to them", 
                     userId, operation, taskId);
-                throw new UnauthorizedAccessException($"Cannot {operation.ToLower()} task {taskId} - you must acquire a lock first by navigating to the task.");
+                throw new UnauthorizedAccessException($"Cannot {operation.ToLower()} task {taskId} - task must be assigned to you first.");
             }
         }
 
-        _logger.LogDebug("Lock ownership validated for user {UserId} on task {TaskId} for {Operation}", userId, taskId, operation);
+        _logger.LogDebug("Task assignment validated for user {UserId} on task {TaskId} for {Operation}", userId, taskId, operation);
         return true;
     }
 

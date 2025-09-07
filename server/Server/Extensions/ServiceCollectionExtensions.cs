@@ -198,7 +198,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProjectInvitationService, ProjectInvitationService>();
         services.AddScoped<ITaskService, TaskService>();
         services.AddScoped<ITaskNavigationService, TaskNavigationService>();
-        services.AddScoped<ITaskLockingService, TaskLockingService>();
         services.AddScoped<ITaskEventService, TaskEventService>();
         services.AddScoped<ITaskStatusValidator, TaskStatusValidator>();
         services.AddScoped<IWorkflowService, WorkflowService>();
@@ -213,8 +212,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDashboardConfigurationService, DashboardConfigurationService>();
         services.AddScoped<IExportService, ExportService>();
 
-        // Add background services
-        services.AddHostedService<ExpiredLockCleanupService>();
 
         return services;
     }

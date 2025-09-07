@@ -74,8 +74,6 @@ public class Program
         // Register pipeline services and workflow orchestration
         builder.Services.AddPipelineServices();
 
-        // Register background services
-        builder.Services.AddHostedService<ExpiredLockCleanupService>();
 
         // Add framework services
         builder.Services.AddControllers()
