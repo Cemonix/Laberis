@@ -40,11 +40,13 @@ public interface ITaskService
     );
 
     /// <summary>
-    /// Retrieves a task by its ID.
+    /// Retrieves a task by its ID with optional automatic lock acquisition.
     /// </summary>
     /// <param name="taskId">The ID of the task to retrieve.</param>
+    /// <param name="userId">The ID of the user requesting the task (for lock operations).</param>
+    /// <param name="acquireLock">Whether to automatically acquire a lock for the task.</param>
     /// <returns>A task that represents the asynchronous operation, containing the TaskDto if found, otherwise null.</returns>
-    Task<TaskDto?> GetTaskByIdAsync(int taskId);
+    Task<TaskDto?> GetTaskByIdAsync(int taskId, string? userId = null, bool acquireLock = false);
 
     /// <summary>
     /// Gets all tasks for a specific workflow stage, properly filtered by the stage's input data source.

@@ -22,6 +22,7 @@ public class TaskService : ITaskService
     private readonly IWorkflowStageRepository _workflowStageRepository;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IProjectMembershipService _projectMembershipService;
+    private readonly ITaskLockingService _taskLockingService;
     private readonly ILogger<TaskService> _logger;
 
     public TaskService(
@@ -32,6 +33,7 @@ public class TaskService : ITaskService
         IWorkflowStageRepository workflowStageRepository,
         UserManager<ApplicationUser> userManager,
         IProjectMembershipService projectMembershipService,
+        ITaskLockingService taskLockingService,
         ILogger<TaskService> logger)
     {
         _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
@@ -41,6 +43,7 @@ public class TaskService : ITaskService
         _workflowStageRepository = workflowStageRepository ?? throw new ArgumentNullException(nameof(workflowStageRepository));
         _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
         _projectMembershipService = projectMembershipService ?? throw new ArgumentNullException(nameof(projectMembershipService));
+        _taskLockingService = taskLockingService ?? throw new ArgumentNullException(nameof(taskLockingService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -108,9 +111,9 @@ public class TaskService : ITaskService
         };
     }
 
-    public async Task<TaskDto?> GetTaskByIdAsync(int taskId)
+    public async Task<TaskDto?> GetTaskByIdAsync(int taskId, string? userId = null, bool acquireLock = false)
     {
-        _logger.LogInformation("Fetching task with ID: {TaskId}", taskId);
+        _logger.LogInformation("Fetching task with ID: {TaskId} for user: {UserId}, acquireLock: {AcquireLock}", taskId, userId, acquireLock);
 
         var task = await _taskRepository.GetByIdAsync(taskId);
 
@@ -120,8 +123,36 @@ public class TaskService : ITaskService
             return null;
         }
 
+        // Automatically acquire lock if user is provided and acquireLock is true
+        if (!string.IsNullOrEmpty(userId) && acquireLock)
+        {
+            _logger.LogInformation("Attempting to acquire lock for task {TaskId} for user {UserId}", taskId, userId);
+            var lockAcquired = await _taskLockingService.TryLockTaskAsync(taskId, userId);
+            
+            if (!lockAcquired)
+            {
+                _logger.LogWarning("Failed to acquire lock for task {TaskId} for user {UserId} - task is locked by another user", taskId, userId);
+                // Return the task but indicate it's locked by another user
+                var lockedTaskDto = MapToDto(task);
+                lockedTaskDto.IsLockedByCurrentUser = false;
+                lockedTaskDto.IsLocked = true;
+                return lockedTaskDto;
+            }
+            
+            _logger.LogInformation("Successfully acquired lock for task {TaskId} for user {UserId}", taskId, userId);
+        }
+
         _logger.LogInformation("Successfully fetched task with ID: {TaskId}", taskId);
-        return MapToDto(task);
+        var taskDto = MapToDto(task);
+        
+        // Set lock status if user is provided
+        if (!string.IsNullOrEmpty(userId))
+        {
+            taskDto.IsLockedByCurrentUser = await _taskLockingService.IsTaskLockedByUserAsync(taskId, userId);
+            taskDto.IsLocked = await _taskLockingService.IsTaskLockedAsync(taskId);
+        }
+        
+        return taskDto;
     }
 
     public async Task<PaginatedResponse<TaskDto>> GetTasksForWorkflowStageAsync(
@@ -195,6 +226,12 @@ public class TaskService : ITaskService
         {
             _logger.LogWarning("Task with ID: {TaskId} not found for update.", taskId);
             return null;
+        }
+
+        // Validate lock ownership before allowing modifications
+        if (!string.IsNullOrEmpty(updatingUserId))
+        {
+            await ValidateTaskLockOwnershipAsync(taskId, updatingUserId, "UPDATE");
         }
 
         // Update the task properties
@@ -387,6 +424,9 @@ public class TaskService : ITaskService
             return null;
         }
 
+        // Validate lock ownership before allowing status changes
+        await ValidateTaskLockOwnershipAsync(taskId, userId, "CHANGE STATUS");
+
         var currentStatus = existingTask.Status;
 
         // Skip if already in target status
@@ -519,5 +559,44 @@ public class TaskService : ITaskService
             LastWorkedOnByEmail = task.LastWorkedOnByUser?.Email
         };
     }
+    /// <summary>
+    /// Validates that the user owns the lock for the task before allowing modifications
+    /// </summary>
+    /// <param name="taskId">The task ID to validate lock for</param>
+    /// <param name="userId">The user attempting the modification</param>
+    /// <param name="operation">The operation being attempted (for logging)</param>
+    /// <returns>True if user owns the lock, false otherwise</returns>
+    /// <exception cref="UnauthorizedAccessException">Thrown when user doesn't own the lock</exception>
+    private async Task<bool> ValidateTaskLockOwnershipAsync(int taskId, string userId, string operation)
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            _logger.LogWarning("Cannot validate lock ownership for task {TaskId} - no user ID provided", taskId);
+            return false;
+        }
+
+        var isLockedByUser = await _taskLockingService.IsTaskLockedByUserAsync(taskId, userId);
+        
+        if (!isLockedByUser)
+        {
+            var isLocked = await _taskLockingService.IsTaskLockedAsync(taskId);
+            if (isLocked)
+            {
+                _logger.LogWarning("User {UserId} attempted {Operation} on task {TaskId} but task is locked by another user", 
+                    userId, operation, taskId);
+                throw new UnauthorizedAccessException($"Cannot {operation.ToLower()} task {taskId} - it is currently locked by another user.");
+            }
+            else
+            {
+                _logger.LogWarning("User {UserId} attempted {Operation} on task {TaskId} but doesn't own a lock", 
+                    userId, operation, taskId);
+                throw new UnauthorizedAccessException($"Cannot {operation.ToLower()} task {taskId} - you must acquire a lock first by navigating to the task.");
+            }
+        }
+
+        _logger.LogDebug("Lock ownership validated for user {UserId} on task {TaskId} for {Operation}", userId, taskId, operation);
+        return true;
+    }
+
     #endregion
 }
