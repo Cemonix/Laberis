@@ -356,7 +356,10 @@ export const useWorkspaceStore = defineStore("workspace", {
                     if (error?.shouldRedirectToTaskView) {
                         const redirectError = new Error(error.error || 'Task access denied');
                         (redirectError as any).redirectToTaskView = true;
-                        (redirectError as any).toastMessage = error.toastMessage || 'You cannot access this task.';
+                        (redirectError as any).noTasksAvailable = error.noTasksAvailable === true;
+                        (redirectError as any).toastMessage = error.toastMessage || (
+                            error.noTasksAvailable ? 'No tasks available to work on right now.' : 'You cannot access this task.'
+                        );
                         throw redirectError;
                     }
                     // For other task loading errors, log but continue

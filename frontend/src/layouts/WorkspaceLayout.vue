@@ -1,13 +1,18 @@
 <template>
     <div class="workspace-layout">
         <slot />
-        
+
+        <!-- Global toasts -->
+        <ToastContainer />
+
         <!-- Teleport target for floating action buttons -->
         <div id="fab-container"></div>
     </div>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import ToastContainer from '@/components/common/toast/ToastContainer.vue';
+</script>
 
 <style scoped>
 .workspace-layout {

@@ -38,7 +38,7 @@ const handleRemoveToast = (id: string) => {
     position: fixed;
     top: 80px;
     right: 1.5rem;
-    z-index: 1000;
+    z-index: 2000;
     pointer-events: none;
     
     @media (max-width: 768px) {

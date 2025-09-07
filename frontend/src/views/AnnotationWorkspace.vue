@@ -421,44 +421,43 @@ onMounted(async () => {
     } catch (error: any) {
         // Handle redirect to alternative task
         if (error?.redirectToTask) {
-            showToast(
-                'Task Reassigned',
-                error.toastMessage || 'This task was assigned to another user. We found you an available task to work on.',
-                'info',
-                { duration: 5000 }
-            );
-            
-            // Redirect to the alternative task
             const alternativeTaskId = error.redirectToTask;
             const alternativeTask = error.alternativeTask;
             
-            // Navigate to the alternative task
-            router.replace({
+            // Load the alternative task in the workspace first
+            const targetAssetId = (alternativeTask?.assetId?.toString() || props.assetId);
+            await workspaceStore.loadAsset(props.projectId, targetAssetId, alternativeTaskId.toString());
+
+            // Navigate to the alternative task (update URL without re-mount)
+            await router.replace({
                 name: 'AnnotationWorkspace',
                 params: {
                     projectId: props.projectId,
-                    assetId: alternativeTask?.assetId?.toString() || props.assetId
+                    assetId: targetAssetId
                 },
                 query: {
                     taskId: alternativeTaskId.toString()
                 }
             });
+
+            // Show toast after navigation so it's visible in the new context
+            showToast(
+                'Task Reassigned',
+                error.toastMessage || 'This task was assigned to another user. We found you an available task to work on.',
+                'info',
+                { duration: 7500 }
+            );
             return;
         }
         
         // Handle task access errors and redirect to task view
         if (error?.redirectToTaskView) {
-            showToast(
-                'Access Denied',
-                error.toastMessage || 'You cannot access this task.',
-                'error',
-                { duration: 5000 }
-            );
-            
+            const noTasks = !!error.noTasksAvailable;
+
             // Redirect back to task view
             const currentTask = workspaceStore.getCurrentTask;
             if (currentTask) {
-                router.push({
+                await router.push({
                     name: 'StageTasks',
                     params: {
                         projectId: props.projectId,
@@ -468,13 +467,21 @@ onMounted(async () => {
                 });
             } else {
                 // Fallback to project dashboard if no current task context
-                router.push({
+                await router.push({
                     name: 'ProjectDashboard',
                     params: {
                         projectId: props.projectId
                     }
                 });
             }
+
+            // Show toast after navigation so it's visible on destination view
+            showToast(
+                noTasks ? 'All Tasks Complete' : 'Access Denied',
+                error.toastMessage || (noTasks ? 'No tasks available to work on right now.' : 'You cannot access this task.'),
+                noTasks ? 'info' : 'error',
+                { duration: 6000 }
+            );
             return;
         }
         

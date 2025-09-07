@@ -1,5 +1,10 @@
 <template>
-    <div class="asset-preview-cell" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave">
+    <div
+        class="asset-preview-cell"
+        :class="{ clickable: isClickable }"
+        @mouseenter="onMouseEnter"
+        @mouseleave="onMouseLeave"
+    >
         <div class="asset-thumbnail">
             <img 
                 :src="getAssetThumbnailUrl(projectId, task.assetId)" 
@@ -93,6 +98,7 @@ interface Props {
     task: TaskTableRow;
     projectId: number;
     allTasks: TaskTableRow[];
+    isClickable?: boolean;
 }
 
 interface Emits {
@@ -138,7 +144,7 @@ const onImageError = (event: Event) => {
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
+    cursor: inherit;
     padding: 0.5rem;
     
     .asset-thumbnail {
@@ -254,11 +260,12 @@ const onImageError = (event: Event) => {
             z-index: 1;
         }
     }
-    
-    &:hover {
+    &.clickable { cursor: pointer; }
+
+    &.clickable:hover {
         .asset-thumbnail {
             border-color: var(--color-primary);
-            
+
             .thumbnail-image:not(.loading) {
                 transform: scale(1.02);
             }
