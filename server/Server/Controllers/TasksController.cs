@@ -117,18 +117,21 @@ public class TasksController : ControllerBase
     }
 
     /// <summary>
-    /// Gets a specific task by its unique ID, with optional auto-assignment to the requesting user.
+    /// Gets a specific task by its unique ID, with automatic lock acquisition if autoAssign=true.
     /// </summary>
     /// <param name="taskId">The ID of the task.</param>
+    /// <param name="autoAssign">Whether to automatically acquire a lock for the task.</param>
     /// <returns>The requested task.</returns>
     [HttpGet("{taskId:int}")]
     [ProducesResponseType(typeof(TaskDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetTaskById(int taskId)
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetTaskById(int taskId, [FromQuery] bool autoAssign = false)
     {
         try
         {
-            TaskDto? task = await _taskService.GetTaskByIdAsync(taskId);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            TaskDto? task = await _taskService.GetTaskByIdAsync(taskId, userId, autoAssign);
             
             if (task == null)
             {
