@@ -2,7 +2,6 @@ import axios from 'axios';
 import type { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { env } from '@/config/env';
 import type { useAuthStore } from '@/stores/authStore';
-import type { usePermissionStore } from '@/stores/permissionStore';
 import { isAuthOrPublicPath, isAuthPath } from '@/router/routes';
 import { isPermissionChangingEndpoint, getPermissionChangeDescription } from '@/core/interceptors';
 import { AppLogger } from '@/core/logger/logger';
@@ -41,11 +40,9 @@ const processQueue = (error: Error | null, token: string | null = null) => {
  * Sets up the Axios interceptors for handling authentication and token refresh.
  * This should be called once when the application initializes.
  * @param authStore An instance of the authentication store.
- * @param permissionStore An instance of the permission store.
  */
 export function setupInterceptors(
-    authStore: ReturnType<typeof useAuthStore>,
-    permissionStore: ReturnType<typeof usePermissionStore>
+    authStore: ReturnType<typeof useAuthStore>
 ): void {
     // Request Interceptor: Add JWT token whenever available
     apiClient.interceptors.request.use(
@@ -69,18 +66,9 @@ export function setupInterceptors(
             const { url, method } = response.config;
             if (response.status >= 200 && response.status < 300 && 
                 isPermissionChangingEndpoint(url, method || 'GET')) {
-                
                 const description = getPermissionChangeDescription(url, method || 'GET');
                 logger.info(`Permission-changing request completed: ${method?.toUpperCase()} ${url} - ${description}`);
-                
-                // Automatically refresh permissions in the background
-                try {
-                    await permissionStore.refreshPermissions();
-                    logger.info('Automatically refreshed permissions after API call');
-                } catch (error) {
-                    // Don't fail the original request if permission refresh fails
-                    logger.warn('Failed to automatically refresh permissions after API call', error);
-                }
+                // FE now uses on-demand authorization checks; no global refresh required.
             }
             
             return response;
