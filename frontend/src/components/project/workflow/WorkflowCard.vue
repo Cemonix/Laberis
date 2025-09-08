@@ -36,6 +36,7 @@
                 v-else
                 :to="pipelineUrl" 
                 class="action-button secondary"
+                v-permission="{ permission: PERMISSIONS.WORKFLOW.UPDATE }"
             >
                 <font-awesome-icon :icon="faDiagramProject" />
                 View Pipeline
@@ -47,6 +48,7 @@
                 :to="pipelineUrl" 
                 class="action-button secondary small"
                 title="View workflow pipeline"
+                v-permission="{ permission: PERMISSIONS.WORKFLOW.UPDATE }"
             >
                 <font-awesome-icon :icon="faDiagramProject" />
                 Pipeline
@@ -63,6 +65,7 @@ import { type ProjectRole } from '@/services/project/project.types';
 import { WorkflowNavigationHelper } from '@/core/workflow';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faDiagramProject } from '@fortawesome/free-solid-svg-icons';
+import { PERMISSIONS } from '@/services/auth/permissions.types';
 
 interface Props {
     workflow: Workflow;

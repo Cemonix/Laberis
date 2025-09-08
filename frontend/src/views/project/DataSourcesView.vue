@@ -74,10 +74,8 @@ const isModalOpen = ref(false);
 const isLoading = ref(false);
 const isCreating = ref(false);
 
-// Permission checks - READ permission required as baseline to view data sources page
-const canManageDataSources = computed(() => 
-    hasProjectPermission(PERMISSIONS.DATA_SOURCE.READ)
-);
+// Manager-only access: require update permission
+const canManageDataSources = computed(() => hasProjectPermission(PERMISSIONS.DATA_SOURCE.UPDATE));
 
 const openModal = () => isModalOpen.value = true;
 const closeModal = () => isModalOpen.value = false;

@@ -74,10 +74,10 @@ import {useToast} from '@/composables/useToast';
 import LabelChip from './LabelChip.vue';
 import CreateLabelForm from './CreateLabelForm.vue';
 import Button from '@/components/common/Button.vue';
+import {PERMISSIONS} from '@/services/auth/permissions.types';
 import Card from '@/components/common/Card.vue';
 import ModalWindow from '@/components/common/modal/ModalWindow.vue';
 import {AppLogger} from '@/core/logger/logger';
-import {PERMISSIONS} from '@/services/auth/permissions.types';
 
 const logger = AppLogger.createComponentLogger('LabelSchemeCard');
 

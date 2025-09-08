@@ -26,7 +26,7 @@
                     Dashboard
                 </router-link>
                 
-                <!-- Label Schemes - Available to all project members -->
+                <!-- Label Schemes - Viewable by all project members, edits are manager-only -->
                 <router-link 
                     :to="`/projects/${projectId}/label-schemes`" 
                     class="sub-nav-link" 
@@ -35,7 +35,7 @@
                     Label Schemes
                 </router-link>
                 
-                <!-- Data Sources - Available to all project members -->
+                <!-- Data Sources - Manager only -->
                 <router-link 
                     :to="`/projects/${projectId}/data-sources`" 
                     class="sub-nav-link" 
@@ -44,7 +44,7 @@
                     Data Sources
                 </router-link>
                 
-                <!-- Workflows - Available to all project members -->
+                <!-- Workflows - Manager only -->
                 <router-link 
                     :to="`/projects/${projectId}/workflows`" 
                     class="sub-nav-link" 
@@ -83,7 +83,7 @@ import type {Project} from '@/services/project/project.types';
 import {projectService} from '@/services/project';
 import {useAlert} from '@/composables/useAlert';
 import {AppLogger} from '@/core/logger/logger';
-import {PERMISSIONS} from '@/services/auth/permissions.types';
+import { PERMISSIONS } from '@/services/auth/permissions.types';
 
 const logger = AppLogger.createComponentLogger('ProjectDetailView');
 

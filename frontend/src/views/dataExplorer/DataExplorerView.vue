@@ -1,10 +1,10 @@
 <template>
     <div class="explorer-container">
-        <!-- Permission check for data explorer access (Viewer and Manager only) -->
+        <!-- Permission check for data explorer access (Manager only) -->
         <div v-if="!canAccessDataExplorer" class="access-denied-container">
             <div class="access-denied">
                 <h2>Access Denied</h2>
-                <p>You don't have permission to access the data explorer. This section is only available to viewers and managers.</p>
+                <p>You don't have permission to access the data explorer. This section is only available to project managers.</p>
                 <Button variant="secondary" @click="navigateToProject">Back to Project</Button>
             </div>
         </div>
@@ -143,10 +143,10 @@ import AssetThumbnail from '@/components/project/AssetThumbnail.vue';
 import Button from '@/components/common/Button.vue';
 import UploadImagesModal from '@/components/project/UploadImagesModal.vue';
 import {assetService, dataSourceService} from '@/services/project';
+import { PERMISSIONS } from '@/services/auth/permissions.types';
 import {useAlert} from '@/composables/useAlert';
 import {AppLogger} from '@/core/logger/logger';
 import {usePermissions} from '@/composables/usePermissions';
-import {PERMISSIONS} from '@/services/auth/permissions.types';
 import { AssetStatus, type Asset } from '@/core/asset/asset.types';
 import type { AssetListParams } from '@/services/project/asset';
 
@@ -207,9 +207,8 @@ const hasActiveFilters = computed(() =>
     Boolean(filterStatus.value || (searchQuery.value && searchQuery.value.trim()))
 );
 
-const canAccessDataExplorer = computed(() => 
-    hasProjectPermission(PERMISSIONS.DATA_EXPLORER.READ)
-);
+// Manager-only for now
+const canAccessDataExplorer = computed(() => hasProjectPermission(PERMISSIONS.DATA_SOURCE.UPDATE));
 
 // Methods
 const navigateToProject = () => {

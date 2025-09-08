@@ -3,6 +3,7 @@
         <div class="view-header">
             <div class="header-left">
                 <Button 
+                    v-if="canManageTasks"
                     variant="secondary" 
                     @click="goBack"
                     class="back-button"
@@ -14,9 +15,9 @@
                     <p class="stage-description">{{ stageDescription || 'Manage tasks for this workflow stage' }}</p>
                 </div>
             </div>
-            <div class="view-actions">
+            <div class="view-actions" v-if="canManageTasks">
                 <Button 
-                    v-if="stageType === 'COMPLETION'"
+                    v-if="stageType === 'COMPLETION' && canManageTasks"
                     variant="secondary"
                     @click="handleExportCoco"
                     :disabled="isLoading"
@@ -26,7 +27,7 @@
                     Export COCO
                 </Button>
                 <Button 
-                    v-if="stageType !== 'ANNOTATION'"
+                    v-if="stageType !== 'ANNOTATION' && canManageTasks"
                     variant="secondary" 
                     @click="showVetoedTasks = !showVetoedTasks"
                     class="toggle-vetoed-button"
@@ -37,6 +38,7 @@
                     variant="secondary" 
                     @click="showDeferredTasks = !showDeferredTasks"
                     class="toggle-deferred-button"
+                    v-if="canManageTasks"
                 >
                     {{ showDeferredTasks ? 'Hide Deferred' : 'Show Deferred' }}
                 </Button>
@@ -44,6 +46,7 @@
                     variant="secondary" 
                     @click="showCompletedTasks = !showCompletedTasks"
                     class="toggle-completed-button"
+                    v-if="canManageTasks"
                 >
                     {{ showCompletedTasks ? 'Hide Completed' : 'Show Completed' }}
                 </Button>
@@ -51,6 +54,7 @@
                     variant="primary" 
                     @click="handleRefresh"
                     :disabled="isLoading"
+                    v-if="canManageTasks"
                 >
                     <font-awesome-icon :icon="faRefresh" />
                     Refresh
@@ -61,6 +65,7 @@
         <div class="tasks-container">            
             <!-- Bulk Operations Toolbar -->
             <TaskBulkOperationsToolbar
+                v-if="canManageTasks"
                 :selection-count="currentSelectionCount"
                 :team-members="projectStore.teamMembers || []"
                 :is-operation-in-progress="isBulkOperationInProgress"
@@ -92,7 +97,7 @@
             >
                 <!-- Custom cell renderers -->
 
-                <template #header-select>
+                <template v-if="canManageTasks" #header-select>
                     <TaskSelectionColumn
                         :show-header="true"
                         :tasks="tasks"
@@ -101,7 +106,7 @@
                     />
                 </template>
                 
-                <template #cell-select="{ row }">
+                <template v-if="canManageTasks" #cell-select="{ row }">
                     <TaskSelectionColumn
                         :task="row"
                         :is-task-selected="selection.isTaskSelected"
@@ -221,8 +226,8 @@ import { TaskStatus } from '@/services/project/task/task.types';
 import type { TableColumn, TableRowAction } from '@/core/table/table.types';
 import { useErrorHandler } from '@/composables/useErrorHandler';
 import { usePermissions } from '@/composables/usePermissions';
-import { useAssetPreview } from '@/composables/useAssetPreview';
 import { PERMISSIONS } from '@/services/auth/permissions.types';
+import { useAssetPreview } from '@/composables/useAssetPreview';
 import { useProjectStore } from '@/stores/projectStore';
 import { useAuthStore } from '@/stores/authStore';
 import { taskService, workflowStageService, assetService, exportService } from '@/services/project';
@@ -236,7 +241,7 @@ const route = useRoute();
 const router = useRouter();
 const { handleError } = useErrorHandler();
 const projectStore = useProjectStore();
-const { hasProjectPermission } = usePermissions();
+const { hasProjectPermission, isManager } = usePermissions();
 const { showToast } = useToast();
 const logger = AppLogger.createComponentLogger('TasksView');
 
@@ -284,25 +289,15 @@ const bulkOperationProgress = ref<string>('Processing...');
 // Computed properties for reactive props
 const currentSelectionCount = computed(() => selection.selectionCount.value);
 
-const canManageTasks = computed(() => {
-    return hasProjectPermission(PERMISSIONS.PROJECT.UPDATE);
-});
+const canManageTasks = computed(() => isManager());
 
-const canAssignTasks = computed(() => {
-    return hasProjectPermission(PERMISSIONS.TASK.ASSIGN);
-});
+const canAssignTasks = computed(() => hasProjectPermission(PERMISSIONS.TASK.ASSIGN));
 
-const canUpdateTaskStatus = computed(() => {
-    return hasProjectPermission(PERMISSIONS.TASK.UPDATE_STATUS);
-});
+const canUpdateTaskStatus = computed(() => hasProjectPermission(PERMISSIONS.TASK.UPDATE_STATUS));
 
-const canReviewTasks = computed(() => {
-    return hasProjectPermission(PERMISSIONS.ANNOTATION.REVIEW);
-});
+const canReviewTasks = computed(() => hasProjectPermission(PERMISSIONS.ANNOTATION.REVIEW));
 
-const isUserManager = computed(() => {
-    return canManageTasks.value;
-});
+const isUserManager = computed(() => canManageTasks.value);
 
 const currentUserEmail = computed(() => {
     const authStore = useAuthStore();
@@ -340,30 +335,30 @@ const isTaskClickable = (task: TaskTableRow): boolean => {
 
 
 // Table configuration
-const tableColumns: TableColumn[] = [
-    { key: 'select', label: '☐', sortable: false, width: '4%', align: 'center' },
-    { key: 'assetName', label: 'Asset', sortable: true, width: '26%' },
-    { key: 'priority', label: 'Priority', sortable: true, width: '8%', align: 'center' },
-    { key: 'status', label: 'Status', sortable: true, width: '12%', align: 'center' },
-    { key: 'assignedTo', label: 'Assigned To', sortable: true, width: '16%' },
-    { key: 'dueDate', label: 'Due Date', sortable: true, width: '12%', format: 'date' },
-    { key: 'createdAt', label: 'Created', sortable: true, width: '11%', format: 'datetime' },
-    { key: 'completedAt', label: 'Completed', sortable: true, width: '11%', format: 'datetime' },
-];
+const tableColumns = computed<TableColumn[]>(() => {
+    const cols: TableColumn[] = [
+        { key: 'assetName', label: 'Asset', sortable: true, width: '26%' },
+        { key: 'priority', label: 'Priority', sortable: true, width: '8%', align: 'center' },
+        { key: 'status', label: 'Status', sortable: true, width: '12%', align: 'center' },
+        { key: 'assignedTo', label: 'Assigned To', sortable: true, width: '16%' },
+        { key: 'dueDate', label: 'Due Date', sortable: true, width: '12%', format: 'date' },
+        { key: 'createdAt', label: 'Created', sortable: true, width: '11%', format: 'datetime' },
+        { key: 'completedAt', label: 'Completed', sortable: true, width: '11%', format: 'datetime' },
+    ];
+
+    if (canManageTasks.value) {
+        cols.unshift({ key: 'select', label: '☐', sortable: false, width: '4%', align: 'center' });
+    }
+    return cols;
+});
 
 const rowActions = computed((): TableRowAction<TaskTableRow>[] => {
+    if (!canManageTasks.value) return [];
+
     const actions: TableRowAction<TaskTableRow>[] = [
+        { key: 'edit', label: 'Edit', icon: faEdit, variant: 'secondary' },
         { 
-            key: 'edit', 
-            label: 'Edit', 
-            icon: faEdit, 
-            variant: 'secondary'
-        },
-        { 
-            key: 'assign', 
-            label: 'Assign', 
-            icon: faUserCog, 
-            variant: 'secondary',
+            key: 'assign', label: 'Assign', icon: faUserCog, variant: 'secondary',
             disabled: (row: TaskTableRow) => 
                 row.status === TaskStatus.SUSPENDED ||
                 row.status === TaskStatus.DEFERRED ||
@@ -372,29 +367,17 @@ const rowActions = computed((): TableRowAction<TaskTableRow>[] => {
                 row.status === TaskStatus.VETOED
         },
         { 
-            key: 'priority', 
-            label: 'Change Priority', 
-            icon: faSort, 
-            variant: 'secondary',
-            disabled: (row: TaskTableRow) => 
-                row.status === TaskStatus.ARCHIVED ||
-                row.status === TaskStatus.VETOED
-        }
-    ];
-
-    // Add single status change button for managers only
-    if (canManageTasks.value) {
-        actions.push({
-            key: 'change-status',
-            label: 'Change Status',
-            icon: faBolt,
-            variant: 'secondary',
+            key: 'priority', label: 'Change Priority', icon: faSort, variant: 'secondary',
+            disabled: (row: TaskTableRow) => row.status === TaskStatus.ARCHIVED || row.status === TaskStatus.VETOED
+        },
+        { 
+            key: 'change-status', label: 'Change Status', icon: faBolt, variant: 'secondary',
             disabled: (row: TaskTableRow) => 
                 row.status === TaskStatus.COMPLETED ||
                 row.status === TaskStatus.ARCHIVED ||
                 row.status === TaskStatus.VETOED
-        });
-    }
+        }
+    ];
 
     return actions;
 });
