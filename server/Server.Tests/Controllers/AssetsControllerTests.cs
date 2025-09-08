@@ -96,7 +96,7 @@ namespace Server.Tests.Controllers
             };
 
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
-                projectId, null, null, null, null, true, 1, 25, true, 3600
+                projectId, null, null, null, null, true, 1, 25, true, 300
             )
             ).ReturnsAsync(expectedAssets);
 
@@ -111,7 +111,7 @@ namespace Server.Tests.Controllers
             Assert.Equal(expectedAssets.Data, paginatedResponse.Data);
 
             _mockAssetService.Verify(s => s.GetAssetsForProjectAsync(
-                projectId, null, null, null, null, true, 1, 25, true, 3600
+                projectId, null, null, null, null, true, 1, 25, true, 300
             ),
             Times.Once
             );
@@ -148,7 +148,7 @@ namespace Server.Tests.Controllers
             };
 
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
-                projectId, null, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize, true, 3600)
+                projectId, null, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize, true, 300)
             ).ReturnsAsync(expectedAssets);
 
             // Act
@@ -163,7 +163,7 @@ namespace Server.Tests.Controllers
 
             _mockAssetService.Verify(
                 s => s.GetAssetsForProjectAsync(
-                    projectId, null, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize, true, 3600
+                    projectId, null, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize, true, 300
                 ),
                 Times.Once
             );
@@ -184,7 +184,7 @@ namespace Server.Tests.Controllers
             };
 
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
-                projectId, null, null, null, null, true, 1, 25, true, 3600
+                projectId, null, null, null, null, true, 1, 25, true, 300
             )).ReturnsAsync(expectedAssets);
 
             // Act
@@ -203,7 +203,7 @@ namespace Server.Tests.Controllers
             // Arrange
             var projectId = 1;
             _mockAssetService.Setup(s => s.GetAssetsForProjectAsync(
-                projectId, null, null, null, null, true, 1, 25, true, 3600
+                projectId, null, null, null, null, true, 1, 25, true, 300
             )).ThrowsAsync(new Exception("Database error"));
 
             // Act & Assert
@@ -232,11 +232,11 @@ namespace Server.Tests.Controllers
                 UpdatedAt = DateTime.UtcNow,
             };
 
-            _mockAssetService.Setup(s => s.GetAssetByIdAsync(assetId))
+            _mockAssetService.Setup(s => s.GetAssetByIdAsync(It.IsAny<int>(), assetId))
                 .ReturnsAsync(expectedAsset);
 
             // Act
-            var result = await _controller.GetAssetById(assetId);
+            var result = await _controller.GetAssetById(1, assetId);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -244,7 +244,7 @@ namespace Server.Tests.Controllers
             Assert.Equal(expectedAsset.Id, asset.Id);
             Assert.Equal(expectedAsset.Filename, asset.Filename);
 
-            _mockAssetService.Verify(s => s.GetAssetByIdAsync(assetId), Times.Once);
+            _mockAssetService.Verify(s => s.GetAssetByIdAsync(1, assetId), Times.Once);
         }
 
         [Fact]
@@ -253,11 +253,11 @@ namespace Server.Tests.Controllers
             // Arrange
             var assetId = 999;
 
-            _mockAssetService.Setup(s => s.GetAssetByIdAsync(assetId))
+            _mockAssetService.Setup(s => s.GetAssetByIdAsync(It.IsAny<int>(), assetId))
                 .ReturnsAsync((AssetDto?)null);
 
             // Act
-            var result = await _controller.GetAssetById(assetId);
+            var result = await _controller.GetAssetById(1, assetId);
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -265,7 +265,7 @@ namespace Server.Tests.Controllers
             Assert.Equal(404, errorResponse.StatusCode);
             Assert.Contains($"Asset with ID '{assetId}' was not found", errorResponse.Message);
 
-            _mockAssetService.Verify(s => s.GetAssetByIdAsync(assetId), Times.Once);
+            _mockAssetService.Verify(s => s.GetAssetByIdAsync(1, assetId), Times.Once);
         }
 
         [Fact]
@@ -274,12 +274,12 @@ namespace Server.Tests.Controllers
             // Arrange
             var assetId = 1;
 
-            _mockAssetService.Setup(s => s.GetAssetByIdAsync(assetId))
+            _mockAssetService.Setup(s => s.GetAssetByIdAsync(It.IsAny<int>(), assetId))
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act & Assert
             var exception = await Assert.ThrowsAsync<Exception>(() => 
-                _controller.GetAssetById(assetId));
+                _controller.GetAssetById(1, assetId));
             Assert.Equal("Database error", exception.Message);
         }
 
@@ -381,11 +381,11 @@ namespace Server.Tests.Controllers
                 UpdatedAt = DateTime.UtcNow,
             };
 
-            _mockAssetService.Setup(s => s.UpdateAssetAsync(assetId, updateAssetDto))
+            _mockAssetService.Setup(s => s.UpdateAssetAsync(1, assetId, updateAssetDto))
                 .ReturnsAsync(updatedAsset);
 
             // Act
-            var result = await _controller.UpdateAsset(assetId, updateAssetDto);
+            var result = await _controller.UpdateAsset(1, assetId, updateAssetDto);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -394,7 +394,7 @@ namespace Server.Tests.Controllers
             Assert.Equal(updatedAsset.Filename, asset.Filename);
             Assert.Equal(updatedAsset.Status, asset.Status);
 
-            _mockAssetService.Verify(s => s.UpdateAssetAsync(assetId, updateAssetDto), Times.Once);
+            _mockAssetService.Verify(s => s.UpdateAssetAsync(1, assetId, updateAssetDto), Times.Once);
         }
 
         [Fact]
@@ -408,11 +408,11 @@ namespace Server.Tests.Controllers
                 Status = AssetStatus.IMPORTED
             };
 
-            _mockAssetService.Setup(s => s.UpdateAssetAsync(assetId, updateAssetDto))
+            _mockAssetService.Setup(s => s.UpdateAssetAsync(1, assetId, updateAssetDto))
                 .ReturnsAsync((AssetDto?)null);
 
             // Act
-            var result = await _controller.UpdateAsset(assetId, updateAssetDto);
+            var result = await _controller.UpdateAsset(1, assetId, updateAssetDto);
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -420,7 +420,7 @@ namespace Server.Tests.Controllers
             Assert.Equal(404, errorResponse.StatusCode);
             Assert.Contains($"Asset with ID '{assetId}' was not found", errorResponse.Message);
 
-            _mockAssetService.Verify(s => s.UpdateAssetAsync(assetId, updateAssetDto), Times.Once);
+            _mockAssetService.Verify(s => s.UpdateAssetAsync(1, assetId, updateAssetDto), Times.Once);
         }
 
         [Fact]
@@ -434,12 +434,12 @@ namespace Server.Tests.Controllers
                 Status = AssetStatus.IMPORTED
             };
 
-            _mockAssetService.Setup(s => s.UpdateAssetAsync(assetId, updateAssetDto))
+            _mockAssetService.Setup(s => s.UpdateAssetAsync(1, assetId, updateAssetDto))
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act & Assert
             var exception = await Assert.ThrowsAsync<Exception>(() => 
-                _controller.UpdateAsset(assetId, updateAssetDto));
+                _controller.UpdateAsset(1, assetId, updateAssetDto));
             Assert.Equal("Database error", exception.Message);
         }
 
@@ -453,16 +453,16 @@ namespace Server.Tests.Controllers
             // Arrange
             var assetId = 1;
 
-            _mockAssetService.Setup(s => s.DeleteAssetAsync(assetId))
+            _mockAssetService.Setup(s => s.DeleteAssetAsync(1, assetId))
                 .ReturnsAsync(true);
 
             // Act
-            var result = await _controller.DeleteAsset(assetId);
+            var result = await _controller.DeleteAsset(1, assetId);
 
             // Assert
             Assert.IsType<NoContentResult>(result);
 
-            _mockAssetService.Verify(s => s.DeleteAssetAsync(assetId), Times.Once);
+            _mockAssetService.Verify(s => s.DeleteAssetAsync(1, assetId), Times.Once);
         }
 
         [Fact]
@@ -471,11 +471,11 @@ namespace Server.Tests.Controllers
             // Arrange
             var assetId = 999;
 
-            _mockAssetService.Setup(s => s.DeleteAssetAsync(assetId))
+            _mockAssetService.Setup(s => s.DeleteAssetAsync(1, assetId))
                 .ReturnsAsync(false);
 
             // Act
-            var result = await _controller.DeleteAsset(assetId);
+            var result = await _controller.DeleteAsset(1, assetId);
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -483,7 +483,7 @@ namespace Server.Tests.Controllers
             Assert.Equal(404, errorResponse.StatusCode);
             Assert.Contains($"Asset with ID '{assetId}' was not found", errorResponse.Message);
 
-            _mockAssetService.Verify(s => s.DeleteAssetAsync(assetId), Times.Once);
+            _mockAssetService.Verify(s => s.DeleteAssetAsync(1, assetId), Times.Once);
         }
 
         [Fact]
@@ -492,12 +492,12 @@ namespace Server.Tests.Controllers
             // Arrange
             var assetId = 1;
 
-            _mockAssetService.Setup(s => s.DeleteAssetAsync(assetId))
+            _mockAssetService.Setup(s => s.DeleteAssetAsync(1, assetId))
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act & Assert
             var exception = await Assert.ThrowsAsync<Exception>(() => 
-                _controller.DeleteAsset(assetId));
+                _controller.DeleteAsset(1, assetId));
             Assert.Equal("Database error", exception.Message);
         }
 
