@@ -70,7 +70,7 @@ namespace Server.Tests.Services
                 .ReturnsAsync(task);
 
             // Act
-            var result = await _taskService.GetTaskByIdAsync(taskId);
+            var result = await _taskService.GetTaskByIdAsync(1, taskId);
 
             // Assert
             Assert.NotNull(result);
@@ -91,7 +91,7 @@ namespace Server.Tests.Services
                 .ReturnsAsync((LaberisTask?)null);
 
             // Act
-            var result = await _taskService.GetTaskByIdAsync(taskId);
+            var result = await _taskService.GetTaskByIdAsync(1, taskId);
 
             // Assert
             Assert.Null(result);

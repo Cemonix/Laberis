@@ -52,6 +52,7 @@ public class TaskServiceUnifiedStatusTests
     public async System.Threading.Tasks.Task ChangeTaskStatusAsync_TaskNotFound_ShouldReturnNull()
     {
         // Arrange
+        const int projectId = 1;
         const int taskId = 999;
         const string userId = "user123";
 
@@ -60,7 +61,7 @@ public class TaskServiceUnifiedStatusTests
             .ReturnsAsync((LaberisTask?)null);
 
         // Act
-        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.COMPLETED, userId);
+        var result = await _taskService.ChangeTaskStatusAsync(projectId, taskId, TaskStatus.COMPLETED, userId);
 
         // Assert
         Assert.Null(result);
@@ -71,6 +72,7 @@ public class TaskServiceUnifiedStatusTests
     public async System.Threading.Tasks.Task ChangeTaskStatusAsync_AlreadyInTargetStatus_ShouldReturnTaskWithoutChanges()
     {
         // Arrange
+        const int projectId = 1;
         const int taskId = 1;
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
@@ -82,7 +84,7 @@ public class TaskServiceUnifiedStatusTests
             .ReturnsAsync(existingTask);
 
         // Act
-        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.COMPLETED, userId);
+        var result = await _taskService.ChangeTaskStatusAsync(projectId, taskId, TaskStatus.COMPLETED, userId);
 
         // Assert
         Assert.NotNull(result);
@@ -99,6 +101,7 @@ public class TaskServiceUnifiedStatusTests
     public async System.Threading.Tasks.Task ChangeTaskStatusAsync_InvalidTransition_ShouldThrowException()
     {
         // Arrange
+        const int projectId = 1;
         const int taskId = 1;
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
@@ -115,7 +118,7 @@ public class TaskServiceUnifiedStatusTests
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.SUSPENDED, userId));
+            () => _taskService.ChangeTaskStatusAsync(projectId, taskId, TaskStatus.SUSPENDED, userId));
 
         Assert.Equal(errorMessage, exception.Message);
         _mockTaskRepository.Verify(x => x.SaveChangesAsync(), Times.Never);
@@ -125,6 +128,7 @@ public class TaskServiceUnifiedStatusTests
     public async System.Threading.Tasks.Task ChangeTaskStatusAsync_ValidSuspension_ShouldUpdateTaskAndLogEvent()
     {
         // Arrange
+        const int projectId = 1;
         const int taskId = 1;
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
@@ -149,7 +153,7 @@ public class TaskServiceUnifiedStatusTests
             .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act
-        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.SUSPENDED, userId);
+        var result = await _taskService.ChangeTaskStatusAsync(projectId, taskId, TaskStatus.SUSPENDED, userId);
 
         // Assert
         Assert.NotNull(result);
@@ -168,6 +172,7 @@ public class TaskServiceUnifiedStatusTests
     public async System.Threading.Tasks.Task ChangeTaskStatusAsync_ValidCompletion_ShouldUpdateTaskAndLogEvent()
     {
         // Arrange
+        const int projectId = 1;
         const int taskId = 1;
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
@@ -192,7 +197,7 @@ public class TaskServiceUnifiedStatusTests
             .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act - disable asset movement to test pure status change
-        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.COMPLETED, userId);
+        var result = await _taskService.ChangeTaskStatusAsync(projectId, taskId, TaskStatus.COMPLETED, userId);
 
         // Assert
         Assert.NotNull(result);
@@ -211,6 +216,7 @@ public class TaskServiceUnifiedStatusTests
     public async System.Threading.Tasks.Task ChangeTaskStatusAsync_ValidUnsuspension_ShouldClearSuspendedAt()
     {
         // Arrange
+        const int projectId = 1;
         const int taskId = 1;
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
@@ -235,7 +241,7 @@ public class TaskServiceUnifiedStatusTests
             .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act
-        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.IN_PROGRESS, userId);
+        var result = await _taskService.ChangeTaskStatusAsync(projectId, taskId, TaskStatus.IN_PROGRESS, userId);
 
         // Assert
         Assert.NotNull(result);
@@ -253,6 +259,7 @@ public class TaskServiceUnifiedStatusTests
     public async System.Threading.Tasks.Task ChangeTaskStatusAsync_ArchiveCompleted_ShouldSetBothTimestamps()
     {
         // Arrange
+        const int projectId = 1;
         const int taskId = 1;
         const string userId = "manager123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.COMPLETION);
@@ -277,7 +284,7 @@ public class TaskServiceUnifiedStatusTests
             .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act
-        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.ARCHIVED, userId);
+        var result = await _taskService.ChangeTaskStatusAsync(projectId, taskId, TaskStatus.ARCHIVED, userId);
 
         // Assert
         Assert.NotNull(result);
@@ -295,6 +302,7 @@ public class TaskServiceUnifiedStatusTests
     public async System.Threading.Tasks.Task ChangeTaskStatusAsync_WithAssetMovementDisabled_ShouldNotMoveAsset()
     {
         // Arrange
+        const int projectId = 1;
         const int taskId = 1;
         const string userId = "user123";
         var existingTask = CreateTestTask(taskId, WorkflowStageType.ANNOTATION);
@@ -319,7 +327,7 @@ public class TaskServiceUnifiedStatusTests
             .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act - disable asset movement
-        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.COMPLETED, userId);
+        var result = await _taskService.ChangeTaskStatusAsync(projectId, taskId, TaskStatus.COMPLETED, userId);
 
         // Assert
         Assert.NotNull(result);
@@ -337,6 +345,7 @@ public class TaskServiceUnifiedStatusTests
     public async System.Threading.Tasks.Task ChangeTaskStatusAsync_SuspendedChangesRequiredToInProgress_ShouldHandleChangesRequiredCorrectly()
     {
         // Arrange - This tests the exact issue: CHANGES_REQUIRED → SUSPENDED → IN_PROGRESS (frontend call)
+        const int projectId = 1;
         const int taskId = 1;
         const string userId = "user123";
         var originalChangesRequiredTime = DateTime.UtcNow.AddDays(-1);
@@ -365,7 +374,7 @@ public class TaskServiceUnifiedStatusTests
             .ReturnsAsync(new TaskEventDto { Id = 1, EventType = TaskEventType.STATUS_CHANGED });
 
         // Act - Frontend explicitly changes status to IN_PROGRESS when starting annotation
-        var result = await _taskService.ChangeTaskStatusAsync(taskId, TaskStatus.IN_PROGRESS, userId);
+        var result = await _taskService.ChangeTaskStatusAsync(projectId, taskId, TaskStatus.IN_PROGRESS, userId);
 
         // Assert
         Assert.NotNull(result);
