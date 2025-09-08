@@ -1,5 +1,5 @@
 <template>
-    <div v-permission="{ permission: PERMISSIONS.WORKFLOW.READ }" class="workflow-pipeline-view">
+    <div v-permission="{ permission: PERMISSIONS.WORKFLOW.UPDATE }" class="workflow-pipeline-view">
         <div class="view-header">
             <div class="header-left">
                 <h2>Pipeline Viewer</h2>
@@ -48,6 +48,7 @@
 
 <script setup lang="ts">
 import {computed, onMounted, ref} from 'vue';
+import { PERMISSIONS } from '@/services/auth/permissions.types';
 import {useRoute, useRouter} from 'vue-router';
 import WorkflowPipelineViewer from '@/components/project/workflow/WorkflowPipelineViewer.vue';
 import StageAssignmentModal from '@/components/project/workflow/StageAssignmentModal.vue';
@@ -57,19 +58,16 @@ import type {WorkflowStage} from '@/services/project/workflow/workflowStage.type
 import {workflowStageService} from '@/services/project';
 import {useErrorHandler} from '@/composables/useErrorHandler';
 import {usePermissions} from '@/composables/usePermissions';
-import {PERMISSIONS} from '@/services/auth/permissions.types';
 import {AppLogger} from '@/core/logger/logger';
 
 const logger = AppLogger.createComponentLogger('WorkflowPipelineView');
 const route = useRoute();
 const router = useRouter();
 const { handleError } = useErrorHandler();
-const { hasProjectPermission } = usePermissions();
+const { hasProjectPermission, hasProjectPermissionAsync, prefetchProjectPermission, isManager } = usePermissions();
 
 // Permission checks
-const canManageWorkflows = computed(() => 
-    hasProjectPermission(PERMISSIONS.WORKFLOW.UPDATE)
-);
+const canManageWorkflows = computed(() => isManager());
 
 const workflowId = ref<number>(parseInt(route.params.workflowId as string));
 const projectId = ref<number>(parseInt(route.params.projectId as string));
@@ -143,8 +141,9 @@ const handleEditPipeline = () => {
     // TODO: Navigate to edit mode or show edit modal
 };
 
-const handleStageClick = (stage: WorkflowStagePipeline) => {
-    if (!hasProjectPermission(PERMISSIONS.TASK.READ)) {
+const handleStageClick = async (stage: WorkflowStagePipeline) => {
+    const allowed = await hasProjectPermissionAsync(PERMISSIONS.TASK.READ);
+    if (!allowed) {
         logger.warn('Unauthorized attempt to view stage tasks', { stageId: stage.id, stageName: stage.name });
         return;
     }
@@ -201,7 +200,9 @@ const handleStageUpdated = () => {
     closeEditModal();
 };
 
-onMounted(() => {
+onMounted(async () => {
+    // Warm permission cache to avoid first-click denial due to async fetch
+    await prefetchProjectPermission(PERMISSIONS.TASK.READ, projectId.value);
     loadPipelineData();
 });
 </script>

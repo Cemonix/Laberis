@@ -67,9 +67,7 @@ const projects = ref<Project[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
 
-const canCreateProject = computed(() => {
-    return hasGlobalPermission(PERMISSIONS.PROJECT.CREATE);
-});
+const canCreateProject = computed(() => hasGlobalPermission(PERMISSIONS.PROJECT.CREATE));
 
 const openModal = () => isModalOpen.value = true;
 const closeModal = () => isModalOpen.value = false;
