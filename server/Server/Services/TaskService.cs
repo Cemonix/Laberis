@@ -108,15 +108,22 @@ public class TaskService : ITaskService
         };
     }
 
-    public async Task<TaskDto?> GetTaskByIdAsync(int taskId, string? userId = null, bool autoAssign = false)
+    public async Task<TaskDto?> GetTaskByIdAsync(int projectId, int taskId, string? userId = null, bool autoAssign = false)
     {
-        _logger.LogInformation("Fetching task with ID: {TaskId} for user: {UserId}, autoAssign: {AutoAssign}", taskId, userId, autoAssign);
+        _logger.LogInformation("Fetching task with ID: {TaskId} for project: {ProjectId} and user: {UserId}, autoAssign: {AutoAssign}", taskId, projectId, userId, autoAssign);
 
         var task = await _taskRepository.GetByIdAsync(taskId);
 
         if (task == null)
         {
             _logger.LogWarning("Task with ID: {TaskId} not found.", taskId);
+            return null;
+        }
+
+        // Validate task belongs to the specified project
+        if (task.ProjectId != projectId)
+        {
+            _logger.LogWarning("Task {TaskId} belongs to project {TaskProjectId} but was requested for project {RequestedProjectId}", taskId, task.ProjectId, projectId);
             return null;
         }
 
@@ -220,14 +227,21 @@ public class TaskService : ITaskService
         return MapToDto(task);
     }
 
-    public async Task<TaskDto?> UpdateTaskAsync(int taskId, UpdateTaskDto updateDto, string? updatingUserId = null)
+    public async Task<TaskDto?> UpdateTaskAsync(int projectId, int taskId, UpdateTaskDto updateDto, string? updatingUserId = null)
     {
-        _logger.LogInformation("Updating task with ID: {TaskId} by user: {UpdatingUserId}", taskId, updatingUserId);
+        _logger.LogInformation("Updating task with ID: {TaskId} for project: {ProjectId} by user: {UpdatingUserId}", taskId, projectId, updatingUserId);
 
         var existingTask = await _taskRepository.GetByIdAsync(taskId);
         if (existingTask == null)
         {
             _logger.LogWarning("Task with ID: {TaskId} not found for update.", taskId);
+            return null;
+        }
+
+        // Validate task belongs to the specified project
+        if (existingTask.ProjectId != projectId)
+        {
+            _logger.LogWarning("Task {TaskId} belongs to project {TaskProjectId} but was requested for update in project {RequestedProjectId}", taskId, existingTask.ProjectId, projectId);
             return null;
         }
 
@@ -326,14 +340,21 @@ public class TaskService : ITaskService
         return MapToDto(existingTask);
     }
 
-    public async Task<TaskDto?> AssignTaskAsync(int taskId, string userId, string? assigningUserId = null)
+    public async Task<TaskDto?> AssignTaskAsync(int projectId, int taskId, string userId, string? assigningUserId = null)
     {
-        _logger.LogInformation("Assigning task {TaskId} to user: {UserId} by user: {AssigningUserId}", taskId, userId, assigningUserId);
+        _logger.LogInformation("Assigning task {TaskId} in project {ProjectId} to user: {UserId} by user: {AssigningUserId}", taskId, projectId, userId, assigningUserId);
 
         var existingTask = await _taskRepository.GetByIdAsync(taskId);
         if (existingTask == null)
         {
             _logger.LogWarning("Task with ID: {TaskId} not found for assignment.", taskId);
+            return null;
+        }
+
+        // Validate task belongs to the specified project
+        if (existingTask.ProjectId != projectId)
+        {
+            _logger.LogWarning("Task {TaskId} belongs to project {TaskProjectId} but was requested for assignment in project {RequestedProjectId}", taskId, existingTask.ProjectId, projectId);
             return null;
         }
 
@@ -435,10 +456,10 @@ public class TaskService : ITaskService
         return tasksCreated;
     }
 
-    public async Task<TaskDto?> ChangeTaskStatusAsync(int taskId, TaskStatus targetStatus, string userId)
+    public async Task<TaskDto?> ChangeTaskStatusAsync(int projectId, int taskId, TaskStatus targetStatus, string userId)
     {
-        _logger.LogInformation("Changing task {TaskId} status to {TargetStatus} by user {UserId}",
-            taskId, targetStatus, userId);
+        _logger.LogInformation("Changing task {TaskId} status to {TargetStatus} in project {ProjectId} by user {UserId}",
+            taskId, targetStatus, projectId, userId);
 
         var existingTask = await _taskRepository.GetByIdAsync(taskId);
         if (existingTask == null)
@@ -447,11 +468,18 @@ public class TaskService : ITaskService
             return null;
         }
 
+        // Validate task belongs to the specified project
+        if (existingTask.ProjectId != projectId)
+        {
+            _logger.LogWarning("Task {TaskId} belongs to project {TaskProjectId} but was requested for status change in project {RequestedProjectId}", taskId, existingTask.ProjectId, projectId);
+            return null;
+        }
+
         // Auto-assign unassigned tasks to the current user before status change
         if (string.IsNullOrEmpty(existingTask.AssignedToUserId))
         {
             _logger.LogInformation("Task {TaskId} is unassigned, auto-assigning to user {UserId}", taskId, userId);
-            await AssignTaskAsync(taskId, userId, userId);
+            await AssignTaskAsync(projectId, taskId, userId, userId);
             // Refresh the task after assignment
             existingTask = await _taskRepository.GetByIdAsync(taskId);
             if (existingTask == null)

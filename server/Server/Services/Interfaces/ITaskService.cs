@@ -42,11 +42,12 @@ public interface ITaskService
     /// <summary>
     /// Retrieves a task by its ID with optional automatic lock acquisition.
     /// </summary>
+    /// <param name="projectId">The ID of the project the task must belong to.</param>
     /// <param name="taskId">The ID of the task to retrieve.</param>
     /// <param name="userId">The ID of the user requesting the task (for lock operations).</param>
     /// <param name="acquireLock">Whether to automatically acquire a lock for the task.</param>
     /// <returns>A task that represents the asynchronous operation, containing the TaskDto if found, otherwise null.</returns>
-    Task<TaskDto?> GetTaskByIdAsync(int taskId, string? userId = null, bool acquireLock = false);
+    Task<TaskDto?> GetTaskByIdAsync(int projectId, int taskId, string? userId = null, bool acquireLock = false);
 
     /// <summary>
     /// Gets all tasks for a specific workflow stage, properly filtered by the stage's input data source.
@@ -79,20 +80,22 @@ public interface ITaskService
     /// <summary>
     /// Updates an existing task.
     /// </summary>
+    /// <param name="projectId">The ID of the project the task must belong to.</param>
     /// <param name="taskId">The ID of the task to update.</param>
     /// <param name="updateDto">The DTO containing updated task information.</param>
     /// <param name="updatingUserId">The ID of the user performing the update (for role validation when changing assignments).</param>
     /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
-    Task<TaskDto?> UpdateTaskAsync(int taskId, UpdateTaskDto updateDto, string? updatingUserId = null);
+    Task<TaskDto?> UpdateTaskAsync(int projectId, int taskId, UpdateTaskDto updateDto, string? updatingUserId = null);
 
     /// <summary>
     /// Assigns a task to a user.
     /// </summary>
+    /// <param name="projectId">The ID of the project the task must belong to.</param>
     /// <param name="taskId">The ID of the task to assign.</param>
     /// <param name="userId">The ID of the user to assign the task to.</param>
     /// <param name="assigningUserId">The ID of the user performing the assignment (for role validation).</param>
     /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
-    Task<TaskDto?> AssignTaskAsync(int taskId, string userId, string? assigningUserId = null);
+    Task<TaskDto?> AssignTaskAsync(int projectId, int taskId, string userId, string? assigningUserId = null);
 
     /// <summary>
     /// Creates tasks for all available assets in a specific workflow stage based on its input data source.
@@ -107,11 +110,12 @@ public interface ITaskService
     /// Changes the status of a task with workflow-aware validation and optional asset movement.
     /// This unified method handles all task status transitions according to the workflow stage rules.
     /// </summary>
+    /// <param name="projectId">The ID of the project the task must belong to.</param>
     /// <param name="taskId">The ID of the task to change status for.</param>
     /// <param name="targetStatus">The target status to change the task to.</param>
     /// <param name="userId">The ID of the user performing the action.</param>
     /// <returns>A task that represents the asynchronous operation, containing the updated TaskDto if successful, otherwise null.</returns>
-    Task<TaskDto?> ChangeTaskStatusAsync(int taskId, Models.Domain.Enums.TaskStatus targetStatus, string userId);
+    Task<TaskDto?> ChangeTaskStatusAsync(int projectId, int taskId, Models.Domain.Enums.TaskStatus targetStatus, string userId);
 
     /// <summary>
     /// Retrieves tasks that are either assigned to a specific user or are unassigned (available for pickup).
