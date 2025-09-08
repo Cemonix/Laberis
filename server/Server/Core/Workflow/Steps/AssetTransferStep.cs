@@ -64,6 +64,7 @@ public class AssetTransferStep : IAssetTransferStep
         try
         {
             var transferResult = await _assetService.TransferAssetToDataSourceAsync(
+                context.Asset.ProjectId,
                 context.Asset.AssetId,
                 context.CurrentStage.TargetDataSourceId.Value);
 
@@ -114,6 +115,7 @@ public class AssetTransferStep : IAssetTransferStep
         try
         {
             var transferResult = await _assetService.TransferAssetToDataSourceAsync(
+                context.Asset.ProjectId,
                 context.Asset.AssetId,
                 annotationDataSourceId);
 
@@ -164,6 +166,7 @@ public class AssetTransferStep : IAssetTransferStep
         try
         {
             var rollbackResult = await _assetService.TransferAssetToDataSourceAsync(
+                context.Asset.ProjectId,
                 context.Asset.AssetId,
                 rollbackDataSourceId);
 

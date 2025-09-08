@@ -68,6 +68,12 @@ public static class ServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        // Configure and validate Security settings
+        services.AddOptions<SecuritySettings>()
+            .Bind(configuration.GetSection(SecuritySettings.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         return services;
     }
 

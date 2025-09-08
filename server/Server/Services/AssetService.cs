@@ -8,6 +8,8 @@ using server.Models.Internal;
 using server.Utils;
 using server.Exceptions;
 using LaberisTask = server.Models.Domain.Task;
+using Microsoft.Extensions.Options;
+using server.Configs;
 
 namespace server.Services;
 
@@ -21,6 +23,7 @@ public class AssetService : IAssetService
     private readonly IDomainEventService _domainEventService;
     private readonly ITaskService _taskService;
     private readonly ILogger<AssetService> _logger;
+    private readonly int _defaultPresignedExpirySeconds;
 
     public AssetService(
         IAssetRepository assetRepository,
@@ -30,7 +33,8 @@ public class AssetService : IAssetService
         IWorkflowStageRepository workflowStageRepository,
         IDomainEventService domainEventService,
         ITaskService taskService,
-        ILogger<AssetService> logger)
+        ILogger<AssetService> logger,
+        IOptions<SecuritySettings>? securityOptions = null)
     {
         _assetRepository = assetRepository ?? throw new ArgumentNullException(nameof(assetRepository));
         _fileStorageService = fileStorageService ?? throw new ArgumentNullException(nameof(fileStorageService));
@@ -40,16 +44,21 @@ public class AssetService : IAssetService
         _domainEventService = domainEventService ?? throw new ArgumentNullException(nameof(domainEventService));
         _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _defaultPresignedExpirySeconds = securityOptions?.Value.PresignedUrlExpirySeconds ?? 300;
     }
 
     #region GET Methods
 
+    /// <summary>
+    /// Retrieves all assets for the specified project with optional filters and sorting.
+    /// Generates presigned URLs with a short expiry configured by SecuritySettings.
+    /// </summary>
     public async Task<PaginatedResponse<AssetDto>> GetAssetsForProjectAsync(
         int projectId,
         int? dataSourceId = null,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25,
-        bool includeUrls = true, int urlExpiryInSeconds = 3600)
+        bool includeUrls = true, int urlExpiryInSeconds = 300)
     {
         _logger.LogInformation("Fetching assets for project: {ProjectId}, dataSource: {DataSourceId}", projectId, dataSourceId);
 
@@ -80,7 +89,8 @@ public class AssetService : IAssetService
                     if (dataSource != null)
                     {
                         var bucketName = _storageService.GenerateBucketName(asset.ProjectId, dataSource.Name);
-                        imageUrl = await _storageService.GetPresignedUrlAsync(bucketName, asset.ExternalId, urlExpiryInSeconds);
+                        var expiry = urlExpiryInSeconds > 0 ? urlExpiryInSeconds : _defaultPresignedExpirySeconds;
+                        imageUrl = await _storageService.GetPresignedUrlAsync(bucketName, asset.ExternalId, expiry);
                     }
                 }
                 catch (Exception ex)
@@ -118,7 +128,10 @@ public class AssetService : IAssetService
         };
     }
 
-    public async Task<AssetDto?> GetAssetByIdAsync(int assetId)
+    /// <summary>
+    /// Retrieves an asset by ID within the given project scope, returning null on mismatch.
+    /// </summary>
+    public async Task<AssetDto?> GetAssetByIdAsync(int projectId, int assetId)
     {
         _logger.LogInformation("Fetching asset with ID: {AssetId}", assetId);
 
@@ -127,6 +140,12 @@ public class AssetService : IAssetService
         if (asset == null)
         {
             _logger.LogWarning("Asset with ID: {AssetId} not found.", assetId);
+            return null;
+        }
+
+        if (asset.ProjectId != projectId)
+        {
+            _logger.LogWarning("Asset {AssetId} does not belong to project {ProjectId}", assetId, projectId);
             return null;
         }
 
@@ -139,7 +158,7 @@ public class AssetService : IAssetService
             if (dataSource != null)
             {
                 var bucketName = _storageService.GenerateBucketName(asset.ProjectId, dataSource.Name);
-                imageUrl = await _storageService.GetPresignedUrlAsync(bucketName, asset.ExternalId, 3600); // 1 hour expiry
+                imageUrl = await _storageService.GetPresignedUrlAsync(bucketName, asset.ExternalId, _defaultPresignedExpirySeconds);
             }
         }
         catch (Exception ex)
@@ -213,7 +232,10 @@ public class AssetService : IAssetService
 
     #endregion
 
-    public async Task<AssetDto?> UpdateAssetAsync(int assetId, UpdateAssetDto updateDto)
+    /// <summary>
+    /// Updates an asset within the given project scope, returning null if not found or mismatched.
+    /// </summary>
+    public async Task<AssetDto?> UpdateAssetAsync(int projectId, int assetId, UpdateAssetDto updateDto)
     {
         _logger.LogInformation("Updating asset with ID: {AssetId}", assetId);
 
@@ -222,6 +244,12 @@ public class AssetService : IAssetService
         if (asset == null)
         {
             _logger.LogWarning("Asset with ID: {AssetId} not found for update.", assetId);
+            return null;
+        }
+
+        if (asset.ProjectId != projectId)
+        {
+            _logger.LogWarning("Asset {AssetId} does not belong to project {ProjectId}", assetId, projectId);
             return null;
         }
 
@@ -251,7 +279,10 @@ public class AssetService : IAssetService
         return MapToDto(asset);
     }
 
-    public async Task<bool> DeleteAssetAsync(int assetId)
+    /// <summary>
+    /// Deletes an asset by ID within the given project scope.
+    /// </summary>
+    public async Task<bool> DeleteAssetAsync(int projectId, int assetId)
     {
         _logger.LogInformation("Deleting asset with ID: {AssetId}", assetId);
 
@@ -260,6 +291,12 @@ public class AssetService : IAssetService
         if (asset == null)
         {
             _logger.LogWarning("Asset with ID: {AssetId} not found for deletion.", assetId);
+            return false;
+        }
+
+        if (asset.ProjectId != projectId)
+        {
+            _logger.LogWarning("Attempt to delete asset {AssetId} from mismatched project {ProjectId}", assetId, projectId);
             return false;
         }
 
@@ -499,10 +536,14 @@ public class AssetService : IAssetService
     /// Transfers an asset from its current data source to a target data source.
     /// This involves copying the file in MinIO and updating the database record.
     /// </summary>
+    /// <param name="projectId">The ID of the project the asset belongs to</param>
     /// <param name="assetId">The ID of the asset to transfer</param>
     /// <param name="targetDataSourceId">The ID of the target data source</param>
     /// <returns>True if the transfer was successful, false otherwise</returns>
-    public async Task<bool> TransferAssetToDataSourceAsync(int assetId, int targetDataSourceId)
+    /// <summary>
+    /// Transfers an asset to a target data source within the same project, validating project scope.
+    /// </summary>
+    public async Task<bool> TransferAssetToDataSourceAsync(int projectId, int assetId, int targetDataSourceId)
     {
         try
         {
@@ -511,6 +552,12 @@ public class AssetService : IAssetService
             if (asset == null)
             {
                 _logger.LogError("Asset {AssetId} not found for transfer", assetId);
+                return false;
+            }
+
+            if (asset.ProjectId != projectId)
+            {
+                _logger.LogWarning("Attempt to transfer asset {AssetId} from mismatched project {ProjectId}", assetId, projectId);
                 return false;
             }
 

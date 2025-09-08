@@ -27,6 +27,7 @@ public class AnnotationsController : ControllerBase
     /// <summary>
     /// Gets all annotations for a specific task with optional filtering, sorting, and pagination.
     /// </summary>
+    /// <param name="projectId">The project ID from the route used to scope access.</param>
     /// <param name="taskId">The ID of the task to get annotations for.</param>
     /// <param name="filterOn">The field to filter on (e.g., "annotation_type", "is_prediction", "annotator_user_id").</param>
     /// <param name="filterQuery">The value to filter by.</param>
@@ -42,6 +43,7 @@ public class AnnotationsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<AnnotationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAnnotationsForTask(
+        int projectId,
         int taskId,
         [FromQuery] string? filterOn = null,
         [FromQuery] string? filterQuery = null,
@@ -54,7 +56,7 @@ public class AnnotationsController : ControllerBase
         try
         {
             var annotations = await _annotationService.GetAnnotationsForTaskAsync(
-                taskId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
+                projectId, taskId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
             return Ok(annotations);
         }
         catch (Exception ex)
@@ -70,6 +72,7 @@ public class AnnotationsController : ControllerBase
     /// <summary>
     /// Gets all annotations for a specific asset with optional filtering, sorting, and pagination.
     /// </summary>
+    /// <param name="projectId">The project ID from the route used to scope access.</param>
     /// <param name="assetId">The ID of the asset to get annotations for.</param>
     /// <param name="filterOn">The field to filter on (e.g., "annotation_type", "is_prediction", "annotator_user_id").</param>
     /// <param name="filterQuery">The value to filter by.</param>
@@ -85,6 +88,7 @@ public class AnnotationsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<AnnotationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAnnotationsForAsset(
+        int projectId,
         int assetId,
         [FromQuery] string? filterOn = null,
         [FromQuery] string? filterQuery = null,
@@ -97,7 +101,7 @@ public class AnnotationsController : ControllerBase
         try
         {
             var annotations = await _annotationService.GetAnnotationsForAssetAsync(
-                assetId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
+                projectId, assetId, filterOn, filterQuery, sortBy, isAscending, pageNumber, pageSize);
             return Ok(annotations);
         }
         catch (Exception ex)
@@ -111,19 +115,20 @@ public class AnnotationsController : ControllerBase
     }
 
     /// <summary>
-    /// Gets a specific annotation by its unique ID.
+    /// Gets a specific annotation by ID within the given project scope.
     /// </summary>
-    /// <param name="annotationId">The ID of the annotation.</param>
+    /// <param name="projectId">The project ID from the route used to scope access.</param>
+    /// <param name="annotationId">The ID of the annotation to retrieve.</param>
     /// <returns>The requested annotation.</returns>
     [HttpGet("{annotationId:long}")]
     [Authorize(Policy = "CanAccessAnnotationWorkspace")]  // Annotator, Reviewer, Manager
     [ProducesResponseType(typeof(AnnotationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetAnnotationById(long annotationId)
+    public async Task<IActionResult> GetAnnotationById(int projectId, long annotationId)
     {
         try
         {
-            var annotation = await _annotationService.GetAnnotationByIdAsync(annotationId);
+            var annotation = await _annotationService.GetAnnotationByIdAsync(projectId, annotationId);
 
             if (annotation == null)
             {
@@ -168,9 +173,14 @@ public class AnnotationsController : ControllerBase
 
         try
         {
-            var newAnnotation = await _annotationService.CreateAnnotationAsync(createAnnotationDto, annotatorUserId);
+            var newAnnotation = await _annotationService.CreateAnnotationAsync(projectId, createAnnotationDto, annotatorUserId);
             return CreatedAtAction(nameof(GetAnnotationById), 
                 new { projectId, annotationId = newAnnotation.Id }, newAnnotation);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid create annotation request for project {ProjectId}", projectId);
+            return BadRequest(ex.Message);
         }
         catch (Exception ex)
         {
@@ -182,6 +192,7 @@ public class AnnotationsController : ControllerBase
     /// <summary>
     /// Updates an existing annotation.
     /// </summary>
+    /// <param name="projectId">The project ID used to scope access.</param>
     /// <param name="annotationId">The ID of the annotation to update.</param>
     /// <param name="updateAnnotationDto">The data to update the annotation with.</param>
     /// <returns>The updated annotation.</returns>
@@ -195,11 +206,11 @@ public class AnnotationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateAnnotation(long annotationId, [FromBody] UpdateAnnotationDto updateAnnotationDto)
+    public async Task<IActionResult> UpdateAnnotation(int projectId, long annotationId, [FromBody] UpdateAnnotationDto updateAnnotationDto)
     {
         try
         {
-            var updatedAnnotation = await _annotationService.UpdateAnnotationAsync(annotationId, updateAnnotationDto);
+            var updatedAnnotation = await _annotationService.UpdateAnnotationAsync(projectId, annotationId, updateAnnotationDto);
 
             if (updatedAnnotation == null)
             {
@@ -218,6 +229,7 @@ public class AnnotationsController : ControllerBase
     /// <summary>
     /// Deletes an annotation by its ID.
     /// </summary>
+    /// <param name="projectId">The project ID used to scope access.</param>
     /// <param name="annotationId">The ID of the annotation to delete.</param>
     /// <returns>No content if successful.</returns>
     /// <response code="204">If the annotation was successfully deleted.</response>
@@ -228,11 +240,11 @@ public class AnnotationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DeleteAnnotation(long annotationId)
+    public async Task<IActionResult> DeleteAnnotation(int projectId, long annotationId)
     {
         try
         {
-            var result = await _annotationService.DeleteAnnotationAsync(annotationId);
+            var result = await _annotationService.DeleteAnnotationAsync(projectId, annotationId);
 
             if (!result)
             {

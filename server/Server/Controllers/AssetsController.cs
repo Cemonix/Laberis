@@ -62,14 +62,15 @@ public class AssetsController : ControllerBase
     /// <summary>
     /// Gets a specific asset by its unique ID.
     /// </summary>
+    /// <param name="projectId">The ID of the project from the route used to scope access.</param>
     /// <param name="assetId">The ID of the asset.</param>
     /// <returns>The requested asset.</returns>
     [HttpGet("{assetId:int}")]
     [ProducesResponseType(typeof(AssetDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetAssetById(int assetId)
+    public async Task<IActionResult> GetAssetById(int projectId, int assetId)
     {
-        var asset = await _assetService.GetAssetByIdAsync(assetId);
+        var asset = await _assetService.GetAssetByIdAsync(projectId, assetId);
         return asset == null ? this.CreateNotFoundResponse("Asset", assetId) : Ok(asset);
     }
 
@@ -177,6 +178,7 @@ public class AssetsController : ControllerBase
     /// <summary>
     /// Updates an existing asset.
     /// </summary>
+    /// <param name="projectId">The ID of the project from the route used to scope access.</param>
     /// <param name="assetId">The ID of the asset to update.</param>
     /// <param name="updateAssetDto">The data to update the asset with.</param>
     /// <returns>The updated asset.</returns>
@@ -189,15 +191,16 @@ public class AssetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateAsset(int assetId, [FromBody] UpdateAssetDto updateAssetDto)
+    public async Task<IActionResult> UpdateAsset(int projectId, int assetId, [FromBody] UpdateAssetDto updateAssetDto)
     {
-        var updatedAsset = await _assetService.UpdateAssetAsync(assetId, updateAssetDto);
+        var updatedAsset = await _assetService.UpdateAssetAsync(projectId, assetId, updateAssetDto);
         return updatedAsset == null ? this.CreateNotFoundResponse("Asset", assetId) : Ok(updatedAsset);
     }
 
     /// <summary>
     /// Deletes an asset by its ID.
     /// </summary>
+    /// <param name="projectId">The ID of the project from the route used to scope access.</param>
     /// <param name="assetId">The ID of the asset to delete.</param>
     /// <returns>No content if successful.</returns>
     /// <response code="204">If the asset was successfully deleted.</response>
@@ -207,9 +210,9 @@ public class AssetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DeleteAsset(int assetId)
+    public async Task<IActionResult> DeleteAsset(int projectId, int assetId)
     {
-        var result = await _assetService.DeleteAssetAsync(assetId);
+        var result = await _assetService.DeleteAssetAsync(projectId, assetId);
         return !result ? this.CreateNotFoundResponse("Asset", assetId) : NoContent();
     }
 
@@ -299,6 +302,7 @@ public class AssetsController : ControllerBase
     /// Transfers an asset to a different data source.
     /// This involves copying the file in MinIO and updating the database record.
     /// </summary>
+    /// <param name="projectId">The ID of the project from the route used to scope access.</param>
     /// <param name="assetId">The ID of the asset to transfer.</param>
     /// <param name="transferAssetDto">The transfer request containing the target data source ID.</param>
     /// <returns>Success status of the transfer operation.</returns>
@@ -312,11 +316,11 @@ public class AssetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> TransferAsset(int assetId, [FromBody] TransferAssetDto transferAssetDto)
+    public async Task<IActionResult> TransferAsset(int projectId, int assetId, [FromBody] TransferAssetDto transferAssetDto)
     {
         try
         {
-            var result = await _assetService.TransferAssetToDataSourceAsync(assetId, transferAssetDto.TargetDataSourceId);
+            var result = await _assetService.TransferAssetToDataSourceAsync(projectId, assetId, transferAssetDto.TargetDataSourceId);
             
             if (!result)
             {
