@@ -68,7 +68,7 @@ async function checkPermission(el: HTMLElement, binding: DirectiveBinding<Permis
 
     let hasPermission = false;
 
-    // Optimistically hide while checking
+    // TODO: Optimistically hide while checking - should show a spinner
     hideElement(el);
 
     if (global) {
