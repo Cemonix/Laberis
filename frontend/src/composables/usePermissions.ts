@@ -197,25 +197,25 @@ export function usePermissions() {
     const canReviewAnnotations = computed(() => hasProjectPermission('annotation:review'));
     const canAssignTasks = computed(() => hasProjectPermission('task:assign'));
 
-    // Manager heuristic: any of the manager-level update permissions in current project
-    const isManager = (projectId?: number): boolean => {
-        const pid = projectId ?? projectStore.currentProject?.id;
-        if (!pid) return false;
-        const perms = [
-            'project:update',
-            'workflow:update',
-            'dataSource:update',
-            'projectSettings:update',
-            'labelScheme:update',
-            'labelScheme:create',
-            'labelScheme:delete',
-        ];
-        // Warm cache
-        perms.forEach(p => void ensure(p, { projectId: pid }));
-        return perms.some(p => !!resultsCache[makeKey(p, { projectId: pid })]);
+    // Manager role check: use authoritative role from backend
+    const isManager = (projectId: number): boolean => {
+        if (!projectId) return false;
+        if (projectId === projectStore.currentProject?.id) {
+            if (!projectStore.currentUserMembership) {
+                // Load membership in background if missing
+                void projectStore.loadCurrentUserMembership(projectId);
+                return false;
+            }
+            return projectStore.isCurrentUserManager;
+        }
+        // Not the current project: require caller to load membership explicitly via store if needed
+        return false;
     };
 
-    const isManagerCurrentProject = computed(() => isManager());
+    const isManagerCurrentProject = computed(() => {
+        const pid = projectStore.currentProjectId;
+        return pid ? isManager(pid) : false;
+    });
 
     return {
         // Global permission checks

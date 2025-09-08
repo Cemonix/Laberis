@@ -67,7 +67,7 @@ const { handleError } = useErrorHandler();
 const { hasProjectPermission, hasProjectPermissionAsync, prefetchProjectPermission, isManager } = usePermissions();
 
 // Permission checks
-const canManageWorkflows = computed(() => isManager());
+const canManageWorkflows = computed(() => isManager(projectId.value));
 
 const workflowId = ref<number>(parseInt(route.params.workflowId as string));
 const projectId = ref<number>(parseInt(route.params.projectId as string));

@@ -4,6 +4,7 @@ import type { Label } from "@/services/project/labelScheme/label.types";
 
 export interface ProjectState {
     currentProject: Project | null;
+    currentUserMembership: ProjectMember | null;
     teamMembers: ProjectMember[];
     projectLabels: Label[];
     loading: boolean;
