@@ -9,7 +9,6 @@ import router from './router'
 
 import {setupInterceptors} from '@/services/apiClient'
 import {useAuthStore} from '@/stores/authStore'
-import {usePermissionStore} from '@/stores/permissionStore'
 import {logger, piniaLogger, AppLogger} from '@/core/logger/logger'
 import {useErrorHandler} from '@/composables/useErrorHandler'
 import {registerPermissionDirective} from '@/directives/vPermission';
@@ -45,8 +44,7 @@ async function initializeApp() {
     app.directive('click-outside', clickOutside);
 
     const authStore = useAuthStore();
-    const permissionStore = usePermissionStore();
-    setupInterceptors(authStore, permissionStore);
+    setupInterceptors(authStore);
     
     // Auth will be initialized lazily by the router when needed
     // This prevents unnecessary token refresh attempts on public pages
