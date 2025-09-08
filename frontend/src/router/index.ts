@@ -5,9 +5,10 @@ import DefaultLayout from '@/layouts/DefaultLayout.vue';
 import WorkspaceLayout from '@/layouts/WorkspaceLayout.vue';
 import DataExplorerLayout from '@/layouts/DataExplorerLayout.vue';
 import { useAuthStore } from '@/stores/authStore';
-import { usePermissionStore } from '@/stores/permissionStore';
+import { authorizationService } from '@/services/auth';
 import { AppLogger } from '@/core/logger/logger';
 import { PUBLIC_ROUTE_NAMES, AUTH_ROUTE_NAMES } from './routes';
+import { PERMISSIONS } from '@/services/auth/permissions.types';
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -80,6 +81,7 @@ const routes: Array<RouteRecordRaw> = [
         props: true,
         meta: {
             layout: WorkspaceLayout,
+            permissions: [PERMISSIONS.TASK.READ],
         }
     },
     {
@@ -97,6 +99,7 @@ const routes: Array<RouteRecordRaw> = [
         props: true,
         meta: {
             layout: DefaultLayout,
+            permissions: [PERMISSIONS.PROJECT.READ],
         },
         children: [
             {
@@ -104,18 +107,21 @@ const routes: Array<RouteRecordRaw> = [
                 name: 'ProjectDashboard',
                 component: () => import('@/views/project/ProjectDashboardView.vue'),
                 props: true,
+                meta: { permissions: [PERMISSIONS.PROJECT.READ] },
             },
             {
                 path: 'label-schemes',
                 name: 'ProjectLabels',
                 component: () => import('@/views/project/LabelSchemesView.vue'),
                 props: true,
+                meta: { permissions: [PERMISSIONS.LABEL_SCHEME.READ] },
             },
             {
                 path: 'data-sources',
                 name: 'ProjectDataSources',
                 component: () => import('@/views/project/DataSourcesView.vue'),
                 props: true,
+                meta: { permissions: [PERMISSIONS.DATA_SOURCE.UPDATE] },
             },
             {
                 path: 'data-explorer/:dataSourceId',
@@ -124,6 +130,7 @@ const routes: Array<RouteRecordRaw> = [
                 props: true,
                 meta: {
                     layout: DataExplorerLayout,
+                    permissions: [PERMISSIONS.DATA_SOURCE.UPDATE],
                 }
             },
             {
@@ -131,24 +138,28 @@ const routes: Array<RouteRecordRaw> = [
                 name: 'ProjectWorkflows',
                 component: () => import('@/views/project/WorkflowsView.vue'),
                 props: true,
+                meta: { permissions: [PERMISSIONS.WORKFLOW.READ] },
             },
             {
                 path: 'workflows/:workflowId/pipeline',
                 name: 'WorkflowPipeline',
                 component: () => import('@/views/project/WorkflowPipelineView.vue'),
                 props: true,
+                meta: { permissions: [PERMISSIONS.WORKFLOW.UPDATE] },
             },
             {
                 path: 'workflows/:workflowId/stages/:stageId/tasks',
                 name: 'StageTasks',
                 component: () => import('@/views/project/TasksView.vue'),
                 props: true,
+                meta: { permissions: [PERMISSIONS.TASK.READ] },
             },
             {
                 path: 'settings',
                 name: 'ProjectSettings',
                 component: () => import('@/views/project/ProjectSettingsView.vue'),
                 props: true,
+                meta: { permissions: [PERMISSIONS.PROJECT_SETTINGS.READ] },
             },
         ],
     },
@@ -177,7 +188,6 @@ const logger = AppLogger.createServiceLogger('Router');
 // Navigation guards
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
-    const permissionStore = usePermissionStore();
     
     const isPublicRoute = PUBLIC_ROUTE_NAMES.includes(to.name as typeof PUBLIC_ROUTE_NAMES[number]);
     const isAuthRoute = AUTH_ROUTE_NAMES.includes(to.name as typeof AUTH_ROUTE_NAMES[number]);
@@ -228,70 +238,27 @@ router.beforeEach(async (to, from, next) => {
     } else if (!isPublicRoute && !authStore.isAuthenticated) {
         // If user is not authenticated and trying to access protected routes, redirect to login
         next({ name: 'Login' });
-    } else if (authStore.isAuthenticated && to.params.projectId) {
-        // Project-specific route - validate project membership using permission store
-        try {
-            const projectId = Number(to.params.projectId);
-            if (projectId && !isNaN(projectId)) {
-                // Ensure permissions are loaded
-                if (!permissionStore.isInitialized) {
-                    await permissionStore.loadUserPermissions();
-                }
-                
-                // Check if user is a member of the project
-                if (!permissionStore.isProjectMember(projectId)) {
-                    logger.warn(`User is not a member of project ${projectId}`);
-                    next({ name: 'Error', params: { type: 'unauthorized' } });
-                    return;
-                }
-                
-                // Check if route requires specific permissions
-                const requiredPermissions = to.meta?.permissions as string[] | undefined;
-                if (requiredPermissions && requiredPermissions.length > 0) {
-                    const hasRequiredPermissions = permissionStore.hasAllProjectPermissions(
-                        requiredPermissions, 
-                        projectId
-                    );
-                    
-                    if (!hasRequiredPermissions) {
-                        logger.warn(
-                            `User lacks required permissions for route ${String(to.name)}: ${requiredPermissions.join(', ')}`
-                        );
-                        next({ name: 'Error', params: { type: 'forbidden' } });
-                        return;
-                    }
-                }
-                
-                logger.info(`User has access to project ${projectId}`);
-            }
+    } else if (authStore.isAuthenticated) {
+        // If route defines permissions, verify via backend authorize (batch)
+        const requiredPermissions = (to.meta?.permissions as string[] | undefined) || [];
+        if (requiredPermissions.length === 0) {
             next();
-        } catch (error) {
-            logger.error('Error validating project access', error);
-            // If validation fails, redirect to error page
-            next({ name: 'Error', params: { type: 'unauthorized' } });
+            return;
         }
-    } else if (authStore.isAuthenticated && to.meta?.permissions) {
-        // Global route with permission requirements
+
         try {
-            // Ensure permissions are loaded
-            if (!permissionStore.isInitialized) {
-                await permissionStore.loadUserPermissions();
-            }
-            
-            const requiredPermissions = to.meta.permissions as string[];
-            const hasRequiredPermissions = permissionStore.hasAllGlobalPermissions(requiredPermissions);
-            
-            if (!hasRequiredPermissions) {
-                logger.warn(
-                    `User lacks required global permissions for route ${String(to.name)}: ${requiredPermissions.join(', ')}`
-                );
+            const projectId = to.params.projectId ? Number(to.params.projectId) : undefined;
+            const checks = requiredPermissions.map(p => ({ permission: p, context: projectId ? { projectId } : undefined }));
+            const { results } = await authorizationService.authorizeBatch(checks);
+            const allow = results.every(Boolean);
+            if (!allow) {
+                logger.warn(`Permission denied for route ${String(to.name)} with perms: ${requiredPermissions.join(', ')}`);
                 next({ name: 'Error', params: { type: 'forbidden' } });
                 return;
             }
-            
             next();
         } catch (error) {
-            logger.error('Error validating global permissions', error);
+            logger.error('Authorization check failed', error);
             next({ name: 'Error', params: { type: 'unauthorized' } });
         }
     } else {
