@@ -68,7 +68,7 @@ namespace Server.Tests.Services
                 .ReturnsAsync(asset);
 
             // Act
-            var result = await _assetService.GetAssetByIdAsync(assetId);
+            var result = await _assetService.GetAssetByIdAsync(asset.ProjectId, assetId);
 
             // Assert
             Assert.NotNull(result);
@@ -88,7 +88,7 @@ namespace Server.Tests.Services
                 .ReturnsAsync((Asset?)null);
 
             // Act
-            var result = await _assetService.GetAssetByIdAsync(assetId);
+            var result = await _assetService.GetAssetByIdAsync(1, assetId);
 
             // Assert
             Assert.Null(result);

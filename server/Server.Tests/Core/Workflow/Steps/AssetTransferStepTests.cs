@@ -42,7 +42,7 @@ public class AssetTransferStepTests
         var context = new PipelineContext(task, asset, currentStage, "user123")
             .WithTargetStage(targetStage);
 
-        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.AssetId, currentStage.TargetDataSourceId!.Value))
+        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.ProjectId, asset.AssetId, currentStage.TargetDataSourceId!.Value))
             .ReturnsAsync(true);
 
         var step = CreateStep();
@@ -53,7 +53,7 @@ public class AssetTransferStepTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal(targetStage, result.TargetStage);
-        _mockAssetService.Verify(x => x.TransferAssetToDataSourceAsync(asset.AssetId, currentStage.TargetDataSourceId!.Value), Times.Once);
+        _mockAssetService.Verify(x => x.TransferAssetToDataSourceAsync(asset.ProjectId, asset.AssetId, currentStage.TargetDataSourceId!.Value), Times.Once);
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class AssetTransferStepTests
         var context = new PipelineContext(task, asset, currentStage, "user123")
             .WithTargetStage(targetStage);
 
-        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.AssetId, currentStage.TargetDataSourceId!.Value))
+        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.ProjectId, asset.AssetId, currentStage.TargetDataSourceId!.Value))
             .ReturnsAsync(false);
 
         var step = CreateStep();
@@ -132,7 +132,7 @@ public class AssetTransferStepTests
         _mockDataSourceService.Setup(x => x.EnsureRequiredDataSourcesExistAsync(asset.ProjectId, false))
             .ReturnsAsync(mockWorkflowDataSources);
         
-        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.AssetId, mockDataSource.Id))
+        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.ProjectId, asset.AssetId, mockDataSource.Id))
             .ReturnsAsync(true);
 
         var step = CreateStep();
@@ -142,7 +142,7 @@ public class AssetTransferStepTests
 
         // Assert
         Assert.NotNull(result);
-        _mockAssetService.Verify(x => x.TransferAssetToDataSourceAsync(asset.AssetId, mockDataSource.Id), Times.Once);
+        _mockAssetService.Verify(x => x.TransferAssetToDataSourceAsync(asset.ProjectId, asset.AssetId, mockDataSource.Id), Times.Once);
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public class AssetTransferStepTests
         _mockDataSourceService.Setup(x => x.EnsureRequiredDataSourcesExistAsync(asset.ProjectId, false))
             .ReturnsAsync(mockWorkflowDataSources);
                              
-        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.AssetId, mockDataSource.Id))
+        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.ProjectId, asset.AssetId, mockDataSource.Id))
             .ReturnsAsync(false);
 
         var step = CreateStep();
@@ -183,7 +183,7 @@ public class AssetTransferStepTests
         var context = new PipelineContext(task, asset, currentStage, "user123")
             .WithTargetStage(targetStage);
 
-        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.AssetId, currentStage.TargetDataSourceId!.Value))
+        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.ProjectId, asset.AssetId, currentStage.TargetDataSourceId!.Value))
             .ReturnsAsync(true);
 
         var step = CreateStep();
@@ -193,7 +193,7 @@ public class AssetTransferStepTests
 
         // Assert
         Assert.NotNull(result);
-        _mockAssetService.Verify(x => x.TransferAssetToDataSourceAsync(asset.AssetId, currentStage.TargetDataSourceId!.Value), Times.Once);
+        _mockAssetService.Verify(x => x.TransferAssetToDataSourceAsync(asset.ProjectId, asset.AssetId, currentStage.TargetDataSourceId!.Value), Times.Once);
     }
 
     [Fact]
@@ -207,7 +207,7 @@ public class AssetTransferStepTests
         var context = new PipelineContext(task, asset, currentStage, "user123")
             .WithTargetStage(targetStage);
 
-        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.AssetId, currentStage.TargetDataSourceId!.Value))
+        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.ProjectId, asset.AssetId, currentStage.TargetDataSourceId!.Value))
             .ReturnsAsync(true);
 
         var step = CreateStep();
@@ -217,7 +217,7 @@ public class AssetTransferStepTests
 
         // Assert
         Assert.True(result);
-        _mockAssetService.Verify(x => x.TransferAssetToDataSourceAsync(asset.AssetId, currentStage.TargetDataSourceId!.Value), Times.Once);
+        _mockAssetService.Verify(x => x.TransferAssetToDataSourceAsync(asset.ProjectId, asset.AssetId, currentStage.TargetDataSourceId!.Value), Times.Once);
     }
 
     [Fact]
@@ -229,7 +229,7 @@ public class AssetTransferStepTests
         var currentStage = CreateTestWorkflowStage(1, WorkflowStageType.ANNOTATION, 1);
         var context = new PipelineContext(task, asset, currentStage, "user123");
 
-        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(It.IsAny<int>(), It.IsAny<int>()))
+        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
             .ReturnsAsync(false);
 
         var step = CreateStep();
@@ -268,7 +268,7 @@ public class AssetTransferStepTests
         var context = new PipelineContext(task, asset, currentStage, "user123")
             .WithTargetStage(targetStage);
 
-        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.AssetId, currentStage.TargetDataSourceId!.Value))
+        _mockAssetService.Setup(x => x.TransferAssetToDataSourceAsync(asset.ProjectId, asset.AssetId, currentStage.TargetDataSourceId!.Value))
             .ReturnsAsync(true);
 
         var step = CreateStep();
@@ -278,7 +278,7 @@ public class AssetTransferStepTests
 
         // Assert
         Assert.NotNull(result);
-        _mockAssetService.Verify(x => x.TransferAssetToDataSourceAsync(asset.AssetId, currentStage.TargetDataSourceId!.Value), Times.Once);
+        _mockAssetService.Verify(x => x.TransferAssetToDataSourceAsync(asset.ProjectId, asset.AssetId, currentStage.TargetDataSourceId!.Value), Times.Once);
     }
 
     #region Helper Methods
