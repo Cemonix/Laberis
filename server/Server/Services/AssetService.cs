@@ -540,9 +540,6 @@ public class AssetService : IAssetService
     /// <param name="assetId">The ID of the asset to transfer</param>
     /// <param name="targetDataSourceId">The ID of the target data source</param>
     /// <returns>True if the transfer was successful, false otherwise</returns>
-    /// <summary>
-    /// Transfers an asset to a target data source within the same project, validating project scope.
-    /// </summary>
     public async Task<bool> TransferAssetToDataSourceAsync(int projectId, int assetId, int targetDataSourceId)
     {
         try
