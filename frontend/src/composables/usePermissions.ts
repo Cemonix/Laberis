@@ -1,6 +1,6 @@
-import { computed, type ComputedRef } from 'vue';
+import { computed, reactive, type ComputedRef } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
-import { usePermissionStore } from '@/stores/permissionStore';
+import { authorizationService } from '@/services/auth';
 import { useProjectStore } from '@/stores/projectStore';
 
 /**
@@ -9,7 +9,35 @@ import { useProjectStore } from '@/stores/projectStore';
  */
 export function usePermissions() {
     const authStore = useAuthStore();
-    const permissionStore = usePermissionStore();
+    // Lightweight reactive cache for authorization checks
+    const resultsCache = reactive<Record<string, boolean>>({});
+    const pending = new Map<string, Promise<boolean>>();
+
+    const makeKey = (perm: string, ctx?: { projectId?: number; global?: boolean }): string => {
+        const pid = ctx?.projectId ?? projectStore.currentProject?.id ?? 0;
+        const scope = ctx?.global ? 'g' : 'p';
+        return `${scope}:${pid}:${perm}`;
+    };
+
+    const ensure = async (perm: string, ctx?: { projectId?: number; global?: boolean }): Promise<boolean> => {
+        const key = makeKey(perm, ctx);
+        if (key in resultsCache) return resultsCache[key];
+        if (pending.has(key)) return pending.get(key)!;
+        const promise = authorizationService
+            .authorize({ permission: perm, context: ctx?.projectId ? { projectId: ctx.projectId } : undefined })
+            .then((allow) => {
+                resultsCache[key] = allow;
+                pending.delete(key);
+                return allow;
+            })
+            .catch(() => {
+                resultsCache[key] = false;
+                pending.delete(key);
+                return false;
+            });
+        pending.set(key, promise);
+        return promise;
+    };
     const projectStore = useProjectStore();
 
     // Permission-based checks
@@ -18,37 +46,81 @@ export function usePermissions() {
      * Checks if user has a global permission (available regardless of project)
      */
     const hasGlobalPermission = (permission: string): boolean => {
-        return permissionStore.hasGlobalPermission(permission);
+        // Trigger async fetch; return cached value if present
+        void ensure(permission, { global: true });
+        const key = makeKey(permission, { global: true });
+        return !!resultsCache[key];
     };
 
     /**
      * Checks if user has any of the specified global permissions
      */
     const hasAnyGlobalPermission = (permissions: string[]): boolean => {
-        return permissionStore.hasAnyGlobalPermission(permissions);
+        permissions.forEach(p => void ensure(p, { global: true }));
+        return permissions.some(p => !!resultsCache[makeKey(p, { global: true })]);
     };
 
     /**
      * Checks if user has all of the specified global permissions
      */
     const hasAllGlobalPermissions = (permissions: string[]): boolean => {
-        return permissionStore.hasAllGlobalPermissions(permissions);
+        permissions.forEach(p => void ensure(p, { global: true }));
+        return permissions.every(p => !!resultsCache[makeKey(p, { global: true })]);
     };
 
     /**
-     * Checks if user has a permission in the current project
+     * Checks if user has a permission in the current project (sync; warms cache asynchronously)
      */
     const hasProjectPermission = (permission: string): boolean => {
         const currentProjectId = projectStore.currentProject?.id;
         if (!currentProjectId) return false;
-        return permissionStore.hasProjectPermission(permission, currentProjectId);
+        void ensure(permission, { projectId: currentProjectId });
+        return !!resultsCache[makeKey(permission, { projectId: currentProjectId })];
+    };
+
+    /**
+     * Asynchronously checks if user has a permission in the current project.
+     * Resolves after the authoritative backend check.
+     */
+    const hasProjectPermissionAsync = async (permission: string): Promise<boolean> => {
+        const currentProjectId = projectStore.currentProject?.id;
+        if (!currentProjectId) return false;
+        return ensure(permission, { projectId: currentProjectId });
     };
 
     /**
      * Checks if user has a permission in a specific project
      */
     const hasPermissionInProject = (permission: string, projectId: number): boolean => {
-        return permissionStore.hasProjectPermission(permission, projectId);
+        if (!projectId) return false;
+        void ensure(permission, { projectId });
+        return !!resultsCache[makeKey(permission, { projectId })];
+    };
+
+    /**
+     * Prefetch a project-scoped permission to warm the cache.
+     */
+    const prefetchProjectPermission = (permission: string, projectId?: number) => {
+        const pid = projectId ?? projectStore.currentProject?.id;
+        if (!pid) return Promise.resolve(false);
+        return ensure(permission, { projectId: pid });
+    };
+
+    /**
+     * Wraps an action with a project-scoped permission check. If denied, logs and does nothing.
+     * Usage: const onClick = guardProjectAction(PERMISSIONS.TASK.READ, () => {...})
+     */
+    const guardProjectAction = (permission: string, action: (...args: any[]) => any, projectId?: number) => {
+        return async (...args: any[]) => {
+            const pid = projectId ?? projectStore.currentProject?.id;
+            if (!pid) return;
+            const allowed = await ensure(permission, { projectId: pid });
+            if (!allowed) {
+                // TODO: soft-fail: optional place to integrate a toast/notification
+                return;
+            }
+            return action(...args);
+        };
     };
 
     /**
@@ -57,7 +129,8 @@ export function usePermissions() {
     const hasAnyProjectPermission = (permissions: string[]): boolean => {
         const currentProjectId = projectStore.currentProject?.id;
         if (!currentProjectId) return false;
-        return permissionStore.hasAnyProjectPermission(permissions, currentProjectId);
+        permissions.forEach(p => void ensure(p, { projectId: currentProjectId }));
+        return permissions.some(p => !!resultsCache[makeKey(p, { projectId: currentProjectId })]);
     };
 
     /**
@@ -66,33 +139,24 @@ export function usePermissions() {
     const hasAllProjectPermissions = (permissions: string[]): boolean => {
         const currentProjectId = projectStore.currentProject?.id;
         if (!currentProjectId) return false;
-        return permissionStore.hasAllProjectPermissions(permissions, currentProjectId);
+        permissions.forEach(p => void ensure(p, { projectId: currentProjectId }));
+        return permissions.every(p => !!resultsCache[makeKey(p, { projectId: currentProjectId })]);
     };
 
     /**
      * Checks if user has a permission anywhere (global or any project)
      */
     const hasAnyPermission = (permission: string): boolean => {
-        return permissionStore.hasAnyPermission(permission);
+        // Prefer project context when available
+        const currentProjectId = projectStore.currentProject?.id;
+        if (currentProjectId) {
+            return hasProjectPermission(permission);
+        }
+        return hasGlobalPermission(permission);
     };
 
-    /**
-     * Checks if user is a member of the current project
-     */
-    const isCurrentProjectMember = computed(() => {
-        const currentProjectId = projectStore.currentProject?.id;
-        if (!currentProjectId) return false;
-        return permissionStore.isProjectMember(currentProjectId);
-    });
-
-    /**
-     * Gets all permissions for the current project
-     */
-    const currentProjectPermissions = computed(() => {
-        const currentProjectId = projectStore.currentProject?.id;
-        if (!currentProjectId) return new Set<string>();
-        return permissionStore.getProjectPermissions(currentProjectId);
-    });
+    // Project membership proxy: treat project:read as membership capability
+    const isCurrentProjectMember = computed(() => hasProjectPermission('project:read'));
 
     // Reactive computed permission checkers
 
@@ -126,12 +190,32 @@ export function usePermissions() {
     const canUpdateProject = computed(() => hasProjectPermission('project:update'));
     const canDeleteProject = computed(() => hasProjectPermission('project:delete'));
     const canManageProjectMembers = computed(() => hasProjectPermission('projectMember:invite'));
-    const canManageDataSources = computed(() => hasProjectPermission('dataSource:create'));
-    const canManageWorkflows = computed(() => hasProjectPermission('workflow:create'));
-    const canManageLabelSchemes = computed(() => hasProjectPermission('labelScheme:create'));
+    const canManageDataSources = computed(() => hasProjectPermission('dataSource:update'));
+    const canManageWorkflows = computed(() => hasProjectPermission('workflow:update'));
+    const canManageLabelSchemes = computed(() => hasProjectPermission('labelScheme:update'));
     const canCreateAnnotations = computed(() => hasProjectPermission('annotation:create'));
     const canReviewAnnotations = computed(() => hasProjectPermission('annotation:review'));
     const canAssignTasks = computed(() => hasProjectPermission('task:assign'));
+
+    // Manager heuristic: any of the manager-level update permissions in current project
+    const isManager = (projectId?: number): boolean => {
+        const pid = projectId ?? projectStore.currentProject?.id;
+        if (!pid) return false;
+        const perms = [
+            'project:update',
+            'workflow:update',
+            'dataSource:update',
+            'projectSettings:update',
+            'labelScheme:update',
+            'labelScheme:create',
+            'labelScheme:delete',
+        ];
+        // Warm cache
+        perms.forEach(p => void ensure(p, { projectId: pid }));
+        return perms.some(p => !!resultsCache[makeKey(p, { projectId: pid })]);
+    };
+
+    const isManagerCurrentProject = computed(() => isManager());
 
     return {
         // Global permission checks
@@ -141,6 +225,9 @@ export function usePermissions() {
 
         // Project permission checks
         hasProjectPermission,
+        hasProjectPermissionAsync,
+        prefetchProjectPermission,
+        guardProjectAction,
         hasPermissionInProject,
         hasAnyProjectPermission,
         hasAllProjectPermissions,
@@ -148,7 +235,6 @@ export function usePermissions() {
         // General permission checks
         hasAnyPermission,
         isCurrentProjectMember,
-        currentProjectPermissions,
 
         // Reactive permission checkers
         canDoGlobally,
@@ -168,9 +254,9 @@ export function usePermissions() {
         canCreateAnnotations,
         canReviewAnnotations,
         canAssignTasks,
+        isManager,
+        isManagerCurrentProject,
 
-        // Store references for advanced usage
-        permissionStore,
         authStore,
         projectStore,
     };
