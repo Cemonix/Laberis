@@ -1,7 +1,7 @@
 import type { App, DirectiveBinding } from 'vue';
 import { watch } from 'vue';
-import { usePermissionStore } from '@/stores/permissionStore';
 import { useProjectStore } from '@/stores/projectStore';
+import { authorizationService } from '@/services/auth';
 import { AppLogger } from '@/core/logger/logger';
 import type { PermissionDirectiveBinding } from '@/services/auth/permissions.types';
 
@@ -9,32 +9,25 @@ const logger = AppLogger.createServiceLogger('vPermission');
 
 export const vPermission = {
     mounted(el: HTMLElement, binding: DirectiveBinding<PermissionDirectiveBinding>) {
-        const permissionStore = usePermissionStore();
         const projectStore = useProjectStore();
         
-        // Initial check
-        checkPermission(el, binding);
+        // Initial check (async)
+        void checkPermission(el, binding);
         
-        // Watch for changes in permission store initialization and project ID
-        const unwatchPermissions = watch(
-            () => permissionStore.isInitialized,
-            () => {
-                checkPermission(el, binding);
-            }
-        );
+        // Watch for project changes to re-evaluate
         
         const unwatchProject = watch(
             () => projectStore.currentProjectId,
             () => {
-                checkPermission(el, binding);
+                void checkPermission(el, binding);
             }
         );
         
         // Store cleanup functions on the element for unmount
-        (el as any)._permissionWatchers = [unwatchPermissions, unwatchProject];
+        (el as any)._permissionWatchers = [unwatchProject];
     },
     updated(el: HTMLElement, binding: DirectiveBinding<PermissionDirectiveBinding>) {
-        checkPermission(el, binding);
+        void checkPermission(el, binding);
     },
     unmounted(el: HTMLElement) {
         // Cleanup watchers when directive is unmounted
@@ -46,15 +39,8 @@ export const vPermission = {
     }
 };
 
-function checkPermission(el: HTMLElement, binding: DirectiveBinding<PermissionDirectiveBinding>) {
-    const permissionStore = usePermissionStore();
+async function checkPermission(el: HTMLElement, binding: DirectiveBinding<PermissionDirectiveBinding>) {
     const projectStore = useProjectStore();
-    
-    // If permission store is not initialized, hide element by default
-    if (!permissionStore.isInitialized) {
-        hideElement(el);
-        return;
-    }
 
     const value = binding.value || {};
     const {
@@ -82,35 +68,41 @@ function checkPermission(el: HTMLElement, binding: DirectiveBinding<PermissionDi
 
     let hasPermission = false;
 
+    // Optimistically hide while checking
+    hideElement(el);
+
     if (global) {
-        // Check global permissions
         if (mode === 'all') {
-            hasPermission = permissionStore.hasAllGlobalPermissions(permissionsToCheck);
+            const { results } = await authorizationService.authorizeBatch(
+                permissionsToCheck.map(p => ({ permission: p }))
+            );
+            hasPermission = results.every(Boolean);
         } else {
-            hasPermission = permissionStore.hasAnyGlobalPermission(permissionsToCheck);
+            const { results } = await authorizationService.authorizeBatch(
+                permissionsToCheck.map(p => ({ permission: p }))
+            );
+            hasPermission = results.some(Boolean);
         }
     } else {
-        // Check project permissions
         const projectId = project || projectStore.currentProject?.id;
-        
         if (!projectId) {
             logger.debug('No project ID available for permission check (project still loading)');
-            hideElement(el);
-            return;
+            return; // remain hidden
         }
-
         if (mode === 'all') {
-            hasPermission = permissionStore.hasAllProjectPermissions(permissionsToCheck, projectId);
+            const { results } = await authorizationService.authorizeBatch(
+                permissionsToCheck.map(p => ({ permission: p, context: { projectId } }))
+            );
+            hasPermission = results.every(Boolean);
         } else {
-            hasPermission = permissionStore.hasAnyProjectPermission(permissionsToCheck, projectId);
+            const { results } = await authorizationService.authorizeBatch(
+                permissionsToCheck.map(p => ({ permission: p, context: { projectId } }))
+            );
+            hasPermission = results.some(Boolean);
         }
     }
 
-    if (hasPermission) {
-        showElement(el);
-    } else {
-        hideElement(el);
-    }
+    if (hasPermission) showElement(el);
 }
 
 function showElement(el: HTMLElement) {
