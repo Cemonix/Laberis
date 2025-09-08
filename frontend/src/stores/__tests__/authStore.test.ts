@@ -11,12 +11,7 @@ vi.mock("@/services/auth/authService", () => ({
     },
 }));
 
-vi.mock("../permissionStore", () => ({
-    usePermissionStore: vi.fn(() => ({
-        loadUserPermissions: vi.fn().mockResolvedValue(undefined),
-        clearPermissions: vi.fn(),
-    })),
-}));
+// No permission store in FE anymore; authorization is backend-driven.
 
 import { authService } from "@/services/auth/authService.ts";
 import { RoleEnum, type AuthTokens, type LoginDto, type UserDto } from "@/services/auth/auth.types";
