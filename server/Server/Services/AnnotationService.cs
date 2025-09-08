@@ -9,23 +9,42 @@ namespace server.Services;
 public class AnnotationService : IAnnotationService
 {
     private readonly IAnnotationRepository _annotationRepository;
+    private readonly ITaskRepository _taskRepository;
+    private readonly IAssetRepository _assetRepository;
     private readonly ILogger<AnnotationService> _logger;
 
     public AnnotationService(
         IAnnotationRepository annotationRepository,
+        ITaskRepository taskRepository,
+        IAssetRepository assetRepository,
         ILogger<AnnotationService> logger)
     {
         _annotationRepository = annotationRepository ?? throw new ArgumentNullException(nameof(annotationRepository));
+        _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
+        _assetRepository = assetRepository ?? throw new ArgumentNullException(nameof(assetRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<PaginatedResponse<AnnotationDto>> GetAnnotationsForTaskAsync(
+        int projectId,
         int taskId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching annotations for task: {TaskId}", taskId);
-
+        var task = await _taskRepository.GetByIdAsync(taskId);
+        if (task == null || task.ProjectId != projectId)
+        {
+            _logger.LogWarning("Task {TaskId} not found in project {ProjectId}", taskId, projectId);
+            return new PaginatedResponse<AnnotationDto>
+            {
+                Data = Array.Empty<AnnotationDto>(),
+                PageSize = pageSize,
+                CurrentPage = pageNumber,
+                TotalPages = 0,
+                TotalItems = 0
+            };
+        }
         var (annotations, totalCount) = await _annotationRepository.GetAllWithCountAsync(
             filter: a => a.TaskId == taskId,
             filterOn: filterOn,
@@ -52,12 +71,25 @@ public class AnnotationService : IAnnotationService
     }
 
     public async Task<PaginatedResponse<AnnotationDto>> GetAnnotationsForAssetAsync(
+        int projectId,
         int assetId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25)
     {
         _logger.LogInformation("Fetching annotations for asset: {AssetId}", assetId);
-
+        var asset = await _assetRepository.GetByIdAsync(assetId);
+        if (asset == null || asset.ProjectId != projectId)
+        {
+            _logger.LogWarning("Asset {AssetId} not found in project {ProjectId}", assetId, projectId);
+            return new PaginatedResponse<AnnotationDto>
+            {
+                Data = Array.Empty<AnnotationDto>(),
+                PageSize = pageSize,
+                CurrentPage = pageNumber,
+                TotalPages = 0,
+                TotalItems = 0
+            };
+        }
         var (annotations, totalCount) = await _annotationRepository.GetAllWithCountAsync(
             filter: a => a.AssetId == assetId,
             filterOn: filterOn,
@@ -83,7 +115,7 @@ public class AnnotationService : IAnnotationService
         };
     }
 
-    public async Task<AnnotationDto?> GetAnnotationByIdAsync(long annotationId)
+    public async Task<AnnotationDto?> GetAnnotationByIdAsync(int projectId, long annotationId)
     {
         _logger.LogInformation("Fetching annotation with ID: {AnnotationId}", annotationId);
 
@@ -95,14 +127,30 @@ public class AnnotationService : IAnnotationService
             return null;
         }
 
+        // Verify project scope via task
+        var task = await _taskRepository.GetByIdAsync(annotation.TaskId);
+        if (task == null || task.ProjectId != projectId)
+        {
+            _logger.LogWarning("Annotation {AnnotationId} does not belong to project {ProjectId}", annotationId, projectId);
+            return null;
+        }
+
         _logger.LogInformation("Successfully fetched annotation with ID: {AnnotationId}", annotationId);
         return MapToDto(annotation);
     }
 
-    public async Task<AnnotationDto> CreateAnnotationAsync(CreateAnnotationDto createDto, string annotatorUserId)
+    public async Task<AnnotationDto> CreateAnnotationAsync(int projectId, CreateAnnotationDto createDto, string annotatorUserId)
     {
         _logger.LogInformation("Creating new annotation for task: {TaskId}, asset: {AssetId}",
             createDto.TaskId, createDto.AssetId);
+
+        // Validate task and asset belong to project
+        var task = await _taskRepository.GetByIdAsync(createDto.TaskId);
+        var asset = await _assetRepository.GetByIdAsync(createDto.AssetId);
+        if (task == null || asset == null || task.ProjectId != projectId || asset.ProjectId != projectId)
+        {
+            throw new ArgumentException("Task or asset does not belong to the specified project");
+        }
 
         var annotation = new Annotation
         {
@@ -130,7 +178,7 @@ public class AnnotationService : IAnnotationService
         return MapToDto(annotation);
     }
 
-    public async Task<AnnotationDto?> UpdateAnnotationAsync(long annotationId, UpdateAnnotationDto updateDto)
+    public async Task<AnnotationDto?> UpdateAnnotationAsync(int projectId, long annotationId, UpdateAnnotationDto updateDto)
     {
         _logger.LogInformation("Updating annotation with ID: {AnnotationId}", annotationId);
 
@@ -138,6 +186,13 @@ public class AnnotationService : IAnnotationService
         if (existingAnnotation == null)
         {
             _logger.LogWarning("Annotation with ID: {AnnotationId} not found for update.", annotationId);
+            return null;
+        }
+
+        var task = await _taskRepository.GetByIdAsync(existingAnnotation.TaskId);
+        if (task == null || task.ProjectId != projectId)
+        {
+            _logger.LogWarning("Annotation {AnnotationId} does not belong to project {ProjectId}", annotationId, projectId);
             return null;
         }
 
@@ -159,7 +214,7 @@ public class AnnotationService : IAnnotationService
         return MapToDto(existingAnnotation);
     }
 
-    public async Task<bool> DeleteAnnotationAsync(long annotationId)
+    public async Task<bool> DeleteAnnotationAsync(int projectId, long annotationId)
     {
         _logger.LogInformation("Deleting annotation with ID: {AnnotationId}", annotationId);
 
@@ -168,6 +223,13 @@ public class AnnotationService : IAnnotationService
         if (annotation == null)
         {
             _logger.LogWarning("Annotation with ID: {AnnotationId} not found for deletion.", annotationId);
+            return false;
+        }
+
+        var task = await _taskRepository.GetByIdAsync(annotation.TaskId);
+        if (task == null || task.ProjectId != projectId)
+        {
+            _logger.LogWarning("Attempt to delete annotation {AnnotationId} from mismatched project {ProjectId}", annotationId, projectId);
             return false;
         }
 

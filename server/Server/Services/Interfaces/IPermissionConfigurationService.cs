@@ -31,6 +31,13 @@ namespace server.Services.Interfaces
         HashSet<string> GetGlobalPermissions();
 
         /// <summary>
+        /// Gets global permissions for a specific user based on system roles.
+        /// </summary>
+        /// <param name="userRoles">Identity roles of the user</param>
+        /// <returns>Global permissions available to the user</returns>
+        HashSet<string> GetGlobalPermissionsForUser(IList<string> userRoles);
+
+        /// <summary>
         /// Builds a comprehensive permission context for a user based on their project memberships.
         /// </summary>
         /// <param name="userId">The user ID to build context for</param>

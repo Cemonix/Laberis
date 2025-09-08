@@ -8,6 +8,7 @@ public interface IAnnotationService
     /// <summary>
     /// Retrieves all annotations for a specific task, optionally filtered and sorted.
     /// </summary>
+    /// <param name="projectId">The ID of the project used to scope access.</param>
     /// <param name="taskId">The ID of the task to retrieve annotations for.</param>
     /// <param name="filterOn">The field to filter on (e.g., "annotation_type", "is_prediction", "annotator_user_id").</param>
     /// <param name="filterQuery">The query string to filter by.</param>
@@ -17,6 +18,7 @@ public interface IAnnotationService
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A task that represents the asynchronous operation, containing a collection of AnnotationDto.</returns>
     Task<PaginatedResponse<AnnotationDto>> GetAnnotationsForTaskAsync(
+        int projectId,
         int taskId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25
@@ -25,6 +27,7 @@ public interface IAnnotationService
     /// <summary>
     /// Retrieves all annotations for a specific asset, optionally filtered and sorted.
     /// </summary>
+    /// <param name="projectId">The ID of the project used to scope access.</param>
     /// <param name="assetId">The ID of the asset to retrieve annotations for.</param>
     /// <param name="filterOn">The field to filter on (e.g., "annotation_type", "is_prediction", "annotator_user_id").</param>
     /// <param name="filterQuery">The query string to filter by.</param>
@@ -34,6 +37,7 @@ public interface IAnnotationService
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A task that represents the asynchronous operation, containing a collection of AnnotationDto.</returns>
     Task<PaginatedResponse<AnnotationDto>> GetAnnotationsForAssetAsync(
+        int projectId,
         int assetId,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25
@@ -42,30 +46,34 @@ public interface IAnnotationService
     /// <summary>
     /// Retrieves an annotation by its ID.
     /// </summary>
+    /// <param name="projectId">The ID of the project used to scope access.</param>
     /// <param name="annotationId">The ID of the annotation to retrieve.</param>
     /// <returns>A task that represents the asynchronous operation, containing the AnnotationDto if found, otherwise null.</returns>
-    Task<AnnotationDto?> GetAnnotationByIdAsync(long annotationId);
+    Task<AnnotationDto?> GetAnnotationByIdAsync(int projectId, long annotationId);
 
     /// <summary>
     /// Creates a new annotation.
     /// </summary>
+    /// <param name="projectId">The ID of the project used to scope access.</param>
     /// <param name="createDto">The DTO containing information for the new annotation.</param>
     /// <param name="annotatorUserId">The ID of the user creating the annotation.</param>
     /// <returns>A task that represents the asynchronous operation, containing the newly created AnnotationDto.</returns>
-    Task<AnnotationDto> CreateAnnotationAsync(CreateAnnotationDto createDto, string annotatorUserId);
+    Task<AnnotationDto> CreateAnnotationAsync(int projectId, CreateAnnotationDto createDto, string annotatorUserId);
 
     /// <summary>
     /// Updates an existing annotation.
     /// </summary>
+    /// <param name="projectId">The ID of the project used to scope access.</param>
     /// <param name="annotationId">The ID of the annotation to update.</param>
     /// <param name="updateDto">The DTO containing updated annotation information.</param>
     /// <returns>A task that represents the asynchronous operation, containing the updated AnnotationDto if successful, otherwise null.</returns>
-    Task<AnnotationDto?> UpdateAnnotationAsync(long annotationId, UpdateAnnotationDto updateDto);
+    Task<AnnotationDto?> UpdateAnnotationAsync(int projectId, long annotationId, UpdateAnnotationDto updateDto);
 
     /// <summary>
     /// Deletes an annotation by its ID.
     /// </summary>
+    /// <param name="projectId">The ID of the project used to scope access.</param>
     /// <param name="annotationId">The ID of the annotation to delete.</param>
     /// <returns>A task that represents the asynchronous operation, returning true if the annotation was successfully deleted, otherwise false.</returns>
-    Task<bool> DeleteAnnotationAsync(long annotationId);
+    Task<bool> DeleteAnnotationAsync(int projectId, long annotationId);
 }

@@ -18,22 +18,23 @@ public interface IAssetService
     /// <param name="pageNumber">The page number for pagination (1-based index).</param>
     /// <param name="pageSize">The number of items per page.</param>
     /// <param name="includeUrls">Whether to include presigned URLs in the response (default: true).</param>
-    /// <param name="urlExpiryInSeconds">The expiry time for URLs in seconds (default: 1 hour).</param>
+    /// <param name="urlExpiryInSeconds">The expiry time for URLs in seconds (default: 300 seconds).</param>
     /// <returns>A task that represents the asynchronous operation, containing a collection of AssetDto.</returns>
     Task<PaginatedResponse<AssetDto>> GetAssetsForProjectAsync(
         int projectId,
         int? dataSourceId = null,
         string? filterOn = null, string? filterQuery = null, string? sortBy = null,
         bool isAscending = true, int pageNumber = 1, int pageSize = 25,
-        bool includeUrls = true, int urlExpiryInSeconds = 3600
+        bool includeUrls = true, int urlExpiryInSeconds = 300
     );
 
     /// <summary>
-    /// Retrieves an asset by its ID.
+    /// Retrieves an asset by its ID within project scope.
     /// </summary>
+    /// <param name="projectId">The ID of the project to scope the asset to.</param>
     /// <param name="assetId">The ID of the asset to retrieve.</param>
     /// <returns>A task that represents the asynchronous operation, containing the AssetDto if found, otherwise null.</returns>
-    Task<AssetDto?> GetAssetByIdAsync(int assetId);
+    Task<AssetDto?> GetAssetByIdAsync(int projectId, int assetId);
 
     /// <summary>
     /// Gets the count of available assets for task creation in a specific data source.
@@ -59,28 +60,31 @@ public interface IAssetService
     Task<AssetDto> CreateAssetAsync(int projectId, CreateAssetDto createDto);
 
     /// <summary>
-    /// Updates an existing asset.
+    /// Updates an existing asset within project scope.
     /// </summary>
+    /// <param name="projectId">The project ID used to scope access.</param>
     /// <param name="assetId">The ID of the asset to update.</param>
     /// <param name="updateDto">The DTO containing updated asset information.</param>
     /// <returns>A task that represents the asynchronous operation, containing the updated AssetDto if successful, otherwise null.</returns>
-    Task<AssetDto?> UpdateAssetAsync(int assetId, UpdateAssetDto updateDto);
+    Task<AssetDto?> UpdateAssetAsync(int projectId, int assetId, UpdateAssetDto updateDto);
 
     /// <summary>
-    /// Deletes an asset by its ID.
+    /// Deletes an asset by its ID within project scope.
     /// </summary>
+    /// <param name="projectId">The project ID used to scope access.</param>
     /// <param name="assetId">The ID of the asset to delete.</param>
     /// <returns>A task that represents the asynchronous operation, returning true if the asset was successfully deleted, otherwise false.</returns>
-    Task<bool> DeleteAssetAsync(int assetId);
+    Task<bool> DeleteAssetAsync(int projectId, int assetId);
 
     /// <summary>
-    /// Transfers an asset from its current data source to a target data source.
+    /// Transfers an asset from its current data source to a target data source within project scope.
     /// This involves copying the file in MinIO and updating the database record.
     /// </summary>
+    /// <param name="projectId">The project ID used to scope access.</param>
     /// <param name="assetId">The ID of the asset to transfer</param>
     /// <param name="targetDataSourceId">The ID of the target data source</param>
     /// <returns>True if the transfer was successful, false otherwise</returns>
-    Task<bool> TransferAssetToDataSourceAsync(int assetId, int targetDataSourceId);
+    Task<bool> TransferAssetToDataSourceAsync(int projectId, int assetId, int targetDataSourceId);
 
     /// <summary>
     /// Uploads a single asset file.
