@@ -4,7 +4,6 @@ import { authService } from "@/services/auth/authService";
 import { env } from "@/config/env";
 import { AppLogger } from "@/core/logger/logger";
 import { LastProjectManager } from "@/core/persistence";
-import { usePermissionStore } from "./permissionStore";
 import { isUnauthorizedError } from "@/core/errors/errors";
 import type { AuthTokens, LoginDto, RegisterDto, RoleEnum, UserDto } from "@/services/auth/auth.types";
 
@@ -75,16 +74,7 @@ export const useAuthStore = defineStore("auth", {
                     // Only fetch user data if we successfully got tokens
                     await this.getCurrentUser();
                     
-                    logger.info("User data fetched successfully, loading permissions");
-                    // Load permissions after getting user data
-                    try {
-                        const permissionStore = usePermissionStore();
-                        await permissionStore.loadUserPermissions();
-                        logger.info("User permissions loaded during auth initialization");
-                    } catch (permissionError) {
-                        logger.warn("Failed to load permissions during initialization", permissionError);
-                        // Don't fail initialization if permissions fail to load
-                    }
+                    logger.info("User data fetched successfully");
                 } else {
                     logger.info("Token refresh failed during initialization - user will start as guest");
                 }
@@ -105,15 +95,7 @@ export const useAuthStore = defineStore("auth", {
                 this.user = response.user;
                 this.tokens = response.tokens;
 
-                // Load user permissions after successful login
-                try {
-                    const permissionStore = usePermissionStore();
-                    await permissionStore.loadUserPermissions();
-                    logger.info("User permissions loaded after login");
-                } catch (permissionError) {
-                    logger.warn("Failed to load permissions after login", permissionError);
-                    // Don't fail login if permissions fail to load
-                }
+                // Permissions now checked on-demand via backend authorize
 
             } catch (error) {
                 logger.error("Login failed", error);
@@ -146,9 +128,7 @@ export const useAuthStore = defineStore("auth", {
             } catch (error) {
                 logger.error("Logout request failed", error);
             } finally {
-                // Clear permission data on logout
-                const permissionStore = usePermissionStore();
-                permissionStore.clearPermissions();
+                // No frontend permission cache to clear
                 
                 this.user = null;
                 this.tokens = null;
@@ -162,9 +142,7 @@ export const useAuthStore = defineStore("auth", {
                 LastProjectManager.clearLastProject(this.user.email);
             }
             
-            // Clear permission data
-            const permissionStore = usePermissionStore();
-            permissionStore.clearPermissions();
+            // No frontend permission cache to clear
             
             this.user = null;
             this.tokens = null;
