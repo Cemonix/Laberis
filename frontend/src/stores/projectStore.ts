@@ -16,6 +16,7 @@ const logger = AppLogger.createServiceLogger("ProjectStore");
 export const useProjectStore = defineStore("project", {
     state: (): ProjectState => ({
         currentProject: null,
+        currentUserMembership: null,
         teamMembers: [],
         projectLabels: [],
         loading: false,
@@ -48,6 +49,12 @@ export const useProjectStore = defineStore("project", {
         },
         labelCount(state): number {
             return state.projectLabels.length;
+        },
+        currentUserRole(state): ProjectRole | null {
+            return state.currentUserMembership?.role || null;
+        },
+        isCurrentUserManager(state): boolean {
+            return state.currentUserMembership?.role === 'MANAGER';
         }
     },
 
@@ -75,6 +82,7 @@ export const useProjectStore = defineStore("project", {
                 // Load related data in parallel
                 await Promise.all([
                     this.loadTeamMembers(projectId),
+                    this.loadCurrentUserMembership(projectId),
                 ]);
             } catch (error) {
                 logger.error(`Failed to load project ${projectId}`, error);
@@ -98,6 +106,18 @@ export const useProjectStore = defineStore("project", {
                 handleError(error, "Failed to load team members");
             } finally {
                 this.membersLoading = false;
+            }
+        },
+
+        async loadCurrentUserMembership(projectId: number): Promise<void> {
+            try {
+                const membership = await projectMemberService.getCurrentUserMembership(projectId);
+                this.currentUserMembership = membership;
+                logger.info(`Loaded current user membership for project ${projectId}: ${membership?.role || 'none'}`);
+            } catch (error) {
+                logger.error(`Failed to load current user membership for project ${projectId}`, error);
+                // Don't throw error for membership loading as user might not be a member
+                this.currentUserMembership = null;
             }
         },
 
@@ -150,6 +170,7 @@ export const useProjectStore = defineStore("project", {
 
         clearProject(): void {
             this.currentProject = null;
+            this.currentUserMembership = null;
             this.teamMembers = [];
             this.projectLabels = [];
             this.currentStageType = '';

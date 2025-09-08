@@ -289,7 +289,7 @@ const bulkOperationProgress = ref<string>('Processing...');
 // Computed properties for reactive props
 const currentSelectionCount = computed(() => selection.selectionCount.value);
 
-const canManageTasks = computed(() => isManager());
+const canManageTasks = computed(() => isManager(projectId.value));
 
 const canAssignTasks = computed(() => hasProjectPermission(PERMISSIONS.TASK.ASSIGN));
 
