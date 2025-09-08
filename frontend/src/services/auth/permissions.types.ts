@@ -1,11 +1,4 @@
-/**
- * User permission context containing all applicable permissions for a user
- */
-export interface UserPermissionContext {
-    permissions: string[];
-    projectPermissions: Record<number, string[]>;
-    globalPermissions: string[];
-}
+// FE no longer stores permission contexts; backend is source of truth.
 
 /**
  * Permission directive binding interface for v-permission directive
