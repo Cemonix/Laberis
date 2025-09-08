@@ -168,6 +168,7 @@ public class TasksController : ControllerBase
     /// Gets a specific task by its unique ID, with automatic lock acquisition if autoAssign=true.
     /// If the task is locked by another user and autoAssign=true, attempts to find and return the next available task.
     /// </summary>
+    /// <param name="projectId">The ID of the project the task must belong to.</param>
     /// <param name="taskId">The ID of the task.</param>
     /// <param name="autoAssign">Whether to automatically acquire a lock for the task.</param>
     /// <returns>The requested task or next available task if original is locked.</returns>
@@ -177,7 +178,7 @@ public class TasksController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> GetTaskById(int taskId, [FromQuery] bool autoAssign = false)
+    public async Task<IActionResult> GetTaskById(int projectId, int taskId, [FromQuery] bool autoAssign = false)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
@@ -187,7 +188,7 @@ public class TasksController : ControllerBase
 
         try
         {
-            TaskDto? task = await _taskService.GetTaskByIdAsync(taskId, userId, autoAssign);
+            TaskDto? task = await _taskService.GetTaskByIdAsync(projectId, taskId, userId, autoAssign);
             
             if (task == null)
             {
@@ -316,6 +317,7 @@ public class TasksController : ControllerBase
     /// <summary>
     /// Updates an existing task.
     /// </summary>
+    /// <param name="projectId">The ID of the project the task must belong to.</param>
     /// <param name="taskId">The ID of the task to update.</param>
     /// <param name="updateTaskDto">The data to update the task with.</param>
     /// <returns>The updated task.</returns>
@@ -329,13 +331,13 @@ public class TasksController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateTask(int taskId, [FromBody] UpdateTaskDto updateTaskDto)
+    public async Task<IActionResult> UpdateTask(int projectId, int taskId, [FromBody] UpdateTaskDto updateTaskDto)
     {
         var updatingUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         
         try
         {
-            var updatedTask = await _taskService.UpdateTaskAsync(taskId, updateTaskDto, updatingUserId);
+            var updatedTask = await _taskService.UpdateTaskAsync(projectId, taskId, updateTaskDto, updatingUserId);
 
             if (updatedTask == null)
             {
@@ -359,6 +361,7 @@ public class TasksController : ControllerBase
     /// <summary>
     /// Assigns a task to a user.
     /// </summary>
+    /// <param name="projectId">The ID of the project the task must belong to.</param>
     /// <param name="taskId">The ID of the task to assign.</param>
     /// <param name="userId">The ID of the user to assign the task to.</param>
     /// <returns>The updated task.</returns>
@@ -373,7 +376,7 @@ public class TasksController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> AssignTask(int taskId, string userId)
+    public async Task<IActionResult> AssignTask(int projectId, int taskId, string userId)
     {
         var assigningUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(assigningUserId))
@@ -383,7 +386,7 @@ public class TasksController : ControllerBase
 
         try
         {
-            var updatedTask = await _taskService.AssignTaskAsync(taskId, userId, assigningUserId);
+            var updatedTask = await _taskService.AssignTaskAsync(projectId, taskId, userId, assigningUserId);
 
             if (updatedTask == null)
             {
@@ -412,6 +415,7 @@ public class TasksController : ControllerBase
     /// <summary>
     /// Assigns a task to the current authenticated user.
     /// </summary>
+    /// <param name="projectId">The ID of the project the task must belong to.</param>
     /// <param name="taskId">The ID of the task to assign to current user.</param>
     /// <returns>The updated task.</returns>
     /// <response code="200">Returns the updated task.</response>
@@ -425,7 +429,7 @@ public class TasksController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> AssignTaskToCurrentUser(int taskId)
+    public async Task<IActionResult> AssignTaskToCurrentUser(int projectId, int taskId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
@@ -435,7 +439,7 @@ public class TasksController : ControllerBase
 
         try
         {
-            var updatedTask = await _taskService.AssignTaskAsync(taskId, userId, userId);
+            var updatedTask = await _taskService.AssignTaskAsync(projectId, taskId, userId, userId);
 
             if (updatedTask == null)
             {
@@ -510,6 +514,7 @@ public class TasksController : ControllerBase
     /// Changes the status of a task using the unified status change system with workflow-aware validation.
     /// This endpoint handles all task status transitions according to workflow stage rules.
     /// </summary>
+    /// <param name="projectId">The ID of the project the task must belong to.</param>
     /// <param name="taskId">The ID of the task to change status for.</param>
     /// <param name="dto">The status change request containing target status and options.</param>
     /// <returns>The updated task with the new status.</returns>
@@ -524,7 +529,7 @@ public class TasksController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> ChangeTaskStatus(int taskId, [FromBody] ChangeTaskStatusDto dto)
+    public async Task<IActionResult> ChangeTaskStatus(int projectId, int taskId, [FromBody] ChangeTaskStatusDto dto)
     {
         try
         {
@@ -534,7 +539,7 @@ public class TasksController : ControllerBase
                 return Unauthorized("User ID claim not found in token.");
             }
 
-            var updatedTask = await _taskService.ChangeTaskStatusAsync(taskId, dto.TargetStatus, userId);
+            var updatedTask = await _taskService.ChangeTaskStatusAsync(projectId, taskId, dto.TargetStatus, userId);
 
             if (updatedTask == null)
             {

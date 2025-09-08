@@ -278,12 +278,12 @@ public partial class MinioStorageService : IStorageService, IFileStorageService
         }
         catch (ObjectNotFoundException)
         {
-            _logger.LogWarning("File metadata not found in MinIO: {BucketName}/{ObjectName}", bucketName, objectName);
-            throw new NotFoundException($"File not found: {bucketName}/{objectName}");
+            _logger.LogWarning("File metadata not found in MinIO for requested object");
+            throw new NotFoundException("File not found");
         }
         catch (MinioException ex)
         {
-            _logger.LogError(ex, "Failed to get file metadata from MinIO bucket '{BucketName}' with object name '{ObjectName}'", bucketName, objectName);
+            _logger.LogError(ex, "Failed to get file metadata from MinIO storage");
             throw new StorageException($"Failed to get file metadata: {ex.Message}", ex);
         }
         catch (Exception ex)
@@ -311,12 +311,12 @@ public partial class MinioStorageService : IStorageService, IFileStorageService
         }
         catch (ObjectNotFoundException)
         {
-            _logger.LogWarning("Object not found for presigned URL generation: {BucketName}/{ObjectName}", bucketName, objectName);
-            throw new NotFoundException($"Object not found: {bucketName}/{objectName}");
+            _logger.LogWarning("Object not found for presigned URL generation");
+            throw new NotFoundException("Object not found");
         }
         catch (MinioException ex)
         {
-            _logger.LogError(ex, "Failed to generate presigned URL for MinIO object '{ObjectName}' in bucket '{BucketName}'", objectName, bucketName);
+            _logger.LogError(ex, "Failed to generate presigned URL for MinIO object");
             throw new StorageException($"Failed to generate presigned URL: {ex.Message}", ex);
         }
         catch (Exception ex)

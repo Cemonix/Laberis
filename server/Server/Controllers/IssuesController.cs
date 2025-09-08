@@ -1,15 +1,17 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using server.Authentication;
 using server.Models.DTOs.Issue;
 using server.Services.Interfaces;
 using System.Security.Claims;
 
 namespace server.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/projects/{projectId:int}/[controller]")]
 [ApiController]
 [Authorize]
+[ProjectAccess]
 [EnableRateLimiting("project")]
 public class IssuesController : ControllerBase
 {
