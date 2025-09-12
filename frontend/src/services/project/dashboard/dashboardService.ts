@@ -102,6 +102,7 @@ class DashboardService extends BaseProjectService {
         });
         return response;
     }
+
 }
 
 export const dashboardService = new DashboardService();
