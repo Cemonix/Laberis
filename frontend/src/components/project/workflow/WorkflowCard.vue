@@ -19,6 +19,28 @@
             </div>
         </div>
         
+        <div v-if="stageProgress && stageProgress.length > 0" class="stage-progress-section">
+            <h4 class="progress-title">Task Progress</h4>
+            <div class="stage-progress-list">
+                <div 
+                    v-for="stage in stageProgress" 
+                    :key="stage.workflowStageId"
+                    class="stage-progress-item"
+                >
+                    <div class="stage-info">
+                        <span class="stage-name">{{ stage.stageName }}</span>
+                        <span class="stage-count">{{ stage.completedTasks }}/{{ stage.totalTasks }}</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div 
+                            class="progress-fill" 
+                            :style="{ width: getProgressPercentage(stage) + '%' }"
+                        ></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="workflow-actions">
             <!-- Role-based primary action button -->
             <router-link 
@@ -62,6 +84,7 @@ import { computed } from 'vue';
 import { type Workflow } from '@/services/project/workflow/workflow.types';
 import { type WorkflowStage } from '@/services/project/workflow/workflowStage.types';
 import { type ProjectRole } from '@/services/project/project.types';
+import { type WorkflowStageProgressDto } from '@/services/project/dashboard/dashboard.types';
 import { WorkflowNavigationHelper } from '@/core/workflow';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faDiagramProject } from '@fortawesome/free-solid-svg-icons';
@@ -72,6 +95,7 @@ interface Props {
     stages?: WorkflowStage[];
     userRole?: ProjectRole;
     userEmail?: string;
+    stageProgress?: WorkflowStageProgressDto[];
 }
 
 const props = defineProps<Props>();
@@ -101,6 +125,11 @@ const formatDate = (dateString: string): string => {
         month: 'short',
         day: 'numeric'
     });
+};
+
+const getProgressPercentage = (stage: WorkflowStageProgressDto): number => {
+    if (stage.totalTasks === 0) return 0;
+    return Math.round((stage.completedTasks / stage.totalTasks) * 100);
 };
 </script>
 
@@ -222,6 +251,76 @@ const formatDate = (dateString: string): string => {
     }
 }
 
+.stage-progress-section {
+    margin: 1.5rem 0;
+    
+    .progress-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--color-gray-700);
+        margin-bottom: 0.75rem;
+    }
+}
+
+.stage-progress-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.stage-progress-item {
+    .stage-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.25rem;
+        
+        .stage-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--color-gray-700);
+        }
+        
+        .stage-count {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--color-gray-600);
+        }
+    }
+    
+    .progress-bar {
+        height: 6px;
+        background-color: var(--color-gray-200);
+        border-radius: 3px;
+        overflow: hidden;
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            position: relative;
+            
+            &::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                width: 2px;
+                background: rgba(255, 255, 255, 0.3);
+                animation: shimmer 2s infinite;
+            }
+        }
+    }
+}
+
+@keyframes shimmer {
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .workflow-actions {
@@ -233,6 +332,24 @@ const formatDate = (dateString: string): string => {
         
         &.small {
             align-self: flex-start;
+        }
+    }
+    
+    .stage-progress-section {
+        margin: 1rem 0;
+        
+        .progress-title {
+            font-size: 0.85rem;
+        }
+    }
+    
+    .stage-progress-item .stage-info {
+        .stage-name {
+            font-size: 0.8125rem;
+        }
+        
+        .stage-count {
+            font-size: 0.75rem;
         }
     }
 }

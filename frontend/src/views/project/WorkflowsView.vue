@@ -17,6 +17,7 @@
                     :stages="workflowStages.get(workflow.id) || []"
                     :user-role="userRole || undefined"
                     :user-email="userEmail || undefined"
+                    :stage-progress="workflowStageProgress.get(workflow.id) || []"
                 />
                 <p v-if="!workflows || workflows.length === 0" class="no-content-message">
                     No workflows have been created for this project yet.
@@ -51,6 +52,7 @@ import FloatingActionButton from '@/components/common/FloatingActionButton.vue';
 import {type CreateWorkflowWithStagesRequest, type Workflow} from '@/services/project/workflow/workflow.types';
 import {type WorkflowStage} from '@/services/project/workflow/workflowStage.types';
 import {type ProjectRole} from '@/services/project/project.types';
+import {type WorkflowStageProgressDto} from '@/services/project/dashboard/dashboard.types';
 import {workflowService} from '@/services/project/workflow/workflowService';
 import {workflowStageService} from '@/services/project/workflow/workflowStageService';
 import {projectMemberService} from '@/services/project';
@@ -68,6 +70,7 @@ const { handleError } = useErrorHandler();
 
 const workflows = ref<Workflow[]>([]);
 const workflowStages = ref<Map<number, WorkflowStage[]>>(new Map());
+const workflowStageProgress = ref<Map<number, WorkflowStageProgressDto[]>>(new Map());
 const userRole = ref<ProjectRole | null>(null);
 const userEmail = ref<string | null>(null);
 const isModalOpen = ref(false);
@@ -103,6 +106,17 @@ const loadWorkflowStages = async (projectId: number, workflowId: number) => {
     }
 };
 
+const loadWorkflowStageProgress = async (projectId: number, workflowId: number) => {
+    try {
+        const progress = await workflowStageService.getWorkflowStageProgress(projectId, workflowId);
+        workflowStageProgress.value.set(workflowId, progress);
+        logger.info(`Loaded stage progress for workflow ${workflowId}: ${progress.length} stages`);
+    } catch (error) {
+        logger.error(`Failed to load stage progress for workflow ${workflowId}`, error);
+        workflowStageProgress.value.set(workflowId, []); // Set empty array as fallback
+    }
+};
+
 const loadWorkflows = async () => {
     const projectId = Number(route.params.projectId);
     if (!projectId || isNaN(projectId)) {
@@ -122,11 +136,14 @@ const loadWorkflows = async () => {
         workflows.value = workflowResponse.data;
         logger.info(`Loaded ${workflowResponse.data.length} workflows for project ${projectId}`);
 
-        // Load stages for each workflow
+        // Load stages and progress for each workflow
         const stagePromises = workflowResponse.data.map(workflow => 
             loadWorkflowStages(projectId, workflow.id)
         );
-        await Promise.all(stagePromises);
+        const progressPromises = workflowResponse.data.map(workflow =>
+            loadWorkflowStageProgress(projectId, workflow.id)
+        );
+        await Promise.all([...stagePromises, ...progressPromises]);
         
     } catch (error) {
         handleError(error, 'Failed to load workflows');
@@ -159,8 +176,11 @@ const handleCreateWorkflow = async (formData: CreateWorkflowWithStagesRequest) =
         workflows.value.push(newWorkflow);
         logger.info(`Created workflow with stages: ${newWorkflow.name} (ID: ${newWorkflow.id})`);
         
-        // Load stages for the newly created workflow
-        await loadWorkflowStages(projectId, newWorkflow.id);
+        // Load stages and progress for the newly created workflow
+        await Promise.all([
+            loadWorkflowStages(projectId, newWorkflow.id),
+            loadWorkflowStageProgress(projectId, newWorkflow.id)
+        ]);
         
         closeModal();
         showCreateSuccess("Workflow", newWorkflow.name);

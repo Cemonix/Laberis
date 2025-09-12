@@ -5,6 +5,7 @@ import type {
     CreateWorkflowStageRequest,
     UpdateWorkflowStageRequest,
 } from "./workflowStage.types";
+import type { WorkflowStageProgressDto } from '../dashboard/dashboard.types';
 import type { QueryParams } from '@/services/base/requests';
 import { workflowService } from './workflowService';
 import type { WorkflowWithStages } from './workflow.types';
@@ -203,6 +204,20 @@ class WorkflowStageService extends BaseProjectService {
         );
         
         this.logger.info(`Successfully reordered ${response.length} stages in workflow ${workflowId}`);
+        return response;
+    }
+
+    /**
+     * Get task progress for all stages in a workflow
+     */
+    async getWorkflowStageProgress(projectId: number, workflowId: number): Promise<WorkflowStageProgressDto[]> {
+        this.logger.info(`Fetching task progress for stages in workflow ${workflowId}, project ${projectId}`);
+        
+        const response = await this.get<WorkflowStageProgressDto[]>(
+            this.buildProjectUrl(projectId, `dashboard/analytics/workflow-stage-progress?workflowId=${workflowId}`)
+        );
+        
+        this.logger.info(`Fetched task progress for ${response.length} stages in workflow ${workflowId}`);
         return response;
     }
 }
