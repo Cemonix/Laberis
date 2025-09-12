@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
-using server.Models.Domain;
-using server.Models.Domain.Enums;
 using server.Models.DTOs.Authz;
 using server.Services.Interfaces;
 
